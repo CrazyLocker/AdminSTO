@@ -1,0 +1,105 @@
+package com.autoservice;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class WorkOrder {
+    private String id;
+    private Client client;
+    private List<String> services;
+    private List<Double> servicePrices;
+    private List<SparePart> spareParts;
+    private List<Integer> sparePartQuantities;
+    private double total;
+    private String status;
+
+    public static final String STATUS_NEW = "НОВЫЙ";
+    public static final String STATUS_DIAGNOSTICS = "ДИАГНОСТИКА";
+    public static final String STATUS_IN_WORK = "В РАБОТЕ";
+    public static final String STATUS_WAITING_PARTS = "ОЖИДАНИЕ ЗАПЧАСТЕЙ";
+    public static final String STATUS_READY = "ГОТОВ";
+    public static final String STATUS_COMPLETED = "ВЫДАН";
+    public static final String STATUS_CLOSED = "ЗАКРЫТ";
+
+    public static String[] getAllStatuses() {
+        return new String[]{STATUS_NEW, STATUS_DIAGNOSTICS, STATUS_IN_WORK,
+                STATUS_WAITING_PARTS, STATUS_READY, STATUS_COMPLETED, STATUS_CLOSED};
+    }
+
+    public WorkOrder(Client client) {
+        this.id = null;
+        this.client = client;
+        this.services = new ArrayList<>();
+        this.servicePrices = new ArrayList<>();
+        this.spareParts = new ArrayList<>();
+        this.sparePartQuantities = new ArrayList<>();
+        this.total = 0;
+        this.status = STATUS_NEW;
+    }
+
+    public WorkOrder(String id, Client client, String status, double total) {
+        this.id = id;
+        this.client = client;
+        this.services = new ArrayList<>();
+        this.servicePrices = new ArrayList<>();
+        this.spareParts = new ArrayList<>();
+        this.sparePartQuantities = new ArrayList<>();
+        this.total = total;
+        this.status = status;
+    }
+
+    public void addService(String name, double price) {
+        services.add(name);
+        servicePrices.add(price);
+        recalculateTotal();
+    }
+
+    public void removeService(int index) {
+        if (index >= 0 && index < services.size()) {
+            services.remove(index);
+            servicePrices.remove(index);
+            recalculateTotal();
+        }
+    }
+
+    public void addSparePart(SparePart part, int quantity) {
+        spareParts.add(part);
+        sparePartQuantities.add(quantity);
+        recalculateTotal();
+    }
+
+    public void removeSparePart(int index) {
+        if (index >= 0 && index < spareParts.size()) {
+            spareParts.remove(index);
+            sparePartQuantities.remove(index);
+            recalculateTotal();
+        }
+    }
+
+    public void recalculateTotal() {
+        total = 0;
+        for (Double price : servicePrices) {
+            total += price;
+        }
+        for (int i = 0; i < spareParts.size(); i++) {
+            total += spareParts.get(i).getRetailPrice() * sparePartQuantities.get(i);
+        }
+    }
+
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
+    public Client getClient() { return client; }
+    public void setClient(Client client) { this.client = client; }
+    public double getTotal() { return total; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+    public List<String> getServices() { return services; }
+    public List<Double> getServicePrices() { return servicePrices; }
+    public List<SparePart> getSpareParts() { return spareParts; }
+    public List<Integer> getSparePartQuantities() { return sparePartQuantities; }
+
+    @Override
+    public String toString() {
+        return (id != null ? id : "Новый") + " | " + client.getName() + " | " + total + " руб. | " + status;
+    }
+}
