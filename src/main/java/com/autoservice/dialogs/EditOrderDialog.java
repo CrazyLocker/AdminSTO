@@ -10,42 +10,149 @@ import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import com.autoservice.controllers.DictionaryController;
 
 public class EditOrderDialog {
 
+    private static final String[] TIME_SLOTS = {
+            "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
+            "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30",
+            "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00"
+    };
+
+    private static final String[] MASTERS = {"Иван", "Петр", "Сергей", "Антон"};
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+
+    // Поля класса для хранения временных данных
+    private static List<String> tempServices = new ArrayList<>();
+    private static List<Double> tempServicePrices = new ArrayList<>();
+    private static List<SparePart> tempParts = new ArrayList<>();
+    private static List<Integer> tempPartQuantities = new ArrayList<>();
+
+    // Поля для UI компонентов
+    private static ListView<String> servicesListView;
+    private static ListView<String> partsListView;
+    private static Label totalLabel;
+    private static ComboBox<SparePart> partCombo;
+    private static Stage currentStage;
+
     public static void show(WorkOrder order) {
-        // Проверка: нельзя редактировать закрытый или выданный заказ
-        if (order.getStatus().equals(WorkOrder.STATUS_CLOSED) ||
-                order.getStatus().equals(WorkOrder.STATUS_COMPLETED)) {
-            Alert alert = new Alert(Alert.AlertType.WARNING, "Нельзя редактировать закрытый или выданный заказ", ButtonType.OK);
-            alert.showAndWait();
+        if (order.getStatus().equals(WorkOrder.STATUS_CLOSED)) {
+            showAlert("Нельзя редактировать закрытый заказ");
             return;
         }
 
-        Stage stage = new Stage();
-        stage.setTitle("Редактирование заказа №" + order.getId());
-        stage.setMinWidth(650);
-        stage.setMinHeight(600);
-        stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
+        // Очищаем временные списки
+        tempServices.clear();
+        tempServicePrices.clear();
+        tempParts.clear();
+        tempPartQuantities.clear();
+
+        currentStage = new Stage();
+        currentStage.setTitle("Редактирование заказа " + order.getId());
+        currentStage.setMinWidth(750);
+        currentStage.setMinHeight(750);
+        currentStage.initModality(javafx.stage.Modality.WINDOW_MODAL);
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
 
-        Label infoLabel = new Label("Клиент: " + order.getClient().getName() + " (" + order.getClient().getCarModel() + ")");
-        infoLabel.setStyle("-fx-font-weight: bold;");
+        Label infoLabel = new Label("Клиент: " + order.getClient().getName() + " (" + order.getClient().getCarModel() + ", " + order.getClient().getCarNumber() + ")");
+        infoLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
 
-        ListView<String> servicesListView = new ListView<>();
+        // ==================== ЗАПИСЬ В КАЛЕНДАРЬ ====================
+        Label appointmentHeader = new Label("📅 ЗАПИСЬ В КАЛЕНДАРЬ");
+        appointmentHeader.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
+
+        // Находим существующую запись для этого заказа
+        Appointment existingAppointment = null;
+        for (Appointment a : DataStore.getAppointments()) {
+            if (a.getOrderId() != null && a.getOrderId().equals(order.getId())) {
+                existingAppointment = a;
+                break;
+            }
+        }
+
+        // Информация о текущей записи
+        Label currentAppointmentInfo = new Label();
+        currentAppointmentInfo.setStyle("-fx-text-fill: #2E7D32; -fx-font-size: 12px; -fx-padding: 5 0 5 0;");
+
+        CheckBox hasAppointmentCheck = new CheckBox("Создать/редактировать запись в календаре");
+
+        if (existingAppointment != null) {
+            hasAppointmentCheck.setSelected(true);
+            String dateStr = existingAppointment.getDate();
+            String timeStr = existingAppointment.getTime();
+            String master = existingAppointment.getMasterName();
+            String service = existingAppointment.getServiceName();
+
+            String formattedDate = dateStr;
+            try {
+                formattedDate = LocalDate.parse(dateStr).format(DATE_FORMATTER);
+            } catch (Exception e) {}
+
+            currentAppointmentInfo.setText("📌 Текущая запись: " + formattedDate + " " + timeStr + ", мастер: " + master + ", услуга: " + service);
+            currentAppointmentInfo.setStyle("-fx-text-fill: #2196F3; -fx-font-size: 12px; -fx-padding: 5 0 5 0;");
+        } else {
+            hasAppointmentCheck.setSelected(false);
+            currentAppointmentInfo.setText("⚠ Запись в календаре отсутствует");
+            currentAppointmentInfo.setStyle("-fx-text-fill: #FF9800; -fx-font-size: 12px; -fx-padding: 5 0 5 0;");
+        }
+
+        DatePicker datePicker = new DatePicker();
+        ComboBox<String> timeCombo = new ComboBox<>(FXCollections.observableArrayList(TIME_SLOTS));
+        ComboBox<String> masterCombo = new ComboBox<>(FXCollections.observableArrayList(MASTERS));
+
+        if (existingAppointment != null) {
+            datePicker.setValue(LocalDate.parse(existingAppointment.getDate()));
+            timeCombo.setValue(existingAppointment.getTime());
+            masterCombo.setValue(existingAppointment.getMasterName());
+        } else {
+            datePicker.setValue(LocalDate.now());
+            timeCombo.setPromptText("Выберите время");
+            masterCombo.setPromptText("Выберите мастера");
+        }
+
+        datePicker.setDisable(!hasAppointmentCheck.isSelected());
+        timeCombo.setDisable(!hasAppointmentCheck.isSelected());
+        masterCombo.setDisable(!hasAppointmentCheck.isSelected());
+
+        hasAppointmentCheck.setOnAction(e -> {
+            boolean selected = hasAppointmentCheck.isSelected();
+            datePicker.setDisable(!selected);
+            timeCombo.setDisable(!selected);
+            masterCombo.setDisable(!selected);
+            if (!selected) {
+                datePicker.setValue(null);
+                timeCombo.setValue(null);
+                masterCombo.setValue(null);
+                currentAppointmentInfo.setText("⚠ Запись будет удалена");
+                currentAppointmentInfo.setStyle("-fx-text-fill: #f44336; -fx-font-size: 12px; -fx-padding: 5 0 5 0;");
+            } else {
+                datePicker.setValue(LocalDate.now());
+                currentAppointmentInfo.setText("📌 Будет создана новая запись");
+                currentAppointmentInfo.setStyle("-fx-text-fill: #4CAF50; -fx-font-size: 12px; -fx-padding: 5 0 5 0;");
+            }
+        });
+
+        HBox appointmentBox = new HBox(10,
+                new Label("Дата:"), datePicker,
+                new Label("Время:"), timeCombo,
+                new Label("Мастер:"), masterCombo);
+        appointmentBox.setAlignment(Pos.CENTER_LEFT);
+
+        VBox appointmentSection = new VBox(5, appointmentHeader, currentAppointmentInfo, hasAppointmentCheck, appointmentBox);
+
+        // ==================== УСЛУГИ ====================
+        Label servicesHeader = new Label("📋 УСЛУГИ");
+        servicesHeader.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
+
+        servicesListView = new ListView<>();
         servicesListView.setPrefHeight(120);
-        ListView<String> partsListView = new ListView<>();
-        partsListView.setPrefHeight(120);
-
-        List<String> tempServices = new ArrayList<>();
-        List<Double> tempServicePrices = new ArrayList<>();
-        List<SparePart> tempParts = new ArrayList<>();
-        List<Integer> tempPartQuantities = new ArrayList<>();
 
         tempServices.addAll(order.getServices());
         tempServicePrices.addAll(order.getServicePrices());
@@ -53,17 +160,9 @@ public class EditOrderDialog {
             servicesListView.getItems().add((i+1) + ". " + tempServices.get(i) + " — " + tempServicePrices.get(i) + " руб.");
         }
 
-        tempParts.addAll(order.getSpareParts());
-        tempPartQuantities.addAll(order.getSparePartQuantities());
-        for (int i = 0; i < tempParts.size(); i++) {
-            SparePart p = tempParts.get(i);
-            int q = tempPartQuantities.get(i);
-            partsListView.getItems().add((i+1) + ". " + p.getName() + " — " + p.getRetailPrice() + " руб. x " + q + " = " + (p.getRetailPrice() * q) + " руб.");
-        }
-
         ComboBox<Service> serviceCombo = new ComboBox<>(FXCollections.observableArrayList(DataStore.getServices()));
         serviceCombo.setPromptText("Выберите услугу");
-        serviceCombo.setPrefWidth(300);
+        serviceCombo.setPrefWidth(350);
         TextField servicePriceField = new TextField();
         servicePriceField.setEditable(false);
         servicePriceField.setPrefWidth(100);
@@ -75,21 +174,37 @@ public class EditOrderDialog {
             }
         });
 
-        Button addServiceBtn = new Button("+ Добавить услугу");
+        Button addServiceBtn = new Button("➕ Добавить услугу");
+        addServiceBtn.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white;");
         HBox serviceAddBox = new HBox(10, serviceCombo, servicePriceField, addServiceBtn);
 
-        ComboBox<SparePart> partCombo = new ComboBox<>(FXCollections.observableArrayList(DataStore.getSpareParts()));
+        // ==================== ЗАПЧАСТИ ====================
+        Label partsHeader = new Label("🔧 ЗАПЧАСТИ");
+        partsHeader.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
+
+        partsListView = new ListView<>();
+        partsListView.setPrefHeight(120);
+
+        tempParts.addAll(order.getSpareParts());
+        tempPartQuantities.addAll(order.getSparePartQuantities());
+        for (int i = 0; i < tempParts.size(); i++) {
+            SparePart p = tempParts.get(i);
+            int q = tempPartQuantities.get(i);
+            partsListView.getItems().add((i+1) + ". " + p.getName() + " — " + p.getRetailPrice() + " руб. x " + q + " = " + (p.getRetailPrice() * q) + " руб.");
+        }
+
+        partCombo = new ComboBox<>(FXCollections.observableArrayList(DataStore.getSpareParts()));
         partCombo.setPromptText("Выберите запчасть");
-        partCombo.setPrefWidth(300);
+        partCombo.setPrefWidth(350);
         TextField partPriceField = new TextField();
         partPriceField.setEditable(false);
         partPriceField.setPrefWidth(100);
         TextField partStockField = new TextField();
         partStockField.setEditable(false);
-        partStockField.setPrefWidth(60);
+        partStockField.setPrefWidth(70);
         TextField partQtyField = new TextField();
         partQtyField.setText("1");
-        partQtyField.setPrefWidth(60);
+        partQtyField.setPrefWidth(70);
 
         partCombo.setOnAction(e -> {
             SparePart selected = partCombo.getValue();
@@ -99,24 +214,22 @@ public class EditOrderDialog {
             }
         });
 
-        Button addPartBtn = new Button("+ Добавить запчасть");
-        HBox partAddBox = new HBox(10, partCombo, partPriceField, new Label("Остаток:"), partStockField, new Label("Кол-во:"), partQtyField, addPartBtn);
+        Button addPartBtn = new Button("➕ Добавить запчасть");
+        addPartBtn.setStyle("-fx-background-color: #2196F3; -fx-text-fill: white;");
+        HBox partAddBox = new HBox(10, partCombo, partPriceField, new Label("Остаток:"), partStockField,
+                new Label("Кол-во:"), partQtyField, addPartBtn);
 
-        Button removeServiceBtn = new Button("Удалить выбранную услугу");
-        Button removePartBtn = new Button("Удалить выбранную запчасть");
+        // ==================== КНОПКИ УДАЛЕНИЯ ====================
+        Button removeServiceBtn = new Button("❌ Удалить выбранную услугу");
+        removeServiceBtn.setStyle("-fx-background-color: #f44336; -fx-text-fill: white;");
+        Button removePartBtn = new Button("❌ Удалить выбранную запчасть");
+        removePartBtn.setStyle("-fx-background-color: #f44336; -fx-text-fill: white;");
 
-        Label totalLabel = new Label("Итого: " + calculateTotal(tempServicePrices, tempParts, tempPartQuantities) + " руб.");
-        totalLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+        // ==================== ИТОГО ====================
+        totalLabel = new Label("💰 ИТОГО: " + calculateTotal() + " руб.");
+        totalLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 16px; -fx-text-fill: #2E7D32;");
 
-        Runnable updateTotal = () -> {
-            double total = 0;
-            for (Double price : tempServicePrices) total += price;
-            for (int i = 0; i < tempParts.size(); i++) {
-                total += tempParts.get(i).getRetailPrice() * tempPartQuantities.get(i);
-            }
-            totalLabel.setText("Итого: " + String.format("%.2f", total) + " руб.");
-        };
-
+        // ==================== ЛОГИКА ДОБАВЛЕНИЯ ====================
         addServiceBtn.setOnAction(e -> {
             Service selected = serviceCombo.getValue();
             if (selected == null) {
@@ -128,7 +241,7 @@ public class EditOrderDialog {
             servicesListView.getItems().add(tempServices.size() + ". " + selected.getName() + " — " + selected.getPrice() + " руб.");
             serviceCombo.setValue(null);
             servicePriceField.clear();
-            updateTotal.run();
+            updateTotalLabel();
         });
 
         addPartBtn.setOnAction(e -> {
@@ -160,9 +273,10 @@ public class EditOrderDialog {
             partCombo.setValue(null);
             partPriceField.clear();
             partQtyField.setText("1");
-            updateTotal.run();
+            updateTotalLabel();
         });
 
+        // ==================== ЛОГИКА УДАЛЕНИЯ ====================
         removeServiceBtn.setOnAction(e -> {
             int idx = servicesListView.getSelectionModel().getSelectedIndex();
             if (idx >= 0 && idx < tempServices.size()) {
@@ -172,9 +286,9 @@ public class EditOrderDialog {
                 for (int i = 0; i < tempServices.size(); i++) {
                     servicesListView.getItems().add((i+1) + ". " + tempServices.get(i) + " — " + tempServicePrices.get(i) + " руб.");
                 }
-                updateTotal.run();
+                updateTotalLabel();
             } else {
-                showAlert("Выберите услугу");
+                showAlert("Выберите услугу для удаления");
             }
         });
 
@@ -193,74 +307,198 @@ public class EditOrderDialog {
                     partsListView.getItems().add((i+1) + ". " + p.getName() + " — " + p.getRetailPrice() + " руб. x " + q + " = " + (p.getRetailPrice() * q) + " руб.");
                 }
                 partCombo.setItems(FXCollections.observableArrayList(DataStore.getSpareParts()));
-                updateTotal.run();
+                updateTotalLabel();
             } else {
-                showAlert("Выберите запчасть");
+                showAlert("Выберите запчасть для удаления");
             }
         });
 
-        Button saveBtn = new Button("Сохранить изменения");
-        Button cancelBtn = new Button("Отмена");
+        // ==================== КНОПКИ СОХРАНЕНИЯ ====================
+        Button saveBtn = new Button("💾 СОХРАНИТЬ ИЗМЕНЕНИЯ");
+        saveBtn.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
+        Button cancelBtn = new Button("❌ ОТМЕНА");
+        cancelBtn.setStyle("-fx-background-color: #f44336; -fx-text-fill: white; -fx-font-size: 14px;");
         HBox btnBox = new HBox(15, saveBtn, cancelBtn);
         btnBox.setAlignment(Pos.CENTER);
 
+        // Сборка интерфейса
         root.getChildren().addAll(
                 infoLabel,
                 new Separator(),
-                new Label("Услуги:"), servicesListView,
+                appointmentSection,
+                new Separator(),
+                servicesHeader, servicesListView,
                 serviceAddBox, removeServiceBtn,
                 new Separator(),
-                new Label("Запчасти:"), partsListView,
+                partsHeader, partsListView,
                 partAddBox, removePartBtn,
                 new Separator(),
                 totalLabel, btnBox
         );
 
         Scene scene = new Scene(root);
-        stage.setScene(scene);
+        currentStage.setScene(scene);
+
+        // Сохраняем ссылки на внешние переменные
+        Appointment finalExistingAppointment = existingAppointment;
 
         saveBtn.setOnAction(e -> {
-            if (tempServices.isEmpty() && tempParts.isEmpty()) {
-                showAlert("Должна быть хотя бы одна услуга или запчасть");
-                return;
-            }
-
-            while (order.getServices().size() > 0) {
-                order.removeService(0);
-            }
-            while (order.getSpareParts().size() > 0) {
-                order.removeSparePart(0);
-            }
-
-            for (int i = 0; i < tempServices.size(); i++) {
-                order.addService(tempServices.get(i), tempServicePrices.get(i));
-            }
-            for (int i = 0; i < tempParts.size(); i++) {
-                order.addSparePart(tempParts.get(i), tempPartQuantities.get(i));
-                DataStore.updateSparePartStock(tempParts.get(i), tempParts.get(i).getStock());
-            }
-
-            DataStore.updateOrder(order);
-            OrderController.refreshTable();
-            DictionaryController.refreshAll();
-            stage.close();
+            saveOrder(order, finalExistingAppointment, hasAppointmentCheck, datePicker, timeCombo, masterCombo);
         });
 
         cancelBtn.setOnAction(e -> {
-            for (int i = 0; i < tempParts.size(); i++) {
-                tempParts.get(i).setStock(tempParts.get(i).getStock() + tempPartQuantities.get(i));
-            }
-            stage.close();
+            cancelChanges();
+            currentStage.close();
         });
 
-        stage.showAndWait();
+        currentStage.showAndWait();
     }
 
-    private static double calculateTotal(List<Double> prices, List<SparePart> parts, List<Integer> quantities) {
+    private static void saveOrder(WorkOrder order, Appointment existingAppointment,
+                                  CheckBox hasAppointmentCheck, DatePicker datePicker,
+                                  ComboBox<String> timeCombo, ComboBox<String> masterCombo) {
+
+        // Валидация
+        if (tempServices.isEmpty() && tempParts.isEmpty()) {
+            showAlert("Должна быть хотя бы одна услуга или запчасть");
+            return;
+        }
+
+        // Валидация записи в календаре
+        if (hasAppointmentCheck.isSelected()) {
+            LocalDate selectedDate = datePicker.getValue();
+            String selectedTime = timeCombo.getValue();
+            String selectedMaster = masterCombo.getValue();
+
+            if (selectedDate == null) {
+                showAlert("Выберите дату записи");
+                return;
+            }
+            if (selectedTime == null || selectedTime.isEmpty()) {
+                showAlert("Выберите время записи");
+                return;
+            }
+            if (selectedMaster == null || selectedMaster.isEmpty()) {
+                showAlert("Выберите мастера");
+                return;
+            }
+
+            String dateStr = selectedDate.toString();
+            String timeStr = selectedTime;
+            String master = selectedMaster;
+
+            // Проверка на занятость времени
+            List<Appointment> existing = DataStore.getAppointmentsByDate(dateStr);
+            boolean isFree = true;
+            int existingId = (existingAppointment != null) ? existingAppointment.getId() : -1;
+            for (Appointment a : existing) {
+                if (a.getTime().equals(timeStr) && a.getMasterName().equals(master)) {
+                    if (existingId == -1 || a.getId() != existingId) {
+                        isFree = false;
+                        break;
+                    }
+                }
+            }
+
+            if (!isFree) {
+                showAlert("Выбранное время уже занято другим клиентом!");
+                return;
+            }
+        }
+
+        System.out.println("=== СОХРАНЕНИЕ ИЗМЕНЕНИЙ ЗАКАЗА ===");
+        System.out.println("Услуг: " + tempServices.size());
+        System.out.println("Запчастей: " + tempParts.size());
+
+        // Очищаем старые услуги
+        while (order.getServices().size() > 0) {
+            order.removeService(0);
+        }
+        for (int i = 0; i < tempServices.size(); i++) {
+            order.addService(tempServices.get(i), tempServicePrices.get(i));
+        }
+
+        // Очищаем старые запчасти
+        while (order.getSpareParts().size() > 0) {
+            order.removeSparePart(0);
+        }
+        for (int i = 0; i < tempParts.size(); i++) {
+            order.addSparePart(tempParts.get(i), tempPartQuantities.get(i));
+        }
+
+        // Сохраняем заказ
+        DataStore.updateOrder(order);
+
+        // Обработка записи в календаре
+        if (hasAppointmentCheck.isSelected()) {
+            LocalDate selectedDate = datePicker.getValue();
+            String selectedTime = timeCombo.getValue();
+            String selectedMaster = masterCombo.getValue();
+            String serviceName = tempServices.isEmpty() ? "Консультация" : tempServices.get(0);
+            String dateStr = selectedDate.toString();
+            String timeStr = selectedTime;
+            String master = selectedMaster;
+
+            if (existingAppointment != null) {
+                // Обновляем существующую запись
+                existingAppointment.setDate(dateStr);
+                existingAppointment.setTime(timeStr);
+                existingAppointment.setMasterName(master);
+                existingAppointment.setServiceName(serviceName);
+                DataStore.updateAppointment(existingAppointment);
+                System.out.println("Запись в календаре обновлена");
+            } else {
+                // Создаём новую запись
+                Appointment newAppointment = new Appointment(
+                        order.getClient(),
+                        master,
+                        serviceName,
+                        dateStr,
+                        timeStr
+                );
+                newAppointment.setOrderId(order.getId());
+                DataStore.addAppointment(newAppointment);
+                System.out.println("Новая запись в календаре создана");
+            }
+        } else {
+            if (existingAppointment != null) {
+                DataStore.deleteAppointment(existingAppointment.getId());
+                System.out.println("Запись в календаре удалена");
+            }
+        }
+
+        OrderController.refreshTable();
+        currentStage.close();
+    }
+
+    private static void cancelChanges() {
+        for (int i = 0; i < tempParts.size(); i++) {
+            SparePart part = tempParts.get(i);
+            int originalQty = tempPartQuantities.get(i);
+            for (SparePart original : DataStore.getSpareParts()) {
+                if (original.getName().equals(part.getName())) {
+                    original.setStock(original.getStock() + originalQty);
+                    break;
+                }
+            }
+        }
+        currentStage.close();
+    }
+
+    private static void updateTotalLabel() {
         double total = 0;
-        for (Double p : prices) total += p;
-        for (int i = 0; i < parts.size(); i++) {
-            total += parts.get(i).getRetailPrice() * quantities.get(i);
+        for (Double price : tempServicePrices) total += price;
+        for (int i = 0; i < tempParts.size(); i++) {
+            total += tempParts.get(i).getRetailPrice() * tempPartQuantities.get(i);
+        }
+        totalLabel.setText("💰 ИТОГО: " + String.format("%.2f", total) + " руб.");
+    }
+
+    private static double calculateTotal() {
+        double total = 0;
+        for (Double price : tempServicePrices) total += price;
+        for (int i = 0; i < tempParts.size(); i++) {
+            total += tempParts.get(i).getRetailPrice() * tempPartQuantities.get(i);
         }
         return total;
     }

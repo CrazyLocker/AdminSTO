@@ -9,6 +9,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
+import javafx.scene.control.Separator;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
@@ -264,6 +265,22 @@ public class CreateOrderDialog {
                 return;
             }
 
+            // Проверка: если чекбокс выбран, то дата, время и мастер обязательны
+            if (createAppointmentCheck.isSelected()) {
+                if (datePicker.getValue() == null) {
+                    showAlert("Выберите дату записи");
+                    return;
+                }
+                if (timeCombo.getValue() == null) {
+                    showAlert("Выберите время записи");
+                    return;
+                }
+                if (masterCombo.getValue() == null) {
+                    showAlert("Выберите мастера");
+                    return;
+                }
+            }
+
             // Создаём заказ
             WorkOrder order = new WorkOrder(clientCombo.getValue());
             for (int i = 0; i < tempServices.size(); i++) {
@@ -276,7 +293,7 @@ public class CreateOrderDialog {
             DataStore.addOrder(order);
 
             // Создаём запись в календаре
-            if (createAppointmentCheck.isSelected() && timeCombo.getValue() != null && masterCombo.getValue() != null) {
+            if (createAppointmentCheck.isSelected()) {
                 String dateStr = datePicker.getValue().toString();
                 String timeStr = timeCombo.getValue();
                 String master = masterCombo.getValue();

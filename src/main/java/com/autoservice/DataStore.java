@@ -72,8 +72,7 @@ public class DataStore {
     public static int getActiveOrdersCount() {
         int count = 0;
         for (WorkOrder order : orders) {
-            if (!order.getStatus().equals(WorkOrder.STATUS_CLOSED) &&
-                    !order.getStatus().equals(WorkOrder.STATUS_COMPLETED)) {
+            if (!order.getStatus().equals(WorkOrder.STATUS_CLOSED)) {
                 count++;
             }
         }

@@ -18,12 +18,11 @@ public class WorkOrder {
     public static final String STATUS_IN_WORK = "В РАБОТЕ";
     public static final String STATUS_WAITING_PARTS = "ОЖИДАНИЕ ЗАПЧАСТЕЙ";
     public static final String STATUS_READY = "ГОТОВ";
-    public static final String STATUS_COMPLETED = "ВЫДАН";
     public static final String STATUS_CLOSED = "ЗАКРЫТ";
 
     public static String[] getAllStatuses() {
         return new String[]{STATUS_NEW, STATUS_DIAGNOSTICS, STATUS_IN_WORK,
-                STATUS_WAITING_PARTS, STATUS_READY, STATUS_COMPLETED, STATUS_CLOSED};
+                STATUS_WAITING_PARTS, STATUS_READY, STATUS_CLOSED};
     }
 
     public WorkOrder(Client client) {

@@ -31,7 +31,6 @@ public class AppointmentView {
     private static List<Appointment> currentAppointments;
 
     public static VBox create() {
-        // Обновляем список услуг из справочника
         SERVICES = DataStore.getServices().stream()
                 .map(Service::getName)
                 .toArray(String[]::new);
@@ -55,10 +54,10 @@ public class AppointmentView {
             loadSchedule();
         });
 
-        Button weekBtn = new Button("Неделя");
-        weekBtn.setOnAction(e -> showWeekView());
+        Button refreshBtn = new Button("🔄 Обновить");
+        refreshBtn.setOnAction(e -> loadSchedule());
 
-        topPanel.getChildren().addAll(new Label("Дата:"), datePicker, todayBtn, weekBtn, selectedDateLabel);
+        topPanel.getChildren().addAll(new Label("Дата:"), datePicker, todayBtn, refreshBtn, selectedDateLabel);
 
         scheduleGrid = new GridPane();
         scheduleGrid.setHgap(5);
@@ -80,9 +79,10 @@ public class AppointmentView {
         return root;
     }
 
-    private static void showWeekView() {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION, "Недельный просмотр будет добавлен позже", ButtonType.OK);
-        alert.showAndWait();
+    public static void refresh() {
+        if (datePicker != null) {
+            loadSchedule();
+        }
     }
 
     private static void loadSchedule() {
@@ -96,6 +96,7 @@ public class AppointmentView {
 
         scheduleGrid.getChildren().clear();
 
+        // Заголовки
         Label timeHeader = new Label("Время");
         timeHeader.setStyle("-fx-font-weight: bold; -fx-background-color: #dddddd; -fx-padding: 5;");
         scheduleGrid.add(timeHeader, 0, 0);
@@ -104,7 +105,7 @@ public class AppointmentView {
         masterHeader.setStyle("-fx-font-weight: bold; -fx-background-color: #dddddd; -fx-padding: 5;");
         scheduleGrid.add(masterHeader, 1, 0);
 
-        Label clientHeader = new Label("Клиент / Услуга");
+        Label clientHeader = new Label("Клиент / Авто / Услуга");
         clientHeader.setStyle("-fx-font-weight: bold; -fx-background-color: #dddddd; -fx-padding: 5;");
         scheduleGrid.add(clientHeader, 2, 0);
 
@@ -123,13 +124,32 @@ public class AppointmentView {
             Appointment appointment = findAppointmentByTime(time);
 
             if (appointment != null) {
+                // Занято - красная ячейка
                 Label masterLabel = new Label(appointment.getMasterName());
                 masterLabel.setStyle("-fx-padding: 5; -fx-background-color: #ffcccc; -fx-border-color: #cccccc; -fx-border-width: 0 0 1 0;");
                 scheduleGrid.add(masterLabel, 1, row);
 
-                Label infoLabel = new Label(appointment.getClient().getName() + " - " + appointment.getServiceName());
-                infoLabel.setStyle("-fx-padding: 5; -fx-background-color: #ffcccc; -fx-border-color: #cccccc; -fx-border-width: 0 0 1 0;");
-                scheduleGrid.add(infoLabel, 2, row);
+                // Используем VBox для многострочного текста
+                Client client = appointment.getClient();
+                String clientName = (client != null && client.getName() != null) ? client.getName() : "—";
+                String carModel = (client != null && client.getCarModel() != null) ? client.getCarModel() : "—";
+                String carNumber = (client != null && client.getCarNumber() != null) ? client.getCarNumber() : "—";
+                String serviceName = (appointment.getServiceName() != null) ? appointment.getServiceName() : "—";
+
+                VBox infoBox = new VBox(2);
+                infoBox.setStyle("-fx-padding: 5; -fx-background-color: #ffcccc; -fx-border-color: #cccccc; -fx-border-width: 0 0 1 0;");
+
+                Label nameLabel = new Label(clientName);
+                nameLabel.setStyle("-fx-font-weight: bold;");
+
+                Label carLabel = new Label(carModel + " (" + carNumber + ")");
+                carLabel.setStyle("-fx-font-size: 11px;");
+
+                Label serviceLabel = new Label(serviceName);
+                serviceLabel.setStyle("-fx-font-size: 11px;");
+
+                infoBox.getChildren().addAll(nameLabel, carLabel, serviceLabel);
+                scheduleGrid.add(infoBox, 2, row);
 
                 HBox btnBox = new HBox(5);
 
@@ -144,21 +164,15 @@ public class AppointmentView {
                     confirm.showAndWait().ifPresent(response -> {
                         if (response == ButtonType.YES) {
                             DataStore.deleteAppointment(appointment.getId());
-                            loadSchedule();
+                            refresh();
                         }
                     });
                 });
 
-                if (appointment.getOrderId() == null || appointment.getOrderId().isEmpty()) {
-                    Button createOrderBtn = new Button("Заказ");
-                    createOrderBtn.setStyle("-fx-background-color: #2196F3; -fx-text-fill: white;");
-                    createOrderBtn.setOnAction(e -> createOrderFromAppointment(appointment));
-                    btnBox.getChildren().add(createOrderBtn);
-                }
-
                 btnBox.getChildren().addAll(editBtn, cancelBtn);
                 scheduleGrid.add(btnBox, 3, row);
             } else {
+                // Свободно - зелёная ячейка
                 Label masterLabel = new Label("свободно");
                 masterLabel.setStyle("-fx-padding: 5; -fx-background-color: #ccffcc; -fx-border-color: #cccccc; -fx-border-width: 0 0 1 0;");
                 scheduleGrid.add(masterLabel, 1, row);
@@ -174,30 +188,6 @@ public class AppointmentView {
                 scheduleGrid.add(addSlotBtn, 3, row);
             }
         }
-    }
-
-    private static void createOrderFromAppointment(Appointment appointment) {
-        WorkOrder order = new WorkOrder(appointment.getClient());
-
-        double price = 0;
-        for (Service s : DataStore.getServices()) {
-            if (s.getName().equals(appointment.getServiceName())) {
-                price = s.getPrice();
-                break;
-            }
-        }
-        order.addService(appointment.getServiceName(), price);
-
-        DataStore.addOrder(order);
-
-        appointment.setOrderId(order.getId());
-        DataStore.updateAppointment(appointment);
-
-        Alert alert = new Alert(Alert.AlertType.INFORMATION, "Заказ №" + order.getId() + " создан", ButtonType.OK);
-        alert.showAndWait();
-
-        loadSchedule();
-        OrderController.refreshTable();
     }
 
     private static void showEditAppointmentDialog(Appointment appointment) {
@@ -267,8 +257,7 @@ public class AppointmentView {
             appointment.setTime(newTime);
 
             DataStore.updateAppointment(appointment);
-            datePicker.setValue(datePickerLocal.getValue());
-            loadSchedule();
+            refresh();
             stage.close();
         });
 
@@ -356,11 +345,22 @@ public class AppointmentView {
             DataStore.addAppointment(appointment);
 
             if (createOrderCheck.isSelected()) {
-                createOrderFromAppointment(appointment);
+                WorkOrder order = new WorkOrder(clientCombo.getValue());
+                double price = 0;
+                for (Service s : DataStore.getServices()) {
+                    if (s.getName().equals(serviceCombo.getValue())) {
+                        price = s.getPrice();
+                        break;
+                    }
+                }
+                order.addService(serviceCombo.getValue(), price);
+                DataStore.addOrder(order);
+                appointment.setOrderId(order.getId());
+                DataStore.updateAppointment(appointment);
+                OrderController.refreshTable();
             }
 
-            datePicker.setValue(datePickerLocal.getValue());
-            loadSchedule();
+            refresh();
             stage.close();
         });
 

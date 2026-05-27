@@ -427,12 +427,61 @@ public class Database {
     }
 
     public static void updateOrder(WorkOrder order) {
-        String sql = "UPDATE orders SET status = ?, total = ? WHERE id = ?";
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            pstmt.setString(1, order.getStatus());
-            pstmt.setDouble(2, order.getTotal());
-            pstmt.setString(3, order.getId());
-            pstmt.executeUpdate();
+        String orderId = order.getId();
+        if (orderId == null || orderId.isEmpty()) {
+            System.err.println("Ошибка: ID заказа пустой");
+            return;
+        }
+
+        try {
+            // Обновляем статус и сумму
+            String updateOrderSql = "UPDATE orders SET status = ?, total = ? WHERE id = ?";
+            try (PreparedStatement pstmt = connection.prepareStatement(updateOrderSql)) {
+                pstmt.setString(1, order.getStatus());
+                pstmt.setDouble(2, order.getTotal());
+                pstmt.setString(3, orderId);
+                pstmt.executeUpdate();
+            }
+
+            // Удаляем старые услуги
+            String deleteServicesSql = "DELETE FROM order_services WHERE order_id = ?";
+            try (PreparedStatement pstmt = connection.prepareStatement(deleteServicesSql)) {
+                pstmt.setString(1, orderId);
+                pstmt.executeUpdate();
+            }
+
+            // Удаляем старые запчасти
+            String deletePartsSql = "DELETE FROM order_parts WHERE order_id = ?";
+            try (PreparedStatement pstmt = connection.prepareStatement(deletePartsSql)) {
+                pstmt.setString(1, orderId);
+                pstmt.executeUpdate();
+            }
+
+            // Добавляем новые услуги
+            String insertServiceSql = "INSERT INTO order_services (order_id, service_name, price) VALUES (?, ?, ?)";
+            try (PreparedStatement pstmt = connection.prepareStatement(insertServiceSql)) {
+                for (int i = 0; i < order.getServices().size(); i++) {
+                    pstmt.setString(1, orderId);
+                    pstmt.setString(2, order.getServices().get(i));
+                    pstmt.setDouble(3, order.getServicePrices().get(i));
+                    pstmt.executeUpdate();
+                }
+            }
+
+            // Добавляем новые запчасти
+            String insertPartSql = "INSERT INTO order_parts (order_id, part_name, price, quantity) VALUES (?, ?, ?, ?)";
+            try (PreparedStatement pstmt = connection.prepareStatement(insertPartSql)) {
+                for (int i = 0; i < order.getSpareParts().size(); i++) {
+                    pstmt.setString(1, orderId);
+                    pstmt.setString(2, order.getSpareParts().get(i).getName());
+                    pstmt.setDouble(3, order.getSpareParts().get(i).getRetailPrice());
+                    pstmt.setInt(4, order.getSparePartQuantities().get(i));
+                    pstmt.executeUpdate();
+                }
+            }
+
+            System.out.println("Заказ " + orderId + " обновлён");
+
         } catch (SQLException e) {
             System.err.println("Ошибка обновления заказа: " + e.getMessage());
         }
@@ -536,18 +585,22 @@ public class Database {
             while (rs.next()) {
                 int clientId = rs.getInt("client_id");
                 Client client = getClientById(clientId);
-                if (client == null) continue;
-
-                appointments.add(new Appointment(
-                        rs.getInt("id"),
-                        client,
-                        rs.getString("order_id"),
-                        rs.getString("master_name"),
-                        rs.getString("service_name"),
-                        rs.getString("appointment_date"),
-                        rs.getString("appointment_time"),
-                        rs.getString("status")
-                ));
+                if (client != null) {
+                    System.out.println("Загружен клиент: " + client.getName() + ", авто: " + client.getCarModel() + " (" + client.getCarNumber() + ")");
+                    Appointment a = new Appointment(
+                            rs.getInt("id"),
+                            client,
+                            rs.getString("order_id"),
+                            rs.getString("master_name"),
+                            rs.getString("service_name"),
+                            rs.getString("appointment_date"),
+                            rs.getString("appointment_time"),
+                            rs.getString("status")
+                    );
+                    appointments.add(a);
+                } else {
+                    System.err.println("Клиент с ID=" + clientId + " не найден");
+                }
             }
         } catch (SQLException e) {
             System.err.println("Ошибка загрузки записей по дате: " + e.getMessage());

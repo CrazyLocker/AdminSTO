@@ -33,8 +33,7 @@ public class OrderController {
     }
 
     public static void editOrder(WorkOrder order) {
-        if (order.getStatus().equals(WorkOrder.STATUS_CLOSED) ||
-                order.getStatus().equals(WorkOrder.STATUS_COMPLETED)) {
+        if (order.getStatus().equals(WorkOrder.STATUS_CLOSED)) {
             showAlert("Нельзя редактировать закрытый или выданный заказ");
             return;
         }
@@ -54,8 +53,7 @@ public class OrderController {
     }
 
     public static void deleteOrder(WorkOrder order) {
-        if (order.getStatus().equals(WorkOrder.STATUS_CLOSED) ||
-                order.getStatus().equals(WorkOrder.STATUS_COMPLETED)) {
+        if (order.getStatus().equals(WorkOrder.STATUS_CLOSED)) {
             showAlert("Нельзя удалить заказ со статусом 'ЗАКРЫТ' или 'ВЫДАН'");
             return;
         }

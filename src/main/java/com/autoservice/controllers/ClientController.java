@@ -24,9 +24,7 @@ public class ClientController {
         refreshTable();
     }
 
-    // Обновление клиента - принимает обновлённого клиента
     public static void updateClient(Client updatedClient) {
-        // Находим старого клиента по ID и обновляем
         for (Client c : DataStore.getClients()) {
             if (c.getId() == updatedClient.getId()) {
                 c.setName(updatedClient.getName());
@@ -40,10 +38,7 @@ public class ClientController {
         refreshTable();
     }
 
-    public static void deleteClient(Client client) {
-        DataStore.removeClient(client);
-        refreshTable();
-    }
+    // Метод удаления удалён - клиентов больше нельзя удалять
 
     public static void editClient(Client client) {
         EditClientDialog.show(client);

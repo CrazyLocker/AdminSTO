@@ -1,9 +1,7 @@
 package com.autoservice.views;
 
 import com.autoservice.Client;
-import com.autoservice.DataStore;
 import com.autoservice.Validators;
-import com.autoservice.WorkOrder;
 import com.autoservice.controllers.ClientController;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.Insets;
@@ -12,7 +10,6 @@ import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import com.autoservice.Validators;
 
 public class ClientView {
 
@@ -82,8 +79,8 @@ public class ClientView {
         carNumberField.setPrefWidth(100);
         Validators.setupCarNumberField(carNumberField);
 
-        Button addBtn = new Button("Добавить");
-        Button deleteBtn = new Button("Удалить");
+        Button addBtn = new Button("Добавить клиента");
+        addBtn.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white;");
 
         HBox formRow = new HBox(10);
         formRow.setAlignment(Pos.CENTER_LEFT);
@@ -92,7 +89,7 @@ public class ClientView {
                 new Label("Тел.:"), phoneField,
                 new Label("Модель:"), carModelField,
                 new Label("Госномер:"), carNumberField,
-                addBtn, deleteBtn
+                addBtn
         );
         formRow.setPadding(new Insets(10, 0, 10, 0));
 
@@ -117,22 +114,6 @@ public class ClientView {
             phoneField.setText("+7");
             carModelField.clear();
             carNumberField.clear();
-        });
-
-        deleteBtn.setOnAction(e -> {
-            Client selected = clientTable.getSelectionModel().getSelectedItem();
-            if (selected != null) {
-                boolean hasOpenOrders = DataStore.getOrders().stream()
-                        .anyMatch(order -> order.getClient().equals(selected) &&
-                                !order.getStatus().equals(WorkOrder.STATUS_CLOSED));
-                if (hasOpenOrders) {
-                    showAlert("Нельзя удалить клиента: у него есть незакрытые заказы");
-                    return;
-                }
-                ClientController.deleteClient(selected);
-            } else {
-                showAlert("Выберите клиента");
-            }
         });
 
         VBox vbox = new VBox(5);

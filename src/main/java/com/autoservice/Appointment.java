@@ -3,7 +3,7 @@ package com.autoservice;
 public class Appointment {
     private int id;
     private Client client;
-    private String orderId;  // Теперь String
+    private String orderId;
     private String masterName;
     private String serviceName;
     private String date;
