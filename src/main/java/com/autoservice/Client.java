@@ -6,6 +6,7 @@ public class Client {
     private String phone;
     private String carModel;
     private String carNumber;
+    private String lastRepairDate;
 
     public Client(String name, String phone, String carModel, String carNumber) {
         this.id = -1;
@@ -13,6 +14,7 @@ public class Client {
         this.phone = phone;
         this.carModel = carModel;
         this.carNumber = carNumber;
+        this.lastRepairDate = "";
     }
 
     public Client(int id, String name, String phone, String carModel, String carNumber) {
@@ -21,6 +23,16 @@ public class Client {
         this.phone = phone;
         this.carModel = carModel;
         this.carNumber = carNumber;
+        this.lastRepairDate = "";
+    }
+
+    public Client(int id, String name, String phone, String carModel, String carNumber, String lastRepairDate) {
+        this.id = id;
+        this.name = name;
+        this.phone = phone;
+        this.carModel = carModel;
+        this.carNumber = carNumber;
+        this.lastRepairDate = lastRepairDate != null ? lastRepairDate : "";
     }
 
     public int getId() { return id; }
@@ -37,6 +49,9 @@ public class Client {
 
     public String getCarNumber() { return carNumber; }
     public void setCarNumber(String carNumber) { this.carNumber = carNumber; }
+
+    public String getLastRepairDate() { return lastRepairDate; }
+    public void setLastRepairDate(String lastRepairDate) { this.lastRepairDate = lastRepairDate; }
 
     @Override
     public String toString() {

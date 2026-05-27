@@ -12,13 +12,16 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+
 public class EditClientDialog {
 
     public static void show(Client client) {
         Stage stage = new Stage();
         stage.setTitle("Редактирование клиента");
         stage.setMinWidth(400);
-        stage.setMinHeight(300);
+        stage.setMinHeight(350);
         stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
 
         GridPane grid = new GridPane();
@@ -36,6 +39,17 @@ public class EditClientDialog {
         TextField carNumberField = new TextField(client.getCarNumber());
         Validators.setupCarNumberField(carNumberField);
 
+        DatePicker lastRepairPicker = new DatePicker();
+        lastRepairPicker.setPromptText("Выберите дату");
+        lastRepairPicker.setPrefWidth(200);
+        if (client.getLastRepairDate() != null && !client.getLastRepairDate().isEmpty()) {
+            try {
+                lastRepairPicker.setValue(LocalDate.parse(client.getLastRepairDate()));
+            } catch (Exception ex) {
+                lastRepairPicker.setValue(null);
+            }
+        }
+
         grid.add(new Label("Имя:"), 0, 0);
         grid.add(nameField, 1, 0);
         grid.add(new Label("Телефон:"), 0, 1);
@@ -44,6 +58,8 @@ public class EditClientDialog {
         grid.add(carModelField, 1, 2);
         grid.add(new Label("Госномер:"), 0, 3);
         grid.add(carNumberField, 1, 3);
+        grid.add(new Label("Дата посл. ремонта:"), 0, 4);
+        grid.add(lastRepairPicker, 1, 4);
 
         Button saveBtn = new Button("Сохранить");
         Button cancelBtn = new Button("Отмена");
@@ -71,13 +87,16 @@ public class EditClientDialog {
                 return;
             }
 
-            // Обновляем существующий объект клиента
             client.setName(nameField.getText());
             client.setPhone(phoneField.getText());
             client.setCarModel(carModelField.getText());
             client.setCarNumber(carNumberField.getText());
+            client.setLastRepairDate(
+                lastRepairPicker.getValue() != null
+                    ? lastRepairPicker.getValue().format(DateTimeFormatter.ISO_LOCAL_DATE)
+                    : ""
+            );
 
-            // Передаём обновлённого клиента в контроллер
             ClientController.updateClient(client);
             stage.close();
         });
