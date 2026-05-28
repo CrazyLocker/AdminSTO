@@ -4,19 +4,23 @@ import com.autoservice.Client;
 import com.autoservice.DataStore;
 import com.autoservice.DateUtils;
 import com.autoservice.Validators;
-import com.autoservice.WorkOrder;
 import com.autoservice.controllers.ClientController;
 import javafx.beans.property.SimpleStringProperty;
+import javafx.collections.FXCollections;
+import javafx.collections.transformation.FilteredList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
+import javafx.collections.transformation.FilteredList;
 
 public class ClientView {
 
     private static TableView<Client> clientTable;
+    private static FilteredList<Client> filteredClients;
+    private static TextField searchField;
 
     public static VBox create() {
         clientTable = new TableView<>();
@@ -68,8 +72,29 @@ public class ClientView {
             }
         });
 
+        // Настройка фильтрованного списка
+        filteredClients = new FilteredList<>(FXCollections.observableArrayList(DataStore.getClients()), p -> true);
+        clientTable.setItems(filteredClients);
         ClientController.setTable(clientTable);
 
+        // Панель поиска
+        Label searchLabel = new Label("🔍 Поиск:");
+        searchField = new TextField();
+        searchField.setPromptText("Имя или телефон...");
+        searchField.setPrefWidth(250);
+        searchField.textProperty().addListener((obs, oldVal, newVal) -> applyClientFilter(newVal));
+
+        Button clearBtn = new Button("✖ Очистить");
+        clearBtn.setOnAction(e -> {
+            searchField.clear();
+            applyClientFilter("");
+        });
+
+        HBox searchBox = new HBox(10, searchLabel, searchField, clearBtn);
+        searchBox.setAlignment(Pos.CENTER_LEFT);
+        searchBox.setPadding(new Insets(0, 0, 10, 0));
+
+        // Форма добавления клиента
         TextField nameField = new TextField();
         nameField.setPromptText("Имя");
         nameField.setPrefWidth(120);
@@ -87,7 +112,7 @@ public class ClientView {
         carNumberField.setPrefWidth(100);
         Validators.setupCarNumberField(carNumberField);
 
-        Button addBtn = new Button("Добавить клиента");
+        Button addBtn = new Button("➕ Добавить клиента");
         addBtn.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white;");
 
         HBox formRow = new HBox(10);
@@ -122,13 +147,33 @@ public class ClientView {
             phoneField.setText("+7");
             carModelField.clear();
             carNumberField.clear();
+            refreshClientList();
         });
 
         VBox vbox = new VBox(5);
         vbox.setPadding(new Insets(10));
-        vbox.getChildren().addAll(clientTable, formRow);
+        vbox.getChildren().addAll(searchBox, clientTable, formRow);
         VBox.setVgrow(clientTable, Priority.ALWAYS);
         return vbox;
+    }
+
+    private static void applyClientFilter(String filter) {
+        if (filter == null || filter.trim().isEmpty()) {
+            filteredClients.setPredicate(p -> true);
+        } else {
+            String lowerFilter = filter.toLowerCase().trim();
+            filteredClients.setPredicate(client ->
+                    client.getName().toLowerCase().contains(lowerFilter) ||
+                            client.getPhone().toLowerCase().contains(lowerFilter) ||
+                            client.getCarNumber().toLowerCase().contains(lowerFilter)
+            );
+        }
+    }
+
+    public static void refreshClientList() {
+        filteredClients = new FilteredList<>(FXCollections.observableArrayList(DataStore.getClients()), p -> true);
+        clientTable.setItems(filteredClients);
+        applyClientFilter(searchField != null ? searchField.getText() : "");
     }
 
     private static void showAlert(String msg) {

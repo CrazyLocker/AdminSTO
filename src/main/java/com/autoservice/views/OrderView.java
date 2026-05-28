@@ -1,9 +1,11 @@
 package com.autoservice.views;
 
+import com.autoservice.DataStore;
 import com.autoservice.WorkOrder;
 import com.autoservice.controllers.OrderController;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
+import javafx.collections.transformation.FilteredList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
@@ -14,11 +16,16 @@ import javafx.scene.layout.VBox;
 
 public class OrderView {
 
+    private static TableView<WorkOrder> orderTable;
+    private static FilteredList<WorkOrder> filteredOrders;
+    private static TextField searchField;
+    private static ComboBox<String> searchTypeCombo;
+
     public static VBox create() {
-        Button createOrderBtn = new Button("Создать новый заказ");
+        Button createOrderBtn = new Button("📝 Создать новый заказ");
         createOrderBtn.setStyle("-fx-font-size: 14px; -fx-padding: 8 15;");
 
-        TableView<WorkOrder> table = new TableView<>();
+        orderTable = new TableView<>();
 
         TableColumn<WorkOrder, String> colId = new TableColumn<>("№ заказа");
         colId.setCellValueFactory(new PropertyValueFactory<>("id"));
@@ -93,9 +100,9 @@ public class OrderView {
         colAction.setPrefWidth(250);
         colAction.setStyle("-fx-alignment: CENTER;");
         colAction.setCellFactory(col -> new TableCell<WorkOrder, Void>() {
-            private final Button viewBtn = new Button("Просмотр");
-            private final Button editBtn = new Button("Редактировать");
-            private final Button deleteBtn = new Button("Удалить");
+            private final Button viewBtn = new Button("👁 Просмотр");
+            private final Button editBtn = new Button("✏ Редактировать");
+            private final Button deleteBtn = new Button("🗑 Удалить");
             private final HBox buttons = new HBox(8, viewBtn, editBtn, deleteBtn);
             {
                 viewBtn.setOnAction(e -> {
@@ -118,11 +125,11 @@ public class OrderView {
             }
         });
 
-        table.getColumns().addAll(colId, colClient, colCar, colServices, colTotal, colStatus, colAction);
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        VBox.setVgrow(table, Priority.ALWAYS);
+        orderTable.getColumns().addAll(colId, colClient, colCar, colServices, colTotal, colStatus, colAction);
+        orderTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        VBox.setVgrow(orderTable, Priority.ALWAYS);
 
-        table.setRowFactory(tv -> new TableRow<WorkOrder>() {
+        orderTable.setRowFactory(tv -> new TableRow<WorkOrder>() {
             @Override
             protected void updateItem(WorkOrder item, boolean empty) {
                 super.updateItem(item, empty);
@@ -134,16 +141,76 @@ public class OrderView {
             }
         });
 
-        table.setStyle("-fx-selection-bar: #3399ff; -fx-selection-bar-text: white;");
+        orderTable.setStyle("-fx-selection-bar: #3399ff; -fx-selection-bar-text: white;");
 
-        OrderController.setTable(table);
+        // Настройка фильтрованного списка
+        filteredOrders = new FilteredList<>(FXCollections.observableArrayList(DataStore.getOrders()), p -> true);
+        orderTable.setItems(filteredOrders);
+        OrderController.setTable(orderTable);
+
+        // Панель поиска
+        Label searchLabel = new Label("🔍 Поиск:");
+        searchField = new TextField();
+        searchField.setPromptText("Введите текст для поиска...");
+        searchField.setPrefWidth(250);
+
+        searchTypeCombo = new ComboBox<>();
+        searchTypeCombo.getItems().addAll("По номеру заказа (полный)", "По последним 4 цифрам номера", "По клиенту");
+        searchTypeCombo.setValue("По клиенту");
+        searchTypeCombo.setPrefWidth(200);
+
+        searchField.textProperty().addListener((obs, oldVal, newVal) -> applyOrderFilter(newVal));
+        searchTypeCombo.setOnAction(e -> applyOrderFilter(searchField.getText()));
+
+        Button clearBtn = new Button("✖ Очистить");
+        clearBtn.setOnAction(e -> {
+            searchField.clear();
+            applyOrderFilter("");
+        });
+
+        HBox searchBox = new HBox(10, searchLabel, searchField, searchTypeCombo, clearBtn);
+        searchBox.setAlignment(Pos.CENTER_LEFT);
+        searchBox.setPadding(new Insets(0, 0, 10, 0));
 
         createOrderBtn.setOnAction(e -> OrderController.createOrder());
 
         VBox vbox = new VBox(10);
         vbox.setPadding(new Insets(10));
-        vbox.getChildren().addAll(createOrderBtn, new Label("Список заказов:"), table);
-        VBox.setVgrow(table, Priority.ALWAYS);
+        vbox.getChildren().addAll(searchBox, createOrderBtn, new Label("📋 Список заказов:"), orderTable);
+        VBox.setVgrow(orderTable, Priority.ALWAYS);
         return vbox;
+    }
+
+    private static void applyOrderFilter(String filter) {
+        if (filter == null || filter.trim().isEmpty()) {
+            filteredOrders.setPredicate(p -> true);
+        } else {
+            String lowerFilter = filter.toLowerCase().trim();
+            String searchType = searchTypeCombo.getValue();
+
+            filteredOrders.setPredicate(order -> {
+                if (searchType.equals("По номеру заказа (полный)")) {
+                    return order.getId() != null && order.getId().toLowerCase().contains(lowerFilter);
+                } else if (searchType.equals("По последним 4 цифрам номера")) {
+                    if (order.getId() == null) return false;
+                    String id = order.getId();
+                    if (id.length() >= 4) {
+                        String last4 = id.substring(id.length() - 4);
+                        return last4.contains(lowerFilter);
+                    }
+                    return false;
+                } else { // По клиенту
+                    return order.getClient().getName().toLowerCase().contains(lowerFilter) ||
+                            order.getClient().getPhone().toLowerCase().contains(lowerFilter) ||
+                            order.getClient().getCarNumber().toLowerCase().contains(lowerFilter);
+                }
+            });
+        }
+    }
+
+    public static void refreshOrderList() {
+        filteredOrders = new FilteredList<>(FXCollections.observableArrayList(DataStore.getOrders()), p -> true);
+        orderTable.setItems(filteredOrders);
+        applyOrderFilter(searchField != null ? searchField.getText() : "");
     }
 }

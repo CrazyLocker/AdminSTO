@@ -3,6 +3,7 @@ package com.autoservice.controllers;
 import com.autoservice.Client;
 import com.autoservice.DataStore;
 import com.autoservice.dialogs.EditClientDialog;
+import com.autoservice.views.ClientView;
 import javafx.collections.FXCollections;
 import javafx.scene.control.TableView;
 
@@ -17,6 +18,7 @@ public class ClientController {
         if (clientTable != null) {
             clientTable.setItems(FXCollections.observableArrayList(DataStore.getClients()));
         }
+        ClientView.refreshClientList();
     }
 
     public static void addClient(Client client) {

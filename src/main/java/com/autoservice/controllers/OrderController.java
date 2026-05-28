@@ -5,6 +5,7 @@ import com.autoservice.WorkOrder;
 import com.autoservice.dialogs.CreateOrderDialog;
 import com.autoservice.dialogs.EditOrderDialog;
 import com.autoservice.dialogs.OrderDetailsDialog;
+import com.autoservice.views.OrderView;
 import javafx.collections.FXCollections;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
@@ -22,6 +23,7 @@ public class OrderController {
             orderTable.setItems(FXCollections.observableArrayList(DataStore.getOrders()));
             orderTable.refresh();
         }
+        OrderView.refreshOrderList();
     }
 
     public static void createOrder() {
@@ -34,7 +36,7 @@ public class OrderController {
 
     public static void editOrder(WorkOrder order) {
         if (order.getStatus().equals(WorkOrder.STATUS_CLOSED)) {
-            showAlert("Нельзя редактировать закрытый или выданный заказ");
+            showAlert("Нельзя редактировать закрытый заказ");
             return;
         }
         EditOrderDialog.show(order);
@@ -54,7 +56,7 @@ public class OrderController {
 
     public static void deleteOrder(WorkOrder order) {
         if (order.getStatus().equals(WorkOrder.STATUS_CLOSED)) {
-            showAlert("Нельзя удалить заказ со статусом 'ЗАКРЫТ' или 'ВЫДАН'");
+            showAlert("Нельзя удалить закрытый заказ");
             return;
         }
 
@@ -67,12 +69,18 @@ public class OrderController {
             if (response == ButtonType.YES) {
                 DataStore.deleteOrder(order);
                 refreshTable();
+                showAlert("Заказ " + order.getId() + " удалён", Alert.AlertType.INFORMATION);
             }
         });
     }
 
     private static void showAlert(String msg) {
         Alert alert = new Alert(Alert.AlertType.WARNING, msg, ButtonType.OK);
+        alert.showAndWait();
+    }
+
+    private static void showAlert(String msg, Alert.AlertType type) {
+        Alert alert = new Alert(type, msg, ButtonType.OK);
         alert.showAndWait();
     }
 }
