@@ -56,7 +56,12 @@ public class Database {
                 name TEXT NOT NULL UNIQUE,
                 purchase_price REAL NOT NULL,
                 retail_price REAL NOT NULL,
-                stock INTEGER NOT NULL
+                stock INTEGER NOT NULL,
+                part_number TEXT DEFAULT '',
+                manufacturer TEXT DEFAULT '',
+                compatible_models TEXT DEFAULT '',
+                min_stock INTEGER DEFAULT 0,
+                location TEXT DEFAULT ''
             )
         """;
 
@@ -113,6 +118,24 @@ public class Database {
             stmt.execute(createOrderServices);
             stmt.execute(createOrderParts);
             stmt.execute(createAppointments);
+            
+            // Миграция таблицы spare_parts для добавления новых полей
+            try {
+                stmt.execute("ALTER TABLE spare_parts ADD COLUMN part_number TEXT DEFAULT ''");
+            } catch (SQLException e) { /* колонка уже существует */ }
+            try {
+                stmt.execute("ALTER TABLE spare_parts ADD COLUMN manufacturer TEXT DEFAULT ''");
+            } catch (SQLException e) { /* колонка уже существует */ }
+            try {
+                stmt.execute("ALTER TABLE spare_parts ADD COLUMN compatible_models TEXT DEFAULT ''");
+            } catch (SQLException e) { /* колонка уже существует */ }
+            try {
+                stmt.execute("ALTER TABLE spare_parts ADD COLUMN min_stock INTEGER DEFAULT 0");
+            } catch (SQLException e) { /* колонка уже существует */ }
+            try {
+                stmt.execute("ALTER TABLE spare_parts ADD COLUMN location TEXT DEFAULT ''");
+            } catch (SQLException e) { /* колонка уже существует */ }
+            
             System.out.println("Tables created/verified");
         }
     }
@@ -304,12 +327,24 @@ public class Database {
 
     public static List<SparePart> getAllSpareParts() {
         List<SparePart> parts = new ArrayList<>();
-        String sql = "SELECT name, purchase_price, retail_price, stock FROM spare_parts ORDER BY name";
+        String sql = "SELECT id, name, purchase_price, retail_price, stock, part_number, manufacturer, compatible_models, min_stock, location FROM spare_parts ORDER BY name";
         try (Statement stmt = connection.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
-                parts.add(new SparePart(rs.getString("name"), rs.getDouble("purchase_price"),
-                        rs.getDouble("retail_price"), rs.getInt("stock")));
+                SparePart part = new SparePart(
+                        rs.getInt("id"),
+                        0, // categoryId
+                        rs.getString("name"),
+                        rs.getString("part_number"),
+                        rs.getString("manufacturer"),
+                        rs.getString("compatible_models"),
+                        rs.getDouble("purchase_price"),
+                        rs.getDouble("retail_price"),
+                        rs.getInt("stock"),
+                        rs.getInt("min_stock"),
+                        rs.getString("location")
+                );
+                parts.add(part);
             }
         } catch (SQLException e) {
             System.err.println("Load spare parts error: " + e.getMessage());
@@ -318,22 +353,50 @@ public class Database {
     }
 
     public static void addSparePart(SparePart part) {
-        String sql = "INSERT OR REPLACE INTO spare_parts (name, purchase_price, retail_price, stock) VALUES (?, ?, ?, ?)";
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            pstmt.setString(1, part.getName());
-            pstmt.setDouble(2, part.getPurchasePrice());
-            pstmt.setDouble(3, part.getRetailPrice());
-            pstmt.setInt(4, part.getStock());
-            pstmt.executeUpdate();
+        try {
+            if (part.getId() != -1) {
+                // Обновление существующей записи
+                String sql = "UPDATE spare_parts SET name = ?, purchase_price = ?, retail_price = ?, stock = ?, " +
+                      "part_number = ?, manufacturer = ?, compatible_models = ?, min_stock = ?, location = ? WHERE id = ?";
+                try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+                    pstmt.setString(1, part.getName());
+                    pstmt.setDouble(2, part.getPurchasePrice());
+                    pstmt.setDouble(3, part.getRetailPrice());
+                    pstmt.setInt(4, part.getStock());
+                    pstmt.setString(5, part.getPartNumber());
+                    pstmt.setString(6, part.getManufacturer());
+                    pstmt.setString(7, part.getCompatibleModels());
+                    pstmt.setInt(8, part.getMinStock());
+                    pstmt.setString(9, part.getLocation());
+                    pstmt.setInt(10, part.getId());
+                    pstmt.executeUpdate();
+                }
+            } else {
+                // Добавление новой записи
+                String sql = "INSERT INTO spare_parts (name, purchase_price, retail_price, stock, part_number, manufacturer, compatible_models, min_stock, location) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+                    pstmt.setString(1, part.getName());
+                    pstmt.setDouble(2, part.getPurchasePrice());
+                    pstmt.setDouble(3, part.getRetailPrice());
+                    pstmt.setInt(4, part.getStock());
+                    pstmt.setString(5, part.getPartNumber());
+                    pstmt.setString(6, part.getManufacturer());
+                    pstmt.setString(7, part.getCompatibleModels());
+                    pstmt.setInt(8, part.getMinStock());
+                    pstmt.setString(9, part.getLocation());
+                    pstmt.executeUpdate();
+                }
+            }
         } catch (SQLException e) {
             System.err.println("Add spare part error: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
     public static void deleteSparePart(SparePart part) {
-        String sql = "DELETE FROM spare_parts WHERE name = ?";
+        String sql = "DELETE FROM spare_parts WHERE id = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            pstmt.setString(1, part.getName());
+            pstmt.setInt(1, part.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
             System.err.println("Delete spare part error: " + e.getMessage());
@@ -341,10 +404,10 @@ public class Database {
     }
 
     public static void updateSparePartStock(SparePart part, int newStock) {
-        String sql = "UPDATE spare_parts SET stock = ? WHERE name = ?";
+        String sql = "UPDATE spare_parts SET stock = ? WHERE id = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setInt(1, newStock);
-            pstmt.setString(2, part.getName());
+            pstmt.setInt(2, part.getId());
             pstmt.executeUpdate();
             part.setStock(newStock);
         } catch (SQLException e) {

@@ -1,135 +1,307 @@
-<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="autoservice.db" readonly="0" foreign_keys="1" case_sensitive_like="0" temp_store="0" wal_autocheckpoint="1000" synchronous="2"/><attached/><window><main_tabs open="structure browser pragmas query" current="3"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="100"/><column_width id="3" width="2227"/><column_width id="4" width="0"/><expanded_item id="0" parent="1"/><expanded_item id="1" parent="1"/><expanded_item id="2" parent="1"/><expanded_item id="3" parent="1"/></tab_structure><tab_browse><table title="appointments" custom_title="0" dock_id="4" table="4,12:mainappointments"/><dock_state state="000000ff00000000fd0000000100000002000005e1000003dcfc0100000002fb000000160064006f0063006b00420072006f00770073006500310100000000000005e10000000000000000fb000000160064006f0063006b00420072006f00770073006500340100000000ffffffff0000012800ffffff000005e10000000000000004000000040000000800000008fc00000000"/><default_encoding codec=""/><browse_table_settings/></tab_browse><tab_sql><sql name="SQL 1*">-- ============================================
--- ОЧИСТКА СТАРЫХ ДАННЫХ (ПРАВИЛЬНЫЙ ПОРЯДОК)
+<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="autoservice.db" readonly="0" foreign_keys="1" case_sensitive_like="0" temp_store="0" wal_autocheckpoint="1000" synchronous="2"/><attached/><window><main_tabs open="structure browser pragmas query" current="1"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="100"/><column_width id="3" width="2227"/><column_width id="4" width="0"/><expanded_item id="0" parent="1"/><expanded_item id="1" parent="1"/><expanded_item id="2" parent="1"/><expanded_item id="3" parent="1"/></tab_structure><tab_browse><table title="spare_parts" custom_title="0" dock_id="5" table="4,11:mainspare_parts"/><dock_state state="000000ff00000000fd0000000100000002000005e1000003defc0100000004fb000000160064006f0063006b00420072006f00770073006500310100000000000005e10000000000000000fb000000160064006f0063006b00420072006f00770073006500360100000000ffffffff0000000000000000fb000000160064006f0063006b00420072006f00770073006500340100000000ffffffff0000000000000000fb000000160064006f0063006b00420072006f00770073006500350100000000000005e10000012800ffffff000005e10000000000000004000000040000000800000008fc00000000"/><default_encoding codec=""/><browse_table_settings><table schema="main" name="appointments" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_" freeze_columns="0"><sort/><column_widths><column index="1" value="29"/><column index="2" value="58"/><column index="3" value="58"/><column index="4" value="85"/><column index="5" value="195"/><column index="6" value="111"/><column index="7" value="111"/><column index="8" value="109"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table><table schema="main" name="order_parts" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_" freeze_columns="0"><sort/><column_widths><column index="1" value="58"/><column index="2" value="69"/><column index="3" value="36"/><column index="4" value="55"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table><table schema="main" name="spare_parts" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_" freeze_columns="0"><sort/><column_widths><column index="1" value="29"/><column index="2" value="76"/><column index="3" value="265"/><column index="4" value="101"/><column index="5" value="125"/><column index="6" value="169"/><column index="7" value="93"/><column index="8" value="72"/><column index="9" value="38"/><column index="10" value="66"/><column index="11" value="53"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table></browse_table_settings></tab_browse><tab_sql><sql name="SQL 1*">-- ============================================
+-- СОЗДАНИЕ ТАБЛИЦ
 -- ============================================
 
--- Сначала удаляем данные из дочерних таблиц
-DELETE FROM order_parts;
-DELETE FROM order_services;
-DELETE FROM appointments;
-DELETE FROM orders;
+-- Категории
+CREATE TABLE categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    parent_id INTEGER,
+    type TEXT NOT NULL,
+    FOREIGN KEY (parent_id) REFERENCES categories(id)
+);
 
--- Затем из родительских таблиц
-DELETE FROM spare_parts;
-DELETE FROM services;
-DELETE FROM clients;
+-- Услуги
+CREATE TABLE services (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category_id INTEGER,
+    name TEXT NOT NULL,
+    price REAL NOT NULL,
+    duration INTEGER DEFAULT 60,
+    part_number TEXT,
+    FOREIGN KEY (category_id) REFERENCES categories(id)
+);
 
--- Сброс автоинкремента
-DELETE FROM sqlite_sequence;
+-- Запчасти
+CREATE TABLE spare_parts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category_id INTEGER,
+    name TEXT NOT NULL,
+    part_number TEXT,
+    manufacturer TEXT,
+    compatible_models TEXT,
+    purchase_price REAL,
+    retail_price REAL NOT NULL,
+    stock INTEGER DEFAULT 0,
+    min_stock INTEGER DEFAULT 0,
+    location TEXT,
+    FOREIGN KEY (category_id) REFERENCES categories(id)
+);
+
+-- Клиенты
+CREATE TABLE clients (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    car_model TEXT NOT NULL,
+    car_number TEXT NOT NULL
+);
+
+-- Заказы
+CREATE TABLE orders (
+    id TEXT PRIMARY KEY,
+    client_id INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    total REAL NOT NULL,
+    created_date TEXT NOT NULL,
+    FOREIGN KEY (client_id) REFERENCES clients(id)
+);
+
+-- Услуги в заказе
+CREATE TABLE order_services (
+    order_id TEXT NOT NULL,
+    service_name TEXT NOT NULL,
+    price REAL NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+);
+
+-- Запчасти в заказе
+CREATE TABLE order_parts (
+    order_id TEXT NOT NULL,
+    part_name TEXT NOT NULL,
+    price REAL NOT NULL,
+    quantity INTEGER NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+);
+
+-- Записи в календаре
+CREATE TABLE appointments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id INTEGER NOT NULL,
+    order_id TEXT,
+    master_name TEXT NOT NULL,
+    service_name TEXT NOT NULL,
+    appointment_date TEXT NOT NULL,
+    appointment_time TEXT NOT NULL,
+    status TEXT NOT NULL,
+    FOREIGN KEY (client_id) REFERENCES clients(id),
+    FOREIGN KEY (order_id) REFERENCES orders(id)
+);
 
 -- ============================================
--- 1. КЛИЕНТЫ (5 штук)
+-- КЛИЕНТЫ (5 штук)
 -- ============================================
 INSERT INTO clients (name, phone, car_model, car_number) VALUES
-('Иван Петров', '+79001234567', 'Toyota Camry', 'А123ВС163'),
-('Елена Смирнова', '+79113456789', 'Hyundai Solaris', 'В456ЕК77'),
-('Сергей Козлов', '+79224567890', 'Kia Rio', 'М789НО50'),
-('Ольга Новикова', '+79335678901', 'Lada Vesta', 'О159РТ40'),
-('Дмитрий Морозов', '+79446789012', 'Volkswagen Polo', 'У357АЕ99');
+('Иван Петров', '+79001234567', 'Haval Dargo', 'А123ВС163'),
+('Елена Смирнова', '+79113456789', 'Haval Jolion', 'В456ЕК77'),
+('Сергей Козлов', '+79224567890', 'Tank 300', 'М789НО50'),
+('Ольга Новикова', '+79335678901', 'Great Wall Poer', 'О159РТ40'),
+('Дмитрий Морозов', '+79446789012', 'Haval F7', 'У357АЕ99');
 
 -- ============================================
--- 2. УСЛУГИ (10 штук)
--- ============================================
-INSERT INTO services (name, price) VALUES
-('Замена масла', 1500),
-('Диагностика двигателя', 1200),
-('Замена тормозных колодок', 2500),
-('Шиномонтаж', 2000),
-('Развал-схождение', 1800),
-('Замена ремня ГРМ', 4500),
-('Замена свечей зажигания', 1200),
-('Замена масла в АКПП', 3000),
-('Компьютерная диагностика', 1500),
-('Заправка кондиционера', 2500);
-
--- ============================================
--- 3. ЗАПЧАСТИ (10 штук)
--- ============================================
-INSERT INTO spare_parts (name, purchase_price, retail_price, stock) VALUES
-('Масло моторное 5W-30', 800, 1200, 20),
-('Масляный фильтр', 200, 400, 25),
-('Тормозные колодки передние', 1200, 2000, 10),
-('Тормозные колодки задние', 1100, 1900, 8),
-('Воздушный фильтр', 300, 600, 15),
-('Свечи зажигания (комплект)', 400, 800, 12),
-('Ремень ГРМ', 1500, 2500, 6),
-('Фильтр салона', 250, 500, 18),
-('Жидкость тормозная', 300, 500, 10),
-('Антифриз', 400, 700, 8);
-
--- ============================================
--- 4. ЗАКАЗЫ (для демонстрации последнего ремонта)
+-- КАТЕГОРИИ
 -- ============================================
 
--- Заказ для Ивана Петрова (закрыт) - последний ремонт
-INSERT INTO orders (id, client_id, status, total, created_date) 
-VALUES ('ZAK-01/01/25-00001', 1, 'ЗАКРЫТ', 2700, '2025-01-15 10:30:00');
-INSERT INTO order_services (order_id, service_name, price) VALUES ('ZAK-01/01/25-00001', 'Замена масла', 1500);
-INSERT INTO order_parts (order_id, part_name, price, quantity) VALUES ('ZAK-01/01/25-00001', 'Масло моторное 5W-30', 1200, 1);
+-- Бренд GWM
+INSERT INTO categories (name, parent_id, type) VALUES ('GWM', NULL, 'part');
 
--- Заказ для Елены Смирновой (закрыт) - последний ремонт
-INSERT INTO orders (id, client_id, status, total, created_date) 
-VALUES ('ZAK-15/02/25-00002', 2, 'ЗАКРЫТ', 3700, '2025-02-20 14:00:00');
-INSERT INTO order_services (order_id, service_name, price) VALUES ('ZAK-15/02/25-00002', 'Диагностика двигателя', 1200);
-INSERT INTO order_services (order_id, service_name, price) VALUES ('ZAK-15/02/25-00002', 'Замена свечей зажигания', 1200);
-INSERT INTO order_parts (order_id, part_name, price, quantity) VALUES ('ZAK-15/02/25-00002', 'Свечи зажигания (комплект)', 800, 1);
+-- Модели GWM
+INSERT INTO categories (name, parent_id, type) VALUES ('Haval Dargo', (SELECT id FROM categories WHERE name = 'GWM'), 'part');
+INSERT INTO categories (name, parent_id, type) VALUES ('Haval Jolion', (SELECT id FROM categories WHERE name = 'GWM'), 'part');
+INSERT INTO categories (name, parent_id, type) VALUES ('Haval F7', (SELECT id FROM categories WHERE name = 'GWM'), 'part');
+INSERT INTO categories (name, parent_id, type) VALUES ('Great Wall Poer', (SELECT id FROM categories WHERE name = 'GWM'), 'part');
+INSERT INTO categories (name, parent_id, type) VALUES ('Tank 300', (SELECT id FROM categories WHERE name = 'GWM'), 'part');
 
--- Заказ для Сергея Козлова (закрыт) - последний ремонт
-INSERT INTO orders (id, client_id, status, total, created_date) 
-VALUES ('ZAK-10/03/25-00003', 3, 'ЗАКРЫТ', 3800, '2025-03-25 09:00:00');
-INSERT INTO order_services (order_id, service_name, price) VALUES ('ZAK-10/03/25-00003', 'Шиномонтаж', 2000);
-INSERT INTO order_services (order_id, service_name, price) VALUES ('ZAK-10/03/25-00003', 'Развал-схождение', 1800);
+-- Категории запчастей (общие)
+INSERT INTO categories (name, parent_id, type) VALUES ('Двигатель', NULL, 'part');
+INSERT INTO categories (name, parent_id, type) VALUES ('Ходовая часть', NULL, 'part');
+INSERT INTO categories (name, parent_id, type) VALUES ('Трансмиссия', NULL, 'part');
+INSERT INTO categories (name, parent_id, type) VALUES ('Электрика', NULL, 'part');
+INSERT INTO categories (name, parent_id, type) VALUES ('Тормозная система', NULL, 'part');
+INSERT INTO categories (name, parent_id, type) VALUES ('Охлаждение', NULL, 'part');
+INSERT INTO categories (name, parent_id, type) VALUES ('Общие', NULL, 'part');
 
--- Заказ для Ольги Новиковой (закрыт) - последний ремонт
-INSERT INTO orders (id, client_id, status, total, created_date) 
-VALUES ('ZAK-05/04/25-00004', 4, 'ЗАКРЫТ', 4500, '2025-04-10 11:30:00');
-INSERT INTO order_services (order_id, service_name, price) VALUES ('ZAK-05/04/25-00004', 'Замена тормозных колодок', 2500);
-INSERT INTO order_parts (order_id, part_name, price, quantity) VALUES ('ZAK-05/04/25-00004', 'Тормозные колодки передние', 2000, 1);
-
--- Заказ для Дмитрия Морозова (закрыт) - последний ремонт
-INSERT INTO orders (id, client_id, status, total, created_date) 
-VALUES ('ZAK-20/05/25-00005', 5, 'ЗАКРЫТ', 3000, '2025-05-18 16:00:00');
-INSERT INTO order_services (order_id, service_name, price) VALUES ('ZAK-20/05/25-00005', 'Замена масла в АКПП', 3000);
+-- Категории услуг
+INSERT INTO categories (name, parent_id, type) VALUES ('Диагностика', NULL, 'service');
+INSERT INTO categories (name, parent_id, type) VALUES ('Ремонт двигателя', NULL, 'service');
+INSERT INTO categories (name, parent_id, type) VALUES ('Ремонт ходовой', NULL, 'service');
+INSERT INTO categories (name, parent_id, type) VALUES ('Ремонт электрики', NULL, 'service');
+INSERT INTO categories (name, parent_id, type) VALUES ('Техобслуживание', NULL, 'service');
 
 -- ============================================
--- 5. ЗАПИСИ В КАЛЕНДАРЕ (5 штук на разные даты)
+-- УСЛУГИ
+-- ============================================
+INSERT INTO services (category_id, name, price, duration, part_number) 
+SELECT id, 'Диагностика двигателя', 1200, 60, 'SVC-DIAG-001' FROM categories WHERE name = 'Диагностика';
+INSERT INTO services (category_id, name, price, duration, part_number) 
+SELECT id, 'Диагностика ходовой части', 1500, 60, 'SVC-DIAG-002' FROM categories WHERE name = 'Диагностика';
+INSERT INTO services (category_id, name, price, duration, part_number) 
+SELECT id, 'Диагностика электрики', 1800, 90, 'SVC-DIAG-003' FROM categories WHERE name = 'Диагностика';
+
+INSERT INTO services (category_id, name, price, duration, part_number) 
+SELECT id, 'Замена масла', 1500, 30, 'SVC-ENG-001' FROM categories WHERE name = 'Ремонт двигателя';
+INSERT INTO services (category_id, name, price, duration, part_number) 
+SELECT id, 'Замена ремня ГРМ', 4500, 180, 'SVC-ENG-002' FROM categories WHERE name = 'Ремонт двигателя';
+INSERT INTO services (category_id, name, price, duration, part_number) 
+SELECT id, 'Замена свечей зажигания', 1200, 60, 'SVC-ENG-003' FROM categories WHERE name = 'Ремонт двигателя';
+INSERT INTO services (category_id, name, price, duration, part_number) 
+SELECT id, 'Замена масла в АКПП', 3000, 90, 'SVC-ENG-004' FROM categories WHERE name = 'Ремонт двигателя';
+INSERT INTO services (category_id, name, price, duration, part_number) 
+SELECT id, 'Замена антифриза', 1000, 45, 'SVC-ENG-005' FROM categories WHERE name = 'Ремонт двигателя';
+INSERT INTO services (category_id, name, price, duration, part_number) 
+SELECT id, 'Замена тормозной жидкости', 800, 30, 'SVC-ENG-006' FROM categories WHERE name = 'Ремонт двигателя';
+
+INSERT INTO services (category_id, name, price, duration, part_number) 
+SELECT id, 'Замена тормозных колодок', 2500, 60, 'SVC-SUS-001' FROM categories WHERE name = 'Ремонт ходовой';
+INSERT INTO services (category_id, name, price, duration, part_number) 
+SELECT id, 'Замена шаровой опоры', 1800, 90, 'SVC-SUS-002' FROM categories WHERE name = 'Ремонт ходовой';
+INSERT INTO services (category_id, name, price, duration, part_number) 
+SELECT id, 'Замена сайлентблоков', 2000, 120, 'SVC-SUS-003' FROM categories WHERE name = 'Ремонт ходовой';
+INSERT INTO services (category_id, name, price, duration, part_number) 
+SELECT id, 'Замена амортизаторов', 3500, 120, 'SVC-SUS-004' FROM categories WHERE name = 'Ремонт ходовой';
+INSERT INTO services (category_id, name, price, duration, part_number) 
+SELECT id, 'Развал-схождение', 1800, 60, 'SVC-SUS-005' FROM categories WHERE name = 'Ремонт ходовой';
+
+INSERT INTO services (category_id, name, price, duration, part_number) 
+SELECT id, 'Ремонт генератора', 2500, 120, 'SVC-ELEC-001' FROM categories WHERE name = 'Ремонт электрики';
+INSERT INTO services (category_id, name, price, duration, part_number) 
+SELECT id, 'Ремонт стартера', 2200, 90, 'SVC-ELEC-002' FROM categories WHERE name = 'Ремонт электрики';
+INSERT INTO services (category_id, name, price, duration, part_number) 
+SELECT id, 'Диагностика ЭБУ', 2000, 60, 'SVC-ELEC-003' FROM categories WHERE name = 'Ремонт электрики';
+
+INSERT INTO services (category_id, name, price, duration, part_number) 
+SELECT id, 'Замена воздушного фильтра', 500, 20, 'SVC-MNT-001' FROM categories WHERE name = 'Техобслуживание';
+INSERT INTO services (category_id, name, price, duration, part_number) 
+SELECT id, 'Замена салонного фильтра', 400, 20, 'SVC-MNT-002' FROM categories WHERE name = 'Техобслуживание';
+INSERT INTO services (category_id, name, price, duration, part_number) 
+SELECT id, 'Замена топливного фильтра', 800, 40, 'SVC-MNT-003' FROM categories WHERE name = 'Техобслуживание';
+
+-- ============================================
+-- ЗАПЧАСТИ (все поля заполнены)
 -- ============================================
 
--- Запись №1: Иван Петров, сегодня, 09:00
-INSERT INTO appointments (client_id, order_id, master_name, service_name, appointment_date, appointment_time, status) 
-VALUES (1, NULL, 'Иван', 'Замена масла', date('now'), '09:00', 'ЗАПЛАНИРОВАНО');
+-- Haval Dargo
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Шаровая опора передняя', 'HA-DRG-001', 'GWM Original', 'Haval Dargo', 2500, 4500, 15, 5 FROM categories WHERE name = 'Haval Dargo';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Сайлентблок переднего рычага', 'HA-DRG-002', 'GWM Original', 'Haval Dargo', 800, 1500, 20, 5 FROM categories WHERE name = 'Haval Dargo';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Амортизатор передний', 'HA-DRG-003', 'GWM Original', 'Haval Dargo', 4500, 7500, 8, 3 FROM categories WHERE name = 'Haval Dargo';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Тормозные колодки передние', 'HA-DRG-004', 'GWM Original', 'Haval Dargo', 1800, 3200, 25, 5 FROM categories WHERE name = 'Haval Dargo';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Масляный фильтр', 'HA-DRG-005', 'GWM Original', 'Haval Dargo', 300, 550, 30, 10 FROM categories WHERE name = 'Haval Dargo';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Воздушный фильтр', 'HA-DRG-006', 'GWM Original', 'Haval Dargo', 400, 700, 25, 10 FROM categories WHERE name = 'Haval Dargo';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Салонный фильтр', 'HA-DRG-007', 'GWM Original', 'Haval Dargo', 350, 600, 20, 10 FROM categories WHERE name = 'Haval Dargo';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Ремень ГРМ', 'HA-DRG-008', 'Gates', 'Haval Dargo', 2800, 4500, 12, 5 FROM categories WHERE name = 'Haval Dargo';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Свечи зажигания (комплект)', 'HA-DRG-009', 'NGK', 'Haval Dargo', 1200, 2200, 15, 5 FROM categories WHERE name = 'Haval Dargo';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Тормозные диски передние', 'HA-DRG-010', 'GWM Original', 'Haval Dargo', 3500, 5800, 10, 3 FROM categories WHERE name = 'Haval Dargo';
 
--- Запись №2: Елена Смирнова, завтра, 10:30
-INSERT INTO appointments (client_id, order_id, master_name, service_name, appointment_date, appointment_time, status) 
-VALUES (2, NULL, 'Иван', 'Диагностика двигателя', date('now', '+1 day'), '10:30', 'ЗАПЛАНИРОВАНО');
+-- Haval Jolion
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Шаровая опора передняя', 'HA-JOL-001', 'GWM Original', 'Haval Jolion', 2200, 4000, 15, 5 FROM categories WHERE name = 'Haval Jolion';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Сайлентблок переднего рычага', 'HA-JOL-002', 'GWM Original', 'Haval Jolion', 700, 1300, 20, 5 FROM categories WHERE name = 'Haval Jolion';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Амортизатор передний', 'HA-JOL-003', 'GWM Original', 'Haval Jolion', 4000, 6800, 8, 3 FROM categories WHERE name = 'Haval Jolion';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Тормозные колодки передние', 'HA-JOL-004', 'GWM Original', 'Haval Jolion', 1600, 2800, 25, 5 FROM categories WHERE name = 'Haval Jolion';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Масляный фильтр', 'HA-JOL-005', 'GWM Original', 'Haval Jolion', 280, 500, 30, 10 FROM categories WHERE name = 'Haval Jolion';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Воздушный фильтр', 'HA-JOL-006', 'GWM Original', 'Haval Jolion', 350, 650, 25, 10 FROM categories WHERE name = 'Haval Jolion';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Салонный фильтр', 'HA-JOL-007', 'GWM Original', 'Haval Jolion', 300, 550, 20, 10 FROM categories WHERE name = 'Haval Jolion';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Свечи зажигания (комплект)', 'HA-JOL-008', 'NGK', 'Haval Jolion', 1000, 1900, 15, 5 FROM categories WHERE name = 'Haval Jolion';
 
--- Запись №3: Сергей Козлов, послезавтра, 11:00
-INSERT INTO appointments (client_id, order_id, master_name, service_name, appointment_date, appointment_time, status) 
-VALUES (3, NULL, 'Петр', 'Шиномонтаж', date('now', '+2 days'), '11:00', 'ЗАПЛАНИРОВАНО');
+-- Tank 300
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Шаровая опора передняя', 'TNK-300-001', 'GWM Original', 'Tank 300', 3500, 6200, 10, 3 FROM categories WHERE name = 'Tank 300';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Сайлентблок переднего рычага', 'TNK-300-002', 'GWM Original', 'Tank 300', 1200, 2200, 15, 5 FROM categories WHERE name = 'Tank 300';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Амортизатор передний', 'TNK-300-003', 'GWM Original', 'Tank 300', 6800, 11500, 5, 2 FROM categories WHERE name = 'Tank 300';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Тормозные колодки передние', 'TNK-300-004', 'GWM Original', 'Tank 300', 2500, 4500, 15, 5 FROM categories WHERE name = 'Tank 300';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Масляный фильтр', 'TNK-300-005', 'GWM Original', 'Tank 300', 450, 800, 25, 10 FROM categories WHERE name = 'Tank 300';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Воздушный фильтр', 'TNK-300-006', 'GWM Original', 'Tank 300', 550, 950, 20, 10 FROM categories WHERE name = 'Tank 300';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Салонный фильтр', 'TNK-300-007', 'GWM Original', 'Tank 300', 450, 800, 15, 5 FROM categories WHERE name = 'Tank 300';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Ремень ГРМ', 'TNK-300-008', 'Gates', 'Tank 300', 3800, 6200, 8, 3 FROM categories WHERE name = 'Tank 300';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Свечи зажигания (комплект)', 'TNK-300-009', 'NGK', 'Tank 300', 1800, 3200, 10, 4 FROM categories WHERE name = 'Tank 300';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Тормозные диски передние', 'TNK-300-010', 'GWM Original', 'Tank 300', 4800, 8200, 8, 3 FROM categories WHERE name = 'Tank 300';
 
--- Запись №4: Ольга Новикова, через 3 дня, 14:00
-INSERT INTO appointments (client_id, order_id, master_name, service_name, appointment_date, appointment_time, status) 
-VALUES (4, NULL, 'Сергей', 'Замена тормозных колодок', date('now', '+3 days'), '14:00', 'ЗАПЛАНИРОВАНО');
+-- Great Wall Poer
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Шаровая опора передняя', 'GW-POER-001', 'GWM Original', 'Great Wall Poer', 2800, 5000, 12, 4 FROM categories WHERE name = 'Great Wall Poer';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Амортизатор задний', 'GW-POER-002', 'GWM Original', 'Great Wall Poer', 5200, 8800, 6, 2 FROM categories WHERE name = 'Great Wall Poer';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Тормозные колодки задние', 'GW-POER-003', 'GWM Original', 'Great Wall Poer', 2000, 3500, 18, 5 FROM categories WHERE name = 'Great Wall Poer';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Масляный фильтр', 'GW-POER-004', 'GWM Original', 'Great Wall Poer', 350, 620, 25, 10 FROM categories WHERE name = 'Great Wall Poer';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Воздушный фильтр', 'GW-POER-005', 'GWM Original', 'Great Wall Poer', 450, 780, 20, 8 FROM categories WHERE name = 'Great Wall Poer';
 
--- Запись №5: Дмитрий Морозов, через 5 дней, 16:30
-INSERT INTO appointments (client_id, order_id, master_name, service_name, appointment_date, appointment_time, status) 
-VALUES (5, NULL, 'Антон', 'Развал-схождение', date('now', '+5 days'), '16:30', 'ЗАПЛАНИРОВАНО');
+-- Haval F7
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Шаровая опора передняя', 'HA-F7-001', 'GWM Original', 'Haval F7', 2400, 4300, 14, 5 FROM categories WHERE name = 'Haval F7';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Амортизатор передний', 'HA-F7-002', 'GWM Original', 'Haval F7', 4800, 8200, 7, 3 FROM categories WHERE name = 'Haval F7';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Тормозные колодки передние', 'HA-F7-003', 'GWM Original', 'Haval F7', 1900, 3400, 22, 5 FROM categories WHERE name = 'Haval F7';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Масляный фильтр', 'HA-F7-004', 'GWM Original', 'Haval F7', 320, 580, 28, 10 FROM categories WHERE name = 'Haval F7';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Воздушный фильтр', 'HA-F7-005', 'GWM Original', 'Haval F7', 420, 720, 22, 8 FROM categories WHERE name = 'Haval F7';
+
+-- Общие запчасти
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Масло моторное 5W-30 (4л)', 'GWM-OIL-001', 'GWM Original', 'GWM', 2800, 4800, 50, 15 FROM categories WHERE name = 'Общие';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Масло моторное 0W-20 (4л)', 'GWM-OIL-002', 'GWM Original', 'GWM', 3200, 5500, 40, 15 FROM categories WHERE name = 'Общие';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Жидкость тормозная DOT4 (1л)', 'GWM-BRK-001', 'GWM Original', 'GWM', 600, 1100, 60, 20 FROM categories WHERE name = 'Общие';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Антифриз G11 (5л)', 'GWM-Cool-001', 'GWM Original', 'GWM', 1800, 3200, 35, 10 FROM categories WHERE name = 'Общие';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Аккумулятор 75Ач', 'GWM-BAT-001', 'Exide', 'GWM', 8500, 13500, 12, 5 FROM categories WHERE name = 'Общие';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Щётки стеклоочистителя (комплект)', 'GWM-WIP-001', 'Bosch', 'GWM', 1200, 2200, 30, 10 FROM categories WHERE name = 'Общие';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Лампы головного света (комплект)', 'GWM-LMP-001', 'Osram', 'GWM', 1500, 2800, 25, 8 FROM categories WHERE name = 'Общие';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Ремень генератора', 'GWM-BLT-001', 'Contitech', 'GWM', 800, 1500, 20, 8 FROM categories WHERE name = 'Общие';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Термостат', 'GWM-THM-001', 'GWM Original', 'GWM', 1200, 2200, 15, 5 FROM categories WHERE name = 'Общие';
+INSERT INTO spare_parts (category_id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock) 
+SELECT id, 'Датчик кислорода', 'GWM-O2-001', 'Bosch', 'GWM', 3500, 5800, 10, 3 FROM categories WHERE name = 'Общие';
 
 -- ============================================
--- 6. ОБНОВЛЕНИЕ ОСТАТКОВ НА СКЛАДЕ (списываем то, что ушло в заказы)
+-- ЗАПИСИ В КАЛЕНДАРЕ
 -- ============================================
-UPDATE spare_parts SET stock = stock - 1 WHERE name = 'Масло моторное 5W-30';
-UPDATE spare_parts SET stock = stock - 1 WHERE name = 'Свечи зажигания (комплект)';
-UPDATE spare_parts SET stock = stock - 1 WHERE name = 'Тормозные колодки передние';
+INSERT INTO appointments (client_id, order_id, master_name, service_name, appointment_date, appointment_time, status) VALUES 
+(1, NULL, 'Иван', 'Замена масла', date('now'), '09:00', 'ЗАПЛАНИРОВАНО'),
+(2, NULL, 'Иван', 'Диагностика двигателя', date('now', '+1 day'), '10:30', 'ЗАПЛАНИРОВАНО'),
+(3, NULL, 'Петр', 'Замена шаровой опоры', date('now', '+2 days'), '11:00', 'ЗАПЛАНИРОВАНО'),
+(4, NULL, 'Сергей', 'Замена тормозных колодок', date('now', '+3 days'), '14:00', 'ЗАПЛАНИРОВАНО'),
+(5, NULL, 'Антон', 'Развал-схождение', date('now', '+5 days'), '16:30', 'ЗАПЛАНИРОВАНО');
 
 -- ============================================
--- 7. ПРОВЕРКА (вывод статистики)
+-- ПРОВЕРКА
 -- ============================================
-SELECT 'Клиентов: ' || COUNT(*) FROM clients
-UNION ALL
-SELECT 'Услуг: ' || COUNT(*) FROM services
-UNION ALL
-SELECT 'Запчастей: ' || COUNT(*) FROM spare_parts
-UNION ALL
-SELECT 'Записей: ' || COUNT(*) FROM appointments
-UNION ALL
-SELECT 'Заказов: ' || COUNT(*) FROM orders;</sql><current_tab id="0"/></tab_sql></sqlb_project>
+SELECT 'Клиентов: ' || COUNT(*) FROM clients;
+SELECT 'Услуг: ' || COUNT(*) FROM services;
+SELECT 'Запчастей: ' || COUNT(*) FROM spare_parts;
+SELECT 'Записей: ' || COUNT(*) FROM appointments;</sql><current_tab id="0"/></tab_sql></sqlb_project>
