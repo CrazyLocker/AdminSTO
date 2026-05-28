@@ -38,8 +38,6 @@ public class ClientController {
         refreshTable();
     }
 
-    // Метод удаления удалён - клиентов больше нельзя удалять
-
     public static void editClient(Client client) {
         EditClientDialog.show(client);
     }

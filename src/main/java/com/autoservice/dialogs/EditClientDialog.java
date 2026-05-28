@@ -1,6 +1,9 @@
 package com.autoservice.dialogs;
 
+import com.autoservice.Appointment;
 import com.autoservice.Client;
+import com.autoservice.DataStore;
+import com.autoservice.DateUtils;
 import com.autoservice.Validators;
 import com.autoservice.controllers.ClientController;
 import javafx.geometry.Insets;
@@ -12,16 +15,13 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-
 public class EditClientDialog {
 
     public static void show(Client client) {
         Stage stage = new Stage();
         stage.setTitle("Редактирование клиента");
-        stage.setMinWidth(400);
-        stage.setMinHeight(350);
+        stage.setMinWidth(500);
+        stage.setMinHeight(450);
         stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
 
         GridPane grid = new GridPane();
@@ -30,24 +30,50 @@ public class EditClientDialog {
         grid.setPadding(new Insets(20));
 
         TextField nameField = new TextField(client.getName());
+        nameField.setPromptText("Имя");
 
         TextField phoneField = new TextField(client.getPhone());
         Validators.setupPhoneField(phoneField);
 
         TextField carModelField = new TextField(client.getCarModel());
+        carModelField.setPromptText("Модель авто");
 
         TextField carNumberField = new TextField(client.getCarNumber());
         Validators.setupCarNumberField(carNumberField);
 
-        DatePicker lastRepairPicker = new DatePicker();
-        lastRepairPicker.setPromptText("Выберите дату");
-        lastRepairPicker.setPrefWidth(200);
+        // Информация о последнем ремонте (только для чтения)
+        Label lastRepairLabel = new Label();
         if (client.getLastRepairDate() != null && !client.getLastRepairDate().isEmpty()) {
-            try {
-                lastRepairPicker.setValue(LocalDate.parse(client.getLastRepairDate()));
-            } catch (Exception ex) {
-                lastRepairPicker.setValue(null);
+            lastRepairLabel.setText(DateUtils.formatDate(client.getLastRepairDate()));
+            lastRepairLabel.setStyle("-fx-text-fill: #2E7D32; -fx-font-weight: bold;");
+        } else {
+            lastRepairLabel.setText("Нет завершённых заказов");
+            lastRepairLabel.setStyle("-fx-text-fill: #FF9800;");
+        }
+
+        // Информация о текущей записи
+        Label currentAppointmentLabel = new Label();
+        currentAppointmentLabel.setStyle("-fx-text-fill: #2196F3; -fx-font-size: 12px; -fx-padding: 5 0 5 0;");
+
+        // Загружаем текущую запись клиента
+        Appointment currentAppointment = null;
+        for (Appointment a : DataStore.getAppointments()) {
+            if (a.getClient().getId() == client.getId() &&
+                    a.getStatus().equals(Appointment.STATUS_SCHEDULED)) {
+                currentAppointment = a;
+                break;
             }
+        }
+
+        if (currentAppointment != null) {
+            String date = DateUtils.formatDate(currentAppointment.getDate());
+            String time = currentAppointment.getTime();
+            String master = currentAppointment.getMasterName();
+            String service = currentAppointment.getServiceName();
+            currentAppointmentLabel.setText("Текущая запись: " + date + ", " + time + ", мастер: " + master + ", услуга: " + service);
+        } else {
+            currentAppointmentLabel.setText("Нет активных записей");
+            currentAppointmentLabel.setStyle("-fx-text-fill: #FF9800; -fx-font-size: 12px; -fx-padding: 5 0 5 0;");
         }
 
         grid.add(new Label("Имя:"), 0, 0);
@@ -58,8 +84,10 @@ public class EditClientDialog {
         grid.add(carModelField, 1, 2);
         grid.add(new Label("Госномер:"), 0, 3);
         grid.add(carNumberField, 1, 3);
-        grid.add(new Label("Дата посл. ремонта:"), 0, 4);
-        grid.add(lastRepairPicker, 1, 4);
+        grid.add(new Label("Последний ремонт:"), 0, 4);
+        grid.add(lastRepairLabel, 1, 4);
+        grid.add(new Label("Текущая запись:"), 0, 5);
+        grid.add(currentAppointmentLabel, 1, 5);
 
         Button saveBtn = new Button("Сохранить");
         Button cancelBtn = new Button("Отмена");
@@ -91,11 +119,6 @@ public class EditClientDialog {
             client.setPhone(phoneField.getText());
             client.setCarModel(carModelField.getText());
             client.setCarNumber(carNumberField.getText());
-            client.setLastRepairDate(
-                lastRepairPicker.getValue() != null
-                    ? lastRepairPicker.getValue().format(DateTimeFormatter.ISO_LOCAL_DATE)
-                    : ""
-            );
 
             ClientController.updateClient(client);
             stage.close();

@@ -1,5 +1,6 @@
 package com.autoservice.dialogs;
 
+import com.autoservice.DateUtils;
 import com.autoservice.SparePart;
 import com.autoservice.WorkOrder;
 import javafx.geometry.Insets;
@@ -14,7 +15,7 @@ public class OrderDetailsDialog {
 
     public static void show(WorkOrder order) {
         Stage stage = new Stage();
-        stage.setTitle("Заказ №" + order.getId());
+        stage.setTitle("Заказ " + order.getId());
         stage.setMinWidth(500);
         stage.setMinHeight(500);
         stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
@@ -26,9 +27,8 @@ public class OrderDetailsDialog {
         headerLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
 
         Label statusLabel = new Label("Статус: " + order.getStatus());
-        Label carLabel = new Label(order.getClient().getCarModel() + " (" + order.getClient().getCarNumber() + ")");
+        Label carLabel = new Label("Авто: " + order.getClient().getCarModel() + " (" + order.getClient().getCarNumber() + ")");
 
-        // Услуги
         Label servicesLabel = new Label("Услуги:");
         servicesLabel.setStyle("-fx-font-weight: bold;");
 
@@ -38,7 +38,6 @@ public class OrderDetailsDialog {
         }
         servicesList.setPrefHeight(100);
 
-        // Запчасти
         Label partsLabel = new Label("Запчасти:");
         partsLabel.setStyle("-fx-font-weight: bold;");
 

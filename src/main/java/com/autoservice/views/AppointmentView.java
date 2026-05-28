@@ -13,6 +13,7 @@ import javafx.stage.Stage;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 
 public class AppointmentView {
 
@@ -29,6 +30,8 @@ public class AppointmentView {
     private static GridPane scheduleGrid;
     private static Label selectedDateLabel;
     private static List<Appointment> currentAppointments;
+
+    private static final DateTimeFormatter HEADER_FORMATTER = DateTimeFormatter.ofPattern("d MMMM yyyy 'г.'", new Locale("ru"));
 
     public static VBox create() {
         SERVICES = DataStore.getServices().stream()
@@ -89,10 +92,9 @@ public class AppointmentView {
         LocalDate date = datePicker.getValue();
         if (date == null) return;
 
-        String dateStr = date.toString();
-        selectedDateLabel.setText(date.format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy")));
+        selectedDateLabel.setText(HEADER_FORMATTER.format(date));
 
-        currentAppointments = DataStore.getAppointmentsByDate(dateStr);
+        currentAppointments = DataStore.getAppointmentsByDate(date.toString());
 
         scheduleGrid.getChildren().clear();
 
@@ -124,12 +126,10 @@ public class AppointmentView {
             Appointment appointment = findAppointmentByTime(time);
 
             if (appointment != null) {
-                // Занято - красная ячейка
                 Label masterLabel = new Label(appointment.getMasterName());
                 masterLabel.setStyle("-fx-padding: 5; -fx-background-color: #ffcccc; -fx-border-color: #cccccc; -fx-border-width: 0 0 1 0;");
                 scheduleGrid.add(masterLabel, 1, row);
 
-                // Используем VBox для многострочного текста
                 Client client = appointment.getClient();
                 String clientName = (client != null && client.getName() != null) ? client.getName() : "—";
                 String carModel = (client != null && client.getCarModel() != null) ? client.getCarModel() : "—";
@@ -172,7 +172,6 @@ public class AppointmentView {
                 btnBox.getChildren().addAll(editBtn, cancelBtn);
                 scheduleGrid.add(btnBox, 3, row);
             } else {
-                // Свободно - зелёная ячейка
                 Label masterLabel = new Label("свободно");
                 masterLabel.setStyle("-fx-padding: 5; -fx-background-color: #ccffcc; -fx-border-color: #cccccc; -fx-border-width: 0 0 1 0;");
                 scheduleGrid.add(masterLabel, 1, row);

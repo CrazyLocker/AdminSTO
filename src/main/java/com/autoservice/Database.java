@@ -14,9 +14,9 @@ public class Database {
         try {
             connection = DriverManager.getConnection(DB_URL);
             createTables();
-            System.out.println("База данных подключена");
+            System.out.println("Database connected");
         } catch (SQLException e) {
-            System.err.println("Ошибка подключения к БД: " + e.getMessage());
+            System.err.println("DB connection error: " + e.getMessage());
         }
     }
 
@@ -24,9 +24,9 @@ public class Database {
         try {
             connection = DriverManager.getConnection("jdbc:sqlite:test.db");
             createTables();
-            System.out.println("Тестовая БД подключена");
+            System.out.println("Test database connected");
         } catch (SQLException e) {
-            System.err.println("Ошибка подключения к тестовой БД: " + e.getMessage());
+            System.err.println("Test DB error: " + e.getMessage());
         }
     }
 
@@ -37,7 +37,8 @@ public class Database {
                 name TEXT NOT NULL,
                 phone TEXT NOT NULL,
                 car_model TEXT NOT NULL,
-                car_number TEXT NOT NULL
+                car_number TEXT NOT NULL,
+                last_repair_date TEXT DEFAULT ''
             )
         """;
 
@@ -112,7 +113,7 @@ public class Database {
             stmt.execute(createOrderServices);
             stmt.execute(createOrderParts);
             stmt.execute(createAppointments);
-            System.out.println("Таблицы созданы/проверены");
+            System.out.println("Tables created/verified");
         }
     }
 
@@ -131,14 +132,14 @@ public class Database {
                 lastNumber = Integer.parseInt(numPart);
             }
         } catch (SQLException e) {
-            System.err.println("Ошибка получения последнего ID: " + e.getMessage());
+            System.err.println("Generate ID error: " + e.getMessage());
         }
 
         int newNumber = lastNumber + 1;
         return String.format("ZAK-%s-%05d", date, newNumber);
     }
 
-    // ==================== КЛИЕНТЫ ====================
+    // ==================== CLIENTS ====================
 
     public static List<Client> getAllClients() {
         List<Client> clients = new ArrayList<>();
@@ -146,18 +147,40 @@ public class Database {
         try (Statement stmt = connection.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
+                int clientId = rs.getInt("id");
+                String lastRepairDate = getLastRepairDate(clientId);
                 clients.add(new Client(
-                        rs.getInt("id"),
+                        clientId,
                         rs.getString("name"),
                         rs.getString("phone"),
                         rs.getString("car_model"),
-                        rs.getString("car_number")
+                        rs.getString("car_number"),
+                        lastRepairDate
                 ));
             }
         } catch (SQLException e) {
-            System.err.println("Ошибка загрузки клиентов: " + e.getMessage());
+            System.err.println("Load clients error: " + e.getMessage());
         }
         return clients;
+    }
+
+    private static String getLastRepairDate(int clientId) {
+        String sql = "SELECT created_date FROM orders WHERE client_id = ? AND status = ? ORDER BY created_date DESC LIMIT 1";
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setInt(1, clientId);
+            pstmt.setString(2, WorkOrder.STATUS_CLOSED);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                String date = rs.getString("created_date");
+                if (date != null && date.length() > 10) {
+                    return date.substring(0, 10);
+                }
+                return date;
+            }
+        } catch (SQLException e) {
+            System.err.println("Get last repair date error: " + e.getMessage());
+        }
+        return "";
     }
 
     public static void addClient(Client client) {
@@ -172,7 +195,7 @@ public class Database {
             pstmt.setString(4, normalizedCarNumber);
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Ошибка добавления клиента: " + e.getMessage());
+            System.err.println("Add client error: " + e.getMessage());
         }
     }
 
@@ -189,7 +212,7 @@ public class Database {
             pstmt.setInt(5, client.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Ошибка обновления клиента: " + e.getMessage());
+            System.err.println("Update client error: " + e.getMessage());
         }
     }
 
@@ -199,7 +222,7 @@ public class Database {
             pstmt.setInt(1, client.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Ошибка удаления клиента: " + e.getMessage());
+            System.err.println("Delete client error: " + e.getMessage());
         }
     }
 
@@ -209,11 +232,18 @@ public class Database {
             pstmt.setInt(1, id);
             ResultSet rs = pstmt.executeQuery();
             if (rs.next()) {
-                return new Client(rs.getString("name"), rs.getString("phone"),
-                        rs.getString("car_model"), rs.getString("car_number"));
+                String lastRepairDate = getLastRepairDate(id);
+                return new Client(
+                        id,
+                        rs.getString("name"),
+                        rs.getString("phone"),
+                        rs.getString("car_model"),
+                        rs.getString("car_number"),
+                        lastRepairDate
+                );
             }
         } catch (SQLException e) {
-            System.err.println("Ошибка поиска клиента: " + e.getMessage());
+            System.err.println("Get client error: " + e.getMessage());
         }
         return null;
     }
@@ -228,12 +258,12 @@ public class Database {
                 return rs.getInt("id");
             }
         } catch (SQLException e) {
-            System.err.println("Ошибка поиска ID клиента: " + e.getMessage());
+            System.err.println("Get client ID error: " + e.getMessage());
         }
         return -1;
     }
 
-    // ==================== УСЛУГИ ====================
+    // ==================== SERVICES ====================
 
     public static List<Service> getAllServices() {
         List<Service> services = new ArrayList<>();
@@ -244,7 +274,7 @@ public class Database {
                 services.add(new Service(rs.getString("name"), rs.getDouble("price")));
             }
         } catch (SQLException e) {
-            System.err.println("Ошибка загрузки услуг: " + e.getMessage());
+            System.err.println("Load services error: " + e.getMessage());
         }
         return services;
     }
@@ -256,7 +286,7 @@ public class Database {
             pstmt.setDouble(2, service.getPrice());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Ошибка добавления услуги: " + e.getMessage());
+            System.err.println("Add service error: " + e.getMessage());
         }
     }
 
@@ -266,11 +296,11 @@ public class Database {
             pstmt.setString(1, service.getName());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Ошибка удаления услуги: " + e.getMessage());
+            System.err.println("Delete service error: " + e.getMessage());
         }
     }
 
-    // ==================== ЗАПЧАСТИ ====================
+    // ==================== SPARE PARTS ====================
 
     public static List<SparePart> getAllSpareParts() {
         List<SparePart> parts = new ArrayList<>();
@@ -282,7 +312,7 @@ public class Database {
                         rs.getDouble("retail_price"), rs.getInt("stock")));
             }
         } catch (SQLException e) {
-            System.err.println("Ошибка загрузки запчастей: " + e.getMessage());
+            System.err.println("Load spare parts error: " + e.getMessage());
         }
         return parts;
     }
@@ -296,7 +326,7 @@ public class Database {
             pstmt.setInt(4, part.getStock());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Ошибка добавления запчасти: " + e.getMessage());
+            System.err.println("Add spare part error: " + e.getMessage());
         }
     }
 
@@ -306,7 +336,7 @@ public class Database {
             pstmt.setString(1, part.getName());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Ошибка удаления запчасти: " + e.getMessage());
+            System.err.println("Delete spare part error: " + e.getMessage());
         }
     }
 
@@ -318,11 +348,11 @@ public class Database {
             pstmt.executeUpdate();
             part.setStock(newStock);
         } catch (SQLException e) {
-            System.err.println("Ошибка обновления остатка: " + e.getMessage());
+            System.err.println("Update stock error: " + e.getMessage());
         }
     }
 
-    // ==================== ЗАКАЗЫ ====================
+    // ==================== ORDERS ====================
 
     public static List<WorkOrder> getAllOrders() {
         List<WorkOrder> orders = new ArrayList<>();
@@ -366,7 +396,7 @@ public class Database {
                 orders.add(order);
             }
         } catch (SQLException e) {
-            System.err.println("Ошибка загрузки заказов: " + e.getMessage());
+            System.err.println("Load orders error: " + e.getMessage());
         }
         return orders;
     }
@@ -374,7 +404,7 @@ public class Database {
     public static void addOrder(WorkOrder order) {
         int clientId = getClientId(order.getClient());
         if (clientId == -1) {
-            System.err.println("Клиент не найден, заказ не сохранён");
+            System.err.println("Client not found, order not saved");
             return;
         }
 
@@ -391,9 +421,9 @@ public class Database {
 
             saveOrderServices(orderId, order);
             saveOrderParts(orderId, order);
-            System.out.println("Заказ " + orderId + " сохранён");
+            System.out.println("Order " + orderId + " saved");
         } catch (SQLException e) {
-            System.err.println("Ошибка добавления заказа: " + e.getMessage());
+            System.err.println("Add order error: " + e.getMessage());
         }
     }
 
@@ -407,7 +437,7 @@ public class Database {
                 pstmt.executeUpdate();
             }
         } catch (SQLException e) {
-            System.err.println("Ошибка сохранения услуг: " + e.getMessage());
+            System.err.println("Save order services error: " + e.getMessage());
         }
     }
 
@@ -422,19 +452,18 @@ public class Database {
                 pstmt.executeUpdate();
             }
         } catch (SQLException e) {
-            System.err.println("Ошибка сохранения запчастей: " + e.getMessage());
+            System.err.println("Save order parts error: " + e.getMessage());
         }
     }
 
     public static void updateOrder(WorkOrder order) {
         String orderId = order.getId();
         if (orderId == null || orderId.isEmpty()) {
-            System.err.println("Ошибка: ID заказа пустой");
+            System.err.println("Order ID is empty");
             return;
         }
 
         try {
-            // Обновляем статус и сумму
             String updateOrderSql = "UPDATE orders SET status = ?, total = ? WHERE id = ?";
             try (PreparedStatement pstmt = connection.prepareStatement(updateOrderSql)) {
                 pstmt.setString(1, order.getStatus());
@@ -443,21 +472,18 @@ public class Database {
                 pstmt.executeUpdate();
             }
 
-            // Удаляем старые услуги
             String deleteServicesSql = "DELETE FROM order_services WHERE order_id = ?";
             try (PreparedStatement pstmt = connection.prepareStatement(deleteServicesSql)) {
                 pstmt.setString(1, orderId);
                 pstmt.executeUpdate();
             }
 
-            // Удаляем старые запчасти
             String deletePartsSql = "DELETE FROM order_parts WHERE order_id = ?";
             try (PreparedStatement pstmt = connection.prepareStatement(deletePartsSql)) {
                 pstmt.setString(1, orderId);
                 pstmt.executeUpdate();
             }
 
-            // Добавляем новые услуги
             String insertServiceSql = "INSERT INTO order_services (order_id, service_name, price) VALUES (?, ?, ?)";
             try (PreparedStatement pstmt = connection.prepareStatement(insertServiceSql)) {
                 for (int i = 0; i < order.getServices().size(); i++) {
@@ -468,7 +494,6 @@ public class Database {
                 }
             }
 
-            // Добавляем новые запчасти
             String insertPartSql = "INSERT INTO order_parts (order_id, part_name, price, quantity) VALUES (?, ?, ?, ?)";
             try (PreparedStatement pstmt = connection.prepareStatement(insertPartSql)) {
                 for (int i = 0; i < order.getSpareParts().size(); i++) {
@@ -480,10 +505,9 @@ public class Database {
                 }
             }
 
-            System.out.println("Заказ " + orderId + " обновлён");
-
+            System.out.println("Order " + orderId + " updated");
         } catch (SQLException e) {
-            System.err.println("Ошибка обновления заказа: " + e.getMessage());
+            System.err.println("Update order error: " + e.getMessage());
         }
     }
 
@@ -491,13 +515,13 @@ public class Database {
         try (PreparedStatement pstmt = connection.prepareStatement("DELETE FROM orders WHERE id = ?")) {
             pstmt.setString(1, orderId);
             pstmt.executeUpdate();
-            System.out.println("Заказ " + orderId + " удалён");
+            System.out.println("Order " + orderId + " deleted");
         } catch (SQLException e) {
-            System.err.println("Ошибка удаления заказа: " + e.getMessage());
+            System.err.println("Delete order error: " + e.getMessage());
         }
     }
 
-    // ==================== ЗАПИСИ ====================
+    // ==================== APPOINTMENTS ====================
 
     public static List<Appointment> getAllAppointments() {
         List<Appointment> appointments = new ArrayList<>();
@@ -521,7 +545,7 @@ public class Database {
                 ));
             }
         } catch (SQLException e) {
-            System.err.println("Ошибка загрузки записей: " + e.getMessage());
+            System.err.println("Load appointments error: " + e.getMessage());
         }
         return appointments;
     }
@@ -544,7 +568,7 @@ public class Database {
                 appointment.setId(generatedKeys.getInt(1));
             }
         } catch (SQLException e) {
-            System.err.println("Ошибка добавления записи: " + e.getMessage());
+            System.err.println("Add appointment error: " + e.getMessage());
         }
     }
 
@@ -562,7 +586,7 @@ public class Database {
             pstmt.setInt(8, appointment.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Ошибка обновления записи: " + e.getMessage());
+            System.err.println("Update appointment error: " + e.getMessage());
         }
     }
 
@@ -572,7 +596,7 @@ public class Database {
             pstmt.setInt(1, id);
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Ошибка удаления записи: " + e.getMessage());
+            System.err.println("Delete appointment error: " + e.getMessage());
         }
     }
 
@@ -586,7 +610,6 @@ public class Database {
                 int clientId = rs.getInt("client_id");
                 Client client = getClientById(clientId);
                 if (client != null) {
-                    System.out.println("Загружен клиент: " + client.getName() + ", авто: " + client.getCarModel() + " (" + client.getCarNumber() + ")");
                     Appointment a = new Appointment(
                             rs.getInt("id"),
                             client,
@@ -598,12 +621,10 @@ public class Database {
                             rs.getString("status")
                     );
                     appointments.add(a);
-                } else {
-                    System.err.println("Клиент с ID=" + clientId + " не найден");
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Ошибка загрузки записей по дате: " + e.getMessage());
+            System.err.println("Load appointments by date error: " + e.getMessage());
         }
         return appointments;
     }
@@ -616,7 +637,7 @@ public class Database {
         try {
             if (connection != null) connection.close();
         } catch (SQLException e) {
-            System.err.println("Ошибка закрытия БД: " + e.getMessage());
+            System.err.println("Close DB error: " + e.getMessage());
         }
     }
 }

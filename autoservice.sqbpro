@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="autoservice.db" readonly="0" foreign_keys="1" case_sensitive_like="0" temp_store="0" wal_autocheckpoint="1000" synchronous="2"/><attached/><window><main_tabs open="structure browser pragmas query" current="3"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="100"/><column_width id="3" width="2227"/><column_width id="4" width="0"/><expanded_item id="0" parent="1"/><expanded_item id="1" parent="1"/><expanded_item id="2" parent="1"/><expanded_item id="3" parent="1"/></tab_structure><tab_browse><table title="appointments" custom_title="0" dock_id="4" table="4,12:mainappointments"/><dock_state state="000000ff00000000fd0000000100000002000005e1000003dcfc0100000002fb000000160064006f0063006b00420072006f00770073006500310100000000000005e10000000000000000fb000000160064006f0063006b00420072006f00770073006500340100000000ffffffff0000012800ffffff000005e10000000000000004000000040000000800000008fc00000000"/><default_encoding codec=""/><browse_table_settings/></tab_browse><tab_sql><sql name="SQL 1*">-- ============================================
+-- ОЧИСТКА СТАРЫХ ДАННЫХ (ПРАВИЛЬНЫЙ ПОРЯДОК)
+-- ============================================
+
+-- Сначала удаляем данные из дочерних таблиц
+DELETE FROM order_parts;
+DELETE FROM order_services;
+DELETE FROM appointments;
+DELETE FROM orders;
+
+-- Затем из родительских таблиц
+DELETE FROM spare_parts;
+DELETE FROM services;
+DELETE FROM clients;
+
+-- Сброс автоинкремента
+DELETE FROM sqlite_sequence;
+
+-- ============================================
+-- 1. КЛИЕНТЫ (5 штук)
+-- ============================================
+INSERT INTO clients (name, phone, car_model, car_number) VALUES
+('Иван Петров', '+79001234567', 'Toyota Camry', 'А123ВС163'),
+('Елена Смирнова', '+79113456789', 'Hyundai Solaris', 'В456ЕК77'),
+('Сергей Козлов', '+79224567890', 'Kia Rio', 'М789НО50'),
+('Ольга Новикова', '+79335678901', 'Lada Vesta', 'О159РТ40'),
+('Дмитрий Морозов', '+79446789012', 'Volkswagen Polo', 'У357АЕ99');
+
+-- ============================================
+-- 2. УСЛУГИ (10 штук)
+-- ============================================
+INSERT INTO services (name, price) VALUES
+('Замена масла', 1500),
+('Диагностика двигателя', 1200),
+('Замена тормозных колодок', 2500),
+('Шиномонтаж', 2000),
+('Развал-схождение', 1800),
+('Замена ремня ГРМ', 4500),
+('Замена свечей зажигания', 1200),
+('Замена масла в АКПП', 3000),
+('Компьютерная диагностика', 1500),
+('Заправка кондиционера', 2500);
+
+-- ============================================
+-- 3. ЗАПЧАСТИ (10 штук)
+-- ============================================
+INSERT INTO spare_parts (name, purchase_price, retail_price, stock) VALUES
+('Масло моторное 5W-30', 800, 1200, 20),
+('Масляный фильтр', 200, 400, 25),
+('Тормозные колодки передние', 1200, 2000, 10),
+('Тормозные колодки задние', 1100, 1900, 8),
+('Воздушный фильтр', 300, 600, 15),
+('Свечи зажигания (комплект)', 400, 800, 12),
+('Ремень ГРМ', 1500, 2500, 6),
+('Фильтр салона', 250, 500, 18),
+('Жидкость тормозная', 300, 500, 10),
+('Антифриз', 400, 700, 8);
+
+-- ============================================
+-- 4. ЗАКАЗЫ (для демонстрации последнего ремонта)
+-- ============================================
+
+-- Заказ для Ивана Петрова (закрыт) - последний ремонт
+INSERT INTO orders (id, client_id, status, total, created_date) 
+VALUES ('ZAK-01/01/25-00001', 1, 'ЗАКРЫТ', 2700, '2025-01-15 10:30:00');
+INSERT INTO order_services (order_id, service_name, price) VALUES ('ZAK-01/01/25-00001', 'Замена масла', 1500);
+INSERT INTO order_parts (order_id, part_name, price, quantity) VALUES ('ZAK-01/01/25-00001', 'Масло моторное 5W-30', 1200, 1);
+
+-- Заказ для Елены Смирновой (закрыт) - последний ремонт
+INSERT INTO orders (id, client_id, status, total, created_date) 
+VALUES ('ZAK-15/02/25-00002', 2, 'ЗАКРЫТ', 3700, '2025-02-20 14:00:00');
+INSERT INTO order_services (order_id, service_name, price) VALUES ('ZAK-15/02/25-00002', 'Диагностика двигателя', 1200);
+INSERT INTO order_services (order_id, service_name, price) VALUES ('ZAK-15/02/25-00002', 'Замена свечей зажигания', 1200);
+INSERT INTO order_parts (order_id, part_name, price, quantity) VALUES ('ZAK-15/02/25-00002', 'Свечи зажигания (комплект)', 800, 1);
+
+-- Заказ для Сергея Козлова (закрыт) - последний ремонт
+INSERT INTO orders (id, client_id, status, total, created_date) 
+VALUES ('ZAK-10/03/25-00003', 3, 'ЗАКРЫТ', 3800, '2025-03-25 09:00:00');
+INSERT INTO order_services (order_id, service_name, price) VALUES ('ZAK-10/03/25-00003', 'Шиномонтаж', 2000);
+INSERT INTO order_services (order_id, service_name, price) VALUES ('ZAK-10/03/25-00003', 'Развал-схождение', 1800);
+
+-- Заказ для Ольги Новиковой (закрыт) - последний ремонт
+INSERT INTO orders (id, client_id, status, total, created_date) 
+VALUES ('ZAK-05/04/25-00004', 4, 'ЗАКРЫТ', 4500, '2025-04-10 11:30:00');
+INSERT INTO order_services (order_id, service_name, price) VALUES ('ZAK-05/04/25-00004', 'Замена тормозных колодок', 2500);
+INSERT INTO order_parts (order_id, part_name, price, quantity) VALUES ('ZAK-05/04/25-00004', 'Тормозные колодки передние', 2000, 1);
+
+-- Заказ для Дмитрия Морозова (закрыт) - последний ремонт
+INSERT INTO orders (id, client_id, status, total, created_date) 
+VALUES ('ZAK-20/05/25-00005', 5, 'ЗАКРЫТ', 3000, '2025-05-18 16:00:00');
+INSERT INTO order_services (order_id, service_name, price) VALUES ('ZAK-20/05/25-00005', 'Замена масла в АКПП', 3000);
+
+-- ============================================
+-- 5. ЗАПИСИ В КАЛЕНДАРЕ (5 штук на разные даты)
+-- ============================================
+
+-- Запись №1: Иван Петров, сегодня, 09:00
+INSERT INTO appointments (client_id, order_id, master_name, service_name, appointment_date, appointment_time, status) 
+VALUES (1, NULL, 'Иван', 'Замена масла', date('now'), '09:00', 'ЗАПЛАНИРОВАНО');
+
+-- Запись №2: Елена Смирнова, завтра, 10:30
+INSERT INTO appointments (client_id, order_id, master_name, service_name, appointment_date, appointment_time, status) 
+VALUES (2, NULL, 'Иван', 'Диагностика двигателя', date('now', '+1 day'), '10:30', 'ЗАПЛАНИРОВАНО');
+
+-- Запись №3: Сергей Козлов, послезавтра, 11:00
+INSERT INTO appointments (client_id, order_id, master_name, service_name, appointment_date, appointment_time, status) 
+VALUES (3, NULL, 'Петр', 'Шиномонтаж', date('now', '+2 days'), '11:00', 'ЗАПЛАНИРОВАНО');
+
+-- Запись №4: Ольга Новикова, через 3 дня, 14:00
+INSERT INTO appointments (client_id, order_id, master_name, service_name, appointment_date, appointment_time, status) 
+VALUES (4, NULL, 'Сергей', 'Замена тормозных колодок', date('now', '+3 days'), '14:00', 'ЗАПЛАНИРОВАНО');
+
+-- Запись №5: Дмитрий Морозов, через 5 дней, 16:30
+INSERT INTO appointments (client_id, order_id, master_name, service_name, appointment_date, appointment_time, status) 
+VALUES (5, NULL, 'Антон', 'Развал-схождение', date('now', '+5 days'), '16:30', 'ЗАПЛАНИРОВАНО');
+
+-- ============================================
+-- 6. ОБНОВЛЕНИЕ ОСТАТКОВ НА СКЛАДЕ (списываем то, что ушло в заказы)
+-- ============================================
+UPDATE spare_parts SET stock = stock - 1 WHERE name = 'Масло моторное 5W-30';
+UPDATE spare_parts SET stock = stock - 1 WHERE name = 'Свечи зажигания (комплект)';
+UPDATE spare_parts SET stock = stock - 1 WHERE name = 'Тормозные колодки передние';
+
+-- ============================================
+-- 7. ПРОВЕРКА (вывод статистики)
+-- ============================================
+SELECT 'Клиентов: ' || COUNT(*) FROM clients
+UNION ALL
+SELECT 'Услуг: ' || COUNT(*) FROM services
+UNION ALL
+SELECT 'Запчастей: ' || COUNT(*) FROM spare_parts
+UNION ALL
+SELECT 'Записей: ' || COUNT(*) FROM appointments
+UNION ALL
+SELECT 'Заказов: ' || COUNT(*) FROM orders;</sql><current_tab id="0"/></tab_sql></sqlb_project>

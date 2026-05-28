@@ -1,7 +1,10 @@
 package com.autoservice.views;
 
 import com.autoservice.Client;
+import com.autoservice.DataStore;
+import com.autoservice.DateUtils;
 import com.autoservice.Validators;
+import com.autoservice.WorkOrder;
 import com.autoservice.controllers.ClientController;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.Insets;
@@ -31,9 +34,14 @@ public class ClientView {
         TableColumn<Client, String> colCar = new TableColumn<>("Авто");
         colCar.setCellValueFactory(cellData ->
                 new SimpleStringProperty(cellData.getValue().getCarModel() + " (" + cellData.getValue().getCarNumber() + ")"));
-        colCar.setPrefWidth(350);
+        colCar.setPrefWidth(250);
 
-        clientTable.getColumns().addAll(colName, colPhone, colCar);
+        TableColumn<Client, String> colLastRepair = new TableColumn<>("Последний ремонт");
+        colLastRepair.setCellValueFactory(cellData ->
+                new SimpleStringProperty(DateUtils.formatDate(cellData.getValue().getLastRepairDate())));
+        colLastRepair.setPrefWidth(150);
+
+        clientTable.getColumns().addAll(colName, colPhone, colCar, colLastRepair);
         clientTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(clientTable, Priority.ALWAYS);
 
