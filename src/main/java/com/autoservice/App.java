@@ -1,11 +1,7 @@
 package com.autoservice;
 
 import com.autoservice.controllers.DictionaryController;
-import com.autoservice.views.AppointmentView;
-import com.autoservice.views.ClientView;
-import com.autoservice.views.DashboardView;
-import com.autoservice.views.DictionaryView;
-import com.autoservice.views.OrderView;
+import com.autoservice.views.*;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Scene;
@@ -44,7 +40,13 @@ public class App extends Application {
 
         tabPane.getTabs().addAll(dashTab, clientTab, orderTab, dictTab, appointmentTab);
 
-        Scene scene = new Scene(tabPane, 1300, 700);
+        Scene scene = new Scene(tabPane, 1300, 1000);
+
+        // Подключаем CSS
+        scene.getStylesheets().add(
+                App.class.getResource("/styles.css").toExternalForm()
+        );
+
         primaryStage.setTitle("Администратор СТО");
         primaryStage.setScene(scene);
 

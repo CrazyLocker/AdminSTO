@@ -40,7 +40,7 @@ class DataStoreTest {
     }
 
     private static Client createTestClient() {
-        Client client = new Client("Тест Клиент", "+79001234567", "Test Car", "A123BC");
+        Client client = new Client("Тест Клиент", "Тестов", "+79001234567", "Test Car", "A123BC");
         DataStore.addClient(client);
         DataStore.load();
         return DataStore.getClients().stream()
@@ -59,7 +59,7 @@ class DataStoreTest {
     @Test
     @Order(1)
     void testAddClient() {
-        Client newClient = new Client("Новый Клиент", "+79111234567", "New Car", "B456CD");
+        Client newClient = new Client("Новый Клиент", "Новый", "+79111234567", "New Car", "B456CD");
         DataStore.addClient(newClient);
 
         assertThat(DataStore.getClients()).anyMatch(c -> c.getName().equals("Новый Клиент"));
@@ -68,7 +68,7 @@ class DataStoreTest {
     @Test
     @Order(2)
     void testUpdateClient() {
-        Client newClient = new Client("ДляОбновления", "+79000000000", "Update Car", "U123UP");
+        Client newClient = new Client("ДляОбновления", "ДляОбновленияФамилия", "+79000000000", "Update Car", "U123UP");
         DataStore.addClient(newClient);
         DataStore.load();
 
@@ -79,7 +79,9 @@ class DataStoreTest {
         assertThat(toUpdate).isNotNull();
 
         String newName = "Обновлённый Клиент";
+        String newLastName = "ОбновлённаяФамилия";
         toUpdate.setName(newName);
+        toUpdate.setLastName(newLastName);
         DataStore.updateClient(toUpdate);
         DataStore.load();
 
@@ -90,12 +92,13 @@ class DataStoreTest {
 
         assertThat(updated).isNotNull();
         assertThat(updated.getName()).isEqualTo(newName);
+        assertThat(updated.getLastName()).isEqualTo(newLastName);
     }
 
     @Test
     @Order(3)
     void testDeleteClient() {
-        Client newClient = new Client("Для Удаления", "+79211234567", "Delete Car", "C789DE");
+        Client newClient = new Client("Для Удаления", "ДляУдаленияФамилия", "+79211234567", "Delete Car", "C789DE");
         DataStore.addClient(newClient);
         DataStore.load();
 

@@ -32,15 +32,16 @@ public class Database {
 
     private static void createTables() throws SQLException {
         String createClients = """
-            CREATE TABLE IF NOT EXISTS clients (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                phone TEXT NOT NULL,
-                car_model TEXT NOT NULL,
-                car_number TEXT NOT NULL,
-                last_repair_date TEXT DEFAULT ''
-            )
-        """;
+                    CREATE TABLE IF NOT EXISTS clients (
+                                                                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                                                        name TEXT NOT NULL,
+                                                                        last_name TEXT DEFAULT '',
+                                                                        phone TEXT NOT NULL,
+                                                                        car_model TEXT NOT NULL,
+                                                                        car_number TEXT NOT NULL,
+                                                                        last_repair_date TEXT DEFAULT ''
+                    )
+                """;
 
         String createServices = """
             CREATE TABLE IF NOT EXISTS services (
@@ -166,7 +167,7 @@ public class Database {
 
     public static List<Client> getAllClients() {
         List<Client> clients = new ArrayList<>();
-        String sql = "SELECT id, name, phone, car_model, car_number FROM clients ORDER BY id";
+        String sql = "SELECT id, name, last_name, phone, car_model, car_number FROM clients ORDER BY id";
         try (Statement stmt = connection.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
@@ -175,6 +176,7 @@ public class Database {
                 clients.add(new Client(
                         clientId,
                         rs.getString("name"),
+                        rs.getString("last_name"),
                         rs.getString("phone"),
                         rs.getString("car_model"),
                         rs.getString("car_number"),
@@ -210,12 +212,13 @@ public class Database {
         String normalizedPhone = Validators.cleanPhone(client.getPhone());
         String normalizedCarNumber = Validators.normalizeCarNumber(client.getCarNumber());
 
-        String sql = "INSERT INTO clients (name, phone, car_model, car_number) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO clients (name, last_name, phone, car_model, car_number) VALUES (?, ?, ?, ?, ?)";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setString(1, client.getName());
-            pstmt.setString(2, normalizedPhone);
-            pstmt.setString(3, client.getCarModel());
-            pstmt.setString(4, normalizedCarNumber);
+            pstmt.setString(2, client.getLastName());
+            pstmt.setString(3, normalizedPhone);
+            pstmt.setString(4, client.getCarModel());
+            pstmt.setString(5, normalizedCarNumber);
             pstmt.executeUpdate();
         } catch (SQLException e) {
             System.err.println("Add client error: " + e.getMessage());
@@ -226,13 +229,14 @@ public class Database {
         String normalizedPhone = Validators.cleanPhone(client.getPhone());
         String normalizedCarNumber = Validators.normalizeCarNumber(client.getCarNumber());
 
-        String sql = "UPDATE clients SET name = ?, phone = ?, car_model = ?, car_number = ? WHERE id = ?";
+        String sql = "UPDATE clients SET name = ?, last_name = ?, phone = ?, car_model = ?, car_number = ? WHERE id = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setString(1, client.getName());
-            pstmt.setString(2, normalizedPhone);
-            pstmt.setString(3, client.getCarModel());
-            pstmt.setString(4, normalizedCarNumber);
-            pstmt.setInt(5, client.getId());
+            pstmt.setString(2, client.getLastName());
+            pstmt.setString(3, normalizedPhone);
+            pstmt.setString(4, client.getCarModel());
+            pstmt.setString(5, normalizedCarNumber);
+            pstmt.setInt(6, client.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
             System.err.println("Update client error: " + e.getMessage());
@@ -250,7 +254,7 @@ public class Database {
     }
 
     public static Client getClientById(int id) {
-        String sql = "SELECT name, phone, car_model, car_number FROM clients WHERE id = ?";
+        String sql = "SELECT name, last_name, phone, car_model, car_number FROM clients WHERE id = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setInt(1, id);
             ResultSet rs = pstmt.executeQuery();
@@ -259,6 +263,7 @@ public class Database {
                 return new Client(
                         id,
                         rs.getString("name"),
+                        rs.getString("last_name"),
                         rs.getString("phone"),
                         rs.getString("car_model"),
                         rs.getString("car_number"),
@@ -272,10 +277,11 @@ public class Database {
     }
 
     public static int getClientId(Client client) {
-        String sql = "SELECT id FROM clients WHERE name = ? AND phone = ?";
+        String sql = "SELECT id FROM clients WHERE name = ? AND last_name = ? AND phone = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setString(1, client.getName());
-            pstmt.setString(2, client.getPhone());
+            pstmt.setString(2, client.getLastName());
+            pstmt.setString(3, client.getPhone());
             ResultSet rs = pstmt.executeQuery();
             if (rs.next()) {
                 return rs.getInt("id");

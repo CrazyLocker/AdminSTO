@@ -1,0 +1,309 @@
+/* ============================================
+   FLAT DESIGN - ГЛОБАЛЬНЫЕ СТИЛИ
+   ============================================ */
+
+.root {
+    -fx-font-family: "Segoe UI", "Roboto", sans-serif;
+    -fx-font-size: 11px;  /* было 13px */
+    -fx-base: #ffffff;
+    -fx-background: #f0f2f5;
+}
+
+/* ============================================
+   ОСНОВНОЕ ОКНО
+   ============================================ */
+.tab-pane {
+    -fx-background-color: #f0f2f5;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+}
+
+.tab-pane .tab-header-area {
+    -fx-padding: 0 0 0 0;
+    -fx-background-color: #ffffff;
+}
+
+.tab-pane .tab-header-background {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #e0e0e0;
+    -fx-border-width: 0 0 1 0;
+}
+
+.tab-pane .tab {
+    -fx-background-color: transparent;
+    -fx-padding: 10 20 10 20;  /* было 12 24 */
+    -fx-border-color: transparent;
+    -fx-border-width: 0 0 2 0;
+}
+
+.tab-pane .tab:selected {
+    -fx-border-color: #3498db;
+    -fx-border-width: 0 0 2 0;
+}
+
+.tab-pane .tab .tab-label {
+    -fx-text-fill: #7f8c8d;
+    -fx-font-size: 11px;  /* было 13px */
+    -fx-font-weight: normal;
+}
+
+.tab-pane .tab:selected .tab-label {
+    -fx-text-fill: #3498db;
+    -fx-font-weight: bold;
+}
+
+.tab-pane .tab-content-area {
+    -fx-background-color: #f0f2f5;
+    -fx-padding: 0;
+}
+
+/* ============================================
+   КНОПКИ
+   ============================================ */
+.button {
+    -fx-background-color: #3498db;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 11px;  /* было 13px */
+    -fx-background-radius: 6;
+    -fx-padding: 6 14 6 14;  /* было 8 16 */
+    -fx-cursor: hand;
+}
+
+.button:hover {
+    -fx-background-color: #2980b9;
+}
+
+.button:pressed {
+    -fx-background-color: #1c6ea4;
+}
+
+.button-danger {
+    -fx-background-color: #e74c3c;
+}
+
+.button-danger:hover {
+    -fx-background-color: #c0392b;
+}
+
+.button-success {
+    -fx-background-color: #2ecc71;
+}
+
+.button-success:hover {
+    -fx-background-color: #27ae60;
+}
+
+.button-warning {
+    -fx-background-color: #f39c12;
+}
+
+.button-warning:hover {
+    -fx-background-color: #e67e22;
+}
+
+/* ============================================
+   ПОЛЯ ВВОДА
+   ============================================ */
+.text-field, .combo-box, .date-picker {
+    -fx-background-color: white;
+    -fx-background-radius: 6;
+    -fx-border-color: #dcdde1;
+    -fx-border-radius: 6;
+    -fx-border-width: 1;
+    -fx-padding: 6 10 6 10;  /* было 8 12 */
+    -fx-font-size: 11px;
+}
+
+.text-field:focused, .combo-box:focused, .date-picker:focused {
+    -fx-border-color: #3498db;
+    -fx-border-width: 2;
+}
+
+/* ============================================
+   ТАБЛИЦЫ
+   ============================================ */
+.table-view {
+    -fx-background-color: white;
+    -fx-border-color: #e0e0e0;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-font-size: 11px;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: #f8f9fa;
+    -fx-border-color: #e0e0e0;
+    -fx-border-width: 0 0 1 0;
+}
+
+.table-view .column-header {
+    -fx-background-color: #f8f9fa;
+    -fx-padding: 8 0 8 0;
+}
+
+.table-view .column-header .label {
+    -fx-font-weight: bold;
+    -fx-text-fill: #2c3e50;
+    -fx-font-size: 11px;
+}
+
+.table-row-cell {
+    -fx-background-color: white;
+    -fx-padding: 6 0 6 0;
+}
+
+.table-row-cell:odd {
+    -fx-background-color: #f8f9fa;
+}
+
+.table-row-cell:selected {
+    -fx-background-color: #e3f2fd;
+    -fx-text-fill: #2c3e50;
+}
+
+.table-row-cell:selected .text {
+    -fx-fill: #2c3e50;
+}
+
+/* ============================================
+   SCROLL PANE
+   ============================================ */
+.scroll-pane {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.scroll-bar:vertical {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.scroll-bar:vertical .thumb {
+    -fx-background-color: #bdc3c7;
+    -fx-background-radius: 10;
+}
+
+/* ============================================
+   ДИАЛОГОВЫЕ ОКНА (TITLED PANE, ACCORDION)
+   ============================================ */
+.titled-pane {
+    -fx-background-color: white;
+    -fx-border-color: #e0e0e0;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+
+.titled-pane > .title {
+    -fx-background-color: white;
+    -fx-background-radius: 8 8 0 0;
+    -fx-padding: 10 14 10 14;
+}
+
+.titled-pane > .title > .text {
+    -fx-font-weight: bold;
+    -fx-text-fill: #2c3e50;
+    -fx-font-size: 12px;
+}
+
+.titled-pane > .content {
+    -fx-background-color: white;
+    -fx-background-radius: 0 0 8 8;
+    -fx-border-color: #e0e0e0;
+    -fx-border-width: 1 0 0 0;
+}
+
+/* ============================================
+   LABEL
+   ============================================ */
+.label-title {
+    -fx-font-size: 18px;  /* было 20px */
+    -fx-font-weight: bold;
+    -fx-text-fill: #2c3e50;
+}
+
+.label-subtitle {
+    -fx-font-size: 12px;  /* было 14px */
+    -fx-font-weight: normal;
+    -fx-text-fill: #7f8c8d;
+}
+
+/* ============================================
+   ПРОГРЕСС-БАР
+   ============================================ */
+.progress-bar {
+    -fx-background-color: #ecf0f1;
+    -fx-background-radius: 10;
+    -fx-pref-height: 6;
+}
+
+.progress-bar .bar {
+    -fx-background-color: #3498db;
+    -fx-background-radius: 10;
+}
+
+/* ============================================
+   LIST VIEW
+   ============================================ */
+.list-view {
+    -fx-background-color: white;
+    -fx-border-color: #e0e0e0;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+
+.list-view .list-cell {
+    -fx-padding: 8;
+    -fx-border-color: #ecf0f1;
+    -fx-border-width: 0 0 1 0;
+    -fx-font-size: 11px;
+}
+
+.list-view .list-cell:selected {
+    -fx-background-color: #e3f2fd;
+    -fx-text-fill: #2c3e50;
+}
+
+/* ============================================
+   DATE PICKER
+   ============================================ */
+.date-picker .arrow-button {
+    -fx-background-color: white;
+}
+
+.date-picker .arrow-button .arrow {
+    -fx-background-color: #7f8c8d;
+}
+
+/* ============================================
+   SEPARATOR
+   ============================================ */
+.separator .line {
+    -fx-border-color: #e0e0e0;
+    -fx-border-width: 1;
+}
+
+/* ============================================
+   COMBOBOX
+   ============================================ */
+.combo-box .arrow-button {
+    -fx-background-color: transparent;
+}
+
+.combo-box .arrow {
+    -fx-background-color: #7f8c8d;
+}
+
+.combo-box-popup .list-view {
+    -fx-background-color: white;
+    -fx-border-color: #e0e0e0;
+}
+
+.combo-box-popup .list-cell {
+    -fx-padding: 6 10;
+    -fx-font-size: 11px;
+}
+
+.combo-box-popup .list-cell:selected {
+    -fx-background-color: #e3f2fd;
+}
