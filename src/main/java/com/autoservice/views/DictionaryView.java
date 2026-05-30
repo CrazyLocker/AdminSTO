@@ -590,7 +590,7 @@ public class DictionaryView {
 
     private static VBox createStockPanel() {
         TableView<SparePart> table = new TableView<>();
-        table.setStyle("-fx-font-size: 13px;");
+        table.setStyle("-fx-font-size: 12px;");
 
         TableColumn<SparePart, String> colName = new TableColumn<>("Наименование");
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
@@ -636,6 +636,7 @@ public class DictionaryView {
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(table, Priority.ALWAYS);
 
+        // Чередование цветов строк
         table.setRowFactory(tv -> new TableRow<SparePart>() {
             @Override
             protected void updateItem(SparePart item, boolean empty) {
@@ -650,11 +651,28 @@ public class DictionaryView {
                     } else {
                         setStyle("-fx-background-color: white; -fx-text-fill: black;");
                     }
+                    setPrefHeight(35);
+                    setOnMouseEntered(e -> {
+                        if (item.getStock() <= item.getMinStock()) {
+                            setStyle("-fx-background-color: #ff9999; -fx-text-fill: #c0392b;");
+                        } else {
+                            setStyle("-fx-background-color: #d0e8f0; -fx-text-fill: black;");
+                        }
+                    });
+                    setOnMouseExited(e -> {
+                        if (item.getStock() <= item.getMinStock()) {
+                            setStyle("-fx-background-color: #ffcccc; -fx-text-fill: #c0392b;");
+                        } else if (getIndex() % 2 == 0) {
+                            setStyle("-fx-background-color: #e8f4f8; -fx-text-fill: black;");
+                        } else {
+                            setStyle("-fx-background-color: white; -fx-text-fill: black;");
+                        }
+                    });
                 }
             }
         });
 
-        table.setStyle("-fx-selection-bar: #3399ff; -fx-selection-bar-text: white;");
+        table.setStyle("-fx-selection-bar: #3498db; -fx-selection-bar-text: white;");
 
         DictionaryController.setStockTable(table);
 

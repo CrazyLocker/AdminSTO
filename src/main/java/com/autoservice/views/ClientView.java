@@ -151,6 +151,7 @@ public class ClientView {
         table.getColumns().addAll(colLastName, colName, colPhone, colCar, colLastRepair);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
+        // Чередование цветов строк и цвет выделения
         table.setRowFactory(tv -> new TableRow<Client>() {
             @Override
             protected void updateItem(Client item, boolean empty) {
@@ -158,17 +159,27 @@ public class ClientView {
                 if (empty || item == null) {
                     setStyle("");
                 } else {
-                    setStyle(getIndex() % 2 == 0 ?
-                            "-fx-background-color: #ffffff;" :
-                            "-fx-background-color: #f8f9fa;");
+                    if (getIndex() % 2 == 0) {
+                        setStyle("-fx-background-color: #e8f4f8; -fx-text-fill: black;");
+                    } else {
+                        setStyle("-fx-background-color: white; -fx-text-fill: black;");
+                    }
                     setPrefHeight(35);
+                    setOnMouseEntered(e -> setStyle("-fx-background-color: #d0e8f0; -fx-text-fill: black;"));
+                    setOnMouseExited(e -> {
+                        if (getIndex() % 2 == 0) {
+                            setStyle("-fx-background-color: #e8f4f8; -fx-text-fill: black;");
+                        } else {
+                            setStyle("-fx-background-color: white; -fx-text-fill: black;");
+                        }
+                    });
                 }
             }
         });
 
         table.setStyle(table.getStyle() +
                 "-fx-selection-bar: #3498db; " +
-                "-fx-selection-bar-non-focused: #2980b9;");
+                "-fx-selection-bar-text: white;");
 
         table.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
@@ -179,9 +190,7 @@ public class ClientView {
             }
         });
 
-        // Получаем данные
-        masterData = FXCollections.observableArrayList(DataStore.getClients());
-        filteredClients = new FilteredList<>(masterData, p -> true);
+        filteredClients = new FilteredList<>(FXCollections.observableArrayList(DataStore.getClients()), p -> true);
         table.setItems(filteredClients);
         ClientController.setTable(table);
 
