@@ -80,8 +80,10 @@ public class DictionaryView {
                 } else {
                     if (getIndex() % 2 == 0) {
                         setStyle("-fx-background-color: #e8f4f8; -fx-text-fill: black;");
+                        setPrefHeight(35);
                     } else {
                         setStyle("-fx-background-color: white; -fx-text-fill: black;");
+                        setPrefHeight(35);
                     }
                 }
             }
@@ -296,8 +298,10 @@ public class DictionaryView {
                 } else {
                     if (getIndex() % 2 == 0) {
                         setStyle("-fx-background-color: #e8f4f8; -fx-text-fill: black;");
+                        setPrefHeight(35);
                     } else {
                         setStyle("-fx-background-color: white; -fx-text-fill: black;");
+                        setPrefHeight(35);
                     }
                     setOnMouseEntered(e -> setStyle("-fx-background-color: #d0e8f0; -fx-text-fill: black;"));
                     setOnMouseExited(e -> {

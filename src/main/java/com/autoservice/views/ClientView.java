@@ -161,6 +161,7 @@ public class ClientView {
                     setStyle(getIndex() % 2 == 0 ?
                             "-fx-background-color: #ffffff;" :
                             "-fx-background-color: #f8f9fa;");
+                    setPrefHeight(35);
                 }
             }
         });
