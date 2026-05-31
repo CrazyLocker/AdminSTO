@@ -17,16 +17,16 @@ public class DataStore {
         orders = Database.getAllOrders();
         appointments = Database.getAllAppointments();
 
-        System.out.println("DataStore загружен: " + clients.size() + " клиентов, " +
-                orders.size() + " заказов, " + services.size() + " услуг, " +
-                spareParts.size() + " запчастей, " + appointments.size() + " записей");
+        System.out.println("DataStore loaded: " + clients.size() + " clients, " +
+                orders.size() + " orders, " + services.size() + " services, " +
+                spareParts.size() + " spare parts, " + appointments.size() + " appointments");
     }
 
     public static void save() {
-        System.out.println("Данные сохранены в БД");
+        System.out.println("Data saved to DB");
     }
 
-    // ==================== КЛИЕНТЫ ====================
+    // ==================== CLIENTS ====================
 
     public static List<Client> getClients() { return clients; }
 
@@ -45,13 +45,14 @@ public class DataStore {
         clients = Database.getAllClients();
     }
 
-    // ==================== ЗАКАЗЫ ====================
+    // ==================== ORDERS ====================
 
     public static List<WorkOrder> getOrders() { return orders; }
 
     public static void addOrder(WorkOrder o) {
         Database.addOrder(o);
         orders = Database.getAllOrders();
+        System.out.println("Orders after add: " + orders.size());
     }
 
     public static void updateOrder(WorkOrder o) {
@@ -65,7 +66,7 @@ public class DataStore {
             Database.deleteOrder(orderId);
             orders = Database.getAllOrders();
         } else {
-            System.err.println("Невозможно удалить заказ с ID=" + orderId);
+            System.err.println("Cannot delete order with ID=" + orderId);
         }
     }
 
@@ -79,7 +80,7 @@ public class DataStore {
         return count;
     }
 
-    // ==================== УСЛУГИ ====================
+    // ==================== SERVICES ====================
 
     public static List<Service> getServices() { return services; }
 
@@ -93,7 +94,7 @@ public class DataStore {
         services = Database.getAllServices();
     }
 
-    // ==================== ЗАПЧАСТИ ====================
+    // ==================== SPARE PARTS ====================
 
     public static List<SparePart> getSpareParts() { return spareParts; }
 
@@ -112,7 +113,7 @@ public class DataStore {
         spareParts = Database.getAllSpareParts();
     }
 
-    // ==================== ЗАПИСИ ====================
+    // ==================== APPOINTMENTS ====================
 
     public static List<Appointment> getAppointments() {
         return appointments;

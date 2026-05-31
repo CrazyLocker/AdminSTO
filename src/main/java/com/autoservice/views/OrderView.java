@@ -29,7 +29,7 @@ public class OrderView {
 
         TableColumn<WorkOrder, String> colId = new TableColumn<>("№ заказа");
         colId.setCellValueFactory(new PropertyValueFactory<>("id"));
-        colId.setPrefWidth(160);
+        colId.setPrefWidth(200);
         colId.setStyle("-fx-alignment: CENTER-LEFT;");
 
         TableColumn<WorkOrder, String> colClient = new TableColumn<>("Клиент");
@@ -137,11 +137,12 @@ public class OrderView {
                     setStyle("");
                 } else {
                     setStyle(getIndex() % 2 == 0 ? "-fx-background-color: #f5f5f5;" : "-fx-background-color: white;");
+                    setPrefHeight(35);
                 }
             }
         });
 
-        orderTable.setStyle("-fx-selection-bar: #3399ff; -fx-selection-bar-text: white;");
+        orderTable.setStyle("-fx-selection-bar: #3498db; -fx-selection-bar-text: white;");
 
         // Настройка фильтрованного списка
         filteredOrders = new FilteredList<>(FXCollections.observableArrayList(DataStore.getOrders()), p -> true);
@@ -153,16 +154,19 @@ public class OrderView {
         searchField = new TextField();
         searchField.setPromptText("Введите текст для поиска...");
         searchField.setPrefWidth(250);
+        searchField.setStyle("-fx-padding: 8; -fx-font-size: 13px; -fx-background-radius: 4; -fx-border-radius: 4; -fx-border-color: #e0e0e0;");
 
         searchTypeCombo = new ComboBox<>();
-        searchTypeCombo.getItems().addAll("По номеру заказа (полный)", "По последним 4 цифрам номера", "По клиенту");
+        searchTypeCombo.getItems().addAll("По последним 4 цифрам номера", "По клиенту");
         searchTypeCombo.setValue("По клиенту");
         searchTypeCombo.setPrefWidth(200);
+        searchTypeCombo.setStyle("-fx-padding: 6; -fx-font-size: 13px;");
 
         searchField.textProperty().addListener((obs, oldVal, newVal) -> applyOrderFilter(newVal));
         searchTypeCombo.setOnAction(e -> applyOrderFilter(searchField.getText()));
 
         Button clearBtn = new Button("✖ Очистить");
+        clearBtn.setStyle("-fx-background-color: #95a5a6; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 6 15; -fx-background-radius: 4;");
         clearBtn.setOnAction(e -> {
             searchField.clear();
             applyOrderFilter("");
@@ -189,24 +193,26 @@ public class OrderView {
             String searchType = searchTypeCombo.getValue();
 
             filteredOrders.setPredicate(order -> {
-                if (searchType.equals("По номеру заказа (полный)")) {
-                    return order.getId() != null && order.getId().toLowerCase().contains(lowerFilter);
-                } else if (searchType.equals("По последним 4 цифрам номера")) {
+                if (searchType.equals("По последним 4 цифрам номера")) {
                     if (order.getId() == null) return false;
                     String id = order.getId();
-                    if (id.length() >= 4) {
-                        String last4 = id.substring(id.length() - 4);
+                    // Извлекаем цифровую часть после последнего дефиса
+                    String numPart = id.substring(id.lastIndexOf("-") + 1);
+                    // Берём последние 4 цифры
+                    if (numPart.length() >= 4) {
+                        String last4 = numPart.substring(numPart.length() - 4);
                         return last4.contains(lowerFilter);
                     }
                     return false;
-                } else { // По клиенту
-                    return order.getClient().getName().toLowerCase().contains(lowerFilter) ||
-                            order.getClient().getPhone().toLowerCase().contains(lowerFilter) ||
-                            order.getClient().getCarNumber().toLowerCase().contains(lowerFilter);
+                } else { // По клиенту (по фамилии или имени)
+                    String clientName = order.getClient().getName().toLowerCase();
+                    String clientLastName = order.getClient().getLastName().toLowerCase();
+                    return clientName.contains(lowerFilter) || clientLastName.contains(lowerFilter);
                 }
             });
         }
     }
+
 
     public static void refreshOrderList() {
         filteredOrders = new FilteredList<>(FXCollections.observableArrayList(DataStore.getOrders()), p -> true);

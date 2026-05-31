@@ -32,22 +32,24 @@ public class Database {
 
     private static void createTables() throws SQLException {
         String createClients = """
-                    CREATE TABLE IF NOT EXISTS clients (
-                                                                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                                                        name TEXT NOT NULL,
-                                                                        last_name TEXT DEFAULT '',
-                                                                        phone TEXT NOT NULL,
-                                                                        car_model TEXT NOT NULL,
-                                                                        car_number TEXT NOT NULL,
-                                                                        last_repair_date TEXT DEFAULT ''
-                    )
-                """;
+            CREATE TABLE IF NOT EXISTS clients (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                last_name TEXT DEFAULT '',
+                phone TEXT NOT NULL,
+                car_model TEXT NOT NULL,
+                car_number TEXT NOT NULL,
+                last_repair_date TEXT DEFAULT ''
+            )
+        """;
 
         String createServices = """
             CREATE TABLE IF NOT EXISTS services (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL UNIQUE,
-                price REAL NOT NULL
+                price REAL NOT NULL,
+                duration INTEGER DEFAULT 60,
+                part_number TEXT DEFAULT ''
             )
         """;
 
@@ -55,12 +57,12 @@ public class Database {
             CREATE TABLE IF NOT EXISTS spare_parts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL UNIQUE,
-                purchase_price REAL NOT NULL,
-                retail_price REAL NOT NULL,
-                stock INTEGER NOT NULL,
                 part_number TEXT DEFAULT '',
                 manufacturer TEXT DEFAULT '',
                 compatible_models TEXT DEFAULT '',
+                purchase_price REAL,
+                retail_price REAL NOT NULL,
+                stock INTEGER DEFAULT 0,
                 min_stock INTEGER DEFAULT 0,
                 location TEXT DEFAULT ''
             )
@@ -119,68 +121,63 @@ public class Database {
             stmt.execute(createOrderServices);
             stmt.execute(createOrderParts);
             stmt.execute(createAppointments);
-            
-            // Миграция таблицы spare_parts для добавления новых полей
-            try {
-                stmt.execute("ALTER TABLE spare_parts ADD COLUMN part_number TEXT DEFAULT ''");
-            } catch (SQLException e) { /* колонка уже существует */ }
-            try {
-                stmt.execute("ALTER TABLE spare_parts ADD COLUMN manufacturer TEXT DEFAULT ''");
-            } catch (SQLException e) { /* колонка уже существует */ }
-            try {
-                stmt.execute("ALTER TABLE spare_parts ADD COLUMN compatible_models TEXT DEFAULT ''");
-            } catch (SQLException e) { /* колонка уже существует */ }
-            try {
-                stmt.execute("ALTER TABLE spare_parts ADD COLUMN min_stock INTEGER DEFAULT 0");
-            } catch (SQLException e) { /* колонка уже существует */ }
-            try {
-                stmt.execute("ALTER TABLE spare_parts ADD COLUMN location TEXT DEFAULT ''");
-            } catch (SQLException e) { /* колонка уже существует */ }
-            
             System.out.println("Tables created/verified");
         }
     }
 
+    // ==================== ГЕНЕРАЦИЯ ID ЗАКАЗА ====================
+
     private static String generateOrderId() {
         String date = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yy"));
-        String pattern = "ZAK-" + date + "-%";
 
+        // Получаем максимальный числовой номер из всех заказов
+        String sql = "SELECT id FROM orders ORDER BY id DESC LIMIT 1";
         int lastNumber = 0;
-        String sql = "SELECT id FROM orders WHERE id LIKE ? ORDER BY id DESC LIMIT 1";
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            pstmt.setString(1, pattern);
-            ResultSet rs = pstmt.executeQuery();
+
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
             if (rs.next()) {
                 String lastId = rs.getString("id");
-                String numPart = lastId.substring(lastId.lastIndexOf("-") + 1);
-                lastNumber = Integer.parseInt(numPart);
+                // Извлекаем цифровую часть после последнего дефиса
+                int lastDash = lastId.lastIndexOf("-");
+                if (lastDash >= 0) {
+                    String numPart = lastId.substring(lastDash + 1);
+                    lastNumber = Integer.parseInt(numPart);
+                    System.out.println("Last order number found: " + lastNumber);
+                }
             }
         } catch (SQLException e) {
             System.err.println("Generate ID error: " + e.getMessage());
         }
 
         int newNumber = lastNumber + 1;
-        return String.format("ZAK-%s-%05d", date, newNumber);
+
+        // Защита от переполнения (максимум 9999)
+        if (newNumber > 9999) {
+            newNumber = 1;
+        }
+
+        String newId = String.format("ZAK-%s-%04d", date, newNumber);
+        System.out.println("Generated order ID: " + newId);
+        return newId;
     }
 
     // ==================== CLIENTS ====================
 
     public static List<Client> getAllClients() {
         List<Client> clients = new ArrayList<>();
-        String sql = "SELECT id, name, last_name, phone, car_model, car_number FROM clients ORDER BY id";
+        String sql = "SELECT id, name, last_name, phone, car_model, car_number, last_repair_date FROM clients ORDER BY id";
         try (Statement stmt = connection.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
-                int clientId = rs.getInt("id");
-                String lastRepairDate = getLastRepairDate(clientId);
                 clients.add(new Client(
-                        clientId,
+                        rs.getInt("id"),
                         rs.getString("name"),
                         rs.getString("last_name"),
                         rs.getString("phone"),
                         rs.getString("car_model"),
                         rs.getString("car_number"),
-                        lastRepairDate
+                        rs.getString("last_repair_date")
                 ));
             }
         } catch (SQLException e) {
@@ -189,36 +186,18 @@ public class Database {
         return clients;
     }
 
-    private static String getLastRepairDate(int clientId) {
-        String sql = "SELECT created_date FROM orders WHERE client_id = ? AND status = ? ORDER BY created_date DESC LIMIT 1";
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            pstmt.setInt(1, clientId);
-            pstmt.setString(2, WorkOrder.STATUS_CLOSED);
-            ResultSet rs = pstmt.executeQuery();
-            if (rs.next()) {
-                String date = rs.getString("created_date");
-                if (date != null && date.length() > 10) {
-                    return date.substring(0, 10);
-                }
-                return date;
-            }
-        } catch (SQLException e) {
-            System.err.println("Get last repair date error: " + e.getMessage());
-        }
-        return "";
-    }
-
     public static void addClient(Client client) {
         String normalizedPhone = Validators.cleanPhone(client.getPhone());
         String normalizedCarNumber = Validators.normalizeCarNumber(client.getCarNumber());
 
-        String sql = "INSERT INTO clients (name, last_name, phone, car_model, car_number) VALUES (?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO clients (name, last_name, phone, car_model, car_number, last_repair_date) VALUES (?, ?, ?, ?, ?, ?)";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setString(1, client.getName());
             pstmt.setString(2, client.getLastName());
             pstmt.setString(3, normalizedPhone);
             pstmt.setString(4, client.getCarModel());
             pstmt.setString(5, normalizedCarNumber);
+            pstmt.setString(6, client.getLastRepairDate());
             pstmt.executeUpdate();
         } catch (SQLException e) {
             System.err.println("Add client error: " + e.getMessage());
@@ -229,14 +208,15 @@ public class Database {
         String normalizedPhone = Validators.cleanPhone(client.getPhone());
         String normalizedCarNumber = Validators.normalizeCarNumber(client.getCarNumber());
 
-        String sql = "UPDATE clients SET name = ?, last_name = ?, phone = ?, car_model = ?, car_number = ? WHERE id = ?";
+        String sql = "UPDATE clients SET name = ?, last_name = ?, phone = ?, car_model = ?, car_number = ?, last_repair_date = ? WHERE id = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setString(1, client.getName());
             pstmt.setString(2, client.getLastName());
             pstmt.setString(3, normalizedPhone);
             pstmt.setString(4, client.getCarModel());
             pstmt.setString(5, normalizedCarNumber);
-            pstmt.setInt(6, client.getId());
+            pstmt.setString(6, client.getLastRepairDate());
+            pstmt.setInt(7, client.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
             System.err.println("Update client error: " + e.getMessage());
@@ -254,20 +234,19 @@ public class Database {
     }
 
     public static Client getClientById(int id) {
-        String sql = "SELECT name, last_name, phone, car_model, car_number FROM clients WHERE id = ?";
+        String sql = "SELECT id, name, last_name, phone, car_model, car_number, last_repair_date FROM clients WHERE id = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setInt(1, id);
             ResultSet rs = pstmt.executeQuery();
             if (rs.next()) {
-                String lastRepairDate = getLastRepairDate(id);
                 return new Client(
-                        id,
+                        rs.getInt("id"),
                         rs.getString("name"),
                         rs.getString("last_name"),
                         rs.getString("phone"),
                         rs.getString("car_model"),
                         rs.getString("car_number"),
-                        lastRepairDate
+                        rs.getString("last_repair_date")
                 );
             }
         } catch (SQLException e) {
@@ -296,11 +275,14 @@ public class Database {
 
     public static List<Service> getAllServices() {
         List<Service> services = new ArrayList<>();
-        String sql = "SELECT name, price FROM services ORDER BY name";
+        String sql = "SELECT name, price, duration, part_number FROM services ORDER BY name";
         try (Statement stmt = connection.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
-                services.add(new Service(rs.getString("name"), rs.getDouble("price")));
+                Service service = new Service(rs.getString("name"), rs.getDouble("price"));
+                service.setDuration(rs.getInt("duration"));
+                service.setPartNumber(rs.getString("part_number"));
+                services.add(service);
             }
         } catch (SQLException e) {
             System.err.println("Load services error: " + e.getMessage());
@@ -309,10 +291,12 @@ public class Database {
     }
 
     public static void addService(Service service) {
-        String sql = "INSERT OR REPLACE INTO services (name, price) VALUES (?, ?)";
+        String sql = "INSERT OR REPLACE INTO services (name, price, duration, part_number) VALUES (?, ?, ?, ?)";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setString(1, service.getName());
             pstmt.setDouble(2, service.getPrice());
+            pstmt.setInt(3, service.getDuration());
+            pstmt.setString(4, service.getPartNumber());
             pstmt.executeUpdate();
         } catch (SQLException e) {
             System.err.println("Add service error: " + e.getMessage());
@@ -333,13 +317,13 @@ public class Database {
 
     public static List<SparePart> getAllSpareParts() {
         List<SparePart> parts = new ArrayList<>();
-        String sql = "SELECT id, name, purchase_price, retail_price, stock, part_number, manufacturer, compatible_models, min_stock, location FROM spare_parts ORDER BY name";
+        String sql = "SELECT id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock, location FROM spare_parts ORDER BY name";
         try (Statement stmt = connection.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
                 SparePart part = new SparePart(
                         rs.getInt("id"),
-                        0, // categoryId
+                        0,
                         rs.getString("name"),
                         rs.getString("part_number"),
                         rs.getString("manufacturer"),
@@ -361,9 +345,8 @@ public class Database {
     public static void addSparePart(SparePart part) {
         try {
             if (part.getId() != -1) {
-                // Обновление существующей записи
                 String sql = "UPDATE spare_parts SET name = ?, purchase_price = ?, retail_price = ?, stock = ?, " +
-                      "part_number = ?, manufacturer = ?, compatible_models = ?, min_stock = ?, location = ? WHERE id = ?";
+                        "part_number = ?, manufacturer = ?, compatible_models = ?, min_stock = ?, location = ? WHERE id = ?";
                 try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
                     pstmt.setString(1, part.getName());
                     pstmt.setDouble(2, part.getPurchasePrice());
@@ -378,7 +361,6 @@ public class Database {
                     pstmt.executeUpdate();
                 }
             } else {
-                // Добавление новой записи
                 String sql = "INSERT INTO spare_parts (name, purchase_price, retail_price, stock, part_number, manufacturer, compatible_models, min_stock, location) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
                     pstmt.setString(1, part.getName());
@@ -467,6 +449,8 @@ public class Database {
         } catch (SQLException e) {
             System.err.println("Load orders error: " + e.getMessage());
         }
+
+        System.out.println("Loaded " + orders.size() + " orders from database");
         return orders;
     }
 
@@ -479,6 +463,7 @@ public class Database {
 
         String orderId = generateOrderId();
         order.setId(orderId);
+        System.out.println("Saving order with ID: " + orderId);
 
         String sql = "INSERT INTO orders (id, client_id, status, total, created_date) VALUES (?, ?, ?, ?, datetime('now'))";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
@@ -490,9 +475,10 @@ public class Database {
 
             saveOrderServices(orderId, order);
             saveOrderParts(orderId, order);
-            System.out.println("Order " + orderId + " saved");
+            System.out.println("Order " + orderId + " saved successfully");
         } catch (SQLException e) {
             System.err.println("Add order error: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 

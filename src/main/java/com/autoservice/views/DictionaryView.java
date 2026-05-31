@@ -3,7 +3,7 @@ package com.autoservice.views;
 import com.autoservice.*;
 import com.autoservice.controllers.DictionaryController;
 import javafx.collections.FXCollections;
-import javafx.collections.transformation.FilteredList;
+import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -17,9 +17,9 @@ import javafx.stage.Stage;
 
 public class DictionaryView {
 
-    private static FilteredList<SparePart> filteredSpareParts;
-    private static TextField searchField;
     private static TableView<SparePart> sparePartsTable;
+    private static TextField searchField;
+    private static ObservableList<SparePart> sparePartsList;
 
     public static VBox create() {
         TabPane dictPane = new TabPane();
@@ -47,6 +47,7 @@ public class DictionaryView {
 
     private static VBox createServicesPanel() {
         TableView<Service> table = new TableView<>();
+        table.setStyle("-fx-font-size: 13px;");
 
         TableColumn<Service, String> colName = new TableColumn<>("Услуга");
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
@@ -70,7 +71,6 @@ public class DictionaryView {
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(table, Priority.ALWAYS);
 
-        // Чередование цветов строк
         table.setRowFactory(tv -> new TableRow<Service>() {
             @Override
             protected void updateItem(Service item, boolean empty) {
@@ -80,17 +80,15 @@ public class DictionaryView {
                 } else {
                     if (getIndex() % 2 == 0) {
                         setStyle("-fx-background-color: #e8f4f8; -fx-text-fill: black;");
-                        setPrefHeight(35);
                     } else {
                         setStyle("-fx-background-color: white; -fx-text-fill: black;");
-                        setPrefHeight(35);
                     }
+                    setPrefHeight(35);
                 }
             }
         });
 
-        // Цвет выделения строки
-        table.setStyle("-fx-selection-bar: #3399ff; -fx-selection-bar-text: white; -fx-font-size: 13px;");
+        table.setStyle("-fx-selection-bar: #3498db; -fx-selection-bar-text: white;");
 
         table.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
@@ -103,6 +101,7 @@ public class DictionaryView {
 
         DictionaryController.setServicesTable(table);
 
+        // Форма добавления услуги
         TextField nameField = new TextField();
         nameField.setPromptText("Название услуги");
         nameField.setPrefWidth(200);
@@ -209,10 +208,10 @@ public class DictionaryView {
         btnBox.setAlignment(Pos.CENTER);
 
         Button saveBtn = new Button("Сохранить");
-        saveBtn.setStyle("-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 20;");
+        saveBtn.setStyle("-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 20; -fx-background-radius: 4;");
 
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 20;");
+        cancelBtn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 20; -fx-background-radius: 4;");
 
         btnBox.getChildren().addAll(saveBtn, cancelBtn);
 
@@ -288,7 +287,6 @@ public class DictionaryView {
         sparePartsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(sparePartsTable, Priority.ALWAYS);
 
-        // Чередование цветов строк и цвет выделения
         sparePartsTable.setRowFactory(tv -> new TableRow<SparePart>() {
             @Override
             protected void updateItem(SparePart item, boolean empty) {
@@ -298,25 +296,15 @@ public class DictionaryView {
                 } else {
                     if (getIndex() % 2 == 0) {
                         setStyle("-fx-background-color: #e8f4f8; -fx-text-fill: black;");
-                        setPrefHeight(35);
                     } else {
                         setStyle("-fx-background-color: white; -fx-text-fill: black;");
-                        setPrefHeight(35);
                     }
-                    setOnMouseEntered(e -> setStyle("-fx-background-color: #d0e8f0; -fx-text-fill: black;"));
-                    setOnMouseExited(e -> {
-                        if (getIndex() % 2 == 0) {
-                            setStyle("-fx-background-color: #e8f4f8; -fx-text-fill: black;");
-                        } else {
-                            setStyle("-fx-background-color: white; -fx-text-fill: black;");
-                        }
-                    });
+                    setPrefHeight(35);
                 }
             }
         });
 
-        // Цвет выделения строки
-        sparePartsTable.setStyle("-fx-selection-bar: #3399ff; -fx-selection-bar-text: white;");
+        sparePartsTable.setStyle("-fx-selection-bar: #3498db; -fx-selection-bar-text: white;");
 
         sparePartsTable.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
@@ -327,27 +315,44 @@ public class DictionaryView {
             }
         });
 
-        filteredSpareParts = new FilteredList<>(FXCollections.observableArrayList(DataStore.getSpareParts()), p -> true);
-        sparePartsTable.setItems(filteredSpareParts);
+        sparePartsList = FXCollections.observableArrayList(DataStore.getSpareParts());
+        sparePartsTable.setItems(sparePartsList);
 
-        // Панель поиска
+        // Панель поиска для запчастей
         HBox searchBox = new HBox(10);
         searchBox.setAlignment(Pos.CENTER_LEFT);
         searchBox.setPadding(new Insets(0, 0, 10, 0));
 
-        Label searchLabel = new Label("Поиск:");
-        searchLabel.setStyle("-fx-font-weight: bold;");
+        Label searchLabel = new Label("🔍 Поиск:");
+        searchLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 12px;");
         searchField = new TextField();
         searchField.setPromptText("По названию, артикулу, производителю или модели...");
         searchField.setPrefWidth(450);
-        searchField.setStyle("-fx-padding: 8; -fx-font-size: 13px;");
-        searchField.textProperty().addListener((obs, oldVal, newVal) -> applySparePartFilter(newVal));
+        searchField.setStyle("-fx-padding: 8; -fx-font-size: 13px; -fx-background-radius: 4; -fx-border-radius: 4; -fx-border-color: #e0e0e0;");
 
-        Button clearBtn = new Button("Очистить");
-        clearBtn.setStyle("-fx-background-color: #95a5a6; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 15;");
+        searchField.textProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue == null || newValue.trim().isEmpty()) {
+                sparePartsTable.setItems(sparePartsList);
+            } else {
+                String filter = newValue.toLowerCase().trim();
+                ObservableList<SparePart> filtered = FXCollections.observableArrayList();
+                for (SparePart part : sparePartsList) {
+                    if ((part.getName() != null && part.getName().toLowerCase().contains(filter)) ||
+                            (part.getPartNumber() != null && part.getPartNumber().toLowerCase().contains(filter)) ||
+                            (part.getManufacturer() != null && part.getManufacturer().toLowerCase().contains(filter)) ||
+                            (part.getCompatibleModels() != null && part.getCompatibleModels().toLowerCase().contains(filter))) {
+                        filtered.add(part);
+                    }
+                }
+                sparePartsTable.setItems(filtered);
+            }
+        });
+
+        Button clearBtn = new Button("✖ Очистить");
+        clearBtn.setStyle("-fx-background-color: #95a5a6; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 6 15; -fx-background-radius: 4;");
         clearBtn.setOnAction(e -> {
             searchField.clear();
-            applySparePartFilter("");
+            sparePartsTable.setItems(sparePartsList);
         });
 
         searchBox.getChildren().addAll(searchLabel, searchField, clearBtn);
@@ -356,46 +361,51 @@ public class DictionaryView {
         TextField nameField = new TextField();
         nameField.setPromptText("Наименование");
         nameField.setPrefWidth(180);
-        nameField.setStyle("-fx-padding: 8;");
+        nameField.setStyle("-fx-padding: 8; -fx-font-size: 12px;");
 
         TextField partNumberField = new TextField();
         partNumberField.setPromptText("Артикул");
         partNumberField.setPrefWidth(120);
-        partNumberField.setStyle("-fx-padding: 8;");
+        partNumberField.setStyle("-fx-padding: 8; -fx-font-size: 12px;");
 
         TextField manufacturerField = new TextField();
         manufacturerField.setPromptText("Производитель");
         manufacturerField.setPrefWidth(120);
-        manufacturerField.setStyle("-fx-padding: 8;");
+        manufacturerField.setStyle("-fx-padding: 8; -fx-font-size: 12px;");
 
         TextField compatibleField = new TextField();
         compatibleField.setPromptText("Совместимые модели");
         compatibleField.setPrefWidth(180);
-        compatibleField.setStyle("-fx-padding: 8;");
+        compatibleField.setStyle("-fx-padding: 8; -fx-font-size: 12px;");
 
         TextField purchaseField = new TextField();
         purchaseField.setPromptText("Закупочная");
         purchaseField.setPrefWidth(100);
-        purchaseField.setStyle("-fx-padding: 8;");
+        purchaseField.setStyle("-fx-padding: 8; -fx-font-size: 12px;");
 
         TextField retailField = new TextField();
         retailField.setPromptText("Розничная");
         retailField.setPrefWidth(100);
-        retailField.setStyle("-fx-padding: 8;");
+        retailField.setStyle("-fx-padding: 8; -fx-font-size: 12px;");
 
         TextField stockField = new TextField();
         stockField.setPromptText("Остаток");
         stockField.setPrefWidth(90);
-        stockField.setStyle("-fx-padding: 8;");
+        stockField.setStyle("-fx-padding: 8; -fx-font-size: 12px;");
 
-        Button addBtn = new Button("Добавить");
-        addBtn.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 15;");
+        TextField locationField = new TextField();
+        locationField.setPromptText("Местоположение");
+        locationField.setPrefWidth(120);
+        locationField.setStyle("-fx-padding: 8; -fx-font-size: 12px;");
 
-        Button deleteBtn = new Button("Удалить");
-        deleteBtn.setStyle("-fx-background-color: #f44336; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 15;");
+        Button addBtn = new Button("➕ Добавить");
+        addBtn.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 15; -fx-background-radius: 4;");
+
+        Button deleteBtn = new Button("🗑 Удалить");
+        deleteBtn.setStyle("-fx-background-color: #f44336; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 15; -fx-background-radius: 4;");
 
         HBox formRow = new HBox(10, nameField, partNumberField, manufacturerField, compatibleField,
-                purchaseField, retailField, stockField, addBtn, deleteBtn);
+                purchaseField, retailField, stockField, locationField, addBtn, deleteBtn);
         formRow.setPadding(new Insets(10, 0, 10, 0));
         formRow.setAlignment(Pos.CENTER_LEFT);
 
@@ -408,15 +418,18 @@ public class DictionaryView {
                 double purchase = purchaseField.getText().isEmpty() ? 0 : Double.parseDouble(purchaseField.getText());
                 double retail = Double.parseDouble(retailField.getText());
                 int stock = stockField.getText().isEmpty() ? 0 : Integer.parseInt(stockField.getText());
-                int minStock = 3; // минимальный остаток по умолчанию
+                int minStock = 3;
 
                 SparePart part = new SparePart(nameField.getText(), purchase, retail, stock);
                 part.setPartNumber(partNumberField.getText());
                 part.setManufacturer(manufacturerField.getText());
                 part.setCompatibleModels(compatibleField.getText());
                 part.setMinStock(minStock);
+                part.setLocation(locationField.getText());
 
                 DictionaryController.addSparePart(part);
+
+                sparePartsList.setAll(DataStore.getSpareParts());
                 nameField.clear();
                 partNumberField.clear();
                 manufacturerField.clear();
@@ -424,13 +437,11 @@ public class DictionaryView {
                 purchaseField.clear();
                 retailField.clear();
                 stockField.clear();
+                locationField.clear();
 
-                // Обновляем таблицу
-                filteredSpareParts = new FilteredList<>(FXCollections.observableArrayList(DataStore.getSpareParts()), p -> true);
-                sparePartsTable.setItems(filteredSpareParts);
-                applySparePartFilter(searchField.getText());
-
-                showAlert("Запчасть добавлена", Alert.AlertType.INFORMATION);
+                if (searchField.getText() != null && !searchField.getText().isEmpty()) {
+                    searchField.setText(searchField.getText());
+                }
             } catch (NumberFormatException ex) {
                 showAlert("Цены и остаток должны быть числами");
             }
@@ -440,9 +451,10 @@ public class DictionaryView {
             SparePart selected = sparePartsTable.getSelectionModel().getSelectedItem();
             if (selected != null) {
                 DictionaryController.removeSparePart(selected);
-                filteredSpareParts = new FilteredList<>(FXCollections.observableArrayList(DataStore.getSpareParts()), p -> true);
-                sparePartsTable.setItems(filteredSpareParts);
-                applySparePartFilter(searchField.getText());
+                sparePartsList.setAll(DataStore.getSpareParts());
+                if (searchField.getText() != null && !searchField.getText().isEmpty()) {
+                    searchField.setText(searchField.getText());
+                }
             } else {
                 showAlert("Выберите запчасть");
             }
@@ -461,7 +473,7 @@ public class DictionaryView {
         Stage stage = new Stage();
         stage.setTitle("Редактирование запчасти");
         stage.setMinWidth(600);
-        stage.setMinHeight(500);
+        stage.setMinHeight(550);
         stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
 
         VBox root = new VBox(15);
@@ -525,10 +537,10 @@ public class DictionaryView {
         btnBox.setAlignment(Pos.CENTER);
 
         Button saveBtn = new Button("Сохранить");
-        saveBtn.setStyle("-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 20;");
+        saveBtn.setStyle("-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 20; -fx-background-radius: 4;");
 
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 20;");
+        cancelBtn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 20; -fx-background-radius: 4;");
 
         btnBox.getChildren().addAll(saveBtn, cancelBtn);
 
@@ -561,9 +573,10 @@ public class DictionaryView {
                 DictionaryController.addSparePart(part);
                 stage.close();
 
-                filteredSpareParts = new FilteredList<>(FXCollections.observableArrayList(DataStore.getSpareParts()), p -> true);
-                sparePartsTable.setItems(filteredSpareParts);
-                applySparePartFilter(searchField.getText());
+                sparePartsList.setAll(DataStore.getSpareParts());
+                if (searchField != null && searchField.getText() != null && !searchField.getText().isEmpty()) {
+                    searchField.setText(searchField.getText());
+                }
             } catch (NumberFormatException ex) {
                 showAlert("Цены и остаток должны быть числами");
             }
@@ -574,23 +587,9 @@ public class DictionaryView {
         stage.showAndWait();
     }
 
-    private static void applySparePartFilter(String filter) {
-        if (filter == null || filter.trim().isEmpty()) {
-            filteredSpareParts.setPredicate(p -> true);
-        } else {
-            String lowerFilter = filter.toLowerCase().trim();
-            filteredSpareParts.setPredicate(part ->
-                    (part.getName() != null && part.getName().toLowerCase().contains(lowerFilter)) ||
-                            (part.getPartNumber() != null && part.getPartNumber().toLowerCase().contains(lowerFilter)) ||
-                            (part.getManufacturer() != null && part.getManufacturer().toLowerCase().contains(lowerFilter)) ||
-                            (part.getCompatibleModels() != null && part.getCompatibleModels().toLowerCase().contains(lowerFilter))
-            );
-        }
-    }
-
     private static VBox createStockPanel() {
         TableView<SparePart> table = new TableView<>();
-        table.setStyle("-fx-font-size: 12px;");
+        table.setStyle("-fx-font-size: 13px;");
 
         TableColumn<SparePart, String> colName = new TableColumn<>("Наименование");
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
@@ -619,7 +618,7 @@ public class DictionaryView {
         colAction.setCellFactory(col -> new TableCell<SparePart, Void>() {
             private final Button addBtn = new Button("+ Приход");
             {
-                addBtn.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 5 10;");
+                addBtn.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 5 10; -fx-background-radius: 4;");
                 addBtn.setOnAction(e -> {
                     SparePart part = getTableView().getItems().get(getIndex());
                     DictionaryController.showStockIncome(part);
@@ -636,7 +635,6 @@ public class DictionaryView {
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(table, Priority.ALWAYS);
 
-        // Чередование цветов строк
         table.setRowFactory(tv -> new TableRow<SparePart>() {
             @Override
             protected void updateItem(SparePart item, boolean empty) {
@@ -652,44 +650,65 @@ public class DictionaryView {
                         setStyle("-fx-background-color: white; -fx-text-fill: black;");
                     }
                     setPrefHeight(35);
-                    setOnMouseEntered(e -> {
-                        if (item.getStock() <= item.getMinStock()) {
-                            setStyle("-fx-background-color: #ff9999; -fx-text-fill: #c0392b;");
-                        } else {
-                            setStyle("-fx-background-color: #d0e8f0; -fx-text-fill: black;");
-                        }
-                    });
-                    setOnMouseExited(e -> {
-                        if (item.getStock() <= item.getMinStock()) {
-                            setStyle("-fx-background-color: #ffcccc; -fx-text-fill: #c0392b;");
-                        } else if (getIndex() % 2 == 0) {
-                            setStyle("-fx-background-color: #e8f4f8; -fx-text-fill: black;");
-                        } else {
-                            setStyle("-fx-background-color: white; -fx-text-fill: black;");
-                        }
-                    });
                 }
             }
         });
 
         table.setStyle("-fx-selection-bar: #3498db; -fx-selection-bar-text: white;");
 
+        // Загружаем данные для склада
+        ObservableList<SparePart> stockList = FXCollections.observableArrayList(DataStore.getSpareParts());
+        table.setItems(stockList);
+
+        // Панель поиска для склада
+        HBox searchBox = new HBox(10);
+        searchBox.setAlignment(Pos.CENTER_LEFT);
+        searchBox.setPadding(new Insets(0, 0, 10, 0));
+
+        Label searchLabel = new Label("🔍 Поиск:");
+        searchLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 12px;");
+        TextField stockSearchField = new TextField();
+        stockSearchField.setPromptText("По наименованию, артикулу или местоположению...");
+        stockSearchField.setPrefWidth(450);
+        stockSearchField.setStyle("-fx-padding: 8; -fx-font-size: 13px; -fx-background-radius: 4; -fx-border-radius: 4; -fx-border-color: #e0e0e0;");
+
+        stockSearchField.textProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue == null || newValue.trim().isEmpty()) {
+                table.setItems(stockList);
+            } else {
+                String filter = newValue.toLowerCase().trim();
+                ObservableList<SparePart> filtered = FXCollections.observableArrayList();
+                for (SparePart part : stockList) {
+                    if ((part.getName() != null && part.getName().toLowerCase().contains(filter)) ||
+                            (part.getPartNumber() != null && part.getPartNumber().toLowerCase().contains(filter)) ||
+                            (part.getLocation() != null && part.getLocation().toLowerCase().contains(filter))) {
+                        filtered.add(part);
+                    }
+                }
+                table.setItems(filtered);
+            }
+        });
+
+        Button clearBtn = new Button("✖ Очистить");
+        clearBtn.setStyle("-fx-background-color: #95a5a6; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 6 15; -fx-background-radius: 4;");
+        clearBtn.setOnAction(e -> {
+            stockSearchField.clear();
+            table.setItems(stockList);
+        });
+
+        searchBox.getChildren().addAll(searchLabel, stockSearchField, clearBtn);
+
         DictionaryController.setStockTable(table);
 
         VBox vbox = new VBox(5);
         vbox.setPadding(new Insets(10));
-        vbox.getChildren().add(table);
+        vbox.getChildren().addAll(searchBox, table);
         VBox.setVgrow(table, Priority.ALWAYS);
         return vbox;
     }
 
     private static void showAlert(String msg) {
         Alert alert = new Alert(Alert.AlertType.WARNING, msg, ButtonType.OK);
-        alert.showAndWait();
-    }
-
-    private static void showAlert(String msg, Alert.AlertType type) {
-        Alert alert = new Alert(type, msg, ButtonType.OK);
         alert.showAndWait();
     }
 }

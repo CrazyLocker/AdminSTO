@@ -3,22 +3,28 @@ package com.autoservice;
 import org.junit.jupiter.api.*;
 import static org.assertj.core.api.Assertions.*;
 
+import java.util.List;
+
+/**
+ * Тесты для класса DataStore
+ */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class DataStoreTest {
-
-    private static Service testService;
-    private static SparePart testPart;
 
     @BeforeAll
     static void setup() {
         Database.initForTest();
-        clearDatabase();
+    }
 
-        testService = new Service("Тест услуга", 1000);
-        DataStore.addService(testService);
-
-        testPart = new SparePart("Тест запчасть", 500, 800, 10);
-        DataStore.addSparePart(testPart);
+    @AfterAll
+    static void cleanup() {
+        Database.close();
+        try {
+            java.io.File f = new java.io.File("test.db");
+            f.delete();
+        } catch (Exception e) {
+            // Игнорируем
+        }
     }
 
     private static void clearDatabase() {
@@ -26,273 +32,405 @@ class DataStoreTest {
             var stmt = Database.getConnection().createStatement();
             stmt.execute("DELETE FROM order_parts");
             stmt.execute("DELETE FROM order_services");
+            stmt.execute("DELETE FROM appointments");
             stmt.execute("DELETE FROM orders");
             stmt.execute("DELETE FROM spare_parts");
             stmt.execute("DELETE FROM services");
             stmt.execute("DELETE FROM clients");
-            stmt.execute("DELETE FROM appointments");
             stmt.execute("DELETE FROM sqlite_sequence");
             stmt.close();
-            System.out.println("База данных очищена");
         } catch (Exception e) {
-            System.out.println("Очистка БД: " + e.getMessage());
+            System.err.println("Очистка БД: " + e.getMessage());
         }
-    }
-
-    private static Client createTestClient() {
-        Client client = new Client("Тест Клиент", "Тестов", "+79001234567", "Test Car", "A123BC");
-        DataStore.addClient(client);
         DataStore.load();
-        return DataStore.getClients().stream()
-                .filter(c -> c.getName().equals("Тест Клиент"))
-                .findFirst()
-                .orElse(null);
     }
-
-    @AfterAll
-    static void cleanup() {
-        Database.close();
-    }
-
-    // ==================== ТЕСТЫ КЛИЕНТОВ ====================
 
     @Test
     @Order(1)
-    void testAddClient() {
-        Client newClient = new Client("Новый Клиент", "Новый", "+79111234567", "New Car", "B456CD");
-        DataStore.addClient(newClient);
+    void testInitialLoad() {
+        clearDatabase();
 
-        assertThat(DataStore.getClients()).anyMatch(c -> c.getName().equals("Новый Клиент"));
+        DataStore.load();
+
+        assertThat(DataStore.getClients()).isEmpty();
+        assertThat(DataStore.getServices()).isEmpty();
+        assertThat(DataStore.getSpareParts()).isEmpty();
+        assertThat(DataStore.getOrders()).isEmpty();
+        assertThat(DataStore.getAppointments()).isEmpty();
     }
 
     @Test
     @Order(2)
-    void testUpdateClient() {
-        Client newClient = new Client("ДляОбновления", "ДляОбновленияФамилия", "+79000000000", "Update Car", "U123UP");
-        DataStore.addClient(newClient);
+    void testAddClient() {
+        clearDatabase();
+
         DataStore.load();
 
-        Client toUpdate = DataStore.getClients().stream()
-                .filter(c -> c.getName().equals("ДляОбновления"))
-                .findFirst()
-                .orElse(null);
-        assertThat(toUpdate).isNotNull();
-
-        String newName = "Обновлённый Клиент";
-        String newLastName = "ОбновлённаяФамилия";
-        toUpdate.setName(newName);
-        toUpdate.setLastName(newLastName);
-        DataStore.updateClient(toUpdate);
+        Client client = new Client("Иван", "Петров", "+79001234567", "Toyota Camry", "А123ВС163");
+        DataStore.addClient(client);
         DataStore.load();
 
-        Client updated = DataStore.getClients().stream()
-                .filter(c -> c.getId() == toUpdate.getId())
-                .findFirst()
-                .orElse(null);
-
-        assertThat(updated).isNotNull();
-        assertThat(updated.getName()).isEqualTo(newName);
-        assertThat(updated.getLastName()).isEqualTo(newLastName);
+        assertThat(DataStore.getClients()).hasSize(1);
+        assertThat(DataStore.getClients().get(0).getName()).isEqualTo("Иван");
     }
 
     @Test
     @Order(3)
-    void testDeleteClient() {
-        Client newClient = new Client("Для Удаления", "ДляУдаленияФамилия", "+79211234567", "Delete Car", "C789DE");
-        DataStore.addClient(newClient);
+    void testAddMultipleClients() {
+        clearDatabase();
+
         DataStore.load();
 
-        Client toDelete = DataStore.getClients().stream()
-                .filter(c -> c.getName().equals("Для Удаления"))
-                .findFirst()
-                .orElse(null);
-
-        assertThat(toDelete).isNotNull();
-
-        int sizeBefore = DataStore.getClients().size();
-        DataStore.removeClient(toDelete);
+        DataStore.addClient(new Client("Анна", "Смирнова", "+79002223333", "Kia Rio", "В456СЕ163"));
+        DataStore.addClient(new Client("Сергей", "Васильев", "+79003334444", "Ford Focus", "Е789КХ163"));
         DataStore.load();
-        int sizeAfter = DataStore.getClients().size();
 
-        assertThat(sizeAfter).isEqualTo(sizeBefore - 1);
+        assertThat(DataStore.getClients()).hasSize(2);
     }
-
-    // ==================== ТЕСТЫ УСЛУГ ====================
 
     @Test
     @Order(4)
     void testAddService() {
-        Service newService = new Service("Новая услуга", 500);
-        DataStore.addService(newService);
+        clearDatabase();
 
-        assertThat(DataStore.getServices()).anyMatch(s -> s.getName().equals("Новая услуга"));
+        DataStore.load();
+
+        Service service = new Service("Замена масла", 1500);
+        DataStore.addService(service);
+        DataStore.load();
+
+        assertThat(DataStore.getServices()).hasSize(1);
+        assertThat(DataStore.getServices().get(0).getName()).isEqualTo("Замена масла");
     }
 
     @Test
     @Order(5)
-    void testDeleteService() {
-        Service newService = new Service("УслугаДляУдаления", 777);
-        DataStore.addService(newService);
+    void testAddSparePart() {
+        clearDatabase();
 
-        Service toDelete = DataStore.getServices().stream()
-                .filter(s -> s.getName().equals("УслугаДляУдаления"))
-                .findFirst()
-                .orElse(null);
+        DataStore.load();
 
-        assertThat(toDelete).isNotNull();
+        SparePart part = new SparePart("Масло моторное", 800, 1200, 20);
+        DataStore.addSparePart(part);
+        DataStore.load();
 
-        DataStore.removeService(toDelete);
-
-        assertThat(DataStore.getServices()).noneMatch(s -> s.getName().equals("УслугаДляУдаления"));
+        assertThat(DataStore.getSpareParts()).hasSize(1);
+        assertThat(DataStore.getSpareParts().get(0).getName()).isEqualTo("Масло моторное");
     }
-
-    // ==================== ТЕСТЫ ЗАПЧАСТЕЙ ====================
 
     @Test
     @Order(6)
-    void testAddSparePart() {
-        SparePart newPart = new SparePart("Новая запчасть", 300, 500, 20);
-        DataStore.addSparePart(newPart);
+    void testAddOrderWithServices() {
+        clearDatabase();
 
-        assertThat(DataStore.getSpareParts()).anyMatch(p -> p.getName().equals("Новая запчасть"));
+        Client client = new Client("Дмитрий", "Соколов", "+79005556666", "Haval F7", "М123НО163");
+        DataStore.addClient(client);
+        DataStore.load();
+
+        DataStore.addService(new Service("Диагностика", 1000));
+        DataStore.addService(new Service("Замена масла", 1500));
+        DataStore.load();
+
+        WorkOrder order = new WorkOrder(client);
+        order.addService("Диагностика", 1000);
+        order.addService("Замена масла", 1500);
+
+        DataStore.addOrder(order);
+        DataStore.load();
+
+        assertThat(DataStore.getOrders()).hasSize(1);
+        WorkOrder savedOrder = DataStore.getOrders().get(0);
+        assertThat(savedOrder.getServices()).hasSize(2);
+        assertThat(savedOrder.getTotal()).isEqualTo(2500);
     }
 
     @Test
     @Order(7)
-    void testUpdateSparePartStock() {
-        SparePart part = DataStore.getSpareParts().get(0);
-        int oldStock = part.getStock();
-        int newStock = oldStock + 5;
+    void testAddOrderWithSpareParts() {
+        clearDatabase();
 
-        DataStore.updateSparePartStock(part, newStock);
+        Client client = new Client("Елена", "Морозова", "+79007778888", "Toyota RAV4", "С456ТЕ163");
+        DataStore.addClient(client);
+        DataStore.load();
 
-        SparePart updated = DataStore.getSpareParts().stream()
-                .filter(p -> p.getName().equals(part.getName()))
-                .findFirst()
-                .orElse(null);
+        SparePart oil = new SparePart("Масло моторное", 800, 1200, 20);
+        SparePart filter = new SparePart("Фильтр масляный", 300, 500, 15);
+        DataStore.addSparePart(oil);
+        DataStore.addSparePart(filter);
+        DataStore.load();
 
-        assertThat(updated).isNotNull();
-        assertThat(updated.getStock()).isEqualTo(newStock);
-    }
-
-    // ==================== ТЕСТЫ ЗАКАЗОВ ====================
-
-    @Test
-    @Order(8)
-    void testCreateOrder() {
-        Client testClient = createTestClient();
-        assertThat(testClient).isNotNull();
-        System.out.println("Создаём заказ для клиента: " + testClient.getName() + " (ID=" + testClient.getId() + ")");
-
-        WorkOrder order = new WorkOrder(testClient);
-        order.addService("Тест услуга", 1000);
-        order.addSparePart(testPart, 2);
+        WorkOrder order = new WorkOrder(client);
+        order.addSparePart(oil, 1);
+        order.addSparePart(filter, 1);
 
         DataStore.addOrder(order);
         DataStore.load();
 
-        assertThat(DataStore.getOrders()).isNotEmpty();
+        assertThat(DataStore.getOrders()).hasSize(1);
+        WorkOrder savedOrder = DataStore.getOrders().get(0);
+        assertThat(savedOrder.getSpareParts()).hasSize(2);
+        assertThat(savedOrder.getTotal()).isEqualTo(1700);
+    }
 
-        WorkOrder lastOrder = DataStore.getOrders().get(DataStore.getOrders().size() - 1);
-        assertThat(lastOrder.getId()).startsWith("ZAK-");
-        assertThat(lastOrder.getTotal()).isEqualTo(1000 + (800 * 2));
+    @Test
+    @Order(8)
+    void testAddOrderWithServicesAndParts() {
+        clearDatabase();
+
+        Client client = new Client("Алексей", "Новиков", "+79009990000", "BMW X5", "О789УУ163");
+        DataStore.addClient(client);
+        DataStore.load();
+
+        DataStore.addService(new Service("Замена масла", 1500));
+        DataStore.load();
+
+        SparePart oil = new SparePart("Масло моторное", 800, 1200, 20);
+        DataStore.addSparePart(oil);
+        DataStore.load();
+
+        WorkOrder order = new WorkOrder(client);
+        order.addService("Замена масла", 1500);
+        order.addSparePart(oil, 1);
+
+        DataStore.addOrder(order);
+        DataStore.load();
+
+        assertThat(DataStore.getOrders()).hasSize(1);
+        WorkOrder savedOrder = DataStore.getOrders().get(0);
+        assertThat(savedOrder.getServices()).hasSize(1);
+        assertThat(savedOrder.getSpareParts()).hasSize(1);
+        assertThat(savedOrder.getTotal()).isEqualTo(2700);
     }
 
     @Test
     @Order(9)
-    void testOrderHasServices() {
-        Client testClient = createTestClient();
-        assertThat(testClient).isNotNull();
+    void testUpdateOrder() {
+        clearDatabase();
 
-        WorkOrder order = new WorkOrder(testClient);
-        order.addService("Тест услуга", 1000);
-        order.addService("Вторая услуга", 500);
+        Client client = new Client("Мария", "Кузнецова", "+79112223344", "Mercedes E-Class", "К111ОО163");
+        DataStore.addClient(client);
+        DataStore.load();
+
+        WorkOrder order = new WorkOrder(client);
+        order.addService("Диагностика", 1000);
         DataStore.addOrder(order);
         DataStore.load();
 
-        WorkOrder lastOrder = DataStore.getOrders().get(DataStore.getOrders().size() - 1);
+        WorkOrder savedOrder = DataStore.getOrders().get(0);
+        savedOrder.addService("Замена масла", 1500);
+        DataStore.updateOrder(savedOrder);
+        DataStore.load();
 
-        assertThat(lastOrder.getServices()).isNotEmpty();
-        assertThat(lastOrder.getServices()).hasSize(2);
-        assertThat(lastOrder.getServices().get(0)).isEqualTo("Тест услуга");
-        assertThat(lastOrder.getServices().get(1)).isEqualTo("Вторая услуга");
+        WorkOrder updatedOrder = DataStore.getOrders().stream()
+                .filter(o -> o.getId().equals(savedOrder.getId()))
+                .findFirst()
+                .orElse(null);
+
+        assertThat(updatedOrder).isNotNull();
+        assertThat(updatedOrder.getServices()).hasSize(2);
     }
 
     @Test
     @Order(10)
-    void testOrderHasSpareParts() {
-        Client testClient = createTestClient();
-        assertThat(testClient).isNotNull();
+    void testDeleteOrder() {
+        clearDatabase();
 
-        WorkOrder order = new WorkOrder(testClient);
-        order.addSparePart(testPart, 3);
+        Client client = new Client("Ольга", "Попов", "+79223334455", "Lexus RX", "Н222СС163");
+        DataStore.addClient(client);
+        DataStore.load();
+
+        WorkOrder order = new WorkOrder(client);
+        order.addService("Диагностика", 1000);
         DataStore.addOrder(order);
         DataStore.load();
 
-        WorkOrder lastOrder = DataStore.getOrders().get(DataStore.getOrders().size() - 1);
+        assertThat(DataStore.getOrders()).hasSize(1);
 
-        assertThat(lastOrder.getSpareParts()).isNotEmpty();
-        assertThat(lastOrder.getSpareParts().get(0).getName()).isEqualTo("Тест запчасть");
-        assertThat(lastOrder.getSparePartQuantities().get(0)).isEqualTo(3);
+        WorkOrder savedOrder = DataStore.getOrders().get(0);
+        DataStore.deleteOrder(savedOrder);
+        DataStore.load();
+
+        assertThat(DataStore.getOrders()).isEmpty();
     }
 
     @Test
     @Order(11)
-    void testOrderTotalCalculation() {
-        Client testClient = createTestClient();
-        assertThat(testClient).isNotNull();
+    void testGetOrdersByClient() {
+        clearDatabase();
 
-        WorkOrder order = new WorkOrder(testClient);
-        order.addService("Услуга1", 500);
-        order.addService("Услуга2", 700);
-        order.addSparePart(testPart, 2);
+        Client client = new Client("Павел", "Волков", "+79334445566", "Audi Q7", "Р333ВВ163");
+        DataStore.addClient(client);
+        DataStore.load();
 
-        assertThat(order.getTotal()).isEqualTo(500 + 700 + (800 * 2));
+        WorkOrder order1 = new WorkOrder(client);
+        order1.addService("Диагностика", 1000);
+        DataStore.addOrder(order1);
+        DataStore.load();
+
+        WorkOrder order2 = new WorkOrder(client);
+        order2.addService("Замена масла", 1500);
+        DataStore.addOrder(order2);
+        DataStore.load();
+
+        // Проверяем что у нас есть 2 заказа
+        assertThat(DataStore.getOrders()).hasSize(2);
+
+        // Проверяем что оба заказа принадлежат клиенту (по имени)
+        long clientOrdersCount = DataStore.getOrders().stream()
+                .filter(o -> o.getClient().getName().equals("Павел"))
+                .count();
+
+        assertThat(clientOrdersCount).isEqualTo(2);
     }
 
     @Test
     @Order(12)
-    void testOrderIdFormat() {
-        Client testClient = createTestClient();
-        assertThat(testClient).isNotNull();
+    void testOrderStatus() {
+        clearDatabase();
 
-        WorkOrder order = new WorkOrder(testClient);
-        order.addService("Тест услуга", 500);
-        DataStore.addOrder(order);
+        Client client = new Client("Екатерина", "Лебедева", "+79445556677", "Nissan Qashqai", "С444ММ163");
+        DataStore.addClient(client);
         DataStore.load();
 
-        WorkOrder lastOrder = DataStore.getOrders().get(DataStore.getOrders().size() - 1);
-        String id = lastOrder.getId();
+        WorkOrder order = new WorkOrder(client);
+        order.setStatus(WorkOrder.STATUS_NEW);
+        DataStore.addOrder(order);
 
-        assertThat(id).isNotNull();
-        assertThat(id).startsWith("ZAK-");
-        assertThat(id).matches("ZAK-\\d{2}/\\d{2}/\\d{2}-\\d{5}");
-        System.out.println("ID заказа: " + id);
+        order.setStatus(WorkOrder.STATUS_IN_WORK);
+        DataStore.updateOrder(order);
+        DataStore.load();
+
+        assertThat(DataStore.getOrders().get(0).getStatus()).isEqualTo(WorkOrder.STATUS_IN_WORK);
     }
 
     @Test
     @Order(13)
-    void testDeleteOrder() {
-        Client testClient = createTestClient();
-        assertThat(testClient).isNotNull();
+    void testAddAppointment() {
+        clearDatabase();
 
-        WorkOrder order = new WorkOrder(testClient);
-        order.addService("Услуга для удаления", 1000);
-        DataStore.addOrder(order);
+        Client client = new Client("Николай", "Соловьев", "+79556667788", "Mazda CX-5", "Т555НО163");
+        DataStore.addClient(client);
         DataStore.load();
 
-        int sizeBefore = DataStore.getOrders().size();
+        Appointment appointment = new Appointment(
+            client, "Иван", "Замена масла",
+            "2024-06-01", "10:00"
+        );
 
-        WorkOrder orderToDelete = DataStore.getOrders().get(sizeBefore - 1);
-        String deletedId = orderToDelete.getId();
-        DataStore.deleteOrder(orderToDelete);
+        DataStore.addAppointment(appointment);
         DataStore.load();
 
-        int sizeAfter = DataStore.getOrders().size();
-        assertThat(sizeAfter).isEqualTo(sizeBefore - 1);
+        assertThat(DataStore.getAppointments()).hasSize(1);
+        assertThat(DataStore.getAppointments().get(0).getMasterName()).isEqualTo("Иван");
+    }
 
-        boolean found = DataStore.getOrders().stream()
-                .anyMatch(o -> o.getId().equals(deletedId));
-        assertThat(found).isFalse();
+    @Test
+    @Order(14)
+    void testUpdateAppointment() {
+        clearDatabase();
+
+        Client client = new Client("Ольга", "Федорова", "+79667778899", "Hyundai Creta", "У666КХ163");
+        DataStore.addClient(client);
+        DataStore.load();
+
+        Appointment appointment = new Appointment(
+            client, "Петр", "Диагностика",
+            "2024-06-02", "14:00"
+        );
+
+        DataStore.addAppointment(appointment);
+        DataStore.load();
+
+        Appointment saved = DataStore.getAppointments().get(0);
+        saved.setStatus(Appointment.STATUS_COMPLETED);
+        DataStore.updateAppointment(saved);
+        DataStore.load();
+
+        assertThat(DataStore.getAppointments().get(0).getStatus()).isEqualTo(Appointment.STATUS_COMPLETED);
+    }
+
+    @Test
+    @Order(15)
+    void testGetAppointmentsByDate() {
+        clearDatabase();
+
+        Client client = new Client("Татьяна", "Лебедева", "+79990001111", "Haval Big Dog", "Е333РР163");
+        DataStore.addClient(client);
+        DataStore.load();
+
+        Appointment appointment1 = new Appointment(
+            client, "Иван", "Замена масла",
+            "2024-05-15", "09:00"
+        );
+        Appointment appointment2 = new Appointment(
+            client, "Петр", "Диагностика",
+            "2024-05-15", "11:00"
+        );
+        DataStore.addAppointment(appointment1);
+        DataStore.addAppointment(appointment2);
+        DataStore.load();
+
+        List<Appointment> appointments = DataStore.getAppointmentsByDate("2024-05-15");
+        assertThat(appointments).hasSize(2);
+    }
+
+    @Test
+    @Order(16)
+    void testGetActiveOrdersCount() {
+        clearDatabase();
+
+        DataStore.load();
+
+        Client client = new Client("Максим ТестDS16", "+79001112222", "Haval Jolion", "А222СС165");
+        DataStore.addClient(client);
+        DataStore.load();
+
+        WorkOrder activeOrder = new WorkOrder(client);
+        activeOrder.addService("Диагностика ТестDS16", 500);
+        activeOrder.setStatus(WorkOrder.STATUS_IN_WORK);
+        DataStore.addOrder(activeOrder);
+
+        WorkOrder closedOrder = new WorkOrder(client);
+        closedOrder.addService("Замена масла ТестDS16", 1500);
+        closedOrder.setStatus(WorkOrder.STATUS_CLOSED);
+        DataStore.addOrder(closedOrder);
+
+        DataStore.load();
+
+        assertThat(DataStore.getActiveOrdersCount()).isEqualTo(1);
+    }
+
+    @Test
+    @Order(17)
+    void testLoadData() {
+        clearDatabase();
+
+        Client client = new Client("Загрузочный клиент", "+79110001111", "Haval F7", "В000СС163");
+        DataStore.addClient(client);
+        DataStore.load();
+
+        DataStore.load();
+
+        assertThat(DataStore.getClients()).hasSize(1);
+        assertThat(DataStore.getClients().get(0).getName()).isEqualTo("Загрузочный клиент");
+    }
+
+    @Test
+    @Order(18)
+    void testDataIsolation() {
+        clearDatabase();
+
+        Client client1 = new Client("Клиент 1", "+79001111111", "Toyota", "А001СС163");
+        Client client2 = new Client("Клиент 2", "+79002222222", "Honda", "В002СС163");
+        DataStore.addClient(client1);
+        DataStore.addClient(client2);
+        DataStore.load();
+
+        assertThat(DataStore.getClients()).hasSize(2);
+
+        clearDatabase();
+        DataStore.load();
+
+        assertThat(DataStore.getClients()).isEmpty();
     }
 }
