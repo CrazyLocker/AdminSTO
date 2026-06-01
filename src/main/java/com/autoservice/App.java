@@ -62,6 +62,8 @@ public class App extends Application {
         com.autoservice.controllers.ClientController.refreshTable();
         com.autoservice.controllers.OrderController.refreshTable();
         DictionaryController.refreshAll();
+        // Обновляем дашборд
+        DashboardView.refreshAll();
     }
 
     public static void main(String[] args) {

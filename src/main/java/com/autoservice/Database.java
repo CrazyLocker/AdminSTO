@@ -416,12 +416,18 @@ public class Database {
                 int clientId = rs.getInt("client_id");
                 String status = rs.getString("status");
                 double total = rs.getDouble("total");
+                String createdDate = rs.getString("created_date");  // ЭТО СТРОКА ВАЖНА!
 
                 Client client = getClientById(clientId);
-                if (client == null) continue;
+                if (client == null) {
+                    System.err.println("Client not found for order " + orderId);
+                    continue;
+                }
 
-                WorkOrder order = new WorkOrder(orderId, client, status, total);
+                // Используем конструктор с createdDate
+                WorkOrder order = new WorkOrder(orderId, client, status, total, createdDate);
 
+                // Загружаем услуги
                 String servicesSql = "SELECT service_name, price FROM order_services WHERE order_id = ?";
                 try (PreparedStatement pstmt = connection.prepareStatement(servicesSql)) {
                     pstmt.setString(1, orderId);
@@ -431,6 +437,7 @@ public class Database {
                     }
                 }
 
+                // Загружаем запчасти
                 String partsSql = "SELECT part_name, price, quantity FROM order_parts WHERE order_id = ?";
                 try (PreparedStatement pstmt = connection.prepareStatement(partsSql)) {
                     pstmt.setString(1, orderId);
@@ -445,12 +452,14 @@ public class Database {
                 }
 
                 orders.add(order);
+                System.out.println("Loaded order " + orderId + " with date " + createdDate);
             }
         } catch (SQLException e) {
             System.err.println("Load orders error: " + e.getMessage());
+            e.printStackTrace();
         }
 
-        System.out.println("Loaded " + orders.size() + " orders from database");
+        System.out.println("Total orders loaded: " + orders.size());
         return orders;
     }
 
