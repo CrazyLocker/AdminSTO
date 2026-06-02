@@ -1,10 +1,14 @@
 package com.autoservice.controllers;
 
-import com.autoservice.*;
+import com.autoservice.Appointment;
+import com.autoservice.DataStore;
+import com.autoservice.SparePart;
+import com.autoservice.WorkOrder;
 import com.autoservice.dialogs.CreateOrderDialog;
 import com.autoservice.dialogs.EditOrderDialog;
 import com.autoservice.dialogs.OrderDetailsDialog;
 import com.autoservice.views.AppointmentView;
+import com.autoservice.views.DashboardView;
 import javafx.collections.FXCollections;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
@@ -31,6 +35,7 @@ public class OrderController {
             return;
         }
         CreateOrderDialog.show();
+        DashboardView.refresh();
     }
 
     public static void editOrder(WorkOrder order) {

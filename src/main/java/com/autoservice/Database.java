@@ -32,86 +32,86 @@ public class Database {
 
     private static void createTables() throws SQLException {
         String createClients = """
-            CREATE TABLE IF NOT EXISTS clients (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                last_name TEXT DEFAULT '',
-                phone TEXT NOT NULL,
-                car_model TEXT NOT NULL,
-                car_number TEXT NOT NULL,
-                last_repair_date TEXT DEFAULT ''
-            )
-        """;
+                    CREATE TABLE IF NOT EXISTS clients (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL,
+                        last_name TEXT DEFAULT '',
+                        phone TEXT NOT NULL,
+                        car_model TEXT NOT NULL,
+                        car_number TEXT NOT NULL,
+                        last_repair_date TEXT DEFAULT ''
+                    )
+                """;
 
         String createServices = """
-            CREATE TABLE IF NOT EXISTS services (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL UNIQUE,
-                price REAL NOT NULL,
-                duration INTEGER DEFAULT 60,
-                part_number TEXT DEFAULT ''
-            )
-        """;
+                    CREATE TABLE IF NOT EXISTS services (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL UNIQUE,
+                        price REAL NOT NULL,
+                        duration INTEGER DEFAULT 60,
+                        part_number TEXT DEFAULT ''
+                    )
+                """;
 
         String createSpareParts = """
-            CREATE TABLE IF NOT EXISTS spare_parts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL UNIQUE,
-                part_number TEXT DEFAULT '',
-                manufacturer TEXT DEFAULT '',
-                compatible_models TEXT DEFAULT '',
-                purchase_price REAL,
-                retail_price REAL NOT NULL,
-                stock INTEGER DEFAULT 0,
-                min_stock INTEGER DEFAULT 0,
-                location TEXT DEFAULT ''
-            )
-        """;
+                    CREATE TABLE IF NOT EXISTS spare_parts (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL UNIQUE,
+                        part_number TEXT DEFAULT '',
+                        manufacturer TEXT DEFAULT '',
+                        compatible_models TEXT DEFAULT '',
+                        purchase_price REAL,
+                        retail_price REAL NOT NULL,
+                        stock INTEGER DEFAULT 0,
+                        min_stock INTEGER DEFAULT 0,
+                        location TEXT DEFAULT ''
+                    )
+                """;
 
         String createOrders = """
-            CREATE TABLE IF NOT EXISTS orders (
-                id TEXT PRIMARY KEY,
-                client_id INTEGER NOT NULL,
-                status TEXT NOT NULL,
-                total REAL NOT NULL,
-                created_date TEXT NOT NULL,
-                FOREIGN KEY (client_id) REFERENCES clients(id)
-            )
-        """;
+                    CREATE TABLE IF NOT EXISTS orders (
+                        id TEXT PRIMARY KEY,
+                        client_id INTEGER NOT NULL,
+                        status TEXT NOT NULL,
+                        total REAL NOT NULL,
+                        created_date TEXT NOT NULL,
+                        FOREIGN KEY (client_id) REFERENCES clients(id)
+                    )
+                """;
 
         String createOrderServices = """
-            CREATE TABLE IF NOT EXISTS order_services (
-                order_id TEXT NOT NULL,
-                service_name TEXT NOT NULL,
-                price REAL NOT NULL,
-                FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
-            )
-        """;
+                    CREATE TABLE IF NOT EXISTS order_services (
+                        order_id TEXT NOT NULL,
+                        service_name TEXT NOT NULL,
+                        price REAL NOT NULL,
+                        FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+                    )
+                """;
 
         String createOrderParts = """
-            CREATE TABLE IF NOT EXISTS order_parts (
-                order_id TEXT NOT NULL,
-                part_name TEXT NOT NULL,
-                price REAL NOT NULL,
-                quantity INTEGER NOT NULL,
-                FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
-            )
-        """;
+                    CREATE TABLE IF NOT EXISTS order_parts (
+                        order_id TEXT NOT NULL,
+                        part_name TEXT NOT NULL,
+                        price REAL NOT NULL,
+                        quantity INTEGER NOT NULL,
+                        FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+                    )
+                """;
 
         String createAppointments = """
-            CREATE TABLE IF NOT EXISTS appointments (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                client_id INTEGER NOT NULL,
-                order_id TEXT,
-                master_name TEXT NOT NULL,
-                service_name TEXT NOT NULL,
-                appointment_date TEXT NOT NULL,
-                appointment_time TEXT NOT NULL,
-                status TEXT NOT NULL,
-                FOREIGN KEY (client_id) REFERENCES clients(id),
-                FOREIGN KEY (order_id) REFERENCES orders(id)
-            )
-        """;
+                    CREATE TABLE IF NOT EXISTS appointments (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        client_id INTEGER NOT NULL,
+                        order_id TEXT,
+                        master_name TEXT NOT NULL,
+                        service_name TEXT NOT NULL,
+                        appointment_date TEXT NOT NULL,
+                        appointment_time TEXT NOT NULL,
+                        status TEXT NOT NULL,
+                        FOREIGN KEY (client_id) REFERENCES clients(id),
+                        FOREIGN KEY (order_id) REFERENCES orders(id)
+                    )
+                """;
 
         try (Statement stmt = connection.createStatement()) {
             stmt.execute(createClients);
@@ -452,14 +452,14 @@ public class Database {
                 }
 
                 orders.add(order);
-                System.out.println("Loaded order " + orderId + " with date " + createdDate);
+
             }
         } catch (SQLException e) {
             System.err.println("Load orders error: " + e.getMessage());
             e.printStackTrace();
         }
 
-        System.out.println("Total orders loaded: " + orders.size());
+
         return orders;
     }
 
@@ -472,7 +472,7 @@ public class Database {
 
         String orderId = generateOrderId();
         order.setId(orderId);
-        System.out.println("Saving order with ID: " + orderId);
+
 
         String sql = "INSERT INTO orders (id, client_id, status, total, created_date) VALUES (?, ?, ?, ?, datetime('now'))";
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
@@ -484,7 +484,7 @@ public class Database {
 
             saveOrderServices(orderId, order);
             saveOrderParts(orderId, order);
-            System.out.println("Order " + orderId + " saved successfully");
+
         } catch (SQLException e) {
             System.err.println("Add order error: " + e.getMessage());
             e.printStackTrace();
@@ -579,7 +579,7 @@ public class Database {
         try (PreparedStatement pstmt = connection.prepareStatement("DELETE FROM orders WHERE id = ?")) {
             pstmt.setString(1, orderId);
             pstmt.executeUpdate();
-            System.out.println("Order " + orderId + " deleted");
+
         } catch (SQLException e) {
             System.err.println("Delete order error: " + e.getMessage());
         }

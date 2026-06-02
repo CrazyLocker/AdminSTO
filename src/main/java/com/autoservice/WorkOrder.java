@@ -21,9 +21,12 @@ public class WorkOrder {
     public static final String STATUS_READY = "ГОТОВ";
     public static final String STATUS_CLOSED = "ЗАКРЫТ";
 
-    public static String[] getAllStatuses() {
-        return new String[]{STATUS_NEW, STATUS_DIAGNOSTICS, STATUS_IN_WORK,
-                STATUS_WAITING_PARTS, STATUS_READY, STATUS_CLOSED};
+    public static List<String> getAllStatuses() {
+        List<String> statuses = new ArrayList<>();
+        statuses.add("Новый");
+        statuses.add("В работе");
+        statuses.add("Закрыт");
+        return statuses;
     }
 
     public WorkOrder(Client client) {

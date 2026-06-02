@@ -1,5 +1,6 @@
 package com.autoservice;
 
+import com.autoservice.views.DashboardView;
 import com.autoservice.controllers.DictionaryController;
 import com.autoservice.views.*;
 import javafx.application.Application;
@@ -62,11 +63,14 @@ public class App extends Application {
         com.autoservice.controllers.ClientController.refreshTable();
         com.autoservice.controllers.OrderController.refreshTable();
         DictionaryController.refreshAll();
-        // Обновляем дашборд
-        DashboardView.refreshAll();
+
     }
 
     public static void main(String[] args) {
         launch(args);
+    }
+    public static void refreshAll() {
+        // Дашборд пересоздаётся при каждом открытии вкладки,
+        // поэтому отдельное обновление не требуется
     }
 }
