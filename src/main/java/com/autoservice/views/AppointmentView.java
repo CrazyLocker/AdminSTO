@@ -43,13 +43,12 @@ public class AppointmentView {
                 .toArray(String[]::new);
 
         VBox root = new VBox(15);
-        root.setPadding(new Insets(15));
-        root.setStyle("-fx-background-color: #f5f7fa;");
+        root.getStyleClass().add("main-container");
 
         // Верхняя панель
         HBox topPanel = new HBox(15);
         topPanel.setAlignment(Pos.CENTER_LEFT);
-        topPanel.setStyle("-fx-background-color: white; -fx-padding: 12; -fx-border-color: #e0e0e0; -fx-border-width: 0 0 1 0;");
+        topPanel.getStyleClass().add("appointment-top-panel");
 
         // Переключатель вида
         viewToggle = new ToggleGroup();
@@ -62,9 +61,9 @@ public class AppointmentView {
         monthView.setToggleGroup(viewToggle);
         weekView.setSelected(true);
 
-        dayView.setStyle("-fx-font-size: 13px; -fx-padding: 5 10;");
-        weekView.setStyle("-fx-font-size: 13px; -fx-padding: 5 10;");
-        monthView.setStyle("-fx-font-size: 13px; -fx-padding: 5 10;");
+        dayView.getStyleClass().add("view-radio");
+        weekView.getStyleClass().add("view-radio");
+        monthView.getStyleClass().add("view-radio");
 
         dayView.setOnAction(e -> {
             currentView = "day";
@@ -80,28 +79,28 @@ public class AppointmentView {
         });
 
         HBox viewBox = new HBox(5, dayView, weekView, monthView);
-        viewBox.setStyle("-fx-padding: 5; -fx-border-color: #bdc3c7; -fx-border-width: 1; -fx-border-radius: 5; -fx-background-radius: 5;");
+        viewBox.getStyleClass().add("view-box");
 
         selectedDateLabel = new Label();
-        selectedDateLabel.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
+        selectedDateLabel.getStyleClass().add("selected-date-label");
 
         datePicker = new DatePicker(LocalDate.now());
-        datePicker.setStyle("-fx-font-size: 13px; -fx-background-color: white; -fx-border-color: #e0e0e0; -fx-border-radius: 4;");
+        datePicker.getStyleClass().add("appointment-datepicker");
         datePicker.setOnAction(e -> refreshView());
 
         Button todayBtn = new Button("Сегодня");
-        todayBtn.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 5 12; -fx-background-radius: 4;");
+        todayBtn.getStyleClass().add("today-button");
         todayBtn.setOnAction(e -> {
             datePicker.setValue(LocalDate.now());
             refreshView();
         });
 
-        Button refreshBtn = new Button("🔄 Обновить");
-        refreshBtn.setStyle("-fx-background-color: #95a5a6; -fx-text-fill: white; -fx-font-size: 12px; -fx-padding: 5 12; -fx-background-radius: 4;");
+        Button refreshBtn = new Button("Обновить");
+        refreshBtn.getStyleClass().add("refresh-button");
         refreshBtn.setOnAction(e -> refreshView());
 
-        Button addBtn = new Button("+ Новая запись");
-        addBtn.setStyle("-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-font-size: 13px; -fx-padding: 6 18; -fx-background-radius: 4; -fx-font-weight: bold;");
+        Button addBtn = new Button("Новая запись");
+        addBtn.getStyleClass().add("add-appointment-button");
         addBtn.setOnAction(e -> showAddAppointmentDialog(null));
 
         Region spacer = new Region();
@@ -109,7 +108,7 @@ public class AppointmentView {
 
         topPanel.getChildren().addAll(
                 viewBox,
-                new Label("📅 Дата:"), datePicker, todayBtn, refreshBtn,
+                new Label("Дата:"), datePicker, todayBtn, refreshBtn,
                 spacer,
                 addBtn,
                 selectedDateLabel
@@ -120,10 +119,11 @@ public class AppointmentView {
         scheduleGrid.setHgap(8);
         scheduleGrid.setVgap(8);
         scheduleGrid.setPadding(new Insets(15));
+        scheduleGrid.getStyleClass().add("schedule-grid");
 
         scrollPane = new ScrollPane(scheduleGrid);
         scrollPane.setFitToWidth(true);
-        scrollPane.setStyle("-fx-background-color: white; -fx-border-color: #e0e0e0; -fx-border-radius: 8;");
+        scrollPane.getStyleClass().add("schedule-scrollpane");
         scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
 
@@ -158,21 +158,21 @@ public class AppointmentView {
 
         scheduleGrid.getChildren().clear();
 
-        // Заголовки с увеличенным шрифтом
+        // Заголовки
         Label timeHeader = new Label("Время");
-        timeHeader.setStyle("-fx-font-weight: bold; -fx-background-color: #34495e; -fx-text-fill: white; -fx-padding: 12; -fx-font-size: 13px; -fx-background-radius: 5 5 0 0;");
+        timeHeader.getStyleClass().add("schedule-header");
         scheduleGrid.add(timeHeader, 0, 0);
 
         Label masterHeader = new Label("Мастер");
-        masterHeader.setStyle("-fx-font-weight: bold; -fx-background-color: #34495e; -fx-text-fill: white; -fx-padding: 12; -fx-font-size: 13px; -fx-background-radius: 5 5 0 0;");
+        masterHeader.getStyleClass().add("schedule-header");
         scheduleGrid.add(masterHeader, 1, 0);
 
         Label clientHeader = new Label("Клиент / Авто / Услуга");
-        clientHeader.setStyle("-fx-font-weight: bold; -fx-background-color: #34495e; -fx-text-fill: white; -fx-padding: 12; -fx-font-size: 13px; -fx-background-radius: 5 5 0 0;");
+        clientHeader.getStyleClass().add("schedule-header");
         scheduleGrid.add(clientHeader, 2, 0);
 
         Label actionHeader = new Label("Действия");
-        actionHeader.setStyle("-fx-font-weight: bold; -fx-background-color: #34495e; -fx-text-fill: white; -fx-padding: 12; -fx-font-size: 13px; -fx-background-radius: 5 5 0 0;");
+        actionHeader.getStyleClass().add("schedule-header");
         scheduleGrid.add(actionHeader, 3, 0);
 
         for (int i = 0; i < TIME_SLOTS.length; i++) {
@@ -180,7 +180,7 @@ public class AppointmentView {
             int row = i + 1;
 
             Label timeLabel = new Label(time);
-            timeLabel.setStyle("-fx-padding: 12; -fx-background-color: #ecf0f1; -fx-border-color: #dddddd; -fx-border-width: 0 0 1 0; -fx-font-weight: bold; -fx-font-size: 13px;");
+            timeLabel.getStyleClass().add("time-label");
             scheduleGrid.add(timeLabel, 0, row);
 
             Appointment appointment = findAppointmentByTime(time);
@@ -199,27 +199,24 @@ public class AppointmentView {
         Client client = appointment.getClient();
 
         Label masterLabel = new Label(appointment.getMasterName());
-        masterLabel.setStyle("-fx-padding: 12; -fx-background-color: #ffcccc; -fx-border-color: #dddddd; -fx-border-width: 0 0 1 0; -fx-font-weight: bold; -fx-text-fill: #c0392b; -fx-font-size: 13px;");
+        masterLabel.getStyleClass().add("master-label-booked");
         scheduleGrid.add(masterLabel, 1, row);
 
         VBox infoBox = new VBox(5);
-        infoBox.setStyle("-fx-padding: 10; -fx-background-color: #ffcccc; -fx-border-color: #dddddd; -fx-border-width: 0 0 1 0;");
+        infoBox.getStyleClass().add("info-box-booked");
 
-        // Фамилия + Имя
         String fullName = (client.getLastName() != null && !client.getLastName().isEmpty())
                 ? client.getLastName() + " " + client.getName()
                 : client.getName();
-        Label nameLabel = new Label("👤 " + fullName);
-        nameLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+        Label nameLabel = new Label(fullName);
+        nameLabel.getStyleClass().add("client-name-label");
 
-        // Авто + Госномер
         String carInfo = client.getCarModel() + " (" + client.getCarNumber() + ")";
-        Label carLabel = new Label("🚗 " + carInfo);
-        carLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #7f8c8d;");
+        Label carLabel = new Label(carInfo);
+        carLabel.getStyleClass().add("car-info-label");
 
-        // Услуга
-        Label serviceLabel = new Label("🔧 " + appointment.getServiceName());
-        serviceLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #2980b9; -fx-font-weight: bold;");
+        Label serviceLabel = new Label(appointment.getServiceName());
+        serviceLabel.getStyleClass().add("service-label");
 
         infoBox.getChildren().addAll(nameLabel, carLabel, serviceLabel);
         scheduleGrid.add(infoBox, 2, row);
@@ -228,11 +225,11 @@ public class AppointmentView {
         btnBox.setAlignment(Pos.CENTER);
 
         Button editBtn = new Button("✏");
-        editBtn.setStyle("-fx-background-color: #f39c12; -fx-text-fill: white; -fx-font-size: 13px; -fx-padding: 6 12; -fx-background-radius: 4;");
+        editBtn.getStyleClass().add("edit-appointment-btn");
         editBtn.setOnAction(e -> showEditAppointmentDialog(appointment));
 
         Button cancelBtn = new Button("🗑");
-        cancelBtn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-size: 13px; -fx-padding: 6 12; -fx-background-radius: 4;");
+        cancelBtn.getStyleClass().add("delete-appointment-btn");
         cancelBtn.setOnAction(e -> {
             Alert confirm = new Alert(Alert.AlertType.CONFIRMATION, "Отменить запись?", ButtonType.YES, ButtonType.NO);
             confirm.showAndWait().ifPresent(response -> {
@@ -249,15 +246,15 @@ public class AppointmentView {
 
     private static void addEmptyRow(int row, String time) {
         Label masterLabel = new Label("свободно");
-        masterLabel.setStyle("-fx-padding: 12; -fx-background-color: #d5f5e3; -fx-border-color: #dddddd; -fx-border-width: 0 0 1 0; -fx-text-fill: #27ae60; -fx-font-style: italic; -fx-font-size: 13px;");
+        masterLabel.getStyleClass().add("master-label-free");
         scheduleGrid.add(masterLabel, 1, row);
 
         Label infoLabel = new Label("");
-        infoLabel.setStyle("-fx-padding: 12; -fx-background-color: #d5f5e3; -fx-border-color: #dddddd; -fx-border-width: 0 0 1 0;");
+        infoLabel.getStyleClass().add("info-box-free");
         scheduleGrid.add(infoLabel, 2, row);
 
         Button addSlotBtn = new Button("Записать");
-        addSlotBtn.setStyle("-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-font-size: 13px; -fx-padding: 6 18; -fx-background-radius: 4; -fx-font-weight: bold;");
+        addSlotBtn.getStyleClass().add("add-slot-button");
         addSlotBtn.setOnAction(e -> showAddAppointmentDialog(time));
 
         HBox btnBox = new HBox(8);
@@ -277,15 +274,20 @@ public class AppointmentView {
         selectedDateLabel.setText("Неделя " + startDate.format(WEEK_FORMATTER) + " - " + startDate.plusDays(6).format(WEEK_FORMATTER));
         scheduleGrid.getChildren().clear();
 
+        // Заголовок времени
         Label timeHeader = new Label("Время");
-        timeHeader.setStyle("-fx-font-weight: bold; -fx-background-color: #34495e; -fx-text-fill: white; -fx-padding: 12; -fx-font-size: 13px;");
+        timeHeader.getStyleClass().add("schedule-header");
         scheduleGrid.add(timeHeader, 0, 0);
 
         for (int i = 0; i < 7; i++) {
             LocalDate day = startDate.plusDays(i);
-            String dayName = day.format(DateTimeFormatter.ofPattern("E\nd.MMM", new Locale("ru")));
-            Label dayHeader = new Label(dayName);
-            dayHeader.setStyle("-fx-font-weight: bold; -fx-background-color: #34495e; -fx-text-fill: white; -fx-padding: 12; -fx-font-size: 12px; -fx-text-alignment: center;");
+            // День недели и дата на разных строках
+            String dayOfWeek = day.format(DateTimeFormatter.ofPattern("EEEE", new Locale("ru")));
+            String dayOfMonth = day.format(DateTimeFormatter.ofPattern("d MMMM", new Locale("ru")));
+            Label dayHeader = new Label(dayOfWeek + "\n" + dayOfMonth);
+            dayHeader.getStyleClass().add("week-day-header");
+            dayHeader.setWrapText(true);
+            dayHeader.setAlignment(Pos.CENTER);
             scheduleGrid.add(dayHeader, i + 1, 0);
         }
 
@@ -294,7 +296,7 @@ public class AppointmentView {
             int row = i + 1;
 
             Label timeLabel = new Label(time);
-            timeLabel.setStyle("-fx-padding: 10; -fx-background-color: #ecf0f1; -fx-border-color: #dddddd; -fx-border-width: 0 0 1 0; -fx-font-size: 12px;");
+            timeLabel.getStyleClass().add("time-label-week");
             scheduleGrid.add(timeLabel, 0, row);
 
             for (int j = 0; j < 7; j++) {
@@ -303,7 +305,7 @@ public class AppointmentView {
                 Appointment appointment = findAppointmentByTimeInList(dayAppointments, time);
 
                 VBox cell = new VBox(5);
-                cell.setStyle("-fx-padding: 8; -fx-border-color: #dddddd; -fx-border-width: 0 0 1 0; -fx-min-height: 80;");
+                cell.getStyleClass().add("week-cell");
 
                 if (appointment != null) {
                     Client client = appointment.getClient();
@@ -312,19 +314,22 @@ public class AppointmentView {
                             : client.getName();
                     String carInfo = client.getCarModel() + " (" + client.getCarNumber() + ")";
 
-                    Label nameLabel = new Label("👤 " + fullName);
-                    nameLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 12px;");
-                    Label carLabel = new Label("🚗 " + carInfo);
-                    carLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #7f8c8d;");
-                    Label serviceLabel = new Label("🔧 " + appointment.getServiceName());
-                    serviceLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #2980b9;");
+                    Label nameLabel = new Label(fullName);
+                    nameLabel.setWrapText(true);
+                    nameLabel.getStyleClass().add("week-client-name");
+                    Label carLabel = new Label(carInfo);
+                    carLabel.setWrapText(true);
+                    carLabel.getStyleClass().add("week-car-info");
+                    Label serviceLabel = new Label(appointment.getServiceName());
+                    serviceLabel.setWrapText(true);
+                    serviceLabel.getStyleClass().add("week-service");
                     cell.getChildren().addAll(nameLabel, carLabel, serviceLabel);
-                    cell.setStyle(cell.getStyle() + "-fx-background-color: #ffcccc;");
+                    cell.getStyleClass().add("week-cell-booked");
                 } else {
                     Label freeLabel = new Label("свободно");
-                    freeLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #27ae60; -fx-font-style: italic;");
+                    freeLabel.getStyleClass().add("week-cell-free-label");
                     cell.getChildren().add(freeLabel);
-                    cell.setStyle(cell.getStyle() + "-fx-background-color: #d5f5e3;");
+                    cell.getStyleClass().add("week-cell-free");
                 }
                 scheduleGrid.add(cell, j + 1, row);
             }
@@ -340,10 +345,12 @@ public class AppointmentView {
         selectedDateLabel.setText(currentDate.format(DateTimeFormatter.ofPattern("MMMM yyyy 'г.'", new Locale("ru"))));
         scheduleGrid.getChildren().clear();
 
-        String[] weekDays = {"ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"};
+        // Полные названия дней недели
+        String[] weekDays = {"Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"};
         for (int i = 0; i < 7; i++) {
             Label dayHeader = new Label(weekDays[i]);
-            dayHeader.setStyle("-fx-font-weight: bold; -fx-background-color: #34495e; -fx-text-fill: white; -fx-padding: 12; -fx-font-size: 13px;");
+            dayHeader.getStyleClass().add("month-day-header");
+            dayHeader.setAlignment(Pos.CENTER);
             scheduleGrid.add(dayHeader, i, 0);
         }
 
@@ -357,37 +364,39 @@ public class AppointmentView {
                 boolean isCurrentMonth = cellDate.getMonth() == currentDate.getMonth();
 
                 VBox cell = new VBox(5);
-                cell.setStyle("-fx-padding: 8; -fx-border-color: #dddddd; -fx-border-width: 1; -fx-min-height: 100; -fx-min-width: 100;");
+                cell.getStyleClass().add("month-cell");
                 if (!isCurrentMonth) {
-                    cell.setStyle(cell.getStyle() + "-fx-background-color: #f5f5f5;");
+                    cell.getStyleClass().add("month-cell-other-month");
                 }
 
                 Label dateLabel = new Label(String.valueOf(cellDate.getDayOfMonth()));
-                dateLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+                dateLabel.getStyleClass().add("month-date-label");
                 cell.getChildren().add(dateLabel);
 
                 List<Appointment> dayAppointments = DataStore.getAppointmentsByDate(cellDate.toString());
-                int count = 0;
-                for (Appointment a : dayAppointments) {
-                    if (count >= 2) {
-                        Label moreLabel = new Label("... и ещё " + (dayAppointments.size() - 2));
-                        moreLabel.setStyle("-fx-font-size: 9px; -fx-text-fill: #7f8c8d;");
-                        cell.getChildren().add(moreLabel);
-                        break;
-                    }
-                    Client client = a.getClient();
-                    String fullName = (client.getLastName() != null && !client.getLastName().isEmpty())
-                            ? client.getLastName() + " " + client.getName()
-                            : client.getName();
-                    Label appLabel = new Label(a.getTime() + " - " + fullName);
-                    appLabel.setStyle("-fx-font-size: 9px; -fx-text-fill: #2980b9;");
-                    cell.getChildren().add(appLabel);
-                    count++;
-                }
 
-                if (dayAppointments.isEmpty() && isCurrentMonth) {
+                if (!dayAppointments.isEmpty()) {
+                    int count = 0;
+                    for (Appointment a : dayAppointments) {
+                        if (count >= 2) {
+                            Label moreLabel = new Label("... и ещё " + (dayAppointments.size() - 2));
+                            moreLabel.getStyleClass().add("month-more-label");
+                            cell.getChildren().add(moreLabel);
+                            break;
+                        }
+                        Client client = a.getClient();
+                        String fullName = (client.getLastName() != null && !client.getLastName().isEmpty())
+                                ? client.getLastName() + " " + client.getName()
+                                : client.getName();
+                        Label appLabel = new Label(a.getTime() + " - " + fullName);
+                        appLabel.getStyleClass().add("month-appointment-label");
+                        appLabel.setWrapText(true);
+                        cell.getChildren().add(appLabel);
+                        count++;
+                    }
+                } else if (isCurrentMonth) {
                     Label freeLabel = new Label("свободно");
-                    freeLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #27ae60; -fx-font-style: italic;");
+                    freeLabel.getStyleClass().add("month-free-label");
                     cell.getChildren().add(freeLabel);
                 }
 
@@ -424,38 +433,39 @@ public class AppointmentView {
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
-        root.setStyle("-fx-background-color: white;");
+        root.getStyleClass().add("dialog-root");
 
         Label titleLabel = new Label("Редактирование записи");
-        titleLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
+        titleLabel.getStyleClass().add("dialog-title");
 
         GridPane grid = new GridPane();
         grid.setHgap(15);
         grid.setVgap(12);
+        grid.getStyleClass().add("dialog-grid");
 
         ComboBox<Client> clientCombo = new ComboBox<>(FXCollections.observableArrayList(DataStore.getClients()));
         clientCombo.setValue(appointment.getClient());
         clientCombo.setPrefWidth(300);
-        clientCombo.setStyle("-fx-padding: 6; -fx-font-size: 13px;");
+        clientCombo.getStyleClass().add("dialog-combo");
 
         ComboBox<String> masterCombo = new ComboBox<>(FXCollections.observableArrayList(MASTERS));
         masterCombo.setValue(appointment.getMasterName());
         masterCombo.setPrefWidth(200);
-        masterCombo.setStyle("-fx-padding: 6; -fx-font-size: 13px;");
+        masterCombo.getStyleClass().add("dialog-combo");
 
         ComboBox<String> serviceCombo = new ComboBox<>(FXCollections.observableArrayList(SERVICES));
         serviceCombo.setValue(appointment.getServiceName());
         serviceCombo.setPrefWidth(200);
-        serviceCombo.setStyle("-fx-padding: 6; -fx-font-size: 13px;");
+        serviceCombo.getStyleClass().add("dialog-combo");
 
         DatePicker datePickerLocal = new DatePicker(LocalDate.parse(appointment.getDate()));
         datePickerLocal.setPrefWidth(200);
-        datePickerLocal.setStyle("-fx-font-size: 13px;");
+        datePickerLocal.getStyleClass().add("dialog-datepicker");
 
         ComboBox<String> timeCombo = new ComboBox<>(FXCollections.observableArrayList(TIME_SLOTS));
         timeCombo.setValue(appointment.getTime());
         timeCombo.setPrefWidth(100);
-        timeCombo.setStyle("-fx-font-size: 13px;");
+        timeCombo.getStyleClass().add("dialog-combo");
 
         grid.add(new Label("Клиент:"), 0, 0);
         grid.add(clientCombo, 1, 0);
@@ -472,16 +482,17 @@ public class AppointmentView {
         btnBox.setAlignment(Pos.CENTER);
 
         Button saveBtn = new Button("Сохранить");
-        saveBtn.setStyle("-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 20; -fx-background-radius: 4; -fx-font-size: 13px;");
+        saveBtn.getStyleClass().add("save-button");
 
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 20; -fx-background-radius: 4; -fx-font-size: 13px;");
+        cancelBtn.getStyleClass().add("cancel-button");
 
         btnBox.getChildren().addAll(saveBtn, cancelBtn);
 
         root.getChildren().addAll(titleLabel, grid, btnBox);
 
         Scene scene = new Scene(root);
+        scene.getStylesheets().add(AppointmentView.class.getResource("/styles.css").toExternalForm());
         stage.setScene(scene);
 
         saveBtn.setOnAction(e -> {
@@ -523,33 +534,34 @@ public class AppointmentView {
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
-        root.setStyle("-fx-background-color: white;");
+        root.getStyleClass().add("dialog-root");
 
         Label titleLabel = new Label("Новая запись");
-        titleLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
+        titleLabel.getStyleClass().add("dialog-title");
 
         GridPane grid = new GridPane();
         grid.setHgap(15);
         grid.setVgap(12);
+        grid.getStyleClass().add("dialog-grid");
 
         ComboBox<Client> clientCombo = new ComboBox<>(FXCollections.observableArrayList(DataStore.getClients()));
         clientCombo.setPromptText("Выберите клиента");
         clientCombo.setPrefWidth(300);
-        clientCombo.setStyle("-fx-padding: 6; -fx-font-size: 13px;");
+        clientCombo.getStyleClass().add("dialog-combo");
 
         ComboBox<String> masterCombo = new ComboBox<>(FXCollections.observableArrayList(MASTERS));
         masterCombo.setPromptText("Выберите мастера");
         masterCombo.setPrefWidth(200);
-        masterCombo.setStyle("-fx-padding: 6; -fx-font-size: 13px;");
+        masterCombo.getStyleClass().add("dialog-combo");
 
         ComboBox<String> serviceCombo = new ComboBox<>(FXCollections.observableArrayList(SERVICES));
         serviceCombo.setPromptText("Выберите услугу");
         serviceCombo.setPrefWidth(200);
-        serviceCombo.setStyle("-fx-padding: 6; -fx-font-size: 13px;");
+        serviceCombo.getStyleClass().add("dialog-combo");
 
         DatePicker datePickerLocal = new DatePicker(datePicker.getValue());
         datePickerLocal.setPrefWidth(200);
-        datePickerLocal.setStyle("-fx-font-size: 13px;");
+        datePickerLocal.getStyleClass().add("dialog-datepicker");
 
         ComboBox<String> timeCombo = new ComboBox<>(FXCollections.observableArrayList(TIME_SLOTS));
         if (presetTime != null) {
@@ -557,10 +569,10 @@ public class AppointmentView {
         }
         timeCombo.setPromptText("Выберите время");
         timeCombo.setPrefWidth(100);
-        timeCombo.setStyle("-fx-padding: 6; -fx-font-size: 13px;");
+        timeCombo.getStyleClass().add("dialog-combo");
 
         CheckBox createOrderCheck = new CheckBox("Создать заказ");
-        createOrderCheck.setStyle("-fx-font-size: 13px;");
+        createOrderCheck.getStyleClass().add("create-order-checkbox");
 
         grid.add(new Label("Клиент:"), 0, 0);
         grid.add(clientCombo, 1, 0);
@@ -579,16 +591,17 @@ public class AppointmentView {
         btnBox.setAlignment(Pos.CENTER);
 
         Button saveBtn = new Button("Создать запись");
-        saveBtn.setStyle("-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 20; -fx-background-radius: 4; -fx-font-size: 13px;");
+        saveBtn.getStyleClass().add("save-button");
 
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 20; -fx-background-radius: 4; -fx-font-size: 13px;");
+        cancelBtn.getStyleClass().add("cancel-button");
 
         btnBox.getChildren().addAll(saveBtn, cancelBtn);
 
         root.getChildren().addAll(titleLabel, grid, btnBox);
 
         Scene scene = new Scene(root);
+        scene.getStylesheets().add(AppointmentView.class.getResource("/styles.css").toExternalForm());
         stage.setScene(scene);
 
         saveBtn.setOnAction(e -> {

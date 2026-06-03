@@ -1,256 +1,890 @@
-/* ============================================
-   FLAT DESIGN - ГЛОБАЛЬНЫЕ СТИЛИ
-   ============================================ */
+/* ==================== MATERIAL DESIGN STYLES ==================== */
 
-.root {
-    -fx-font-family: "Segoe UI", "Roboto", sans-serif;
-    -fx-font-size: 11px;
-    -fx-base: #ffffff;
-    -fx-background: #f0f2f5;
-}
-
-/* ============================================
-   ОСНОВНОЕ ОКНО
-   ============================================ */
-.tab-pane {
-    -fx-background-color: #f0f2f5;
-    -fx-background-insets: 0;
-    -fx-padding: 0;
-}
-
-.tab-pane .tab-header-area {
-    -fx-padding: 0 0 0 0;
-    -fx-background-color: #ffffff;
-}
-
-.tab-pane .tab-header-background {
-    -fx-background-color: #ffffff;
-    -fx-border-color: #e0e0e0;
-    -fx-border-width: 0 0 1 0;
-}
-
-.tab-pane .tab {
-    -fx-background-color: transparent;
-    -fx-padding: 10 20 10 20;
-    -fx-border-color: transparent;
-    -fx-border-width: 0 0 2 0;
-}
-
-.tab-pane .tab:selected {
-    -fx-border-color: #3498db;
-    -fx-border-width: 0 0 2 0;
-}
-
-.tab-pane .tab .tab-label {
-    -fx-text-fill: #7f8c8d;
-    -fx-font-size: 11px;
-    -fx-font-weight: normal;
-}
-
-.tab-pane .tab:selected .tab-label {
-    -fx-text-fill: #3498db;
-    -fx-font-weight: bold;
-}
-
-.tab-pane .tab-content-area {
-    -fx-background-color: #f0f2f5;
-    -fx-padding: 0;
-}
-
-/* ============================================
-   КНОПКИ
-   ============================================ */
-.button {
-    -fx-background-color: #3498db;
-    -fx-text-fill: white;
-    -fx-font-weight: bold;
-    -fx-font-size: 11px;
-    -fx-background-radius: 6;
-    -fx-padding: 6 14 6 14;
-    -fx-cursor: hand;
-}
-
-.button:hover {
-    -fx-background-color: #2980b9;
-}
-
-.button:pressed {
-    -fx-background-color: #1c6ea4;
-}
-
-/* ============================================
-   ПОЛЯ ВВОДА
-   ============================================ */
-.text-field, .combo-box, .date-picker {
-    -fx-background-color: white;
-    -fx-background-radius: 6;
-    -fx-border-color: #dcdde1;
-    -fx-border-radius: 6;
-    -fx-border-width: 1;
-    -fx-padding: 6 10 6 10;
-    -fx-font-size: 11px;
-}
-
-.text-field:focused, .combo-box:focused, .date-picker:focused {
-    -fx-border-color: #3498db;
-    -fx-border-width: 2;
-}
-
-/* ============================================
-   ТАБЛИЦЫ
-   ============================================ */
+/* Общие стили для всех таблиц */
 .table-view {
-    -fx-background-color: white;
+    -fx-background-color: transparent;
     -fx-border-color: #e0e0e0;
-    -fx-border-radius: 8;
-    -fx-background-radius: 8;
-    -fx-font-size: 11px;
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+    -fx-font-family: 'Segoe UI', 'Roboto', 'Open Sans', sans-serif;
+    -fx-font-size: 13px;
 }
 
+/* Заголовки столбцов */
 .table-view .column-header-background {
     -fx-background-color: #f8f9fa;
-    -fx-border-color: #e0e0e0;
-    -fx-border-width: 0 0 1 0;
+    -fx-background-radius: 12 12 0 0;
 }
 
 .table-view .column-header {
-    -fx-background-color: #f8f9fa;
-    -fx-padding: 8 0 8 0;
+    -fx-background-color: transparent;
+    -fx-border-color: #e0e0e0;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 12 0 12 0;
 }
 
 .table-view .column-header .label {
     -fx-font-weight: bold;
     -fx-text-fill: #2c3e50;
-    -fx-font-size: 11px;
+    -fx-font-size: 13px;
 }
 
-/* ============================================
-   SCROLL PANE
-   ============================================ */
-.scroll-pane {
-    -fx-background-color: transparent;
+/* Чередование строк - Material Design */
+.table-row-cell:odd {
+    -fx-background-color: #ffffff;
+}
+
+.table-row-cell:even {
+    -fx-background-color: #f8f9fa;
+}
+
+/* Ячейки таблицы */
+.table-row-cell .table-cell {
+    -fx-padding: 12 8 12 8;
     -fx-border-color: transparent;
 }
 
+/* Выделение строки - Material Design */
+.table-row-cell:selected {
+    -fx-background-color: #e3f2fd;
+    -fx-border-color: #bbdefb;
+    -fx-border-width: 1 0 1 0;
+}
+
+/* Текст при выделении */
+.table-row-cell:selected .table-cell {
+    -fx-text-fill: #1565c0;
+    -fx-font-weight: 500;
+}
+
+/* Hover эффект */
+.table-row-cell:hover {
+    -fx-background-color: #f5f5f5;
+    -fx-cursor: hand;
+}
+
+.table-row-cell:selected:hover {
+    -fx-background-color: #d0e9ff;
+}
+
+/* Полоса прокрутки - Material Design */
 .scroll-bar:vertical {
     -fx-background-color: transparent;
-    -fx-border-color: transparent;
+    -fx-pref-width: 8;
 }
 
 .scroll-bar:vertical .thumb {
-    -fx-background-color: #bdc3c7;
-    -fx-background-radius: 10;
-}
-
-/* ============================================
-   TITLED PANE (Аккордеон)
-   ============================================ */
-.titled-pane {
-    -fx-background-color: white;
-    -fx-border-color: #e0e0e0;
-    -fx-border-radius: 8;
+    -fx-background-color: #c0c0c0;
     -fx-background-radius: 8;
 }
 
-.titled-pane > .title {
-    -fx-background-color: white;
-    -fx-background-radius: 8 8 0 0;
-    -fx-padding: 10 14 10 14;
+.scroll-bar:vertical .thumb:hover {
+    -fx-background-color: #a0a0a0;
 }
 
-.titled-pane > .title > .text {
-    -fx-font-weight: bold;
-    -fx-text-fill: #2c3e50;
-    -fx-font-size: 12px;
+.scroll-bar:vertical .track {
+    -fx-background-color: #f0f0f0;
+    -fx-background-radius: 8;
 }
 
-.titled-pane > .content {
+/* ==================== ФОРМА ДОБАВЛЕНИЯ КЛИЕНТА ==================== */
+
+/* Контейнер формы */
+.card {
     -fx-background-color: white;
-    -fx-background-radius: 0 0 8 8;
+    -fx-background-radius: 12;
     -fx-border-color: #e0e0e0;
-    -fx-border-width: 1 0 0 0;
+    -fx-border-radius: 12;
+    -fx-padding: 16;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 4, 0, 0, 2);
 }
 
-/* ============================================
-   LABEL
-   ============================================ */
-.label-title {
-    -fx-font-size: 18px;
+/* Заголовок формы */
+.form-title {
+    -fx-font-size: 14px;
     -fx-font-weight: bold;
-    -fx-text-fill: #2c3e50;
+    -fx-text-fill: #1976d2;
+    -fx-padding: 0 0 8 0;
+    -fx-border-color: #e0e0e0;
+    -fx-border-width: 0 0 1 0;
 }
 
-.label-subtitle {
+/* Метки полей ввода */
+.card .label {
+    -fx-text-fill: #555;
     -fx-font-size: 12px;
     -fx-font-weight: normal;
-    -fx-text-fill: #7f8c8d;
 }
 
-/* ============================================
-   ПРОГРЕСС-БАР
-   ============================================ */
-.progress-bar {
-    -fx-background-color: #ecf0f1;
-    -fx-background-radius: 10;
-    -fx-pref-height: 6;
-}
-
-.progress-bar .bar {
-    -fx-background-color: #3498db;
-    -fx-background-radius: 10;
-}
-
-/* ============================================
-   LIST VIEW
-   ============================================ */
-.list-view {
+/* Поля ввода в форме */
+.card .text-field {
     -fx-background-color: white;
     -fx-border-color: #e0e0e0;
+    -fx-border-width: 1;
     -fx-border-radius: 8;
     -fx-background-radius: 8;
+    -fx-padding: 8 12 8 12;
+    -fx-font-size: 13px;
 }
 
-.list-view .list-cell {
-    -fx-padding: 8;
-    -fx-border-color: #ecf0f1;
-    -fx-border-width: 0 0 1 0;
-    -fx-font-size: 11px;
+.card .text-field:focused {
+    -fx-border-color: #1976d2;
+    -fx-border-width: 2;
 }
 
-.list-view .list-cell:selected {
-    -fx-background-color: #e3f2fd;
-    -fx-text-fill: #2c3e50;
+/* Кнопка добавления клиента */
+.card .button {
+    -fx-background-color: #1976d2;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-background-radius: 8;
+    -fx-padding: 10 20 10 20;
+    -fx-font-size: 13px;
+    -fx-cursor: hand;
 }
 
-/* ============================================
-   SEPARATOR
-   ============================================ */
-.separator .line {
+.card .button:hover {
+    -fx-background-color: #1565c0;
+}
+
+.card .button:pressed {
+    -fx-background-color: #0d47a1;
+}
+
+/* ==================== MATERIAL DESIGN COMBOBOX ==================== */
+
+.combo-box {
+    -fx-background-color: transparent;
     -fx-border-color: #e0e0e0;
-    -fx-border-width: 1;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 8 0 4 0;
+    -fx-font-size: 13px;
 }
 
-/* ============================================
-   COMBOBOX
-   ============================================ */
+.combo-box:focused {
+    -fx-border-color: #1976d2;
+    -fx-border-width: 0 0 2 0;
+}
+
 .combo-box .arrow-button {
     -fx-background-color: transparent;
 }
 
 .combo-box .arrow {
-    -fx-background-color: #7f8c8d;
+    -fx-background-color: #666;
 }
 
-.combo-box-popup .list-view {
+.combo-box .list-view {
+    -fx-background-color: white;
+    -fx-background-radius: 8;
+    -fx-border-color: #e0e0e0;
+    -fx-border-radius: 8;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 12, 0, 0, 4);
+}
+
+.combo-box .list-cell {
+    -fx-padding: 10 14 10 14;
+    -fx-font-size: 13px;
+}
+
+.combo-box .list-cell:hover {
+    -fx-background-color: #f5f5f5;
+}
+
+.combo-box .list-cell:selected {
+    -fx-background-color: #1976d2;
+    -fx-text-fill: white;
+}
+
+/* ==================== ОБЩИЕ КНОПКИ ==================== */
+
+.button {
+    -fx-background-color: #1976d2;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-background-radius: 8;
+    -fx-padding: 8 16 8 16;
+    -fx-cursor: hand;
+    -fx-font-size: 12px;
+}
+
+.button:hover {
+    -fx-background-color: #1565c0;
+}
+
+.button:pressed {
+    -fx-background-color: #0d47a1;
+}
+
+.clear-button {
+    -fx-background-color: #dc3545;
+}
+
+.clear-button:hover {
+    -fx-background-color: #c82333;
+}
+
+/* ==================== ПАНЕЛИ И КОНТЕЙНЕРЫ ==================== */
+
+.main-container {
+    -fx-background-color: #f5f7fa;
+    -fx-padding: 20;
+}
+
+.section-title {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2c3e50;
+    -fx-padding: 0 0 16 0;
+}
+
+/* ==================== ПОИСКОВАЯ ПАНЕЛЬ ==================== */
+
+.search-field {
     -fx-background-color: white;
     -fx-border-color: #e0e0e0;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 8 12 8 12;
+    -fx-font-size: 13px;
 }
 
-.combo-box-popup .list-cell {
-    -fx-padding: 6 10;
+.search-field:focused {
+    -fx-border-color: #1976d2;
+    -fx-border-width: 2;
+}
+/* ==================== ДОПОЛНИТЕЛЬНЫЕ СТИЛИ ДЛЯ ORDERVIEW ==================== */
+
+.top-panel {
+    -fx-background-color: white;
+    -fx-border-color: #e0e0e0;
+    -fx-border-width: 0 0 1 0;
+}
+
+.separator {
+    -fx-text-fill: #bdc3c7;
+    -fx-font-size: 18px;
+    -fx-padding: 0 5 0 5;
+}
+
+.action-button {
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 8 0 8 0;
+    -fx-background-radius: 4;
+}
+
+.action-button:hover {
+    -fx-opacity: 0.9;
+}
+
+.toggle-button {
+    -fx-background-color: #ecf0f1;
+    -fx-font-size: 11px;
+    -fx-padding: 5 10 5 10;
+}
+
+.filter-panel {
+    -fx-background-color: white;
+    -fx-border-color: #e0e0e0;
+    -fx-border-radius: 5;
+    -fx-background-radius: 5;
+}
+
+.filter-title {
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+}
+
+.filter-label {
+    -fx-font-weight: bold;
+}
+
+.reset-button {
+    -fx-background-color: #e74c3c;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 5 15 5 15;
+}
+
+.reset-button:hover {
+    -fx-background-color: #c0392b;
+}
+
+.result-label {
+    -fx-text-fill: #666;
+    -fx-font-size: 11px;
+    -fx-padding: 0 0 0 10;
+}
+/* Общая высота строк для всех таблиц */
+.table-row-cell {
+    -fx-pref-height: 38px;
+    -fx-cell-size: 38px;
+}
+
+/* Убираем лишние отступы в ячейках */
+.table-row-cell .table-cell {
+    -fx-padding: 8px 12px;
+}
+/* Уменьшаем ComboBox в ячейке статуса заказа */
+.table-row-cell .table-cell .combo-box {
+    -fx-pref-height: 28px;
+    -fx-max-height: 28px;
+    -fx-min-height: 28px;
+    -fx-padding: 2 4 2 8;
+}
+
+.table-row-cell .table-cell .combo-box .list-cell {
+    -fx-padding: 2 4 2 8;
+    -fx-font-size: 12px;
+}
+/* Фиксированная ширина для ComboBox в колонке статуса */
+.table-view .table-cell .combo-box {
+    -fx-pref-width: 120px;
+    -fx-min-width: 120px;
+    -fx-max-width: 120px;
+}
+
+/* Для всех ComboBox в таблицах */
+.table-view .combo-box {
+    -fx-pref-width: 120px;
+    -fx-min-width: 120px;
+    -fx-max-width: 120px;
+}
+
+/* Стиль для отображения текста внутри ComboBox */
+.table-view .combo-box .list-cell {
+    -fx-pref-width: 90px;
+    -fx-min-width: 90px;
+    -fx-max-width: 90px;
+    -fx-padding: 2 0 2 8;
+}
+/* ==================== DICTIONARYVIEW СТИЛИ ==================== */
+
+.dictionary-tabpane {
+    -fx-background-color: transparent;
+}
+
+.price-column {
+    -fx-alignment: CENTER-RIGHT;
+}
+
+.center-column {
+    -fx-alignment: CENTER;
+}
+
+/* Форма добавления */
+.form-field {
+    -fx-background-color: white;
+    -fx-border-color: #e0e0e0;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 6 10 6 10;
+    -fx-font-size: 12px;
+}
+
+.form-field:focused {
+    -fx-border-color: #1976d2;
+    -fx-border-width: 2;
+}
+
+/* Кнопки */
+.add-button {
+    -fx-background-color: #2ecc71;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 6 15 6 15;
+    -fx-background-radius: 4;
+}
+
+.add-button:hover {
+    -fx-background-color: #27ae60;
+}
+
+.delete-button {
+    -fx-background-color: #e74c3c;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 6 15 6 15;
+    -fx-background-radius: 4;
+}
+
+.delete-button:hover {
+    -fx-background-color: #c0392b;
+}
+
+.income-button {
+    -fx-background-color: #3498db;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 4 10 4 10;
+    -fx-background-radius: 4;
+}
+
+.income-button:hover {
+    -fx-background-color: #2980b9;
+}
+
+.save-button {
+    -fx-background-color: #2ecc71;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 8 20 8 20;
+    -fx-background-radius: 4;
+}
+
+.cancel-button {
+    -fx-background-color: #e74c3c;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 8 20 8 20;
+    -fx-background-radius: 4;
+}
+
+/* Поиск */
+.search-label {
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
+}
+
+.search-field {
+    -fx-background-color: white;
+    -fx-border-color: #e0e0e0;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 8 12 8 12;
+    -fx-font-size: 13px;
+}
+
+.search-field:focused {
+    -fx-border-color: #1976d2;
+    -fx-border-width: 2;
+}
+
+/* Диалоговые окна */
+.dialog-root {
+    -fx-background-color: #f5f7fa;
+}
+
+.dialog-title {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2c3e50;
+}
+
+.dialog-grid {
+    -fx-background-color: white;
+    -fx-padding: 15;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+
+.dialog-grid .label {
+    -fx-font-weight: bold;
+    -fx-text-fill: #555;
+}
+
+/* Подсветка строк с низким остатком */
+.low-stock-row {
+    -fx-background-color: #ffcccc !important;
+}
+
+.low-stock-row .text {
+    -fx-fill: #c0392b !important;
+}
+/* ==================== APPOINTMENTVIEW СТИЛИ ==================== */
+
+.appointment-top-panel {
+    -fx-background-color: white;
+    -fx-padding: 12;
+    -fx-border-color: #e0e0e0;
+    -fx-border-width: 0 0 1 0;
+}
+
+.view-box {
+    -fx-padding: 5;
+    -fx-border-color: #bdc3c7;
+    -fx-border-width: 1;
+    -fx-border-radius: 5;
+    -fx-background-radius: 5;
+}
+
+.view-radio {
+    -fx-font-size: 13px;
+    -fx-padding: 5 10;
+}
+
+.selected-date-label {
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2c3e50;
+}
+
+.appointment-datepicker {
+    -fx-font-size: 13px;
+    -fx-background-color: white;
+    -fx-border-color: #e0e0e0;
+    -fx-border-radius: 4;
+}
+
+.today-button {
+    -fx-background-color: #3498db;
+    -fx-text-fill: white;
+    -fx-font-size: 12px;
+    -fx-padding: 5 12;
+    -fx-background-radius: 4;
+}
+
+.refresh-button {
+    -fx-background-color: #95a5a6;
+    -fx-text-fill: white;
+    -fx-font-size: 12px;
+    -fx-padding: 5 12;
+    -fx-background-radius: 4;
+}
+
+.add-appointment-button {
+    -fx-background-color: #2ecc71;
+    -fx-text-fill: white;
+    -fx-font-size: 13px;
+    -fx-padding: 6 18;
+    -fx-background-radius: 4;
+    -fx-font-weight: bold;
+}
+
+.schedule-scrollpane {
+    -fx-background-color: white;
+    -fx-border-color: #e0e0e0;
+    -fx-border-radius: 8;
+}
+
+.schedule-grid {
+    -fx-background-color: white;
+}
+
+.schedule-header {
+    -fx-font-weight: bold;
+    -fx-background-color: #34495e;
+    -fx-text-fill: white;
+    -fx-padding: 12;
+    -fx-font-size: 13px;
+}
+
+.time-label {
+    -fx-padding: 12;
+    -fx-background-color: #ecf0f1;
+    -fx-border-color: #dddddd;
+    -fx-border-width: 0 0 1 0;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+}
+
+.master-label-booked {
+    -fx-padding: 12;
+    -fx-background-color: #ffcccc;
+    -fx-border-color: #dddddd;
+    -fx-border-width: 0 0 1 0;
+    -fx-font-weight: bold;
+    -fx-text-fill: #c0392b;
+    -fx-font-size: 13px;
+}
+
+.master-label-free {
+    -fx-padding: 12;
+    -fx-background-color: #d5f5e3;
+    -fx-border-color: #dddddd;
+    -fx-border-width: 0 0 1 0;
+    -fx-text-fill: #27ae60;
+    -fx-font-style: italic;
+    -fx-font-size: 13px;
+}
+
+.info-box-booked {
+    -fx-padding: 10;
+    -fx-background-color: #ffcccc;
+    -fx-border-color: #dddddd;
+    -fx-border-width: 0 0 1 0;
+}
+
+.info-box-free {
+    -fx-padding: 12;
+    -fx-background-color: #d5f5e3;
+    -fx-border-color: #dddddd;
+    -fx-border-width: 0 0 1 0;
+}
+
+.client-name-label {
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+}
+
+.car-info-label {
+    -fx-font-size: 12px;
+    -fx-text-fill: #7f8c8d;
+}
+
+.service-label {
+    -fx-font-size: 13px;
+    -fx-text-fill: #2980b9;
+    -fx-font-weight: bold;
+}
+
+.edit-appointment-btn {
+    -fx-background-color: #f39c12;
+    -fx-text-fill: white;
+    -fx-font-size: 13px;
+    -fx-padding: 6 12;
+    -fx-background-radius: 4;
+}
+
+.delete-appointment-btn {
+    -fx-background-color: #e74c3c;
+    -fx-text-fill: white;
+    -fx-font-size: 13px;
+    -fx-padding: 6 12;
+    -fx-background-radius: 4;
+}
+
+.add-slot-button {
+    -fx-background-color: #2ecc71;
+    -fx-text-fill: white;
+    -fx-font-size: 13px;
+    -fx-padding: 6 18;
+    -fx-background-radius: 4;
+    -fx-font-weight: bold;
+}
+
+/* Недельный вид */
+.week-day-header {
+    -fx-font-weight: bold;
+    -fx-background-color: #34495e;
+    -fx-text-fill: white;
+    -fx-padding: 12;
+    -fx-font-size: 12px;
+    -fx-text-alignment: center;
+}
+
+.time-label-week {
+    -fx-padding: 10;
+    -fx-background-color: #ecf0f1;
+    -fx-border-color: #dddddd;
+    -fx-border-width: 0 0 1 0;
+    -fx-font-size: 12px;
+}
+
+.week-cell {
+    -fx-padding: 8;
+    -fx-border-color: #dddddd;
+    -fx-border-width: 0 0 1 0;
+    -fx-min-height: 80;
+}
+
+.week-cell-booked {
+    -fx-background-color: #ffcccc;
+}
+
+.week-cell-free {
+    -fx-background-color: #d5f5e3;
+}
+
+.week-cell-free-label {
+    -fx-font-size: 12px;
+    -fx-text-fill: #27ae60;
+    -fx-font-style: italic;
+}
+
+.week-client-name {
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
+}
+
+.week-car-info {
+    -fx-font-size: 10px;
+    -fx-text-fill: #7f8c8d;
+}
+
+.week-service {
+    -fx-font-size: 11px;
+    -fx-text-fill: #2980b9;
+}
+
+/* Месячный вид */
+.month-day-header {
+    -fx-font-weight: bold;
+    -fx-background-color: #34495e;
+    -fx-text-fill: white;
+    -fx-padding: 12;
+    -fx-font-size: 13px;
+}
+
+.month-cell {
+    -fx-padding: 8;
+    -fx-border-color: #dddddd;
+    -fx-border-width: 1;
+    -fx-min-height: 100;
+    -fx-min-width: 100;
+}
+
+.month-cell-other-month {
+    -fx-background-color: #f5f5f5;
+}
+
+.month-date-label {
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+}
+
+.month-appointment-label {
+    -fx-font-size: 9px;
+    -fx-text-fill: #2980b9;
+}
+
+.month-more-label {
+    -fx-font-size: 9px;
+    -fx-text-fill: #7f8c8d;
+}
+
+.month-free-label {
+    -fx-font-size: 10px;
+    -fx-text-fill: #27ae60;
+    -fx-font-style: italic;
+}
+
+/* Диалоговые окна */
+.dialog-combo {
+    -fx-padding: 6;
+    -fx-font-size: 13px;
+}
+
+.dialog-datepicker {
+    -fx-font-size: 13px;
+}
+
+.create-order-checkbox {
+    -fx-font-size: 13px;
+}
+/* ==================== КАЛЕНДАРЬ - НЕДЕЛЬНЫЙ И МЕСЯЧНЫЙ ВИД ==================== */
+
+/* Колонки дней - минимальная ширина 200, максимальная - растягивается */
+.week-day-header,
+.month-day-header,
+.week-cell,
+.month-cell {
+    -fx-min-width: 200px;
+    -fx-pref-width: 200px;
+}
+
+/* Колонка Времени - фиксированная ширина 120px */
+.time-label,
+.time-label-week {
+    -fx-min-width: 120px;
+    -fx-pref-width: 120px;
+    -fx-max-width: 120px;
+}
+
+/* Все остальные заголовки */
+.schedule-header,
+.week-day-header,
+.month-day-header {
+    -fx-background-color: #9dcdf6;
+    -fx-text-fill: black;
+    -fx-font-weight: normal;
+    -fx-font-size: 12px;
+    -fx-pref-height: 50px;
+    -fx-min-height: 50px;
+    -fx-max-height: 50px;
+    -fx-alignment: CENTER;
+}
+
+/* День недели и дата на разных строках, по центру */
+.week-day-header {
+    -fx-wrap-text: true;
+    -fx-text-alignment: center;
+    -fx-alignment: CENTER;
+    -fx-padding: 5 2 5 2;
+}
+
+/* Минимальная высота всех строк 100px */
+.week-cell,
+.month-cell,
+.time-label,
+.time-label-week {
+    -fx-pref-height: 100px;
+    -fx-min-height: 100px;
+}
+
+/* Ячейки времени - фон, границы */
+.time-label,
+.time-label-week {
+    -fx-padding: 6;
+    -fx-background-color: #ecf0f1;
+    -fx-border-color: #dddddd;
+    -fx-border-width: 0 0 1 0;
+    -fx-font-size: 12px;
+    -fx-alignment: CENTER;
+}
+
+/* Ячейки недели */
+.week-cell {
+    -fx-padding: 6;
+    -fx-border-color: #dddddd;
+    -fx-border-width: 0 0 1 1;
+    -fx-min-height: 100px;
+    -fx-pref-height: 100px;
+}
+
+/* Ячейки месяца */
+.month-cell {
+    -fx-padding: 6;
+    -fx-border-color: #dddddd;
+    -fx-border-width: 1;
+    -fx-min-height: 100px;
+    -fx-pref-height: 100px;
+}
+
+/* Контент внутри ячейки */
+.week-client-name,
+.week-car-info,
+.week-service,
+.month-appointment-label {
+    -fx-wrap-text: true;
     -fx-font-size: 11px;
 }
 
-.combo-box-popup .list-cell:selected {
-    -fx-background-color: #e3f2fd;
+.week-client-name {
+    -fx-font-weight: bold;
+}
+
+.month-date-label {
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+}
+
+/* Записи в месячном виде */
+.month-appointment-label {
+    -fx-font-size: 10px;
+    -fx-text-fill: #2980b9;
+}
+
+/* Метка "свободно" */
+.week-cell-free-label,
+.month-free-label {
+    -fx-font-size: 11px;
+    -fx-text-fill: #27ae60;
+    -fx-font-style: italic;
+}
+
+/* Клетки с записями и свободные */
+.week-cell-booked {
+    -fx-background-color: #ffcccc;
+}
+
+.week-cell-free {
+    -fx-background-color: #d5f5e3;
+}
+
+/* Для GridPane, чтобы колонки растягивались */
+.schedule-grid {
+    -fx-background-color: white;
 }

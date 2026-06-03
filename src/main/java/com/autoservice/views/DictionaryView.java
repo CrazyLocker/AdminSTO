@@ -23,6 +23,7 @@ public class DictionaryView {
 
     public static VBox create() {
         TabPane dictPane = new TabPane();
+        dictPane.getStyleClass().add("dictionary-tabpane");
 
         Tab servicesTab = new Tab("Услуги");
         servicesTab.setContent(createServicesPanel());
@@ -40,6 +41,7 @@ public class DictionaryView {
 
         VBox vbox = new VBox(10);
         vbox.setPadding(new Insets(10));
+        vbox.getStyleClass().add("main-container");
         vbox.getChildren().add(dictPane);
         VBox.setVgrow(dictPane, Priority.ALWAYS);
         return vbox;
@@ -47,7 +49,7 @@ public class DictionaryView {
 
     private static VBox createServicesPanel() {
         TableView<Service> table = new TableView<>();
-        table.setStyle("-fx-font-size: 13px;");
+        table.getStyleClass().add("table-view");
 
         TableColumn<Service, String> colName = new TableColumn<>("Услуга");
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
@@ -56,12 +58,12 @@ public class DictionaryView {
         TableColumn<Service, Double> colPrice = new TableColumn<>("Цена (руб.)");
         colPrice.setCellValueFactory(new PropertyValueFactory<>("price"));
         colPrice.setPrefWidth(120);
-        colPrice.setStyle("-fx-alignment: CENTER-RIGHT;");
+        colPrice.getStyleClass().add("price-column");
 
         TableColumn<Service, Integer> colDuration = new TableColumn<>("Время (мин)");
         colDuration.setCellValueFactory(new PropertyValueFactory<>("duration"));
         colDuration.setPrefWidth(120);
-        colDuration.setStyle("-fx-alignment: CENTER;");
+        colDuration.getStyleClass().add("center-column");
 
         TableColumn<Service, String> colPartNumber = new TableColumn<>("Артикул");
         colPartNumber.setCellValueFactory(new PropertyValueFactory<>("partNumber"));
@@ -70,25 +72,6 @@ public class DictionaryView {
         table.getColumns().addAll(colName, colPrice, colDuration, colPartNumber);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(table, Priority.ALWAYS);
-
-        table.setRowFactory(tv -> new TableRow<Service>() {
-            @Override
-            protected void updateItem(Service item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setStyle("");
-                } else {
-                    if (getIndex() % 2 == 0) {
-                        setStyle("-fx-background-color: #e8f4f8; -fx-text-fill: black;");
-                    } else {
-                        setStyle("-fx-background-color: white; -fx-text-fill: black;");
-                    }
-                    setPrefHeight(35);
-                }
-            }
-        });
-
-        table.setStyle("-fx-selection-bar: #3498db; -fx-selection-bar-text: white;");
 
         table.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
@@ -105,24 +88,28 @@ public class DictionaryView {
         TextField nameField = new TextField();
         nameField.setPromptText("Название услуги");
         nameField.setPrefWidth(200);
+        nameField.getStyleClass().add("form-field");
 
         TextField priceField = new TextField();
         priceField.setPromptText("Цена");
         priceField.setPrefWidth(100);
+        priceField.getStyleClass().add("form-field");
 
         TextField durationField = new TextField();
         durationField.setPromptText("Время (мин)");
         durationField.setPrefWidth(100);
+        durationField.getStyleClass().add("form-field");
 
         TextField partNumberField = new TextField();
         partNumberField.setPromptText("Артикул");
         partNumberField.setPrefWidth(120);
+        partNumberField.getStyleClass().add("form-field");
 
-        Button addBtn = new Button("➕ Добавить");
-        addBtn.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold;");
+        Button addBtn = new Button("Добавить");
+        addBtn.getStyleClass().add("add-button");
 
-        Button deleteBtn = new Button("🗑 Удалить");
-        deleteBtn.setStyle("-fx-background-color: #f44336; -fx-text-fill: white; -fx-font-weight: bold;");
+        Button deleteBtn = new Button("Удалить");
+        deleteBtn.getStyleClass().add("delete-button");
 
         HBox formRow = new HBox(10, nameField, priceField, durationField, partNumberField, addBtn, deleteBtn);
         formRow.setPadding(new Insets(10, 0, 10, 0));
@@ -174,26 +161,31 @@ public class DictionaryView {
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
-        root.setStyle("-fx-background-color: #f0f0f0;");
+        root.getStyleClass().add("dialog-root");
 
         Label titleLabel = new Label("Редактирование услуги");
-        titleLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
+        titleLabel.getStyleClass().add("dialog-title");
 
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(10);
+        grid.getStyleClass().add("dialog-grid");
 
         TextField nameField = new TextField(service.getName());
         nameField.setPrefWidth(300);
+        nameField.getStyleClass().add("form-field");
 
         TextField priceField = new TextField(String.valueOf(service.getPrice()));
         priceField.setPrefWidth(150);
+        priceField.getStyleClass().add("form-field");
 
         TextField durationField = new TextField(String.valueOf(service.getDuration()));
         durationField.setPrefWidth(150);
+        durationField.getStyleClass().add("form-field");
 
         TextField partNumberField = new TextField(service.getPartNumber());
         partNumberField.setPrefWidth(200);
+        partNumberField.getStyleClass().add("form-field");
 
         grid.add(new Label("Название:"), 0, 0);
         grid.add(nameField, 1, 0);
@@ -208,16 +200,17 @@ public class DictionaryView {
         btnBox.setAlignment(Pos.CENTER);
 
         Button saveBtn = new Button("Сохранить");
-        saveBtn.setStyle("-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 20; -fx-background-radius: 4;");
+        saveBtn.getStyleClass().add("save-button");
 
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 20; -fx-background-radius: 4;");
+        cancelBtn.getStyleClass().add("cancel-button");
 
         btnBox.getChildren().addAll(saveBtn, cancelBtn);
 
         root.getChildren().addAll(titleLabel, grid, btnBox);
 
         Scene scene = new Scene(root);
+        scene.getStylesheets().add(DictionaryView.class.getResource("/styles.css").toExternalForm());
         stage.setScene(scene);
 
         saveBtn.setOnAction(e -> {
@@ -248,12 +241,11 @@ public class DictionaryView {
 
     private static VBox createSparePartsPanel() {
         sparePartsTable = new TableView<>();
-        sparePartsTable.setStyle("-fx-font-size: 13px;");
+        sparePartsTable.getStyleClass().add("table-view");
 
         TableColumn<SparePart, String> colName = new TableColumn<>("Наименование");
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
         colName.setPrefWidth(250);
-        colName.setStyle("-fx-font-weight: bold;");
 
         TableColumn<SparePart, String> colPartNumber = new TableColumn<>("Артикул");
         colPartNumber.setCellValueFactory(new PropertyValueFactory<>("partNumber"));
@@ -270,41 +262,22 @@ public class DictionaryView {
         TableColumn<SparePart, Double> colPurchase = new TableColumn<>("Закупочная");
         colPurchase.setCellValueFactory(new PropertyValueFactory<>("purchasePrice"));
         colPurchase.setPrefWidth(120);
-        colPurchase.setStyle("-fx-alignment: CENTER-RIGHT;");
+        colPurchase.getStyleClass().add("price-column");
 
         TableColumn<SparePart, Double> colRetail = new TableColumn<>("Розничная");
         colRetail.setCellValueFactory(new PropertyValueFactory<>("retailPrice"));
         colRetail.setPrefWidth(120);
-        colRetail.setStyle("-fx-alignment: CENTER-RIGHT;");
+        colRetail.getStyleClass().add("price-column");
 
         TableColumn<SparePart, Integer> colStock = new TableColumn<>("Остаток");
         colStock.setCellValueFactory(new PropertyValueFactory<>("stock"));
         colStock.setPrefWidth(100);
-        colStock.setStyle("-fx-alignment: CENTER; -fx-font-weight: bold;");
+        colStock.getStyleClass().add("center-column");
 
         sparePartsTable.getColumns().addAll(colName, colPartNumber, colManufacturer, colCompatible,
                 colPurchase, colRetail, colStock);
         sparePartsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(sparePartsTable, Priority.ALWAYS);
-
-        sparePartsTable.setRowFactory(tv -> new TableRow<SparePart>() {
-            @Override
-            protected void updateItem(SparePart item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setStyle("");
-                } else {
-                    if (getIndex() % 2 == 0) {
-                        setStyle("-fx-background-color: #e8f4f8; -fx-text-fill: black;");
-                    } else {
-                        setStyle("-fx-background-color: white; -fx-text-fill: black;");
-                    }
-                    setPrefHeight(35);
-                }
-            }
-        });
-
-        sparePartsTable.setStyle("-fx-selection-bar: #3498db; -fx-selection-bar-text: white;");
 
         sparePartsTable.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
@@ -323,12 +296,13 @@ public class DictionaryView {
         searchBox.setAlignment(Pos.CENTER_LEFT);
         searchBox.setPadding(new Insets(0, 0, 10, 0));
 
-        Label searchLabel = new Label("🔍 Поиск:");
-        searchLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 12px;");
+        Label searchLabel = new Label("Поиск:");
+        searchLabel.getStyleClass().add("search-label");
+
         searchField = new TextField();
         searchField.setPromptText("По названию, артикулу, производителю или модели...");
         searchField.setPrefWidth(450);
-        searchField.setStyle("-fx-padding: 8; -fx-font-size: 13px; -fx-background-radius: 4; -fx-border-radius: 4; -fx-border-color: #e0e0e0;");
+        searchField.getStyleClass().add("search-field");
 
         searchField.textProperty().addListener((observable, oldValue, newValue) -> {
             if (newValue == null || newValue.trim().isEmpty()) {
@@ -348,8 +322,8 @@ public class DictionaryView {
             }
         });
 
-        Button clearBtn = new Button("✖ Очистить");
-        clearBtn.setStyle("-fx-background-color: #95a5a6; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 6 15; -fx-background-radius: 4;");
+        Button clearBtn = new Button("Очистить");
+        clearBtn.getStyleClass().add("clear-button");
         clearBtn.setOnAction(e -> {
             searchField.clear();
             sparePartsTable.setItems(sparePartsList);
@@ -361,48 +335,48 @@ public class DictionaryView {
         TextField nameField = new TextField();
         nameField.setPromptText("Наименование");
         nameField.setPrefWidth(180);
-        nameField.setStyle("-fx-padding: 8; -fx-font-size: 12px;");
+        nameField.getStyleClass().add("form-field");
 
         TextField partNumberField = new TextField();
         partNumberField.setPromptText("Артикул");
         partNumberField.setPrefWidth(120);
-        partNumberField.setStyle("-fx-padding: 8; -fx-font-size: 12px;");
+        partNumberField.getStyleClass().add("form-field");
 
         TextField manufacturerField = new TextField();
         manufacturerField.setPromptText("Производитель");
         manufacturerField.setPrefWidth(120);
-        manufacturerField.setStyle("-fx-padding: 8; -fx-font-size: 12px;");
+        manufacturerField.getStyleClass().add("form-field");
 
         TextField compatibleField = new TextField();
         compatibleField.setPromptText("Совместимые модели");
         compatibleField.setPrefWidth(180);
-        compatibleField.setStyle("-fx-padding: 8; -fx-font-size: 12px;");
+        compatibleField.getStyleClass().add("form-field");
 
         TextField purchaseField = new TextField();
         purchaseField.setPromptText("Закупочная");
         purchaseField.setPrefWidth(100);
-        purchaseField.setStyle("-fx-padding: 8; -fx-font-size: 12px;");
+        purchaseField.getStyleClass().add("form-field");
 
         TextField retailField = new TextField();
         retailField.setPromptText("Розничная");
         retailField.setPrefWidth(100);
-        retailField.setStyle("-fx-padding: 8; -fx-font-size: 12px;");
+        retailField.getStyleClass().add("form-field");
 
         TextField stockField = new TextField();
         stockField.setPromptText("Остаток");
         stockField.setPrefWidth(90);
-        stockField.setStyle("-fx-padding: 8; -fx-font-size: 12px;");
+        stockField.getStyleClass().add("form-field");
 
         TextField locationField = new TextField();
         locationField.setPromptText("Местоположение");
         locationField.setPrefWidth(120);
-        locationField.setStyle("-fx-padding: 8; -fx-font-size: 12px;");
+        locationField.getStyleClass().add("form-field");
 
-        Button addBtn = new Button("➕ Добавить");
-        addBtn.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 15; -fx-background-radius: 4;");
+        Button addBtn = new Button("Добавить");
+        addBtn.getStyleClass().add("add-button");
 
-        Button deleteBtn = new Button("🗑 Удалить");
-        deleteBtn.setStyle("-fx-background-color: #f44336; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 15; -fx-background-radius: 4;");
+        Button deleteBtn = new Button("Удалить");
+        deleteBtn.getStyleClass().add("delete-button");
 
         HBox formRow = new HBox(10, nameField, partNumberField, manufacturerField, compatibleField,
                 purchaseField, retailField, stockField, locationField, addBtn, deleteBtn);
@@ -478,41 +452,51 @@ public class DictionaryView {
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
-        root.setStyle("-fx-background-color: #f0f0f0;");
+        root.getStyleClass().add("dialog-root");
 
         Label titleLabel = new Label("Редактирование запчасти");
-        titleLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
+        titleLabel.getStyleClass().add("dialog-title");
 
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(10);
+        grid.getStyleClass().add("dialog-grid");
 
         TextField nameField = new TextField(part.getName());
         nameField.setPrefWidth(350);
+        nameField.getStyleClass().add("form-field");
 
         TextField partNumberField = new TextField(part.getPartNumber());
         partNumberField.setPrefWidth(200);
+        partNumberField.getStyleClass().add("form-field");
 
         TextField manufacturerField = new TextField(part.getManufacturer());
         manufacturerField.setPrefWidth(200);
+        manufacturerField.getStyleClass().add("form-field");
 
         TextField compatibleField = new TextField(part.getCompatibleModels());
         compatibleField.setPrefWidth(350);
+        compatibleField.getStyleClass().add("form-field");
 
         TextField purchaseField = new TextField(String.valueOf(part.getPurchasePrice()));
         purchaseField.setPrefWidth(150);
+        purchaseField.getStyleClass().add("form-field");
 
         TextField retailField = new TextField(String.valueOf(part.getRetailPrice()));
         retailField.setPrefWidth(150);
+        retailField.getStyleClass().add("form-field");
 
         TextField stockField = new TextField(String.valueOf(part.getStock()));
         stockField.setPrefWidth(150);
+        stockField.getStyleClass().add("form-field");
 
         TextField minStockField = new TextField(String.valueOf(part.getMinStock()));
         minStockField.setPrefWidth(150);
+        minStockField.getStyleClass().add("form-field");
 
         TextField locationField = new TextField(part.getLocation());
         locationField.setPrefWidth(250);
+        locationField.getStyleClass().add("form-field");
 
         grid.add(new Label("Наименование:"), 0, 0);
         grid.add(nameField, 1, 0);
@@ -537,16 +521,17 @@ public class DictionaryView {
         btnBox.setAlignment(Pos.CENTER);
 
         Button saveBtn = new Button("Сохранить");
-        saveBtn.setStyle("-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 20; -fx-background-radius: 4;");
+        saveBtn.getStyleClass().add("save-button");
 
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 20; -fx-background-radius: 4;");
+        cancelBtn.getStyleClass().add("cancel-button");
 
         btnBox.getChildren().addAll(saveBtn, cancelBtn);
 
         root.getChildren().addAll(titleLabel, grid, btnBox);
 
         Scene scene = new Scene(root);
+        scene.getStylesheets().add(DictionaryView.class.getResource("/styles.css").toExternalForm());
         stage.setScene(scene);
 
         saveBtn.setOnAction(e -> {
@@ -589,7 +574,7 @@ public class DictionaryView {
 
     private static VBox createStockPanel() {
         TableView<SparePart> table = new TableView<>();
-        table.setStyle("-fx-font-size: 13px;");
+        table.getStyleClass().add("table-view");
 
         TableColumn<SparePart, String> colName = new TableColumn<>("Наименование");
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
@@ -602,12 +587,12 @@ public class DictionaryView {
         TableColumn<SparePart, Integer> colStock = new TableColumn<>("Остаток");
         colStock.setCellValueFactory(new PropertyValueFactory<>("stock"));
         colStock.setPrefWidth(120);
-        colStock.setStyle("-fx-alignment: CENTER; -fx-font-weight: bold;");
+        colStock.getStyleClass().add("center-column");
 
         TableColumn<SparePart, Integer> colMinStock = new TableColumn<>("Мин. остаток");
         colMinStock.setCellValueFactory(new PropertyValueFactory<>("minStock"));
         colMinStock.setPrefWidth(120);
-        colMinStock.setStyle("-fx-alignment: CENTER;");
+        colMinStock.getStyleClass().add("center-column");
 
         TableColumn<SparePart, String> colLocation = new TableColumn<>("Местоположение");
         colLocation.setCellValueFactory(new PropertyValueFactory<>("location"));
@@ -618,7 +603,7 @@ public class DictionaryView {
         colAction.setCellFactory(col -> new TableCell<SparePart, Void>() {
             private final Button addBtn = new Button("+ Приход");
             {
-                addBtn.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 5 10; -fx-background-radius: 4;");
+                addBtn.getStyleClass().add("income-button");
                 addBtn.setOnAction(e -> {
                     SparePart part = getTableView().getItems().get(getIndex());
                     DictionaryController.showStockIncome(part);
@@ -635,26 +620,20 @@ public class DictionaryView {
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(table, Priority.ALWAYS);
 
+        // Подсветка строк с низким остатком через CSS
         table.setRowFactory(tv -> new TableRow<SparePart>() {
             @Override
             protected void updateItem(SparePart item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || item == null) {
-                    setStyle("");
+                    getStyleClass().removeAll("low-stock-row");
+                } else if (item.getStock() <= item.getMinStock()) {
+                    getStyleClass().add("low-stock-row");
                 } else {
-                    if (item.getStock() <= item.getMinStock()) {
-                        setStyle("-fx-background-color: #ffcccc; -fx-text-fill: #c0392b;");
-                    } else if (getIndex() % 2 == 0) {
-                        setStyle("-fx-background-color: #e8f4f8; -fx-text-fill: black;");
-                    } else {
-                        setStyle("-fx-background-color: white; -fx-text-fill: black;");
-                    }
-                    setPrefHeight(35);
+                    getStyleClass().removeAll("low-stock-row");
                 }
             }
         });
-
-        table.setStyle("-fx-selection-bar: #3498db; -fx-selection-bar-text: white;");
 
         // Загружаем данные для склада
         ObservableList<SparePart> stockList = FXCollections.observableArrayList(DataStore.getSpareParts());
@@ -665,12 +644,13 @@ public class DictionaryView {
         searchBox.setAlignment(Pos.CENTER_LEFT);
         searchBox.setPadding(new Insets(0, 0, 10, 0));
 
-        Label searchLabel = new Label("🔍 Поиск:");
-        searchLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 12px;");
+        Label searchLabel = new Label("Поиск:");
+        searchLabel.getStyleClass().add("search-label");
+
         TextField stockSearchField = new TextField();
         stockSearchField.setPromptText("По наименованию, артикулу или местоположению...");
         stockSearchField.setPrefWidth(450);
-        stockSearchField.setStyle("-fx-padding: 8; -fx-font-size: 13px; -fx-background-radius: 4; -fx-border-radius: 4; -fx-border-color: #e0e0e0;");
+        stockSearchField.getStyleClass().add("search-field");
 
         stockSearchField.textProperty().addListener((observable, oldValue, newValue) -> {
             if (newValue == null || newValue.trim().isEmpty()) {
@@ -689,8 +669,8 @@ public class DictionaryView {
             }
         });
 
-        Button clearBtn = new Button("✖ Очистить");
-        clearBtn.setStyle("-fx-background-color: #95a5a6; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 6 15; -fx-background-radius: 4;");
+        Button clearBtn = new Button("Очистить");
+        clearBtn.getStyleClass().add("clear-button");
         clearBtn.setOnAction(e -> {
             stockSearchField.clear();
             table.setItems(stockList);

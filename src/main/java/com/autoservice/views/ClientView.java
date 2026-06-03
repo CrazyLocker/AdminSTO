@@ -17,12 +17,9 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import javafx.scene.text.Font;
-import javafx.scene.text.FontWeight;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Predicate;
 
 public class ClientView {
 
@@ -39,66 +36,39 @@ public class ClientView {
 
     public static VBox create() {
         VBox mainContainer = new VBox(15);
-        mainContainer.setPadding(new Insets(20));
-        mainContainer.setStyle("-fx-background-color: #f5f7fa;");
+        mainContainer.getStyleClass().add("main-container");
 
         Label titleLabel = new Label("Управление клиентами");
-        titleLabel.setFont(Font.font("Segoe UI", FontWeight.NORMAL, 20));
-        titleLabel.setStyle("-fx-text-fill: #2c3e50;");
+        titleLabel.getStyleClass().add("section-title");
 
-        // Панель поиска
         HBox searchBox = createSearchPanel();
 
-        // Таблица клиентов
         clientTable = createClientTable();
 
-        // Форма добавления
         VBox formPanel = createAddClientForm();
 
         mainContainer.getChildren().addAll(titleLabel, searchBox, clientTable, formPanel);
         VBox.setVgrow(clientTable, Priority.ALWAYS);
 
-        // Загружаем начальные данные
         refreshClientList();
 
         return mainContainer;
     }
 
     private static HBox createSearchPanel() {
-        Label searchIcon = new Label("🔍");
-        searchIcon.setStyle("-fx-font-size: 14px;");
-
         searchField = new TextField();
         searchField.setPromptText("Поиск по имени, фамилии, телефону...");
         searchField.setPrefWidth(350);
-        searchField.setStyle(
-                "-fx-padding: 8 12 8 12; " +
-                        "-fx-background-radius: 6; " +
-                        "-fx-border-radius: 6; " +
-                        "-fx-border-color: #e0e0e0; " +
-                        "-fx-border-width: 1; " +
-                        "-fx-font-size: 12px;"
-        );
-
-        // Слушатель для поиска
-        searchField.textProperty().addListener((observable, oldValue, newValue) -> {
-            filterClients(newValue);
-        });
+        searchField.textProperty().addListener((obs, oldVal, newVal) -> filterClients(newVal));
 
         Button clearBtn = new Button("Очистить");
-        clearBtn.setStyle(
-                "-fx-background-color: #e74c3c; " +
-                        "-fx-text-fill: white; " +
-                        "-fx-font-size: 11px; " +
-                        "-fx-background-radius: 4; " +
-                        "-fx-padding: 6 12 6 12;"
-        );
+        clearBtn.getStyleClass().add("clear-button");
         clearBtn.setOnAction(e -> {
             searchField.clear();
             filterClients("");
         });
 
-        HBox searchBox = new HBox(10, searchIcon, searchField, clearBtn);
+        HBox searchBox = new HBox(10, new Label("🔍"), searchField, clearBtn);
         searchBox.setAlignment(Pos.CENTER_LEFT);
         searchBox.setPadding(new Insets(0, 0, 10, 0));
 
@@ -107,28 +77,18 @@ public class ClientView {
 
     private static TableView<Client> createClientTable() {
         TableView<Client> table = new TableView<>();
-        table.setStyle(
-                "-fx-background-color: white; " +
-                        "-fx-border-color: #e0e0e0; " +
-                        "-fx-border-radius: 8; " +
-                        "-fx-background-radius: 8; " +
-                        "-fx-font-size: 12px;"
-        );
 
         TableColumn<Client, String> colLastName = new TableColumn<>("Фамилия");
         colLastName.setCellValueFactory(new PropertyValueFactory<>("lastName"));
         colLastName.setPrefWidth(130);
-        colLastName.setStyle("-fx-alignment: CENTER-LEFT;");
 
         TableColumn<Client, String> colName = new TableColumn<>("Имя");
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
         colName.setPrefWidth(130);
-        colName.setStyle("-fx-alignment: CENTER-LEFT;");
 
         TableColumn<Client, String> colPhone = new TableColumn<>("Телефон");
         colPhone.setCellValueFactory(new PropertyValueFactory<>("phone"));
         colPhone.setPrefWidth(140);
-        colPhone.setStyle("-fx-alignment: CENTER-LEFT;");
 
         TableColumn<Client, String> colCar = new TableColumn<>("Автомобиль");
         colCar.setCellValueFactory(cellData -> {
@@ -138,7 +98,6 @@ public class ClientView {
             return new SimpleStringProperty(model + " (" + number + ")");
         });
         colCar.setPrefWidth(260);
-        colCar.setStyle("-fx-alignment: CENTER-LEFT;");
 
         TableColumn<Client, String> colLastRepair = new TableColumn<>("Последний ремонт");
         colLastRepair.setCellValueFactory(cellData -> {
@@ -146,40 +105,9 @@ public class ClientView {
             return new SimpleStringProperty(date != null && !date.isEmpty() ? DateUtils.formatDate(date) : "—");
         });
         colLastRepair.setPrefWidth(140);
-        colLastRepair.setStyle("-fx-alignment: CENTER;");
 
         table.getColumns().addAll(colLastName, colName, colPhone, colCar, colLastRepair);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-
-        // Чередование цветов строк и цвет выделения
-        table.setRowFactory(tv -> new TableRow<Client>() {
-            @Override
-            protected void updateItem(Client item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setStyle("");
-                } else {
-                    if (getIndex() % 2 == 0) {
-                        setStyle("-fx-background-color: #e8f4f8; -fx-text-fill: black;");
-                    } else {
-                        setStyle("-fx-background-color: white; -fx-text-fill: black;");
-                    }
-                    setPrefHeight(35);
-                    setOnMouseEntered(e -> setStyle("-fx-background-color: #d0e8f0; -fx-text-fill: black;"));
-                    setOnMouseExited(e -> {
-                        if (getIndex() % 2 == 0) {
-                            setStyle("-fx-background-color: #e8f4f8; -fx-text-fill: black;");
-                        } else {
-                            setStyle("-fx-background-color: white; -fx-text-fill: black;");
-                        }
-                    });
-                }
-            }
-        });
-
-        table.setStyle(table.getStyle() +
-                "-fx-selection-bar: #3498db; " +
-                "-fx-selection-bar-text: white;");
 
         table.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
@@ -215,17 +143,10 @@ public class ClientView {
 
     private static VBox createAddClientForm() {
         VBox formContainer = new VBox(10);
-        formContainer.setPadding(new Insets(12));
-        formContainer.setStyle(
-                "-fx-background-color: white; " +
-                        "-fx-border-color: #e0e0e0; " +
-                        "-fx-border-radius: 8; " +
-                        "-fx-background-radius: 8;"
-        );
+        formContainer.getStyleClass().add("card");
 
-        Label formTitle = new Label("➕ Добавление нового клиента");
-        formTitle.setFont(Font.font("Segoe UI", FontWeight.NORMAL, 13));
-        formTitle.setStyle("-fx-text-fill: #2c3e50;");
+        Label formTitle = new Label("Добавление нового клиента");
+        formTitle.getStyleClass().add("form-title");
 
         GridPane formGrid = new GridPane();
         formGrid.setHgap(12);
@@ -234,72 +155,38 @@ public class ClientView {
 
         // Фамилия
         Label lastNameLabel = new Label("Фамилия");
-        lastNameLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #555;");
         TextField lastNameField = new TextField();
         lastNameField.setPromptText("Иванов");
         lastNameField.setPrefWidth(160);
-        lastNameField.setStyle(getTextFieldStyle());
 
         // Имя
         Label nameLabel = new Label("Имя");
-        nameLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #555;");
         TextField nameField = new TextField();
         nameField.setPromptText("Иван");
         nameField.setPrefWidth(160);
-        nameField.setStyle(getTextFieldStyle());
 
         // Телефон
         Label phoneLabel = new Label("Телефон");
-        phoneLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #555;");
         TextField phoneField = new TextField("+7");
         phoneField.setPrefWidth(160);
         Validators.setupPhoneField(phoneField);
-        phoneField.setStyle(getTextFieldStyle());
 
         // Модель авто
         Label carModelLabel = new Label("Модель автомобиля");
-        carModelLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #555;");
         ComboBox<String> carModelComboBox = new ComboBox<>();
         carModelComboBox.setPromptText("Выберите модель");
         carModelComboBox.setPrefWidth(200);
         carModelComboBox.setItems(FXCollections.observableArrayList(GWM_MODELS));
         carModelComboBox.setEditable(true);
-        carModelComboBox.setStyle(getTextFieldStyle());
 
         // Госномер
         Label carNumberLabel = new Label("Госномер");
-        carNumberLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #555;");
         TextField carNumberField = new TextField();
         carNumberField.setPromptText("А123ВС163");
         carNumberField.setPrefWidth(140);
         Validators.setupCarNumberField(carNumberField);
-        carNumberField.setStyle(getTextFieldStyle());
 
-        Button addBtn = new Button("➕ Добавить клиента");
-        addBtn.setStyle(
-                "-fx-background-color: #3498db; " +
-                        "-fx-text-fill: white; " +
-                        "-fx-font-size: 11px; " +
-                        "-fx-font-weight: bold; " +
-                        "-fx-background-radius: 4; " +
-                        "-fx-padding: 6 16 6 16;"
-        );
-
-        formGrid.add(lastNameLabel, 0, 0);
-        formGrid.add(lastNameField, 1, 0);
-        formGrid.add(nameLabel, 2, 0);
-        formGrid.add(nameField, 3, 0);
-        formGrid.add(phoneLabel, 0, 1);
-        formGrid.add(phoneField, 1, 1);
-        formGrid.add(carModelLabel, 2, 1);
-        formGrid.add(carModelComboBox, 3, 1);
-        formGrid.add(carNumberLabel, 0, 2);
-        formGrid.add(carNumberField, 1, 2);
-
-        HBox buttonContainer = new HBox(addBtn);
-        buttonContainer.setAlignment(Pos.CENTER_RIGHT);
-        buttonContainer.setPadding(new Insets(8, 0, 0, 0));
-
+        Button addBtn = new Button("Добавить клиента");
         addBtn.setOnAction(e -> {
             if (nameField.getText().trim().isEmpty()) {
                 showAlert("Введите имя клиента");
@@ -332,26 +219,30 @@ public class ClientView {
             refreshClientList();
         });
 
+        formGrid.add(lastNameLabel, 0, 0);
+        formGrid.add(lastNameField, 1, 0);
+        formGrid.add(nameLabel, 2, 0);
+        formGrid.add(nameField, 3, 0);
+        formGrid.add(phoneLabel, 0, 1);
+        formGrid.add(phoneField, 1, 1);
+        formGrid.add(carModelLabel, 2, 1);
+        formGrid.add(carModelComboBox, 3, 1);
+        formGrid.add(carNumberLabel, 0, 2);
+        formGrid.add(carNumberField, 1, 2);
+
+        HBox buttonContainer = new HBox(addBtn);
+        buttonContainer.setAlignment(Pos.CENTER_RIGHT);
+        buttonContainer.setPadding(new Insets(8, 0, 0, 0));
+
         formContainer.getChildren().addAll(formTitle, formGrid, buttonContainer);
         return formContainer;
     }
 
-    private static String getTextFieldStyle() {
-        return
-                "-fx-background-radius: 4; " +
-                        "-fx-padding: 6 10 6 10; " +
-                        "-fx-border-color: #e0e0e0; " +
-                        "-fx-border-radius: 4; " +
-                        "-fx-font-size: 11px;";
-    }
-
     public static void refreshClientList() {
-        // Обновляем исходные данные
         masterData = FXCollections.observableArrayList(DataStore.getClients());
         filteredClients = new FilteredList<>(masterData, p -> true);
         clientTable.setItems(filteredClients);
 
-        // Применяем текущий фильтр
         if (searchField != null && searchField.getText() != null && !searchField.getText().isEmpty()) {
             filterClients(searchField.getText());
         }

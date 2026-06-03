@@ -40,21 +40,27 @@ public class OrderView {
 
     public static VBox create() {
         VBox root = new VBox(10);
-        root.setPadding(new Insets(10));
-        root.setStyle("-fx-background-color: #f5f7fa;");
+        root.getStyleClass().add("main-container");
 
         HBox topPanel = new HBox(15);
         topPanel.setAlignment(Pos.CENTER_LEFT);
         topPanel.setPadding(new Insets(10));
-        topPanel.setStyle("-fx-background-color: white; -fx-border-color: #e0e0e0; -fx-border-width: 0 0 1 0;");
+        topPanel.getStyleClass().add("top-panel");
 
         HBox searchBox = createSearchPanel();
 
-        viewBtn = createActionButton("Просмотр", "#3498db");
-        editBtn = createActionButton("Изменить", "#f39c12");
-        deleteBtn = createActionButton("Удалить", "#e74c3c");
-        printBtn = createActionButton("Печать", "#9b59b6");
-        createOrderBtn = createActionButton("Новый", "#2ecc71");
+        viewBtn = createActionButton("Просмотр");
+        editBtn = createActionButton("Изменить");
+        deleteBtn = createActionButton("Удалить");
+        printBtn = createActionButton("Печать");
+        createOrderBtn = createActionButton("Новый");
+
+        // Устанавливаем разные цвета для кнопок
+        viewBtn.setStyle("-fx-background-color: #3498db;");
+        editBtn.setStyle("-fx-background-color: #f39c12;");
+        deleteBtn.setStyle("-fx-background-color: #e74c3c;");
+        printBtn.setStyle("-fx-background-color: #9b59b6;");
+        createOrderBtn.setStyle("-fx-background-color: #2ecc71;");
 
         viewBtn.setOnAction(e -> onView());
         editBtn.setOnAction(e -> onEdit());
@@ -68,14 +74,14 @@ public class OrderView {
         printBtn.setDisable(true);
 
         Label separator = new Label("|");
-        separator.setStyle("-fx-text-fill: #bdc3c7; -fx-font-size: 18px; -fx-padding: 0 5 0 5;");
+        separator.getStyleClass().add("separator");
 
         topPanel.getChildren().addAll(searchBox, separator, viewBtn, editBtn, deleteBtn, printBtn, createOrderBtn);
         HBox.setHgrow(searchBox, Priority.ALWAYS);
 
         // ========== ПАНЕЛЬ РАСШИРЕННЫХ ФИЛЬТРОВ ==========
         advancedToggleBtn = new ToggleButton("▼ Расширенный фильтр");
-        advancedToggleBtn.setStyle("-fx-background-color: #ecf0f1; -fx-font-size: 11px; -fx-padding: 5 10 5 10; -fx-margin: 5 0 0 0;");
+        advancedToggleBtn.getStyleClass().add("toggle-button");
         advancedToggleBtn.setSelected(false);
 
         advancedFilterPanel = createAdvancedFilterPanel();
@@ -91,6 +97,7 @@ public class OrderView {
 
         // ========== ТАБЛИЦА ==========
         orderTable = new TableView<>();
+        orderTable.getStyleClass().add("table-view");
         setupTableColumns();
 
         // Загружаем данные
@@ -112,17 +119,17 @@ public class OrderView {
     private static VBox createAdvancedFilterPanel() {
         VBox filterBox = new VBox(10);
         filterBox.setPadding(new Insets(10));
-        filterBox.setStyle("-fx-background-color: white; -fx-border-color: #e0e0e0; -fx-border-radius: 5; -fx-background-radius: 5;");
+        filterBox.getStyleClass().add("filter-panel");
 
         Label titleLabel = new Label("Фильтры");
-        titleLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
+        titleLabel.getStyleClass().add("filter-title");
 
         // Строка 1: Статус
         HBox row1 = new HBox(15);
         row1.setAlignment(Pos.CENTER_LEFT);
 
         Label statusLabel = new Label("Статус:");
-        statusLabel.setStyle("-fx-font-weight: bold;");
+        statusLabel.getStyleClass().add("filter-label");
         statusFilterCombo = new ComboBox<>();
         statusFilterCombo.getItems().addAll("Все", "Новый", "В работе", "Закрыт");
         statusFilterCombo.setValue("Все");
@@ -131,24 +138,22 @@ public class OrderView {
 
         row1.getChildren().addAll(statusLabel, statusFilterCombo);
 
-        // Строка 2: Дата от и до - УВЕЛИЧЕННЫЙ РАЗМЕР
+        // Строка 2: Дата от и до
         HBox row2 = new HBox(15);
         row2.setAlignment(Pos.CENTER_LEFT);
 
         Label dateFromLabel = new Label("Дата от:");
-        dateFromLabel.setStyle("-fx-font-weight: bold;");
+        dateFromLabel.getStyleClass().add("filter-label");
         dateFromPicker = new DatePicker();
         dateFromPicker.setPromptText("дд.мм.гггг");
         dateFromPicker.setPrefWidth(180);
-        dateFromPicker.setStyle("-fx-font-size: 13px; -fx-padding: 6;");
         dateFromPicker.setOnAction(e -> applyFilters());
 
         Label dateToLabel = new Label("Дата до:");
-        dateToLabel.setStyle("-fx-font-weight: bold;");
+        dateToLabel.getStyleClass().add("filter-label");
         dateToPicker = new DatePicker();
         dateToPicker.setPromptText("дд.мм.гггг");
         dateToPicker.setPrefWidth(180);
-        dateToPicker.setStyle("-fx-font-size: 13px; -fx-padding: 6;");
         dateToPicker.setOnAction(e -> applyFilters());
 
         row2.getChildren().addAll(dateFromLabel, dateFromPicker, dateToLabel, dateToPicker);
@@ -158,14 +163,14 @@ public class OrderView {
         row3.setAlignment(Pos.CENTER_LEFT);
 
         Label minTotalLabel = new Label("Сумма от:");
-        minTotalLabel.setStyle("-fx-font-weight: bold;");
+        minTotalLabel.getStyleClass().add("filter-label");
         minTotalField = new TextField();
         minTotalField.setPromptText("0");
         minTotalField.setPrefWidth(100);
         minTotalField.textProperty().addListener((obs, oldVal, newVal) -> applyFilters());
 
         Label maxTotalLabel = new Label("Сумма до:");
-        maxTotalLabel.setStyle("-fx-font-weight: bold;");
+        maxTotalLabel.getStyleClass().add("filter-label");
         maxTotalField = new TextField();
         maxTotalField.setPromptText("100000");
         maxTotalField.setPrefWidth(100);
@@ -173,7 +178,7 @@ public class OrderView {
 
         // Кнопка сброса
         resetFiltersBtn = new Button("Сбросить фильтры");
-        resetFiltersBtn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 5 15 5 15;");
+        resetFiltersBtn.getStyleClass().add("reset-button");
         resetFiltersBtn.setOnAction(e -> resetFilters());
 
         row3.getChildren().addAll(minTotalLabel, minTotalField, maxTotalLabel, maxTotalField, resetFiltersBtn);
@@ -192,8 +197,6 @@ public class OrderView {
     }
 
     private static void setupTableColumns() {
-        orderTable.setStyle("-fx-background-color: white; -fx-border-color: #e0e0e0; -fx-border-radius: 8; -fx-background-radius: 8; -fx-font-size: 12px;");
-
         TableColumn<WorkOrder, String> colId = new TableColumn<>("№ заказа");
         colId.setCellValueFactory(new PropertyValueFactory<>("id"));
         colId.setPrefWidth(160);
@@ -237,7 +240,7 @@ public class OrderView {
                         String newStatus = comboBox.getValue();
                         order.setStatus(newStatus);
                         OrderController.changeOrderStatus(order, newStatus);
-                        applyFilters(); // Обновляем фильтр после изменения статуса
+                        applyFilters();
                     }
                 });
             }
@@ -258,27 +261,6 @@ public class OrderView {
         orderTable.getColumns().addAll(colId, colClient, colCar, colServices, colTotal, colStatus);
         orderTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-        orderTable.setRowFactory(tv -> {
-            TableRow<WorkOrder> row = new TableRow<WorkOrder>() {
-                @Override
-                protected void updateItem(WorkOrder item, boolean empty) {
-                    super.updateItem(item, empty);
-                    if (empty || item == null) {
-                        setStyle("");
-                    } else {
-                        setStyle(getIndex() % 2 == 0 ? "-fx-background-color: #ffffff;" : "-fx-background-color: #f8f9fa;");
-                        setPrefHeight(40);
-                    }
-                }
-            };
-            row.setOnMouseClicked(event -> {
-                if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 1 && row.isEmpty()) {
-                    orderTable.getSelectionModel().clearSelection();
-                }
-            });
-            return row;
-        });
-
         orderTable.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2 && event.getButton() == MouseButton.PRIMARY) {
                 WorkOrder selected = orderTable.getSelectionModel().getSelectedItem();
@@ -293,12 +275,10 @@ public class OrderView {
         OrderController.setTable(orderTable);
     }
 
-    private static Button createActionButton(String text, String color) {
+    private static Button createActionButton(String text) {
         Button btn = new Button(text);
         btn.setPrefWidth(100);
-        btn.setStyle("-fx-background-color: " + color + "; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 0 8 0; -fx-background-radius: 4;");
-        btn.setOnMouseEntered(e -> btn.setStyle("-fx-background-color: derive(" + color + ", -10%); -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 0 8 0; -fx-background-radius: 4;"));
-        btn.setOnMouseExited(e -> btn.setStyle("-fx-background-color: " + color + "; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 0 8 0; -fx-background-radius: 4;"));
+        btn.getStyleClass().add("action-button");
         return btn;
     }
 
@@ -306,17 +286,18 @@ public class OrderView {
         searchField = new TextField();
         searchField.setPromptText("Поиск по имени, телефону или номеру авто...");
         searchField.setPrefWidth(300);
+        searchField.getStyleClass().add("search-field");
         searchField.textProperty().addListener((obs, oldVal, newVal) -> applyFilters());
 
         Button clearBtn = new Button("Очистить");
-        clearBtn.setStyle("-fx-background-color: #95a5a6; -fx-text-fill: white; -fx-font-weight: bold;");
+        clearBtn.getStyleClass().add("clear-button");
         clearBtn.setOnAction(e -> {
             searchField.clear();
             applyFilters();
         });
 
         resultLabel = new Label();
-        resultLabel.setStyle("-fx-text-fill: #666; -fx-font-size: 11px; -fx-padding: 0 0 0 10;");
+        resultLabel.getStyleClass().add("result-label");
 
         HBox searchBox = new HBox(10, new Label("Поиск:"), searchField, clearBtn, resultLabel);
         searchBox.setAlignment(Pos.CENTER_LEFT);
@@ -326,7 +307,6 @@ public class OrderView {
     private static String normalizeStatus(String status) {
         if (status == null) return null;
 
-        // Приводим к единому формату
         if (status.equalsIgnoreCase("Новый") || status.equals("НОВЫЙ") || status.contains("Нов")) {
             return "Новый";
         }

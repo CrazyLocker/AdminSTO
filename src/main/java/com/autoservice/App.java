@@ -41,7 +41,7 @@ public class App extends Application {
 
         tabPane.getTabs().addAll(dashTab, clientTab, orderTab, dictTab, appointmentTab);
 
-        Scene scene = new Scene(tabPane, 1300, 1000);
+        Scene scene = new Scene(tabPane, 1700, 1000);
 
         // Подключаем CSS
         scene.getStylesheets().add(
@@ -63,14 +63,9 @@ public class App extends Application {
         com.autoservice.controllers.ClientController.refreshTable();
         com.autoservice.controllers.OrderController.refreshTable();
         DictionaryController.refreshAll();
-
     }
 
     public static void main(String[] args) {
         launch(args);
-    }
-    public static void refreshAll() {
-        // Дашборд пересоздаётся при каждом открытии вкладки,
-        // поэтому отдельное обновление не требуется
     }
 }
