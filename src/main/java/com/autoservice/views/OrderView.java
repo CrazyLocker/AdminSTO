@@ -36,7 +36,7 @@ public class OrderView {
     private static VBox advancedFilterPanel;
     private static Button resetFiltersBtn;
 
-    private static Button viewBtn, editBtn, deleteBtn, printBtn, createOrderBtn;
+    private static Button editBtn, deleteBtn, printBtn, createOrderBtn;
 
     public static VBox create() {
         VBox root = new VBox(10);
@@ -49,26 +49,22 @@ public class OrderView {
 
         HBox searchBox = createSearchPanel();
 
-        viewBtn = createActionButton("Просмотр");
         editBtn = createActionButton("Изменить");
         deleteBtn = createActionButton("Удалить");
         printBtn = createActionButton("Печать");
         createOrderBtn = createActionButton("Новый");
 
         // Устанавливаем разные цвета для кнопок
-        viewBtn.setStyle("-fx-background-color: #3498db;");
         editBtn.setStyle("-fx-background-color: #f39c12;");
         deleteBtn.setStyle("-fx-background-color: #e74c3c;");
         printBtn.setStyle("-fx-background-color: #9b59b6;");
         createOrderBtn.setStyle("-fx-background-color: #2ecc71;");
 
-        viewBtn.setOnAction(e -> onView());
         editBtn.setOnAction(e -> onEdit());
         deleteBtn.setOnAction(e -> onDelete());
         printBtn.setOnAction(e -> onPrint());
         createOrderBtn.setOnAction(e -> OrderController.createOrder());
 
-        viewBtn.setDisable(true);
         editBtn.setDisable(true);
         deleteBtn.setDisable(true);
         printBtn.setDisable(true);
@@ -76,7 +72,7 @@ public class OrderView {
         Label separator = new Label("|");
         separator.getStyleClass().add("separator");
 
-        topPanel.getChildren().addAll(searchBox, separator, viewBtn, editBtn, deleteBtn, printBtn, createOrderBtn);
+        topPanel.getChildren().addAll(searchBox, separator, editBtn, deleteBtn, printBtn, createOrderBtn);
         HBox.setHgrow(searchBox, Priority.ALWAYS);
 
         // ========== ПАНЕЛЬ РАСШИРЕННЫХ ФИЛЬТРОВ ==========
@@ -104,7 +100,6 @@ public class OrderView {
         applyFilters();
 
         orderTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
-            viewBtn.setDisable(newVal == null);
             editBtn.setDisable(newVal == null);
             deleteBtn.setDisable(newVal == null);
             printBtn.setDisable(newVal == null);
@@ -406,11 +401,6 @@ public class OrderView {
         } catch (Exception e) {
             return null;
         }
-    }
-
-    private static void onView() {
-        WorkOrder selected = orderTable.getSelectionModel().getSelectedItem();
-        if (selected != null) OrderController.viewOrder(selected);
     }
 
     private static void onEdit() {

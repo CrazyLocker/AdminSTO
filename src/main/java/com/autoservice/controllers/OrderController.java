@@ -27,6 +27,7 @@ public class OrderController {
             orderTable.refresh();
         }
         AppointmentView.refresh();
+        DashboardView.refresh();
     }
 
     public static void createOrder() {
@@ -35,15 +36,17 @@ public class OrderController {
             return;
         }
         CreateOrderDialog.show();
+        refreshTable();  // Добавлено: обновляем таблицу после создания заказа
         DashboardView.refresh();
     }
 
     public static void editOrder(WorkOrder order) {
-        if (order.getStatus().equals(WorkOrder.STATUS_CLOSED)) {
+        if ("Закрыт".equals(order.getStatus())) {
             showAlert("Нельзя редактировать закрытый заказ");
             return;
         }
         EditOrderDialog.show(order);
+        refreshTable();  // Добавлено: обновляем таблицу после редактирования
     }
 
     public static void viewOrder(WorkOrder order) {
@@ -59,7 +62,7 @@ public class OrderController {
     }
 
     public static void deleteOrder(WorkOrder order) {
-        if (order.getStatus().equals(WorkOrder.STATUS_CLOSED)) {
+        if ("Закрыт".equals(order.getStatus())) {
             showAlert("Нельзя удалить закрытый заказ");
             return;
         }
@@ -76,13 +79,8 @@ public class OrderController {
 
         confirm.showAndWait().ifPresent(response -> {
             if (response == ButtonType.YES) {
-                // 1. Возвращаем запчасти на склад
                 returnSparePartsToStock(order);
-
-                // 2. Удаляем связанную запись в календаре
                 deleteAssociatedAppointment(order);
-
-                // 3. Удаляем заказ
                 DataStore.deleteOrder(order);
                 refreshTable();
                 showAlert("Заказ " + order.getId() + " удалён", Alert.AlertType.INFORMATION);
@@ -103,7 +101,7 @@ public class OrderController {
     private static void deleteAssociatedAppointment(WorkOrder order) {
         String orderId = order.getId();
         for (Appointment a : DataStore.getAppointments()) {
-            if (orderId.equals(a.getOrderId())) {
+            if (orderId != null && orderId.equals(a.getOrderId())) {
                 DataStore.deleteAppointment(a.getId());
                 System.out.println("Удалена запись в календаре для заказа " + orderId);
                 break;

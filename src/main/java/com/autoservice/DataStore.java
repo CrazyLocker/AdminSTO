@@ -45,6 +45,24 @@ public class DataStore {
         clients = Database.getAllClients();
     }
 
+    public static void deleteClient(Client client) {
+        // Удаляем заказы клиента
+        List<WorkOrder> ordersToDelete = new ArrayList<>();
+        for (WorkOrder order : orders) {
+            if (order.getClient().getId() == client.getId()) {
+                ordersToDelete.add(order);
+            }
+        }
+        for (WorkOrder order : ordersToDelete) {
+            Database.deleteOrder(order.getId());
+            orders.remove(order);
+        }
+
+        // Удаляем клиента
+        Database.deleteClient(client);
+        clients.remove(client);
+    }
+
     // ==================== ORDERS ====================
 
     public static List<WorkOrder> getOrders() { return orders; }
