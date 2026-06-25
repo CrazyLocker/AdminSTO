@@ -1,31 +1,35 @@
 @echo off
-title AdminSTO - Система управления автосервисом
+chcp 65001 >nul
+setlocal EnableDelayedExpansion
 
-echo ============================================
-echo   AdminSTO - Система управления автосервисом
-echo ============================================
+echo ========================================
+echo  AutoService STO - Admin (Portable)
+echo ========================================
 echo.
 
-REM Проверяем наличие Java
-java -version >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [ERROR] Java не найдена!
-    echo Пожалуйста, установите Java 17 или выше.
-    echo Скачать можно с: https://adoptium.net/
+rem === Используем встроенный JRE ===
+set SCRIPT_DIR=%~dp0
+set JRE_PATH="%SCRIPT_DIR%jre\bin\java.exe"
+set JAVAFX_PATH="%SCRIPT_DIR%javafx"
+set APP_PATH="%SCRIPT_DIR%autoservice-admin.jar"
+
+echo Launching AutoService STO...
+echo.
+
+if not exist !JRE_PATH! (
+    echo ERROR: JRE not found!
+    echo Application is corrupted.
     pause
     exit /b 1
 )
 
-REM Получаем путь к текущей папке
-set "APP_DIR=%~dp0"
+!JRE_PATH! ^
+    --module-path !JAVAFX_PATH! ^
+    --add-modules javafx.controls,javafx.fxml ^
+    -jar !APP_PATH!
 
-REM Запускаем приложение
-echo Запускаем приложение...
-cd /d "%APP_DIR%"
-java --module-path "lib" --add-modules javafx.controls,javafx.fxml -jar "autoservice-admin-1.0-SNAPSHOT-jar-with-dependencies.jar"
-
-if %errorlevel% neq 0 (
+if errorlevel 1 (
     echo.
-    echo [ERROR] Произошла ошибка при запуске приложения.
+    echo ERROR: Application failed!
     pause
 )

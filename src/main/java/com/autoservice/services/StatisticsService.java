@@ -16,13 +16,12 @@ public class StatisticsService {
     public static Map<String, Double> getDailyRevenue(int days) {
         Map<String, Double> revenue = new LinkedHashMap<>();
         LocalDate endDate = LocalDate.now();
-        LocalDate startDate = endDate.minusDays(days);
+        LocalDate startDate = endDate.minusDays(days - 1);
 
         for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
             revenue.put(date.format(DAY_FORMATTER), 0.0);
         }
 
-        // ОТЛАДКА: выводим все заказы из DataStore
         System.out.println("=== DEBUG: All orders in DataStore ===");
         System.out.println("Total orders: " + DataStore.getOrders().size());
         for (WorkOrder order : DataStore.getOrders()) {
@@ -75,12 +74,16 @@ public class StatisticsService {
         Map<String, Integer> mastersLoad = new LinkedHashMap<>();
 
         String[] masters = {"Иван", "Петр", "Сергей", "Антон"};
+        Set<String> knownMasters = new HashSet<>(Arrays.asList(masters));
         for (String master : masters) {
             mastersLoad.put(master, 0);
         }
 
         for (Appointment a : DataStore.getAppointments()) {
-            mastersLoad.merge(a.getMasterName(), 1, Integer::sum);
+            String name = a.getMasterName();
+            if (knownMasters.contains(name)) {
+                mastersLoad.merge(name, 1, Integer::sum);
+            }
         }
 
         return mastersLoad;

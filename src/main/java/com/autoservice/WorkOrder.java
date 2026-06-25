@@ -23,9 +23,12 @@ public class WorkOrder {
 
     public static List<String> getAllStatuses() {
         List<String> statuses = new ArrayList<>();
-        statuses.add("Новый");
-        statuses.add("В работе");
-        statuses.add("Закрыт");
+        statuses.add(STATUS_NEW);
+        statuses.add(STATUS_DIAGNOSTICS);
+        statuses.add(STATUS_IN_WORK);
+        statuses.add(STATUS_WAITING_PARTS);
+        statuses.add(STATUS_READY);
+        statuses.add(STATUS_CLOSED);
         return statuses;
     }
 
