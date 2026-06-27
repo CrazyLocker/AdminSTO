@@ -2,6 +2,7 @@ package com.autoservice.views;
 
 import com.autoservice.*;
 import com.autoservice.controllers.DictionaryController;
+import com.autoservice.dialogs.ImportSparePartsDialog;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -15,11 +16,15 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class DictionaryView {
 
     private static TableView<SparePart> sparePartsTable;
+    private static TableView<SparePart> stockTable;
     private static TextField searchField;
-    private static ObservableList<SparePart> sparePartsList;
+    private static Button stockIncomeBtn;
 
     public static VBox create() {
         TabPane dictPane = new TabPane();
@@ -46,12 +51,11 @@ public class DictionaryView {
         VBox.setVgrow(dictPane, Priority.ALWAYS);
         return vbox;
     }
-
     private static VBox createServicesPanel() {
         TableView<Service> table = new TableView<>();
         table.getStyleClass().add("table-view");
 
-        TableColumn<Service, String> colName = new TableColumn<>("Услуга");
+        TableColumn<Service, String> colName = new TableColumn<>("Название услуги");
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
         colName.setPrefWidth(280);
 
@@ -60,12 +64,12 @@ public class DictionaryView {
         colPrice.setPrefWidth(120);
         colPrice.getStyleClass().add("price-column");
 
-        TableColumn<Service, Integer> colDuration = new TableColumn<>("Время (мин)");
+        TableColumn<Service, Integer> colDuration = new TableColumn<>("Длительность (мин)");
         colDuration.setCellValueFactory(new PropertyValueFactory<>("duration"));
         colDuration.setPrefWidth(120);
         colDuration.getStyleClass().add("center-column");
 
-        TableColumn<Service, String> colPartNumber = new TableColumn<>("Артикул");
+        TableColumn<Service, String> colPartNumber = new TableColumn<>("Артикул услуги");
         colPartNumber.setCellValueFactory(new PropertyValueFactory<>("partNumber"));
         colPartNumber.setPrefWidth(150);
 
@@ -76,15 +80,12 @@ public class DictionaryView {
         table.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
                 Service selected = table.getSelectionModel().getSelectedItem();
-                if (selected != null) {
-                    editServiceDialog(selected);
-                }
+                if (selected != null) editServiceDialog(selected);
             }
         });
 
         DictionaryController.setServicesTable(table);
 
-        // Форма добавления услуги
         TextField nameField = new TextField();
         nameField.setPromptText("Название услуги");
         nameField.setPrefWidth(200);
@@ -96,7 +97,7 @@ public class DictionaryView {
         priceField.getStyleClass().add("form-field");
 
         TextField durationField = new TextField();
-        durationField.setPromptText("Время (мин)");
+        durationField.setPromptText("Длительность (мин)");
         durationField.setPrefWidth(100);
         durationField.getStyleClass().add("form-field");
 
@@ -105,56 +106,108 @@ public class DictionaryView {
         partNumberField.setPrefWidth(120);
         partNumberField.getStyleClass().add("form-field");
 
-        Button addBtn = new Button("Добавить");
+        Button addBtn = new Button("Добавить услугу");
         addBtn.getStyleClass().add("add-button");
-
-        Button deleteBtn = new Button("Удалить");
+        Button deleteBtn = new Button("Удалить выбранную услугу");
         deleteBtn.getStyleClass().add("delete-button");
 
         HBox formRow = new HBox(10, nameField, priceField, durationField, partNumberField, addBtn, deleteBtn);
-        formRow.setPadding(new Insets(10, 0, 10, 0));
+        formRow.setAlignment(Pos.CENTER_LEFT);
+        formRow.setPadding(new Insets(10, 0, 0, 0));
+        VBox panel = new VBox(10, table, formRow);
+        return panel;
+    }
+    private static VBox createSparePartsPanel() {
+        TableView<SparePart> table = new TableView<>();
+        table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+        table.getStyleClass().add("table-view");
 
-        addBtn.setOnAction(e -> {
-            if (nameField.getText().isEmpty() || priceField.getText().isEmpty()) {
-                showAlert("Заполните название и цену");
-                return;
-            }
-            try {
-                double price = Double.parseDouble(priceField.getText());
-                int duration = durationField.getText().isEmpty() ? 60 : Integer.parseInt(durationField.getText());
-                String partNumber = partNumberField.getText();
-                Service service = new Service(nameField.getText(), price);
-                service.setDuration(duration);
-                service.setPartNumber(partNumber);
-                DictionaryController.addService(service);
-                nameField.clear();
-                priceField.clear();
-                durationField.clear();
-                partNumberField.clear();
-            } catch (NumberFormatException ex) {
-                showAlert("Цена и время должны быть числами");
-            }
-        });
+        TableColumn<SparePart, String> colName = new TableColumn<>("Название запчасти");
+        colName.setCellValueFactory(new PropertyValueFactory<>("name"));
+        colName.setPrefWidth(200);
 
-        deleteBtn.setOnAction(e -> {
-            Service selected = table.getSelectionModel().getSelectedItem();
-            if (selected != null) {
-                DictionaryController.removeService(selected);
-            } else {
-                showAlert("Выберите услугу");
-            }
-        });
+        TableColumn<SparePart, String> colPartNumber = new TableColumn<>("Артикул");
+        colPartNumber.setCellValueFactory(new PropertyValueFactory<>("partNumber"));
+        colPartNumber.setPrefWidth(120);
 
-        VBox vbox = new VBox(5);
-        vbox.setPadding(new Insets(10));
-        vbox.getChildren().addAll(table, formRow);
+        TableColumn<SparePart, String> colManufacturer = new TableColumn<>("Производитель");
+        colManufacturer.setCellValueFactory(new PropertyValueFactory<>("manufacturer"));
+        colManufacturer.setPrefWidth(120);
+
+        TableColumn<SparePart, String> colCompatibleModels = new TableColumn<>("Совместимые модели");
+        colCompatibleModels.setCellValueFactory(new PropertyValueFactory<>("compatibleModels"));
+        colCompatibleModels.setPrefWidth(180);
+
+        TableColumn<SparePart, Double> colRetailPrice = new TableColumn<>("Розн. цена (руб.)");
+        colRetailPrice.setCellValueFactory(new PropertyValueFactory<>("retailPrice"));
+        colRetailPrice.setPrefWidth(130);
+        colRetailPrice.getStyleClass().add("price-column");
+
+        TableColumn<SparePart, Integer> colStock = new TableColumn<>("Остаток");
+        colStock.setCellValueFactory(new PropertyValueFactory<>("stock"));
+        colStock.setPrefWidth(80);
+        colStock.getStyleClass().add("center-column");
+
+        table.getColumns().addAll(colName, colPartNumber, colManufacturer, colCompatibleModels, colRetailPrice, colStock);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(table, Priority.ALWAYS);
-        return vbox;
+
+        table.setOnMouseClicked(event -> {
+            if (event.getClickCount() == 2) {
+                SparePart selected = table.getSelectionModel().getSelectedItem();
+                if (selected != null) editSparePartDialog(selected);
+            }
+        });
+
+        DictionaryController.setSparePartsTable(table);
+
+        searchField = new TextField();
+        searchField.setPromptText("Поиск по названию, артикулу...");
+        searchField.setPrefWidth(300);
+        searchField.getStyleClass().add("form-field");
+        searchField.textProperty().addListener((obs, oldVal, newValue) -> filterSpareParts(newValue));
+
+        Button addBtn = new Button("Добавить запчасть");
+        addBtn.getStyleClass().add("add-button");
+        addBtn.setOnAction(e -> showAddSparePartDialog());
+
+        Button deleteBtn = new Button("Удалить выбранные запчасти");
+        deleteBtn.getStyleClass().add("delete-button");
+        deleteBtn.setOnAction(e -> {
+            List<SparePart> selectedItems = table.getSelectionModel().getSelectedItems();
+            if (selectedItems.isEmpty()) { showAlert("Выберите запчасть для удаления"); return; }
+            String countText = formatCount(selectedItems.size());
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION, "Удалить " + selectedItems.size() + " " + countText + "?", ButtonType.YES, ButtonType.NO);
+            confirm.showAndWait().ifPresent(response -> {
+                if (response == ButtonType.YES) DictionaryController.removeSpareParts(selectedItems);
+            });
+        });
+
+        Button importBtn = new Button("Импорт из файла");
+        importBtn.getStyleClass().add("income-button");
+        importBtn.setOnAction(e -> ImportSparePartsDialog.show());
+
+        HBox btnRow = new HBox(10, searchField, addBtn, deleteBtn, importBtn);
+        btnRow.setAlignment(Pos.CENTER_LEFT);
+        btnRow.setPadding(new Insets(10, 0, 0, 0));
+        VBox panel = new VBox(10, table, btnRow);
+        return panel;
     }
 
-    private static void editServiceDialog(Service service) {
+    private static String formatCount(int count) {
+        if (count == 1) return "запчасть";
+        int lastTwo = count % 100;
+        int lastOne = count % 10;
+        if (lastTwo >= 11 && lastTwo <= 19) return "запчастей";
+        if (lastOne == 1) return "запчасти";
+        if (lastOne >= 2 && lastOne <= 4) return "запчасти";
+        return "запчастей";
+    }
+
+    private static void filterSpareParts(String filterText) {}
+    private static void showAddSparePartDialog() {
         Stage stage = new Stage();
-        stage.setTitle("Редактирование услуги");
+        stage.setTitle("Новая запчасть");
         stage.setMinWidth(450);
         stage.setMinHeight(350);
         stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
@@ -163,528 +216,371 @@ public class DictionaryView {
         root.setPadding(new Insets(20));
         root.getStyleClass().add("dialog-root");
 
-        Label titleLabel = new Label("Редактирование услуги");
+        Label titleLabel = new Label("Новая запчасть");
         titleLabel.getStyleClass().add("dialog-title");
 
         GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.getStyleClass().add("dialog-grid");
+        grid.setHgap(15);
+        grid.setVgap(12);
+        grid.setPadding(new Insets(10));
 
-        TextField nameField = new TextField(service.getName());
-        nameField.setPrefWidth(300);
-        nameField.getStyleClass().add("form-field");
-
-        TextField priceField = new TextField(String.valueOf(service.getPrice()));
-        priceField.setPrefWidth(150);
-        priceField.getStyleClass().add("form-field");
-
-        TextField durationField = new TextField(String.valueOf(service.getDuration()));
-        durationField.setPrefWidth(150);
-        durationField.getStyleClass().add("form-field");
-
-        TextField partNumberField = new TextField(service.getPartNumber());
-        partNumberField.setPrefWidth(200);
-        partNumberField.getStyleClass().add("form-field");
-
-        grid.add(new Label("Название:"), 0, 0);
-        grid.add(nameField, 1, 0);
-        grid.add(new Label("Цена (руб.):"), 0, 1);
-        grid.add(priceField, 1, 1);
-        grid.add(new Label("Время (мин):"), 0, 2);
-        grid.add(durationField, 1, 2);
-        grid.add(new Label("Артикул:"), 0, 3);
-        grid.add(partNumberField, 1, 3);
-
-        HBox btnBox = new HBox(15);
-        btnBox.setAlignment(Pos.CENTER);
-
-        Button saveBtn = new Button("Сохранить");
-        saveBtn.getStyleClass().add("save-button");
-
-        Button cancelBtn = new Button("Отмена");
-        cancelBtn.getStyleClass().add("cancel-button");
-
-        btnBox.getChildren().addAll(saveBtn, cancelBtn);
-
-        root.getChildren().addAll(titleLabel, grid, btnBox);
-
-        Scene scene = new Scene(root);
-        scene.getStylesheets().add(DictionaryView.class.getResource("/styles.css").toExternalForm());
-        stage.setScene(scene);
-
-        saveBtn.setOnAction(e -> {
-            if (nameField.getText().isEmpty()) {
-                showAlert("Введите название");
-                return;
-            }
-            try {
-                double price = Double.parseDouble(priceField.getText());
-                int duration = Integer.parseInt(durationField.getText());
-
-                service.setName(nameField.getText());
-                service.setPrice(price);
-                service.setDuration(duration);
-                service.setPartNumber(partNumberField.getText());
-
-                DictionaryController.addService(service);
-                stage.close();
-            } catch (NumberFormatException ex) {
-                showAlert("Цена и время должны быть числами");
-            }
-        });
-
-        cancelBtn.setOnAction(e -> stage.close());
-
-        stage.showAndWait();
-    }
-
-    private static VBox createSparePartsPanel() {
-        sparePartsTable = new TableView<>();
-        sparePartsTable.getStyleClass().add("table-view");
-
-        TableColumn<SparePart, String> colName = new TableColumn<>("Наименование");
-        colName.setCellValueFactory(new PropertyValueFactory<>("name"));
-        colName.setPrefWidth(250);
-
-        TableColumn<SparePart, String> colPartNumber = new TableColumn<>("Артикул");
-        colPartNumber.setCellValueFactory(new PropertyValueFactory<>("partNumber"));
-        colPartNumber.setPrefWidth(150);
-
-        TableColumn<SparePart, String> colManufacturer = new TableColumn<>("Производитель");
-        colManufacturer.setCellValueFactory(new PropertyValueFactory<>("manufacturer"));
-        colManufacturer.setPrefWidth(150);
-
-        TableColumn<SparePart, String> colCompatible = new TableColumn<>("Совместимые модели");
-        colCompatible.setCellValueFactory(new PropertyValueFactory<>("compatibleModels"));
-        colCompatible.setPrefWidth(250);
-
-        TableColumn<SparePart, Double> colPurchase = new TableColumn<>("Закупочная");
-        colPurchase.setCellValueFactory(new PropertyValueFactory<>("purchasePrice"));
-        colPurchase.setPrefWidth(120);
-        colPurchase.getStyleClass().add("price-column");
-
-        TableColumn<SparePart, Double> colRetail = new TableColumn<>("Розничная");
-        colRetail.setCellValueFactory(new PropertyValueFactory<>("retailPrice"));
-        colRetail.setPrefWidth(120);
-        colRetail.getStyleClass().add("price-column");
-
-        TableColumn<SparePart, Integer> colStock = new TableColumn<>("Остаток");
-        colStock.setCellValueFactory(new PropertyValueFactory<>("stock"));
-        colStock.setPrefWidth(100);
-        colStock.getStyleClass().add("center-column");
-
-        sparePartsTable.getColumns().addAll(colName, colPartNumber, colManufacturer, colCompatible,
-                colPurchase, colRetail, colStock);
-        sparePartsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        VBox.setVgrow(sparePartsTable, Priority.ALWAYS);
-
-        sparePartsTable.setOnMouseClicked(event -> {
-            if (event.getClickCount() == 2) {
-                SparePart selected = sparePartsTable.getSelectionModel().getSelectedItem();
-                if (selected != null) {
-                    editSparePartDialog(selected);
-                }
-            }
-        });
-
-        sparePartsList = FXCollections.observableArrayList(DataStore.getSpareParts());
-        sparePartsTable.setItems(sparePartsList);
-
-        // Панель поиска для запчастей
-        HBox searchBox = new HBox(10);
-        searchBox.setAlignment(Pos.CENTER_LEFT);
-        searchBox.setPadding(new Insets(0, 0, 10, 0));
-
-        Label searchLabel = new Label("Поиск:");
-        searchLabel.getStyleClass().add("search-label");
-
-        searchField = new TextField();
-        searchField.setPromptText("По названию, артикулу, производителю или модели...");
-        searchField.setPrefWidth(450);
-        searchField.getStyleClass().add("search-field");
-
-        searchField.textProperty().addListener((observable, oldValue, newValue) -> {
-            if (newValue == null || newValue.trim().isEmpty()) {
-                sparePartsTable.setItems(sparePartsList);
-            } else {
-                String filter = newValue.toLowerCase().trim();
-                ObservableList<SparePart> filtered = FXCollections.observableArrayList();
-                for (SparePart part : sparePartsList) {
-                    if ((part.getName() != null && part.getName().toLowerCase().contains(filter)) ||
-                            (part.getPartNumber() != null && part.getPartNumber().toLowerCase().contains(filter)) ||
-                            (part.getManufacturer() != null && part.getManufacturer().toLowerCase().contains(filter)) ||
-                            (part.getCompatibleModels() != null && part.getCompatibleModels().toLowerCase().contains(filter))) {
-                        filtered.add(part);
-                    }
-                }
-                sparePartsTable.setItems(filtered);
-            }
-        });
-
-        Button clearBtn = new Button("Очистить");
-        clearBtn.getStyleClass().add("clear-button");
-        clearBtn.setOnAction(e -> {
-            searchField.clear();
-            sparePartsTable.setItems(sparePartsList);
-        });
-
-        searchBox.getChildren().addAll(searchLabel, searchField, clearBtn);
-
-        // Форма добавления
         TextField nameField = new TextField();
-        nameField.setPromptText("Наименование");
-        nameField.setPrefWidth(180);
-        nameField.getStyleClass().add("form-field");
+        nameField.setPromptText("Название");
+        nameField.setPrefWidth(250);
 
         TextField partNumberField = new TextField();
         partNumberField.setPromptText("Артикул");
-        partNumberField.setPrefWidth(120);
-        partNumberField.getStyleClass().add("form-field");
+        partNumberField.setPrefWidth(200);
 
         TextField manufacturerField = new TextField();
         manufacturerField.setPromptText("Производитель");
-        manufacturerField.setPrefWidth(120);
-        manufacturerField.getStyleClass().add("form-field");
+        manufacturerField.setPrefWidth(200);
 
-        TextField compatibleField = new TextField();
-        compatibleField.setPromptText("Совместимые модели");
-        compatibleField.setPrefWidth(180);
-        compatibleField.getStyleClass().add("form-field");
+        TextField modelsField = new TextField();
+        modelsField.setPromptText("Совместимые модели");
+        modelsField.setPrefWidth(250);
 
-        TextField purchaseField = new TextField();
-        purchaseField.setPromptText("Закупочная");
-        purchaseField.setPrefWidth(100);
-        purchaseField.getStyleClass().add("form-field");
+        TextField retailPriceField = new TextField();
+        retailPriceField.setPromptText("Розн. цена");
+        retailPriceField.setPrefWidth(120);
 
-        TextField retailField = new TextField();
-        retailField.setPromptText("Розничная");
-        retailField.setPrefWidth(100);
-        retailField.getStyleClass().add("form-field");
+        TextField purchasePriceField = new TextField();
+        purchasePriceField.setPromptText("Закуп. цена");
+        purchasePriceField.setPrefWidth(120);
 
         TextField stockField = new TextField();
         stockField.setPromptText("Остаток");
-        stockField.setPrefWidth(90);
-        stockField.getStyleClass().add("form-field");
+        stockField.setPrefWidth(100);
 
-        TextField locationField = new TextField();
-        locationField.setPromptText("Местоположение");
-        locationField.setPrefWidth(120);
-        locationField.getStyleClass().add("form-field");
-
-        Button addBtn = new Button("Добавить");
-        addBtn.getStyleClass().add("add-button");
-
-        Button deleteBtn = new Button("Удалить");
-        deleteBtn.getStyleClass().add("delete-button");
-
-        HBox formRow = new HBox(10, nameField, partNumberField, manufacturerField, compatibleField,
-                purchaseField, retailField, stockField, locationField, addBtn, deleteBtn);
-        formRow.setPadding(new Insets(10, 0, 10, 0));
-        formRow.setAlignment(Pos.CENTER_LEFT);
-
-        addBtn.setOnAction(e -> {
-            if (nameField.getText().isEmpty() || retailField.getText().isEmpty()) {
-                showAlert("Заполните наименование и розничную цену");
-                return;
-            }
-            try {
-                double purchase = purchaseField.getText().isEmpty() ? 0 : Double.parseDouble(purchaseField.getText());
-                double retail = Double.parseDouble(retailField.getText());
-                int stock = stockField.getText().isEmpty() ? 0 : Integer.parseInt(stockField.getText());
-                int minStock = 3;
-
-                SparePart part = new SparePart(nameField.getText(), purchase, retail, stock);
-                part.setPartNumber(partNumberField.getText());
-                part.setManufacturer(manufacturerField.getText());
-                part.setCompatibleModels(compatibleField.getText());
-                part.setMinStock(minStock);
-                part.setLocation(locationField.getText());
-
-                DictionaryController.addSparePart(part);
-
-                sparePartsList.setAll(DataStore.getSpareParts());
-                nameField.clear();
-                partNumberField.clear();
-                manufacturerField.clear();
-                compatibleField.clear();
-                purchaseField.clear();
-                retailField.clear();
-                stockField.clear();
-                locationField.clear();
-
-                if (searchField.getText() != null && !searchField.getText().isEmpty()) {
-                    searchField.setText(searchField.getText());
-                }
-            } catch (NumberFormatException ex) {
-                showAlert("Цены и остаток должны быть числами");
-            }
-        });
-
-        deleteBtn.setOnAction(e -> {
-            SparePart selected = sparePartsTable.getSelectionModel().getSelectedItem();
-            if (selected != null) {
-                DictionaryController.removeSparePart(selected);
-                sparePartsList.setAll(DataStore.getSpareParts());
-                if (searchField.getText() != null && !searchField.getText().isEmpty()) {
-                    searchField.setText(searchField.getText());
-                }
-            } else {
-                showAlert("Выберите запчасть");
-            }
-        });
-
-        DictionaryController.setSparePartsTable(sparePartsTable);
-
-        VBox vbox = new VBox(5);
-        vbox.setPadding(new Insets(10));
-        vbox.getChildren().addAll(searchBox, sparePartsTable, formRow);
-        VBox.setVgrow(sparePartsTable, Priority.ALWAYS);
-        return vbox;
-    }
-
-    private static void editSparePartDialog(SparePart part) {
-        Stage stage = new Stage();
-        stage.setTitle("Редактирование запчасти");
-        stage.setMinWidth(600);
-        stage.setMinHeight(550);
-        stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
-
-        VBox root = new VBox(15);
-        root.setPadding(new Insets(20));
-        root.getStyleClass().add("dialog-root");
-
-        Label titleLabel = new Label("Редактирование запчасти");
-        titleLabel.getStyleClass().add("dialog-title");
-
-        GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.getStyleClass().add("dialog-grid");
-
-        TextField nameField = new TextField(part.getName());
-        nameField.setPrefWidth(350);
-        nameField.getStyleClass().add("form-field");
-
-        TextField partNumberField = new TextField(part.getPartNumber());
-        partNumberField.setPrefWidth(200);
-        partNumberField.getStyleClass().add("form-field");
-
-        TextField manufacturerField = new TextField(part.getManufacturer());
-        manufacturerField.setPrefWidth(200);
-        manufacturerField.getStyleClass().add("form-field");
-
-        TextField compatibleField = new TextField(part.getCompatibleModels());
-        compatibleField.setPrefWidth(350);
-        compatibleField.getStyleClass().add("form-field");
-
-        TextField purchaseField = new TextField(String.valueOf(part.getPurchasePrice()));
-        purchaseField.setPrefWidth(150);
-        purchaseField.getStyleClass().add("form-field");
-
-        TextField retailField = new TextField(String.valueOf(part.getRetailPrice()));
-        retailField.setPrefWidth(150);
-        retailField.getStyleClass().add("form-field");
-
-        TextField stockField = new TextField(String.valueOf(part.getStock()));
-        stockField.setPrefWidth(150);
-        stockField.getStyleClass().add("form-field");
-
-        TextField minStockField = new TextField(String.valueOf(part.getMinStock()));
-        minStockField.setPrefWidth(150);
-        minStockField.getStyleClass().add("form-field");
-
-        TextField locationField = new TextField(part.getLocation());
-        locationField.setPrefWidth(250);
-        locationField.getStyleClass().add("form-field");
-
-        grid.add(new Label("Наименование:"), 0, 0);
+        grid.add(new Label("Название:"), 0, 0);
         grid.add(nameField, 1, 0);
         grid.add(new Label("Артикул:"), 0, 1);
         grid.add(partNumberField, 1, 1);
         grid.add(new Label("Производитель:"), 0, 2);
         grid.add(manufacturerField, 1, 2);
-        grid.add(new Label("Совместимые модели:"), 0, 3);
-        grid.add(compatibleField, 1, 3);
-        grid.add(new Label("Закупочная цена:"), 0, 4);
-        grid.add(purchaseField, 1, 4);
-        grid.add(new Label("Розничная цена:"), 0, 5);
-        grid.add(retailField, 1, 5);
+        grid.add(new Label("Модели:"), 0, 3);
+        grid.add(modelsField, 1, 3);
+        grid.add(new Label("Розн. цена:"), 0, 4);
+        grid.add(retailPriceField, 1, 4);
+        grid.add(new Label("Закуп. цена:"), 0, 5);
+        grid.add(purchasePriceField, 1, 5);
         grid.add(new Label("Остаток:"), 0, 6);
         grid.add(stockField, 1, 6);
-        grid.add(new Label("Мин. остаток:"), 0, 7);
-        grid.add(minStockField, 1, 7);
-        grid.add(new Label("Местоположение:"), 0, 8);
-        grid.add(locationField, 1, 8);
-
-        HBox btnBox = new HBox(15);
-        btnBox.setAlignment(Pos.CENTER);
 
         Button saveBtn = new Button("Сохранить");
         saveBtn.getStyleClass().add("save-button");
-
         Button cancelBtn = new Button("Отмена");
         cancelBtn.getStyleClass().add("cancel-button");
 
-        btnBox.getChildren().addAll(saveBtn, cancelBtn);
-
+        HBox btnBox = new HBox(15, saveBtn, cancelBtn);
+        btnBox.setAlignment(Pos.CENTER);
         root.getChildren().addAll(titleLabel, grid, btnBox);
 
         Scene scene = new Scene(root);
-        scene.getStylesheets().add(DictionaryView.class.getResource("/styles.css").toExternalForm());
         stage.setScene(scene);
 
         saveBtn.setOnAction(e -> {
-            if (nameField.getText().isEmpty()) {
-                showAlert("Введите наименование");
-                return;
-            }
             try {
-                double purchase = purchaseField.getText().isEmpty() ? 0 : Double.parseDouble(purchaseField.getText());
-                double retail = Double.parseDouble(retailField.getText());
-                int stock = Integer.parseInt(stockField.getText());
-                int minStock = minStockField.getText().isEmpty() ? 0 : Integer.parseInt(minStockField.getText());
-
-                part.setName(nameField.getText());
-                part.setPartNumber(partNumberField.getText());
-                part.setManufacturer(manufacturerField.getText());
-                part.setCompatibleModels(compatibleField.getText());
-                part.setPurchasePrice(purchase);
-                part.setRetailPrice(retail);
-                part.setStock(stock);
-                part.setMinStock(minStock);
-                part.setLocation(locationField.getText());
-
+                String name = nameField.getText().trim();
+                if (name.isEmpty()) { showAlert("Введите название запчасти"); return; }
+                double retailPrice = retailPriceField.getText().isEmpty() ? 0 : Double.parseDouble(retailPriceField.getText());
+                double purchasePrice = purchasePriceField.getText().isEmpty() ? 0 : Double.parseDouble(purchasePriceField.getText());
+                int stock = stockField.getText().isEmpty() ? 0 : Integer.parseInt(stockField.getText());
+                SparePart part = new SparePart(name, purchasePrice, retailPrice, stock);
+                part.setPartNumber(partNumberField.getText().trim());
+                part.setManufacturer(manufacturerField.getText().trim());
+                part.setCompatibleModels(modelsField.getText().trim());
                 DictionaryController.addSparePart(part);
                 stage.close();
-
-                sparePartsList.setAll(DataStore.getSpareParts());
-                if (searchField != null && searchField.getText() != null && !searchField.getText().isEmpty()) {
-                    searchField.setText(searchField.getText());
-                }
-            } catch (NumberFormatException ex) {
-                showAlert("Цены и остаток должны быть числами");
-            }
+            } catch (NumberFormatException ex) { showAlert("Проверьте числовые поля"); }
         });
-
         cancelBtn.setOnAction(e -> stage.close());
-
         stage.showAndWait();
     }
-
     private static VBox createStockPanel() {
         TableView<SparePart> table = new TableView<>();
+        table.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
         table.getStyleClass().add("table-view");
 
-        TableColumn<SparePart, String> colName = new TableColumn<>("Наименование");
+        TableColumn<SparePart, String> colName = new TableColumn<>("Название запчасти");
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
-        colName.setPrefWidth(280);
+        colName.setPrefWidth(200);
 
         TableColumn<SparePart, String> colPartNumber = new TableColumn<>("Артикул");
         colPartNumber.setCellValueFactory(new PropertyValueFactory<>("partNumber"));
-        colPartNumber.setPrefWidth(150);
+        colPartNumber.setPrefWidth(120);
 
-        TableColumn<SparePart, Integer> colStock = new TableColumn<>("Остаток");
+        TableColumn<SparePart, Integer> colStock = new TableColumn<>("Текущий остаток");
         colStock.setCellValueFactory(new PropertyValueFactory<>("stock"));
         colStock.setPrefWidth(120);
         colStock.getStyleClass().add("center-column");
 
         TableColumn<SparePart, Integer> colMinStock = new TableColumn<>("Мин. остаток");
         colMinStock.setCellValueFactory(new PropertyValueFactory<>("minStock"));
-        colMinStock.setPrefWidth(120);
+        colMinStock.setPrefWidth(100);
         colMinStock.getStyleClass().add("center-column");
 
-        TableColumn<SparePart, String> colLocation = new TableColumn<>("Местоположение");
-        colLocation.setCellValueFactory(new PropertyValueFactory<>("location"));
-        colLocation.setPrefWidth(180);
-
-        TableColumn<SparePart, Void> colAction = new TableColumn<>("Действия");
-        colAction.setPrefWidth(120);
-        colAction.setCellFactory(col -> new TableCell<SparePart, Void>() {
-            private final Button addBtn = new Button("+ Приход");
-            {
-                addBtn.getStyleClass().add("income-button");
-                addBtn.setOnAction(e -> {
-                    SparePart part = getTableView().getItems().get(getIndex());
-                    DictionaryController.showStockIncome(part);
-                });
-            }
-            @Override
-            protected void updateItem(Void item, boolean empty) {
-                super.updateItem(item, empty);
-                setGraphic(empty ? null : addBtn);
-            }
-        });
-
-        table.getColumns().addAll(colName, colPartNumber, colStock, colMinStock, colLocation, colAction);
+        table.getColumns().addAll(colName, colPartNumber, colStock, colMinStock);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(table, Priority.ALWAYS);
 
-        // Подсветка строк с низким остатком через CSS
-        table.setRowFactory(tv -> new TableRow<SparePart>() {
-            @Override
-            protected void updateItem(SparePart item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    getStyleClass().removeAll("low-stock-row");
-                } else if (item.getStock() <= item.getMinStock()) {
-                    getStyleClass().add("low-stock-row");
-                } else {
-                    getStyleClass().removeAll("low-stock-row");
-                }
+        table.setItems(getAllParts());
+
+        table.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            if (stockIncomeBtn != null) stockIncomeBtn.setDisable(newVal == null);
+        });
+
+        table.setOnMouseClicked(event -> {
+            if (event.getClickCount() == 2) {
+                SparePart selected = table.getSelectionModel().getSelectedItem();
+                if (selected != null) editStockDialog(selected);
             }
         });
-
-        // Загружаем данные для склада
-        ObservableList<SparePart> stockList = FXCollections.observableArrayList(DataStore.getSpareParts());
-        table.setItems(stockList);
-
-        // Панель поиска для склада
-        HBox searchBox = new HBox(10);
-        searchBox.setAlignment(Pos.CENTER_LEFT);
-        searchBox.setPadding(new Insets(0, 0, 10, 0));
-
-        Label searchLabel = new Label("Поиск:");
-        searchLabel.getStyleClass().add("search-label");
-
-        TextField stockSearchField = new TextField();
-        stockSearchField.setPromptText("По наименованию, артикулу или местоположению...");
-        stockSearchField.setPrefWidth(450);
-        stockSearchField.getStyleClass().add("search-field");
-
-        stockSearchField.textProperty().addListener((observable, oldValue, newValue) -> {
-            if (newValue == null || newValue.trim().isEmpty()) {
-                table.setItems(stockList);
-            } else {
-                String filter = newValue.toLowerCase().trim();
-                ObservableList<SparePart> filtered = FXCollections.observableArrayList();
-                for (SparePart part : stockList) {
-                    if ((part.getName() != null && part.getName().toLowerCase().contains(filter)) ||
-                            (part.getPartNumber() != null && part.getPartNumber().toLowerCase().contains(filter)) ||
-                            (part.getLocation() != null && part.getLocation().toLowerCase().contains(filter))) {
-                        filtered.add(part);
-                    }
-                }
-                table.setItems(filtered);
-            }
-        });
-
-        Button clearBtn = new Button("Очистить");
-        clearBtn.getStyleClass().add("clear-button");
-        clearBtn.setOnAction(e -> {
-            stockSearchField.clear();
-            table.setItems(stockList);
-        });
-
-        searchBox.getChildren().addAll(searchLabel, stockSearchField, clearBtn);
 
         DictionaryController.setStockTable(table);
 
-        VBox vbox = new VBox(5);
-        vbox.setPadding(new Insets(10));
-        vbox.getChildren().addAll(searchBox, table);
-        VBox.setVgrow(table, Priority.ALWAYS);
-        return vbox;
+        stockIncomeBtn = new Button("Внести приход");
+        stockIncomeBtn.getStyleClass().add("income-button");
+        stockIncomeBtn.setDisable(true);
+        stockIncomeBtn.setOnAction(e -> {
+            SparePart selected = table.getSelectionModel().getSelectedItem();
+            if (selected != null) editStockDialog(selected);
+        });
+
+        HBox btnRow = new HBox(10, stockIncomeBtn);
+        btnRow.setAlignment(Pos.CENTER_LEFT);
+        btnRow.setPadding(new Insets(10, 0, 0, 0));
+        VBox panel = new VBox(10, table, btnRow);
+        return panel;
+    }
+
+    private static ObservableList<SparePart> getAllParts() {
+        return FXCollections.observableArrayList(DataStore.getSpareParts());
+    }
+    private static void editSparePartDialog(SparePart part) {
+        Stage stage = new Stage();
+        stage.setTitle("Редактировать запчасть");
+        stage.setMinWidth(450);
+        stage.setMinHeight(400);
+        stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
+
+        VBox root = new VBox(15);
+        root.setPadding(new Insets(20));
+        root.getStyleClass().add("dialog-root");
+
+        Label titleLabel = new Label("Редактировать запчасть");
+        titleLabel.getStyleClass().add("dialog-title");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(15);
+        grid.setVgap(12);
+        grid.setPadding(new Insets(10));
+
+        TextField nameField = new TextField(part.getName());
+        nameField.setPrefWidth(250);
+
+        TextField partNumberField = new TextField(part.getPartNumber());
+        partNumberField.setPrefWidth(200);
+
+        TextField manufacturerField = new TextField(part.getManufacturer());
+        manufacturerField.setPrefWidth(200);
+
+        TextField modelsField = new TextField(part.getCompatibleModels());
+        modelsField.setPrefWidth(250);
+
+        TextField retailPriceField = new TextField(String.valueOf(part.getRetailPrice()));
+        retailPriceField.setPrefWidth(120);
+
+        TextField purchasePriceField = new TextField(String.valueOf(part.getPurchasePrice()));
+        purchasePriceField.setPrefWidth(120);
+
+        TextField stockField = new TextField(String.valueOf(part.getStock()));
+        stockField.setPrefWidth(100);
+
+        TextField minStockField = new TextField(String.valueOf(part.getMinStock()));
+        minStockField.setPrefWidth(100);
+
+        TextField locationField = new TextField(part.getLocation());
+        locationField.setPrefWidth(150);
+
+        grid.add(new Label("Название:"), 0, 0); grid.add(nameField, 1, 0);
+        grid.add(new Label("Артикул:"), 0, 1); grid.add(partNumberField, 1, 1);
+        grid.add(new Label("Производитель:"), 0, 2); grid.add(manufacturerField, 1, 2);
+        grid.add(new Label("Модели:"), 0, 3); grid.add(modelsField, 1, 3);
+        grid.add(new Label("Розн. цена:"), 0, 4); grid.add(retailPriceField, 1, 4);
+        grid.add(new Label("Закуп. цена:"), 0, 5); grid.add(purchasePriceField, 1, 5);
+        grid.add(new Label("Остаток:"), 0, 6); grid.add(stockField, 1, 6);
+        grid.add(new Label("Мин. остаток:"), 0, 7); grid.add(minStockField, 1, 7);
+        grid.add(new Label("Место:"), 0, 8); grid.add(locationField, 1, 8);
+
+        Button saveBtn = new Button("Сохранить");
+        saveBtn.getStyleClass().add("save-button");
+        Button cancelBtn = new Button("Отмена");
+        cancelBtn.getStyleClass().add("cancel-button");
+
+        HBox btnBox = new HBox(15, saveBtn, cancelBtn);
+        btnBox.setAlignment(Pos.CENTER);
+        root.getChildren().addAll(titleLabel, grid, btnBox);
+
+        Scene scene = new Scene(root);
+        stage.setScene(scene);
+
+        saveBtn.setOnAction(e -> {
+            try {
+                part.setName(nameField.getText().trim());
+                part.setPartNumber(partNumberField.getText().trim());
+                part.setManufacturer(manufacturerField.getText().trim());
+                part.setCompatibleModels(modelsField.getText().trim());
+                part.setRetailPrice(Double.parseDouble(retailPriceField.getText()));
+                part.setPurchasePrice(Double.parseDouble(purchasePriceField.getText()));
+                part.setStock(Integer.parseInt(stockField.getText()));
+                part.setMinStock(Integer.parseInt(minStockField.getText()));
+                part.setLocation(locationField.getText().trim());
+                DataStore.addSparePart(part);
+                stage.close();
+            } catch (NumberFormatException ex) { showAlert("Проверьте числовые поля"); }
+        });
+
+        cancelBtn.setOnAction(e -> stage.close());
+        stage.showAndWait();
+    }
+    private static void editStockDialog(SparePart part) {
+        Stage stage = new Stage();
+        stage.setTitle("Приход запчасти");
+        stage.setMinWidth(350);
+        stage.setMinHeight(200);
+        stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
+
+        VBox root = new VBox(15);
+        root.setPadding(new Insets(20));
+        root.getStyleClass().add("dialog-root");
+
+        Label titleLabel = new Label("Запчасть: " + part.getName());
+        titleLabel.getStyleClass().add("dialog-title");
+
+        Label currentStockLabel = new Label("Текущий остаток: " + part.getStock());
+        currentStockLabel.getStyleClass().add("info-label");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(15);
+        grid.setVgap(12);
+        grid.setPadding(new Insets(10));
+
+        TextField minStockField = new TextField(String.valueOf(part.getMinStock()));
+        minStockField.setPromptText("Мин. остаток");
+        minStockField.setPrefWidth(150);
+
+        TextField amountField = new TextField();
+        amountField.setPromptText("Количество для прихода");
+        amountField.setPrefWidth(150);
+
+        grid.add(new Label("Мин. остаток:"), 0, 0);
+        grid.add(minStockField, 1, 0);
+        grid.add(new Label("Приход (шт):"), 0, 1);
+        grid.add(amountField, 1, 1);
+
+        Button saveBtn = new Button("Применить");
+        saveBtn.getStyleClass().add("save-button");
+        Button cancelBtn = new Button("Отмена");
+        cancelBtn.getStyleClass().add("cancel-button");
+
+        HBox btnBox = new HBox(15, saveBtn, cancelBtn);
+        btnBox.setAlignment(Pos.CENTER);
+        root.getChildren().addAll(titleLabel, currentStockLabel, grid, btnBox);
+
+        Scene scene = new Scene(root);
+        stage.setScene(scene);
+
+        saveBtn.setOnAction(e -> {
+            try {
+                int minStock = Integer.parseInt(minStockField.getText().trim());
+                int amount = amountField.getText().trim().isEmpty() ? 0 : Integer.parseInt(amountField.getText());
+
+                part.setMinStock(minStock);
+                DataStore.addSparePart(part);
+
+                if (amount > 0) {
+                    int newStock = part.getStock() + amount;
+                    part.setStock(newStock);
+                    DataStore.addSparePart(part);
+                }
+                stage.close();
+            } catch (NumberFormatException ex) { showAlert("Проверьте числовые поля"); }
+        });
+
+        cancelBtn.setOnAction(e -> stage.close());
+        stage.showAndWait();
+    }
+    private static void editServiceDialog(Service service) {
+        Stage stage = new Stage();
+        stage.setTitle("Редактировать услугу");
+        stage.setMinWidth(400);
+        stage.setMinHeight(300);
+        stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
+
+        VBox root = new VBox(15);
+        root.setPadding(new Insets(20));
+        root.getStyleClass().add("dialog-root");
+
+        Label titleLabel = new Label("Редактировать услугу");
+        titleLabel.getStyleClass().add("dialog-title");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(15);
+        grid.setVgap(12);
+        grid.setPadding(new Insets(10));
+
+        TextField nameField = new TextField(service.getName());
+        nameField.setPrefWidth(250);
+
+        TextField priceField = new TextField(String.valueOf(service.getPrice()));
+        priceField.setPrefWidth(150);
+
+        TextField durationField = new TextField(String.valueOf(service.getDuration()));
+        durationField.setPrefWidth(150);
+
+        TextField partNumberField = new TextField(service.getPartNumber());
+        partNumberField.setPrefWidth(200);
+
+        grid.add(new Label("Название:"), 0, 0); grid.add(nameField, 1, 0);
+        grid.add(new Label("Цена:"), 0, 1); grid.add(priceField, 1, 1);
+        grid.add(new Label("Длительность (мин):"), 0, 2); grid.add(durationField, 1, 2);
+        grid.add(new Label("Артикул:"), 0, 3); grid.add(partNumberField, 1, 3);
+
+        Button saveBtn = new Button("Сохранить");
+        saveBtn.getStyleClass().add("save-button");
+        Button deleteBtn = new Button("Удалить");
+        deleteBtn.getStyleClass().add("delete-button");
+        Button cancelBtn = new Button("Отмена");
+        cancelBtn.getStyleClass().add("cancel-button");
+
+        HBox btnBox = new HBox(15, saveBtn, deleteBtn, cancelBtn);
+        btnBox.setAlignment(Pos.CENTER);
+        root.getChildren().addAll(titleLabel, grid, btnBox);
+
+        Scene scene = new Scene(root);
+        stage.setScene(scene);
+
+        saveBtn.setOnAction(e -> {
+            try {
+                service.setName(nameField.getText().trim());
+                service.setPrice(Double.parseDouble(priceField.getText()));
+                service.setDuration(Integer.parseInt(durationField.getText()));
+                service.setPartNumber(partNumberField.getText().trim());
+                DictionaryController.addService(service);
+                stage.close();
+            } catch (NumberFormatException ex) { showAlert("Проверьте числовые поля"); }
+        });
+
+        deleteBtn.setOnAction(e -> {
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION, "Удалить услугу \"" + service.getName() + "\"?", ButtonType.YES, ButtonType.NO);
+            confirm.showAndWait().ifPresent(response -> {
+                if (response == ButtonType.YES) { DictionaryController.removeService(service); stage.close(); }
+            });
+        });
+
+        cancelBtn.setOnAction(e -> stage.close());
+        stage.showAndWait();
     }
 
     private static void showAlert(String msg) {

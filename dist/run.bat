@@ -2,12 +2,18 @@
 chcp 65001 >nul
 setlocal EnableDelayedExpansion
 
-echo AutoService STO - Portable (Embedded JRE)
-echo =========================================
+echo ========================================
+echo  AutoService STO - Admin (Portable)
+echo ========================================
+echo.
+
 set SCRIPT_DIR=%~dp0
 set JRE_PATH="%SCRIPT_DIR%jre\bin\java.exe"
 set JAVAFX_PATH="%SCRIPT_DIR%javafx"
 set APP_PATH="%SCRIPT_DIR%autoservice-admin.jar"
+
+echo Launching AutoService STO...
+echo.
 
 if not exist !JRE_PATH! (
     echo ERROR: JRE not found!
@@ -15,7 +21,6 @@ if not exist !JRE_PATH! (
     exit /b 1
 )
 
-echo Launching...
 !JRE_PATH! ^
     --enable-native-access=javafx.graphics ^
     --enable-native-access=ALL-UNNAMED ^

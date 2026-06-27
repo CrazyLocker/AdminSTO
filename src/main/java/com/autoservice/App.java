@@ -5,6 +5,8 @@ import com.autoservice.controllers.DictionaryController;
 import com.autoservice.views.*;
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.scene.Scene;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
@@ -19,7 +21,7 @@ public class App extends Application {
 
         TabPane tabPane = new TabPane();
 
-        Tab dashTab = new Tab("Дашборд");
+        final Tab dashTab = new Tab("Дашборд");
         dashTab.setContent(DashboardView.create());
         dashTab.setClosable(false);
 
@@ -40,6 +42,17 @@ public class App extends Application {
         appointmentTab.setClosable(false);
 
         tabPane.getTabs().addAll(dashTab, clientTab, orderTab, dictTab, appointmentTab);
+
+        // Обновляем дашборд при переключении на вкладку
+        tabPane.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<Tab>() {
+            @Override
+            public void changed(ObservableValue<? extends Tab> obs, Tab oldTab, Tab newTab) {
+                if (newTab == dashTab) {
+                    System.out.println("Dashboard refresh triggered");
+                    DashboardView.refresh();
+                }
+            }
+        });
 
         Scene scene = new Scene(tabPane, 1700, 1000);
 

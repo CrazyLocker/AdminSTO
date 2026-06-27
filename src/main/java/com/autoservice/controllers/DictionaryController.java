@@ -7,6 +7,8 @@ import com.autoservice.dialogs.StockIncomeDialog;
 import javafx.collections.FXCollections;
 import javafx.scene.control.TableView;
 
+import java.util.List;
+
 public class DictionaryController {
     private static TableView<Service> servicesTable;
     private static TableView<SparePart> sparePartsTable;
@@ -66,6 +68,14 @@ public class DictionaryController {
 
     public static void removeSparePart(SparePart part) {
         DataStore.removeSparePart(part);
+        refreshSpareParts();
+        refreshStock();
+    }
+
+    public static void removeSpareParts(List<SparePart> parts) {
+        for (SparePart part : parts) {
+            DataStore.removeSparePart(part);
+        }
         refreshSpareParts();
         refreshStock();
     }

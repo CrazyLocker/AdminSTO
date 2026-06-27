@@ -23,6 +23,22 @@ public class DataStore {
     }
 
     public static void save() {
+        // Сохраняем все заказы ИЗ ПАМЯТИ — там уже актуальные статусы
+        for (WorkOrder order : orders) {
+            Database.updateOrder(order);
+        }
+        // Сохраняем всех клиентов
+        for (Client client : clients) {
+            Database.updateClient(client);
+        }
+        // Сохраняем все записи на приём
+        for (Appointment a : appointments) {
+            Database.updateAppointment(a);
+        }
+        // Сохраняем запчасти (обновляем stock)
+        for (SparePart sp : spareParts) {
+            Database.updateSparePartStock(sp, sp.getStock());
+        }
         System.out.println("Data saved to DB");
     }
 

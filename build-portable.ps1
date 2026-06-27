@@ -1,4 +1,4 @@
-# Скрипт сборки полностью автономной portable-версии
+﻿# Скрипт сборки полностью автономной portable-версии
 # Запуск: powershell -ExecutionPolicy Bypass -File build-portable.ps1
 
 $ErrorActionPreference = "Stop"
