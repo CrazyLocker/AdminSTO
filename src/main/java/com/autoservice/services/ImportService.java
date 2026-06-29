@@ -20,6 +20,29 @@ import java.util.List;
  * Сервис для импорта запчастей из файлов CSV, XML, JSON.
  */
 public class ImportService {
+    private static SparePart findSparePartByPartNumber(String partNumber) {
+        if (partNumber == null || partNumber.trim().isEmpty()) return null;
+        String pn = partNumber.trim().toLowerCase();
+        for (SparePart sp : DataStore.getSpareParts()) {
+            if (sp.getPartNumber() != null && sp.getPartNumber().trim().equalsIgnoreCase(pn)) return sp;
+        }
+        return null;
+    }
+
+    private static boolean addOrUpdateSparePart(SparePart newPart) {
+        SparePart existing = findSparePartByPartNumber(newPart.getPartNumber());
+        if (existing != null) {
+            existing.setStock(existing.getStock() + newPart.getStock());
+            if (newPart.getRetailPrice() > 0) existing.setRetailPrice(newPart.getRetailPrice());
+            if (newPart.getPurchasePrice() > 0) existing.setPurchasePrice(newPart.getPurchasePrice());
+            if (newPart.getManufacturer() != null && !newPart.getManufacturer().trim().isEmpty()) {
+                existing.setManufacturer(newPart.getManufacturer().trim());
+            }
+            return false;
+        }
+        DataStore.addSparePart(newPart);
+        return true;
+    }
 
     /**
      * Результат импорта
@@ -135,8 +158,8 @@ public class ImportService {
                     part.setLocation(location);
                     part.setCompatibleModels(compatibleModels);
 
-                    DataStore.addSparePart(part);
-                    imported++;
+                    boolean isNew = addOrUpdateSparePart(part);
+                    if (isNew) { imported++; } else { skipped++; }
                 } catch (Exception e) {
                     errors.add("Ошибка при разборе строки: " + line + " -> " + e.getMessage());
                     skipped++;
@@ -199,8 +222,8 @@ public class ImportService {
                     part.setLocation(location != null ? location.trim() : "");
                     part.setCompatibleModels(compatibleModels != null ? compatibleModels.trim() : "");
 
-                    DataStore.addSparePart(part);
-                    imported++;
+                    boolean isNew = addOrUpdateSparePart(part);
+                    if (isNew) { imported++; } else { skipped++; }
                 } catch (Exception e) {
                     errors.add("Ошибка при разборе элемента #" + (i + 1) + ": " + e.getMessage());
                     skipped++;
@@ -313,8 +336,8 @@ public class ImportService {
                     part.setLocation(location != null ? location.trim() : "");
                     part.setCompatibleModels(compatibleModels != null ? compatibleModels.trim() : "");
 
-                    DataStore.addSparePart(part);
-                    imported++;
+                    boolean isNew = addOrUpdateSparePart(part);
+                    if (isNew) { imported++; } else { skipped++; }
                 } catch (Exception e) {
                     errors.add("Ошибка при разборе элемента #" + (i + 1) + ": " + e.getMessage());
                     skipped++;

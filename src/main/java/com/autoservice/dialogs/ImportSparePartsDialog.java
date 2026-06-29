@@ -1,6 +1,7 @@
 package com.autoservice.dialogs;
 
-import com.autoservice.Database;
+import com.autoservice.DataStore;
+import com.autoservice.controllers.DictionaryController;
 import com.autoservice.services.ImportService;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -129,7 +130,9 @@ public class ImportSparePartsDialog {
                             errorsBox.setVisible(false);
                         }
 
-                        Database.init();
+                        // Обновляем таблицы
+                        DictionaryController.refreshAll();
+                        DataStore.save();
                         importBtn.setDisable(false);
                         showAlert("Импорт завершён", result.toString());
                     });
