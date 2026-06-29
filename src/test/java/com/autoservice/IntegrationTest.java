@@ -270,8 +270,11 @@ class IntegrationTest {
         assertThat(p2).isNotNull();
 
         // Проверяем что у заказов есть запчасти
+        // order1 — 1 запчасть (Масло Тест4, qty 5), order2 — 2 запчасти
+        // Ищем конкретно order1 по первой добавленной запчасти
         WorkOrder o1 = DataStore.getOrders().stream()
                 .filter(o -> o.getServices().isEmpty() && !o.getSpareParts().isEmpty())
+                .filter(o -> o.getSpareParts().stream().anyMatch(p -> p.getName().equals("Масло Тест4")))
                 .findFirst().orElse(null);
         assertThat(o1).isNotNull();
         assertThat(o1.getSpareParts()).hasSize(1);
