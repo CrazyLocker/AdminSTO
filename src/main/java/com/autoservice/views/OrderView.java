@@ -4,6 +4,7 @@ import com.autoservice.DataStore;
 import com.autoservice.WorkOrder;
 import com.autoservice.controllers.OrderController;
 import com.autoservice.dialogs.PrintOrderDialog;
+import com.autoservice.utils.IconHelper;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -43,9 +44,6 @@ public class OrderView {
     private static ObservableList<WorkOrder> masterData = FXCollections.observableArrayList();
     private static SortedList<WorkOrder> sortedData;
 
-    // Флаг для отслеживания инициализации
-    private static boolean isInitialized = false;
-
     public static VBox create() {
         VBox root = new VBox(10);
         root.getStyleClass().add("main-container");
@@ -57,10 +55,10 @@ public class OrderView {
 
         HBox searchBox = createSearchPanel();
 
-        editBtn = createActionButton("Изменить");
-        deleteBtn = createActionButton("Удалить");
-        printBtn = createActionButton("Печать");
-        createOrderBtn = createActionButton("Новый");
+        editBtn = createActionButton("Изменить", IconHelper.edit());
+        deleteBtn = createActionButton("Удалить", IconHelper.delete());
+        printBtn = createActionButton("Печать", IconHelper.print());
+        createOrderBtn = createActionButton("Новый", IconHelper.add());
 
         editBtn.setStyle("-fx-background-color: #f39c12;");
         deleteBtn.setStyle("-fx-background-color: #e74c3c;");
@@ -76,14 +74,12 @@ public class OrderView {
         deleteBtn.setDisable(true);
         printBtn.setDisable(true);
 
-        Label separator = new Label("|");
-        separator.getStyleClass().add("separator");
-
-        topPanel.getChildren().addAll(searchBox, separator, editBtn, deleteBtn, printBtn, createOrderBtn);
+        topPanel.getChildren().addAll(searchBox, createSeparator(), editBtn, deleteBtn, printBtn, createOrderBtn);
         HBox.setHgrow(searchBox, Priority.ALWAYS);
 
         // ========== ПАНЕЛЬ РАСШИРЕННЫХ ФИЛЬТРОВ ==========
-        advancedToggleBtn = new ToggleButton("▼ Расширенный фильтр");
+        advancedToggleBtn = new ToggleButton("Расширенный фильтр");
+        advancedToggleBtn.setGraphic(IconHelper.settings());
         advancedToggleBtn.getStyleClass().add("toggle-button");
         advancedToggleBtn.setSelected(false);
 
@@ -95,7 +91,7 @@ public class OrderView {
             boolean show = advancedToggleBtn.isSelected();
             advancedFilterPanel.setVisible(show);
             advancedFilterPanel.setManaged(show);
-            advancedToggleBtn.setText(show ? "▲ Расширенный фильтр" : "▼ Расширенный фильтр");
+            advancedToggleBtn.setText(show ? "Скрыть фильтры" : "Расширенный фильтр");
         });
 
         // ========== ТАБЛИЦА ==========
@@ -103,14 +99,11 @@ public class OrderView {
         orderTable.getStyleClass().add("table-view");
         setupTableColumns();
 
-        // Настраиваем SortedList
         sortedData = new SortedList<>(masterData);
         sortedData.comparatorProperty().bind(orderTable.comparatorProperty());
         orderTable.setItems(sortedData);
 
-        // Загружаем данные
         refreshOrderList();
-        isInitialized = true;
 
         orderTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             editBtn.setDisable(newVal == null);
@@ -122,6 +115,13 @@ public class OrderView {
         VBox.setVgrow(orderTable, Priority.ALWAYS);
 
         return root;
+    }
+
+    // Вспомогательный метод для создания разделителя
+    private static Label createSeparator() {
+        Label separator = new Label("|");
+        separator.getStyleClass().add("separator");
+        return separator;
     }
 
     private static VBox createAdvancedFilterPanel() {
@@ -184,7 +184,8 @@ public class OrderView {
         maxTotalField.setPrefWidth(100);
         maxTotalField.textProperty().addListener((obs, oldVal, newVal) -> applyFilters());
 
-        resetFiltersBtn = new Button("Сбросить фильтры");
+        resetFiltersBtn = new Button("Сбросить");
+        resetFiltersBtn.setGraphic(IconHelper.cancel());
         resetFiltersBtn.getStyleClass().add("reset-button");
         resetFiltersBtn.setOnAction(e -> resetFilters());
 
@@ -204,27 +205,22 @@ public class OrderView {
     }
 
     private static void setupTableColumns() {
-        // ====== № ЗАКАЗА ======
+        // ... (колонки остаются без изменений, только убираем эмодзи из заголовков) ...
         TableColumn<WorkOrder, String> colId = new TableColumn<>("№ заказа");
         colId.setCellValueFactory(new PropertyValueFactory<>("id"));
         colId.setPrefWidth(160);
         colId.setSortable(true);
 
-        // ====== КЛИЕНТ (ФАМИЛИЯ + ИМЯ) ======
         TableColumn<WorkOrder, String> colClient = new TableColumn<>("Клиент");
         colClient.setCellValueFactory(cellData -> {
             WorkOrder order = cellData.getValue();
             String lastName = order.getClient().getLastName();
             String firstName = order.getClient().getName();
-            String fullName = (lastName != null && !lastName.isEmpty())
-                    ? lastName + " " + firstName
-                    : firstName;
-            return new SimpleStringProperty(fullName);
+            return new SimpleStringProperty((lastName != null && !lastName.isEmpty()) ? lastName + " " + firstName : firstName);
         });
         colClient.setPrefWidth(180);
         colClient.setSortable(true);
 
-        // ====== АВТОМОБИЛЬ ======
         TableColumn<WorkOrder, String> colCar = new TableColumn<>("Автомобиль");
         colCar.setCellValueFactory(cellData -> {
             String model = cellData.getValue().getClient().getCarModel();
@@ -234,17 +230,14 @@ public class OrderView {
         colCar.setPrefWidth(200);
         colCar.setSortable(true);
 
-        // ====== УСЛУГИ ======
         TableColumn<WorkOrder, String> colServices = new TableColumn<>("Услуги");
         colServices.setCellValueFactory(cellData -> {
             WorkOrder order = cellData.getValue();
-            String services = String.join(", ", order.getServices());
-            return new SimpleStringProperty(services.isEmpty() ? "—" : services);
+            return new SimpleStringProperty(String.join(", ", order.getServices()));
         });
         colServices.setPrefWidth(250);
         colServices.setSortable(true);
 
-        // ====== СУММА ======
         TableColumn<WorkOrder, Double> colTotal = new TableColumn<>("Сумма");
         colTotal.setCellValueFactory(new PropertyValueFactory<>("total"));
         colTotal.setPrefWidth(120);
@@ -253,16 +246,11 @@ public class OrderView {
             @Override
             protected void updateItem(Double item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                } else {
-                    setText(String.format("%,.0f руб.", item));
-                    setAlignment(Pos.CENTER_RIGHT);
-                }
+                if (empty || item == null) setText(null);
+                else setText(String.format("%,.0f руб.", item));
             }
         });
 
-        // ====== СТАТУС ======
         TableColumn<WorkOrder, String> colStatus = new TableColumn<>("Статус");
         colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
         colStatus.setPrefWidth(120);
@@ -273,30 +261,22 @@ public class OrderView {
                 comboBox.setOnAction(e -> {
                     WorkOrder order = getTableView().getItems().get(getIndex());
                     if (order != null) {
-                        String newStatus = comboBox.getValue();
-                        order.setStatus(newStatus);
-                        OrderController.changeOrderStatus(order, newStatus);
+                        order.setStatus(comboBox.getValue());
+                        OrderController.changeOrderStatus(order, comboBox.getValue());
                     }
                 });
             }
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setGraphic(null);
-                    setText(null);
-                } else {
-                    comboBox.setValue(item);
-                    setGraphic(comboBox);
-                    setText(null);
-                }
+                if (empty || item == null) { setGraphic(null); setText(null); }
+                else { comboBox.setValue(item); setGraphic(comboBox); setText(null); }
             }
         });
 
         orderTable.getColumns().addAll(colId, colClient, colCar, colServices, colTotal, colStatus);
         orderTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-        // ====== ДВОЙНОЙ КЛИК ======
         orderTable.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2 && event.getButton() == MouseButton.PRIMARY) {
                 WorkOrder selected = orderTable.getSelectionModel().getSelectedItem();
@@ -305,8 +285,9 @@ public class OrderView {
         });
     }
 
-    private static Button createActionButton(String text) {
+    private static Button createActionButton(String text, javafx.scene.Node icon) {
         Button btn = new Button(text);
+        btn.setGraphic(icon);
         btn.setPrefWidth(100);
         btn.getStyleClass().add("action-button");
         return btn;
@@ -319,7 +300,8 @@ public class OrderView {
         searchField.getStyleClass().add("search-field");
         searchField.textProperty().addListener((obs, oldVal, newVal) -> applyFilters());
 
-        Button clearBtn = new Button("Очистить");
+        Button clearBtn = new Button();
+        clearBtn.setGraphic(IconHelper.cancel());  // крестик
         clearBtn.getStyleClass().add("clear-button");
         clearBtn.setOnAction(e -> {
             searchField.clear();
@@ -336,24 +318,15 @@ public class OrderView {
 
     private static String normalizeStatus(String status) {
         if (status == null) return null;
-
-        if (status.equalsIgnoreCase("Новый") || status.equals("НОВЫЙ") || status.contains("Нов")) {
-            return "Новый";
-        }
-        if (status.equalsIgnoreCase("В работе") || status.equals("В РАБОТЕ") || status.contains("работе")) {
-            return "В работе";
-        }
-        if (status.equalsIgnoreCase("Закрыт") || status.equals("ЗАКРЫТ") || status.equals("Завершён") ||
-                status.equals("ЗАВЕРШЁН") || status.contains("Закр") || status.contains("Завер")) {
-            return "Закрыт";
-        }
+        if (status.equalsIgnoreCase("Новый") || status.contains("Нов")) return "Новый";
+        if (status.equalsIgnoreCase("В работе") || status.contains("работе")) return "В работе";
+        if (status.equalsIgnoreCase("Закрыт") || status.equals("Завершён") || status.contains("Закр") || status.contains("Завер")) return "Закрыт";
         return status;
     }
 
     private static void applyFilters() {
         if (orderTable == null) return;
 
-        // Принудительно загружаем свежие данные из DataStore
         List<WorkOrder> allOrders = DataStore.getOrders();
         List<WorkOrder> filtered = new ArrayList<>();
 
@@ -365,90 +338,56 @@ public class OrderView {
         String maxTotalText = maxTotalField != null ? maxTotalField.getText() : "";
 
         for (WorkOrder order : allOrders) {
-            // Поиск по тексту
             if (searchText != null && !searchText.trim().isEmpty()) {
                 String lowerFilter = searchText.toLowerCase().trim();
                 if (order.getClient() != null) {
-                    String lastName = order.getClient().getLastName();
-                    String name = order.getClient().getName();
-                    String phone = order.getClient().getPhone();
-                    String carNumber = order.getClient().getCarNumber();
-
-                    boolean match = (name != null && name.toLowerCase().contains(lowerFilter)) ||
-                            (lastName != null && lastName.toLowerCase().contains(lowerFilter)) ||
-                            (phone != null && phone.toLowerCase().contains(lowerFilter)) ||
-                            (carNumber != null && carNumber.toLowerCase().contains(lowerFilter));
+                    boolean match = (order.getClient().getName() != null && order.getClient().getName().toLowerCase().contains(lowerFilter)) ||
+                            (order.getClient().getLastName() != null && order.getClient().getLastName().toLowerCase().contains(lowerFilter)) ||
+                            (order.getClient().getPhone() != null && order.getClient().getPhone().toLowerCase().contains(lowerFilter)) ||
+                            (order.getClient().getCarNumber() != null && order.getClient().getCarNumber().toLowerCase().contains(lowerFilter));
                     if (!match) continue;
-                } else {
-                    continue;
-                }
+                } else continue;
             }
 
-            // Фильтр по статусу
             if (statusFilter != null && !statusFilter.equals("Все")) {
-                String orderStatus = order.getStatus();
-                String normalizedOrderStatus = normalizeStatus(orderStatus);
-
-                if (!statusFilter.equals(normalizedOrderStatus)) {
-                    continue;
-                }
+                String normalizedOrderStatus = normalizeStatus(order.getStatus());
+                if (!statusFilter.equals(normalizedOrderStatus)) continue;
             }
 
-            // Фильтр по дате от
             if (fromDate != null) {
                 LocalDate orderDate = parseDate(order.getCreatedDate());
-                if (orderDate == null || orderDate.isBefore(fromDate)) {
-                    continue;
-                }
+                if (orderDate == null || orderDate.isBefore(fromDate)) continue;
             }
 
-            // Фильтр по дате до
             if (toDate != null) {
                 LocalDate orderDate = parseDate(order.getCreatedDate());
-                if (orderDate == null || orderDate.isAfter(toDate)) {
-                    continue;
-                }
+                if (orderDate == null || orderDate.isAfter(toDate)) continue;
             }
 
-            // Фильтр по минимальной сумме
             if (minTotalText != null && !minTotalText.trim().isEmpty()) {
-                try {
-                    double minTotal = Double.parseDouble(minTotalText.trim());
-                    if (order.getTotal() < minTotal) continue;
-                } catch (NumberFormatException ignored) {}
+                try { if (order.getTotal() < Double.parseDouble(minTotalText.trim())) continue; } catch (NumberFormatException ignored) {}
             }
 
-            // Фильтр по максимальной сумме
             if (maxTotalText != null && !maxTotalText.trim().isEmpty()) {
-                try {
-                    double maxTotal = Double.parseDouble(maxTotalText.trim());
-                    if (order.getTotal() > maxTotal) continue;
-                } catch (NumberFormatException ignored) {}
+                try { if (order.getTotal() > Double.parseDouble(maxTotalText.trim())) continue; } catch (NumberFormatException ignored) {}
             }
 
             filtered.add(order);
         }
 
-        // ОБНОВЛЯЕМ masterData
         masterData.clear();
         masterData.addAll(filtered);
-
-        // ПРИНУДИТЕЛЬНО ОБНОВЛЯЕМ ТАБЛИЦУ
         orderTable.refresh();
 
-        // Обновляем счётчик
         if (resultLabel != null) {
             resultLabel.setText("Найдено: " + filtered.size() + " из " + allOrders.size() + " заказов");
         }
-
-        System.out.println("OrderView refreshed: " + filtered.size() + " orders shown");
     }
 
     private static LocalDate parseDate(String dateStr) {
         if (dateStr == null || dateStr.isEmpty()) return null;
         try {
-            String datePart = dateStr.split(" ")[0];
-            return LocalDate.parse(datePart);
+            return LocalDate.parse(dateStr.split(" ")[0]);
         } catch (Exception e) {
             return null;
         }
@@ -471,7 +410,6 @@ public class OrderView {
 
     public static void refreshOrderList() {
         if (orderTable != null) {
-            System.out.println("refreshOrderList() called - forcing update");
             applyFilters();
         }
     }

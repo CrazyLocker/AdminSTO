@@ -10,7 +10,6 @@ public class DataStore {
     private static List<SparePart> spareParts = new ArrayList<>();
     private static List<Appointment> appointments = new ArrayList<>();
 
-    // Флаг, что данные были изменены
     private static boolean isDirty = false;
 
     public static void load() {
@@ -34,41 +33,43 @@ public class DataStore {
         System.out.println("Saving changes...");
         long startTime = System.currentTimeMillis();
 
-        // Сохраняем только изменённые заказы
+        int saved = 0;
+
         for (WorkOrder order : orders) {
             if (order.isDirty()) {
                 Database.updateOrder(order);
                 order.setDirty(false);
+                saved++;
             }
         }
 
-        // Сохраняем только изменённых клиентов
         for (Client client : clients) {
             if (client.isDirty()) {
                 Database.updateClient(client);
                 client.setDirty(false);
+                saved++;
             }
         }
 
-        // Сохраняем только изменённые записи
         for (Appointment a : appointments) {
             if (a.isDirty()) {
                 Database.updateAppointment(a);
                 a.setDirty(false);
+                saved++;
             }
         }
 
-        // Сохраняем только изменённые запчасти
         for (SparePart sp : spareParts) {
             if (sp.isDirty()) {
                 Database.updateSparePartStock(sp, sp.getStock());
                 sp.setDirty(false);
+                saved++;
             }
         }
 
         isDirty = false;
         long endTime = System.currentTimeMillis();
-        System.out.println("Data saved to DB in " + (endTime - startTime) + " ms");
+        System.out.println("Saved " + saved + " items to DB in " + (endTime - startTime) + " ms");
     }
 
     public static void markDirty() {
@@ -147,7 +148,7 @@ public class DataStore {
     public static int getActiveOrdersCount() {
         int count = 0;
         for (WorkOrder order : orders) {
-            if (!order.getStatus().equals(WorkOrder.STATUS_CLOSED)) {
+            if (!WorkOrder.STATUS_CLOSED.equals(order.getStatus())) {
                 count++;
             }
         }

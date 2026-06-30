@@ -1,12 +1,13 @@
 package com.autoservice.views;
 
+import javafx.scene.layout.Region;
 import com.autoservice.Client;
 import com.autoservice.DataStore;
 import com.autoservice.DateUtils;
 import com.autoservice.Validators;
-import com.autoservice.WorkOrder;
 import com.autoservice.controllers.ClientController;
 import com.autoservice.dialogs.EditClientDialog;
+import com.autoservice.utils.IconHelper;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -15,8 +16,9 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.layout.*;
-import javafx.stage.Stage;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
 
 import java.util.Arrays;
 import java.util.List;
@@ -30,6 +32,7 @@ public class ClientView {
 
     private static Button addBtn;
     private static Button editBtn;
+    private static Button deleteBtn;
 
     private static final List<String> GWM_MODELS = Arrays.asList(
             "Haval Jolion", "Haval F7", "Haval F7x", "Haval Dargo", "Haval Big Dog",
@@ -45,16 +48,17 @@ public class ClientView {
         Label titleLabel = new Label("Управление клиентами");
         titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
 
-        // Панель с кнопками и поиском
         HBox topPanel = new HBox(15);
         topPanel.setAlignment(Pos.CENTER_LEFT);
         topPanel.setPadding(new Insets(0, 0, 10, 0));
 
         addBtn = new Button("Новый клиент");
+        addBtn.setGraphic(IconHelper.add());
         addBtn.getStyleClass().add("add-button");
         addBtn.setOnAction(e -> showAddClientDialog());
 
         editBtn = new Button("Изменить");
+        editBtn.setGraphic(IconHelper.edit());
         editBtn.getStyleClass().add("edit-button");
         editBtn.setDisable(true);
         editBtn.setOnAction(e -> {
@@ -64,14 +68,25 @@ public class ClientView {
             }
         });
 
+        deleteBtn = new Button("Удалить");
+        deleteBtn.setGraphic(IconHelper.delete());
+        deleteBtn.getStyleClass().add("delete-button");
+        deleteBtn.setDisable(true);
+        deleteBtn.setOnAction(e -> {
+            Client selected = clientTable.getSelectionModel().getSelectedItem();
+            if (selected != null) {
+                DataStore.deleteClient(selected);
+                refreshClientList();
+            }
+        });
+
         HBox searchBox = createSearchPanel();
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        topPanel.getChildren().addAll(searchBox, spacer, addBtn, editBtn);
+        topPanel.getChildren().addAll(searchBox, spacer, addBtn, editBtn, deleteBtn);
 
-        // Таблица клиентов
         clientTable = createClientTable();
         VBox.setVgrow(clientTable, Priority.ALWAYS);
 
@@ -93,7 +108,8 @@ public class ClientView {
 
         searchField.textProperty().addListener((observable, oldValue, newValue) -> filterClients(newValue));
 
-        Button clearBtn = new Button("Очистить");
+        Button clearBtn = new Button();
+        clearBtn.setGraphic(IconHelper.cancel());
         clearBtn.getStyleClass().add("clear-button");
         clearBtn.setOnAction(e -> {
             searchField.clear();
@@ -142,9 +158,9 @@ public class ClientView {
 
         table.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             editBtn.setDisable(newVal == null);
+            deleteBtn.setDisable(newVal == null);
         });
 
-        // ==================== ДВОЙНОЙ КЛИК ====================
         table.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
                 Client selected = table.getSelectionModel().getSelectedItem();
@@ -176,11 +192,8 @@ public class ClientView {
         }
     }
 
-    // ==================== ЕДИНЫЙ ДИАЛОГ (НОВЫЙ/РЕДАКТИРОВАНИЕ) ====================
-
     private static void showAddClientDialog() {
-        // Создаём пустого клиента с id = -1 (признак нового)
-        Client emptyClient = new Client(-1, "", "", "", "", "");
+        Client emptyClient = new Client(-1, "", "", "", "", "", "");
         EditClientDialog.show(emptyClient);
         refreshClientList();
     }

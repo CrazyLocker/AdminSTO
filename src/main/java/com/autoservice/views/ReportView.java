@@ -3,6 +3,7 @@ package com.autoservice.views;
 import com.autoservice.DataStore;
 import com.autoservice.WorkOrder;
 import com.autoservice.SparePart;
+import com.autoservice.utils.IconHelper;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
@@ -45,7 +46,7 @@ public class ReportView {
 
     public static void show() {
         Stage stage = new Stage();
-        stage.setTitle("📊 Отчёт автосервиса");
+        stage.setTitle("Отчёт автосервиса");
         stage.setMinWidth(800);
         stage.setMinHeight(600);
         stage.setMaximized(true);
@@ -53,21 +54,23 @@ public class ReportView {
 
         ScrollPane scrollPane = new ScrollPane();
         scrollPane.setFitToWidth(true);
-        scrollPane.getStyleClass().add("report-root");
+        scrollPane.setStyle("-fx-background-color: #f5f7fa;");
 
         root = new VBox(20);
-        root.getStyleClass().add("report-root");
+        root.setPadding(new Insets(20));
+        root.setStyle("-fx-background-color: #f5f7fa;");
 
         // ====== ЗАГОЛОВОК ======
         HBox headerBox = new HBox(20);
         headerBox.setAlignment(Pos.CENTER_LEFT);
 
-        Label titleLabel = new Label("📊 ОТЧЁТ АВТОСЕРВИСА");
-        titleLabel.getStyleClass().add("report-title");
+        Label titleLabel = new Label("ОТЧЁТ АВТОСЕРВИСА");
+        titleLabel.setGraphic(IconHelper.report(24, "#2c3e50"));
+        titleLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #2c3e50; -fx-graphic-text-gap: 10;");
 
         Label dateLabel = new Label("Дата генерации: " +
                 LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")));
-        dateLabel.getStyleClass().add("report-date");
+        dateLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #7f8c8d;");
 
         headerBox.getChildren().addAll(titleLabel, dateLabel);
 
@@ -77,13 +80,13 @@ public class ReportView {
         periodBox.setPadding(new Insets(10, 0, 10, 0));
 
         Label periodLabel = new Label("Период:");
-        periodLabel.getStyleClass().add("report-period-label");
+        periodLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
 
         ComboBox<String> periodCombo = new ComboBox<>();
         periodCombo.getItems().addAll("Последние 3 месяца", "Последние 6 месяцев", "Последние 12 месяцев", "Всё время");
         periodCombo.setValue("Последние 6 месяцев");
         periodCombo.setPrefWidth(200);
-        periodCombo.getStyleClass().add("report-period-combo");
+        periodCombo.setStyle("-fx-font-size: 14px; -fx-padding: 5;");
 
         periodBox.getChildren().addAll(periodLabel, periodCombo);
 
@@ -98,27 +101,34 @@ public class ReportView {
 
         // ====== ГРАФИК ВЫРУЧКИ ======
         revenueChart = createRevenueChart(currentData, "Последние 6 месяцев");
-        revenueChart.getStyleClass().add("revenue-chart");
+        revenueChart.setPrefHeight(300);
         VBox.setVgrow(revenueChart, Priority.ALWAYS);
         HBox.setHgrow(revenueChart, Priority.ALWAYS);
 
         VBox revenueBox = new VBox(10);
-        revenueBox.getStyleClass().add("revenue-box");
-        Label revenueLabel = new Label("💰 ДИНАМИКА ВЫРУЧКИ");
-        revenueLabel.getStyleClass().add("section-title");
+        revenueBox.setAlignment(Pos.CENTER);
+        revenueBox.setPadding(new Insets(5));
+
+        Label revenueLabel = new Label("ДИНАМИКА ВЫРУЧКИ");
+        revenueLabel.setGraphic(IconHelper.report(20, "#2c3e50"));
+        revenueLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 16px; -fx-text-fill: #2c3e50; -fx-graphic-text-gap: 8;");
         revenueBox.getChildren().addAll(revenueLabel, revenueChart);
         VBox.setVgrow(revenueBox, Priority.ALWAYS);
         HBox.setHgrow(revenueBox, Priority.ALWAYS);
 
-        // ====== СТАТУСЫ ЗАКАЗОВ (СПИСОК) ======
-        VBox statusBox = createStatusBox(currentData);
-        statusBox.setPadding(new Insets(5));
+        // ====== ТРИ БЛОКА (ОДИНАКОВАЯ ВЫСОТА) ======
+        VBox statusBox = createStatusListBox(currentData);
+        VBox topServicesBox = createTopListBox(currentData.topServices, "ТОП-5 УСЛУГ", IconHelper.settings(20, "#2c3e50"));
+        VBox topPartsBox = createTopListBox(currentData.topParts, "ТОП-5 ЗАПЧАСТЕЙ", IconHelper.settings(20, "#2c3e50"));
 
-        // ====== ТОП-5 УСЛУГ ======
-        VBox topServicesBox = createTopListBox(currentData.topServices, "🔧 ТОП-5 УСЛУГ");
-
-        // ====== ТОП-5 ЗАПЧАСТЕЙ ======
-        VBox topPartsBox = createTopListBox(currentData.topParts, "🔩 ТОП-5 ЗАПЧАСТЕЙ");
+        // Устанавливаем одинаковую минимальную высоту для всех трёх блоков
+        double fixedHeight = 280; // Фиксированная высота для выравнивания
+        statusBox.setMinHeight(fixedHeight);
+        statusBox.setPrefHeight(fixedHeight);
+        topServicesBox.setMinHeight(fixedHeight);
+        topServicesBox.setPrefHeight(fixedHeight);
+        topPartsBox.setMinHeight(fixedHeight);
+        topPartsBox.setPrefHeight(fixedHeight);
 
         // ====== СЕТКА ======
         GridPane chartsGrid = new GridPane();
@@ -136,6 +146,7 @@ public class ReportView {
 
         for (int i = 0; i < 3; i++) {
             GridPane.setHgrow(chartsGrid.getChildren().get(i), Priority.ALWAYS);
+            GridPane.setVgrow(chartsGrid.getChildren().get(i), Priority.ALWAYS);
         }
 
         // ====== ОБРАБОТЧИК ПЕРИОДА ======
@@ -281,113 +292,37 @@ public class ReportView {
         box.setPadding(new Insets(5, 0, 10, 0));
 
         box.getChildren().addAll(
-                createCard("📋 Заказов", String.valueOf(data.totalOrders), "#3498db"),
-                createCard("👥 Клиентов", String.valueOf(data.totalClients), "#2ecc71"),
-                createCard("💰 Выручка", String.format("%,.0f", data.totalRevenue), "#f39c12"),
-                createCard("📊 Средний чек", String.format("%,.0f", data.averageOrderValue), "#9b59b6")
+                createCard(IconHelper.assignment(24, "#3498db"), "Заказов", String.valueOf(data.totalOrders), "#3498db"),
+                createCard(IconHelper.people(24, "#2ecc71"), "Клиентов", String.valueOf(data.totalClients), "#2ecc71"),
+                createCard(IconHelper.report(24, "#f39c12"), "Выручка", String.format("%,.0f", data.totalRevenue), "#f39c12"),
+                createCard(IconHelper.save(24, "#9b59b6"), "Средний чек", String.format("%,.0f", data.averageOrderValue), "#9b59b6")
         );
 
         return box;
     }
 
-    private static VBox createCard(String title, String value, String color) {
+    private static VBox createCard(javafx.scene.Node icon, String title, String value, String color) {
         VBox card = new VBox(2);
-        card.getStyleClass().add("stat-card");
-        card.setStyle("-fx-border-color: " + color + ";");
+        card.setAlignment(Pos.CENTER);
+        card.setPadding(new Insets(8, 12, 8, 12));
+        card.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-border-radius: 8px;" +
+                        "-fx-background-radius: 8px;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 3);" +
+                        "-fx-border-width: 2px 0 0 0;" +
+                        "-fx-border-color: " + color + ";" +
+                        "-fx-min-width: 100px;"
+        );
 
         Label titleLabel = new Label(title);
-        titleLabel.getStyleClass().add("stat-card-title");
+        titleLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #7f8c8d;");
 
         Label valueLabel = new Label(value);
-        valueLabel.getStyleClass().add("stat-card-value");
+        valueLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
 
-        card.getChildren().addAll(titleLabel, valueLabel);
+        card.getChildren().addAll(icon, titleLabel, valueLabel);
         return card;
-    }
-
-    // ==================== СТАТУСЫ (СПИСОК) ====================
-
-    private static VBox createStatusBox(ReportData data) {
-        VBox box = new VBox(8);
-        box.setAlignment(Pos.CENTER_LEFT);
-
-        Label titleLabel = new Label("📌 СТАТУСЫ ЗАКАЗОВ");
-        titleLabel.getStyleClass().add("section-title");
-
-        VBox listBox = new VBox(5);
-        listBox.getStyleClass().add("list-box");
-
-        int totalOrders = data.totalOrders;
-        for (Map.Entry<String, Integer> entry : data.statusCount.entrySet()) {
-            String status = entry.getKey();
-            int count = entry.getValue();
-            double percent = totalOrders > 0 ? (count * 100.0 / totalOrders) : 0;
-
-            HBox row = new HBox(10);
-            row.getStyleClass().add("list-row");
-
-            Label statusLabel = new Label(status);
-            statusLabel.getStyleClass().add("list-name");
-            statusLabel.setMinWidth(100);
-
-            Label countLabel = new Label(String.valueOf(count));
-            countLabel.getStyleClass().add("list-count");
-            countLabel.setMinWidth(40);
-
-            Label percentLabel = new Label(String.format("(%.1f%%)", percent));
-            percentLabel.getStyleClass().add("list-percent");
-
-            Region spacer = new Region();
-            HBox.setHgrow(spacer, Priority.ALWAYS);
-
-            row.getChildren().addAll(statusLabel, spacer, countLabel, percentLabel);
-            listBox.getChildren().add(row);
-        }
-
-        box.getChildren().addAll(titleLabel, listBox);
-        return box;
-    }
-
-    // ==================== ТОП-5 СПИСКИ ====================
-
-    private static VBox createTopListBox(Map<String, Integer> data, String title) {
-        VBox box = new VBox(8);
-        box.setAlignment(Pos.CENTER_LEFT);
-
-        Label titleLabel = new Label(title);
-        titleLabel.getStyleClass().add("section-title");
-
-        VBox listBox = new VBox(5);
-        listBox.getStyleClass().add("list-box");
-
-        int rank = 1;
-        for (Map.Entry<String, Integer> entry : data.entrySet()) {
-            String name = entry.getKey();
-            int count = entry.getValue();
-
-            HBox row = new HBox(10);
-            row.getStyleClass().add("list-row");
-
-            Label rankLabel = new Label(String.format("%d.", rank));
-            rankLabel.getStyleClass().add("list-rank");
-
-            Label nameLabel = new Label(name);
-            nameLabel.getStyleClass().add("list-name");
-            nameLabel.setWrapText(true);
-
-            Label countLabel = new Label(String.valueOf(count));
-            countLabel.getStyleClass().add("list-count");
-
-            Region spacer = new Region();
-            HBox.setHgrow(spacer, Priority.ALWAYS);
-
-            row.getChildren().addAll(rankLabel, nameLabel, spacer, countLabel);
-            listBox.getChildren().add(row);
-            rank++;
-        }
-
-        box.getChildren().addAll(titleLabel, listBox);
-        return box;
     }
 
     // ==================== ГРАФИК ВЫРУЧКИ ====================
@@ -442,6 +377,107 @@ public class ReportView {
         }
 
         return series;
+    }
+
+    // ==================== СТАТУСЫ (СПИСОК) ====================
+
+    private static VBox createStatusListBox(ReportData data) {
+        VBox box = new VBox(8);
+        box.setAlignment(Pos.TOP_LEFT);
+
+        Label titleLabel = new Label("СТАТУСЫ ЗАКАЗОВ");
+        titleLabel.setGraphic(IconHelper.assignment(20, "#2c3e50"));
+        titleLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #2c3e50; -fx-graphic-text-gap: 8;");
+
+        VBox listBox = new VBox(5);
+        listBox.setPadding(new Insets(8));
+        listBox.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-border-radius: 8px;" +
+                        "-fx-background-radius: 8px;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 6, 0, 0, 3);"
+        );
+        listBox.setFillWidth(true);
+
+        int totalOrders = data.totalOrders;
+        for (Map.Entry<String, Integer> entry : data.statusCount.entrySet()) {
+            String status = entry.getKey();
+            int count = entry.getValue();
+            double percent = totalOrders > 0 ? (count * 100.0 / totalOrders) : 0;
+
+            HBox row = new HBox(10);
+            row.setAlignment(Pos.CENTER_LEFT);
+            row.setPadding(new Insets(2, 0, 2, 0));
+
+            Label statusLabel = new Label(status);
+            statusLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #2c3e50; -fx-min-width: 100px;");
+
+            Label countLabel = new Label(String.valueOf(count));
+            countLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #3498db; -fx-min-width: 40px;");
+
+            Label percentLabel = new Label(String.format("(%.1f%%)", percent));
+            percentLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #7f8c8d;");
+
+            Region spacer = new Region();
+            HBox.setHgrow(spacer, Priority.ALWAYS);
+
+            row.getChildren().addAll(statusLabel, spacer, countLabel, percentLabel);
+            listBox.getChildren().add(row);
+        }
+
+        box.getChildren().addAll(titleLabel, listBox);
+        return box;
+    }
+
+    // ==================== ТОП СПИСКИ ====================
+
+    private static VBox createTopListBox(Map<String, Integer> data, String title, javafx.scene.Node icon) {
+        VBox box = new VBox(8);
+        box.setAlignment(Pos.TOP_LEFT);
+
+        Label titleLabel = new Label(title);
+        titleLabel.setGraphic(icon);
+        titleLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #2c3e50; -fx-graphic-text-gap: 8;");
+
+        VBox listBox = new VBox(5);
+        listBox.setPadding(new Insets(8));
+        listBox.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-border-radius: 8px;" +
+                        "-fx-background-radius: 8px;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 6, 0, 0, 3);"
+        );
+        listBox.setFillWidth(true);
+
+        int rank = 1;
+        for (Map.Entry<String, Integer> entry : data.entrySet()) {
+            String name = entry.getKey();
+            int count = entry.getValue();
+
+            HBox row = new HBox(10);
+            row.setAlignment(Pos.CENTER_LEFT);
+            row.setPadding(new Insets(2, 0, 2, 0));
+
+            Label rankLabel = new Label(String.format("%d.", rank));
+            rankLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #7f8c8d; -fx-min-width: 25px;");
+
+            Label nameLabel = new Label(name);
+            nameLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #2c3e50;");
+            nameLabel.setWrapText(true);
+
+            Label countLabel = new Label(String.valueOf(count));
+            countLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #3498db;");
+
+            Region spacer = new Region();
+            HBox.setHgrow(spacer, Priority.ALWAYS);
+
+            row.getChildren().addAll(rankLabel, nameLabel, spacer, countLabel);
+            listBox.getChildren().add(row);
+            rank++;
+        }
+
+        box.getChildren().addAll(titleLabel, listBox);
+        return box;
     }
 
     // ==================== ВНУТРЕННИЙ КЛАСС ====================

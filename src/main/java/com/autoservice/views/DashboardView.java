@@ -4,13 +4,15 @@ import com.autoservice.Client;
 import com.autoservice.DataStore;
 import com.autoservice.SparePart;
 import com.autoservice.WorkOrder;
-import com.autoservice.services.ReportGenerator;
 import com.autoservice.dialogs.CreateOrderDialog;
 import com.autoservice.dialogs.EditClientDialog;
 import com.autoservice.controllers.ClientController;
 import com.autoservice.controllers.OrderController;
+import com.autoservice.utils.IconHelper;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
@@ -22,10 +24,7 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 import java.text.NumberFormat;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.Locale;
-
 public class DashboardView extends ScrollPane {
 
     private static DashboardView instance;
@@ -85,14 +84,14 @@ public class DashboardView extends ScrollPane {
         cardsRow.setPadding(new Insets(0, 0, 20, 0));
 
         cardsRow.getChildren().addAll(
-                createStatCard("📋 Заказов", String.valueOf(DataStore.getOrders().size()),
-                        "Всего заказов", "#3498db"),
-                createStatCard("👥 Клиентов", String.valueOf(DataStore.getClients().size()),
-                        "Активных клиентов", "#2ecc71"),
-                createStatCard("⚠️ Остатки", getLowStockCount(),
-                        "Заканчиваются (меньше минимума)", "#e74c3c"),
-                createStatCard("💰 Выручка", getTotalRevenue(),
-                        "Сумма всех заказов", "#f39c12")
+                createStatCard(IconHelper.assignment(24, "#3498db"), "Заказов",
+                        String.valueOf(DataStore.getOrders().size()), "#3498db"),
+                createStatCard(IconHelper.people(24, "#2ecc71"), "Клиентов",
+                        String.valueOf(DataStore.getClients().size()), "#2ecc71"),
+                createStatCard(IconHelper.warning(24, "#e74c3c"), "Остатки",
+                        getLowStockCount(), "#e74c3c"),
+                createStatCard(IconHelper.report(24, "#f39c12"), "Выручка",
+                        getTotalRevenue(), "#f39c12")
         );
 
         gridPane.add(cardsRow, 0, row);
@@ -104,12 +103,12 @@ public class DashboardView extends ScrollPane {
         activeRow.setPadding(new Insets(0, 0, 20, 0));
 
         activeRow.getChildren().addAll(
-                createStatCard("🟡 В работе", String.valueOf(getActiveOrdersCount()),
-                        "Заказов в процессе", "#f1c40f"),
-                createStatCard("✅ Выполнено", String.valueOf(getCompletedOrdersCount()),
-                        "Завершённых заказов", "#27ae60"),
-                createStatCard("📅 Записей", String.valueOf(DataStore.getAppointments().size()),
-                        "Всего записей на приём", "#9b59b6")
+                createStatCard(IconHelper.edit(24, "#f1c40f"), "В работе",
+                        String.valueOf(getActiveOrdersCount()), "#f1c40f"),
+                createStatCard(IconHelper.save(24, "#27ae60"), "Выполнено",
+                        String.valueOf(getCompletedOrdersCount()), "#27ae60"),
+                createStatCard(IconHelper.event(24, "#9b59b6"), "Записей",
+                        String.valueOf(DataStore.getAppointments().size()), "#9b59b6")
         );
 
         gridPane.add(activeRow, 0, row);
@@ -121,10 +120,10 @@ public class DashboardView extends ScrollPane {
         actionsRow.setPadding(new Insets(20, 0, 10, 0));
 
         actionsRow.getChildren().addAll(
-                createActionButton("➕ Новый заказ", "#3498db"),
-                createActionButton("👤 Новый клиент", "#2ecc71"),
-                createActionButton("📅 Запись", "#9b59b6"),
-                createActionButton("📊 Отчёт", "#f39c12")
+                createActionButton("Новый заказ", "#3498db", IconHelper.add()),
+                createActionButton("Новый клиент", "#2ecc71", IconHelper.add()),
+                createActionButton("Запись", "#9b59b6", IconHelper.event()),
+                createActionButton("Отчёт", "#f39c12", IconHelper.report())
         );
 
         gridPane.add(actionsRow, 0, row);
@@ -137,7 +136,7 @@ public class DashboardView extends ScrollPane {
 
     // ==================== СОЗДАНИЕ КАРТОЧКИ ====================
 
-    private VBox createStatCard(String title, String value, String subtitle, String color) {
+    private VBox createStatCard(Node icon, String title, String value, String color) {
         VBox card = new VBox(5);
         card.setAlignment(Pos.CENTER);
         card.setPadding(new Insets(20, 40, 20, 40));
@@ -160,18 +159,15 @@ public class DashboardView extends ScrollPane {
         valueLabel.setStyle("-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
         valueLabel.setWrapText(true);
 
-        Label subtitleLabel = new Label(subtitle);
-        subtitleLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #95a5a6;");
-        subtitleLabel.setWrapText(true);
-
-        card.getChildren().addAll(titleLabel, valueLabel, subtitleLabel);
+        card.getChildren().addAll(icon, titleLabel, valueLabel);
         return card;
     }
 
     // ==================== КНОПКИ БЫСТРЫХ ДЕЙСТВИЙ ====================
 
-    private Button createActionButton(String text, String color) {
+    private Button createActionButton(String text, String color, Node icon) {
         Button btn = new Button(text);
+        btn.setGraphic(icon);
         btn.setStyle(
                 "-fx-background-color: " + color + ";" +
                         "-fx-text-fill: white;" +
@@ -231,6 +227,9 @@ public class DashboardView extends ScrollPane {
             case "#2ecc71" -> "#27ae60";
             case "#9b59b6" -> "#8e44ad";
             case "#f39c12" -> "#e67e22";
+            case "#f1c40f" -> "#d4ac0d";
+            case "#27ae60" -> "#1e8449";
+            case "#e74c3c" -> "#c0392b";
             default -> color;
         };
     }
@@ -240,7 +239,6 @@ public class DashboardView extends ScrollPane {
     private void openCreateOrderDialog() {
         try {
             CreateOrderDialog.show();
-
             DataStore.load();
             refresh();
             OrderController.refreshTable();
@@ -253,9 +251,8 @@ public class DashboardView extends ScrollPane {
 
     private void openEditClientDialog() {
         try {
-            Client emptyClient = new Client(-1, "", "", "", "", "");
+            Client emptyClient = new Client(-1, "", "", "", "", "", "");
             EditClientDialog.show(emptyClient);
-
             DataStore.load();
             refresh();
             ClientController.refreshTable();
@@ -268,7 +265,7 @@ public class DashboardView extends ScrollPane {
 
     private void openAppointmentView() {
         try {
-            javafx.scene.Node parent = this;
+            Node parent = this;
             while (parent != null && !(parent instanceof TabPane)) {
                 parent = parent.getParent();
             }
@@ -287,8 +284,6 @@ public class DashboardView extends ScrollPane {
         }
     }
 
-    // ==================== ГЕНЕРАЦИЯ ОТЧЁТА ====================
-
     private void generateReport() {
         try {
             ReportView.show();
@@ -302,9 +297,7 @@ public class DashboardView extends ScrollPane {
     // ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================
 
     private void showInfoAlert(String title, String message) {
-        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(
-                javafx.scene.control.Alert.AlertType.INFORMATION
-        );
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
@@ -312,9 +305,7 @@ public class DashboardView extends ScrollPane {
     }
 
     private void showErrorAlert(String title, String message) {
-        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(
-                javafx.scene.control.Alert.AlertType.ERROR
-        );
+        Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
@@ -374,7 +365,8 @@ public class DashboardView extends ScrollPane {
                         "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 10, 0, 0, 5);"
         );
 
-        Label header = new Label("📋 Последние заказы");
+        Label header = new Label("Последние заказы");
+        header.setGraphic(IconHelper.assignment(20, "#2c3e50"));
         header.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
         box.getChildren().add(header);
 
@@ -401,7 +393,7 @@ public class DashboardView extends ScrollPane {
             Label client = new Label(order.getClient().getName() + " " + order.getClient().getLastName());
             client.setStyle("-fx-text-fill: #2c3e50; -fx-min-width: 150px;");
 
-            Label status = new Label(getStatusText(order.getStatus()));
+            Label status = new Label(order.getStatus());
             status.setStyle("-fx-text-fill: " + getStatusColor(order.getStatus()) + "; -fx-font-weight: bold;");
 
             Label total = new Label(currencyFormat.format(order.getTotal()));
@@ -412,16 +404,6 @@ public class DashboardView extends ScrollPane {
         }
 
         return box;
-    }
-
-    private String getStatusText(String status) {
-        return switch (status) {
-            case "Черновик" -> "📄 Черновик";
-            case "В работе" -> "🟡 В работе";
-            case "Выполнен" -> "✅ Выполнен";
-            case "Отменён" -> "❌ Отменён";
-            default -> status;
-        };
     }
 
     private String getStatusColor(String status) {

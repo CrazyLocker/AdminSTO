@@ -1,6 +1,11 @@
 package com.autoservice;
 
 public class Appointment {
+    public static final String STATUS_SCHEDULED = "Запланировано";
+    public static final String STATUS_IN_PROGRESS = "В работе";
+    public static final String STATUS_COMPLETED = "Выполнено";
+    public static final String STATUS_CANCELLED = "Отменено";
+
     private int id;
     private Client client;
     private String orderId;
@@ -9,12 +14,12 @@ public class Appointment {
     private String date;
     private String time;
     private String status;
+    private boolean dirty = false;
 
-    public static final String STATUS_SCHEDULED = "ЗАПЛАНИРОВАНО";
-    public static final String STATUS_COMPLETED = "ВЫПОЛНЕНО";
-    public static final String STATUS_CANCELLED = "ОТМЕНЕНО";
+    // ==================== КОНСТРУКТОРЫ ====================
 
-    public Appointment(int id, Client client, String orderId, String masterName, String serviceName, String date, String time, String status) {
+    public Appointment(int id, Client client, String orderId, String masterName,
+                       String serviceName, String date, String time, String status) {
         this.id = id;
         this.client = client;
         this.orderId = orderId;
@@ -23,38 +28,79 @@ public class Appointment {
         this.date = date;
         this.time = time;
         this.status = status;
+        this.dirty = false;
     }
 
     public Appointment(Client client, String masterName, String serviceName, String date, String time) {
-        this.id = -1;
-        this.client = client;
-        this.orderId = null;
-        this.masterName = masterName;
-        this.serviceName = serviceName;
-        this.date = date;
-        this.time = time;
-        this.status = STATUS_SCHEDULED;
+        this(-1, client, null, masterName, serviceName, date, time, STATUS_SCHEDULED);
     }
 
+    // ==================== ГЕТТЕРЫ ====================
+
     public int getId() { return id; }
-    public void setId(int id) { this.id = id; }
     public Client getClient() { return client; }
-    public void setClient(Client client) { this.client = client; }
     public String getOrderId() { return orderId; }
-    public void setOrderId(String orderId) { this.orderId = orderId; }
     public String getMasterName() { return masterName; }
-    public void setMasterName(String masterName) { this.masterName = masterName; }
     public String getServiceName() { return serviceName; }
-    public void setServiceName(String serviceName) { this.serviceName = serviceName; }
     public String getDate() { return date; }
-    public void setDate(String date) { this.date = date; }
     public String getTime() { return time; }
-    public void setTime(String time) { this.time = time; }
     public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public boolean isDirty() { return dirty; }
+
+    // ==================== СЕТТЕРЫ ====================
+
+    public void setId(int id) {
+        this.id = id;
+        this.dirty = true;
+    }
+
+    public void setClient(Client client) {
+        this.client = client;
+        this.dirty = true;
+    }
+
+    public void setOrderId(String orderId) {
+        this.orderId = orderId;
+        this.dirty = true;
+    }
+
+    public void setMasterName(String masterName) {
+        this.masterName = masterName;
+        this.dirty = true;
+    }
+
+    public void setServiceName(String serviceName) {
+        this.serviceName = serviceName;
+        this.dirty = true;
+    }
+
+    public void setDate(String date) {
+        this.date = date;
+        this.dirty = true;
+    }
+
+    public void setTime(String time) {
+        this.time = time;
+        this.dirty = true;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+        this.dirty = true;
+    }
+
+    public void setDirty(boolean dirty) {
+        this.dirty = dirty;
+    }
+
+    // ==================== МЕТОДЫ ====================
+
+    public void markClean() {
+        this.dirty = false;
+    }
 
     @Override
     public String toString() {
-        return time + " - " + client.getName() + " (" + serviceName + ") - " + masterName;
+        return date + " " + time + " - " + client.getFullName() + " (" + serviceName + ")";
     }
 }

@@ -3,6 +3,7 @@ package com.autoservice.dialogs;
 import com.autoservice.*;
 import com.autoservice.controllers.DictionaryController;
 import com.autoservice.controllers.OrderController;
+import com.autoservice.utils.IconHelper;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -37,12 +38,11 @@ public class CreateOrderDialog {
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
 
-        // ==================== КЛИЕНТ (Фамилия Имя — Марка) ====================
+        // ==================== КЛИЕНТ ====================
         ComboBox<Client> clientCombo = new ComboBox<>(FXCollections.observableArrayList(DataStore.getClients()));
         clientCombo.setPromptText("Выберите клиента");
         clientCombo.setPrefWidth(350);
 
-        // Кастомный CellFactory для отображения: Фамилия Имя — Марка авто
         clientCombo.setCellFactory(listView -> new ListCell<Client>() {
             @Override
             protected void updateItem(Client item, boolean empty) {
@@ -60,7 +60,6 @@ public class CreateOrderDialog {
             }
         });
 
-        // Кастомный ButtonCell для отображения в поле выбора
         clientCombo.setButtonCell(new ListCell<Client>() {
             @Override
             protected void updateItem(Client item, boolean empty) {
@@ -78,7 +77,7 @@ public class CreateOrderDialog {
             }
         });
 
-        // ==================== ЗАПИСЬ (ДАТА И ВРЕМЯ) ====================
+        // ==================== ЗАПИСЬ ====================
         Label appointmentLabel = new Label("Запись на сервис:");
         appointmentLabel.setStyle("-fx-font-weight: bold;");
 
@@ -122,7 +121,9 @@ public class CreateOrderDialog {
             }
         });
 
-        Button addServiceBtn = new Button("+ Добавить услугу");
+        Button addServiceBtn = new Button("Добавить услугу");
+        addServiceBtn.setGraphic(IconHelper.add());
+        addServiceBtn.getStyleClass().add("add-button");
 
         // ==================== ЗАПЧАСТИ ====================
         Label partsHeader = new Label("Запчасти:");
@@ -155,7 +156,9 @@ public class CreateOrderDialog {
             }
         });
 
-        Button addPartBtn = new Button("+ Добавить запчасть");
+        Button addPartBtn = new Button("Добавить запчасть");
+        addPartBtn.setGraphic(IconHelper.add());
+        addPartBtn.getStyleClass().add("add-button");
 
         // Временные списки
         List<String> tempServices = new ArrayList<>();
@@ -164,8 +167,13 @@ public class CreateOrderDialog {
         List<Integer> tempPartQuantities = new ArrayList<>();
 
         // ==================== КНОПКИ УДАЛЕНИЯ ====================
-        Button removeServiceBtn = new Button("Удалить выбранную услугу");
-        Button removePartBtn = new Button("Удалить выбранную запчасть");
+        Button removeServiceBtn = new Button("Удалить выбранную");
+        removeServiceBtn.setGraphic(IconHelper.delete());
+        removeServiceBtn.getStyleClass().add("delete-button");
+
+        Button removePartBtn = new Button("Удалить выбранную");
+        removePartBtn.setGraphic(IconHelper.delete());
+        removePartBtn.getStyleClass().add("delete-button");
 
         // ==================== ИТОГО ====================
         Label totalLabel = new Label("Итого: 0 руб.");
@@ -265,7 +273,13 @@ public class CreateOrderDialog {
 
         // ==================== КНОПКИ СОХРАНЕНИЯ ====================
         Button saveBtn = new Button("Создать заказ");
+        saveBtn.setGraphic(IconHelper.save());
+        saveBtn.getStyleClass().add("save-button");
+
         Button cancelBtn = new Button("Отмена");
+        cancelBtn.setGraphic(IconHelper.cancel());
+        cancelBtn.getStyleClass().add("cancel-button");
+
         HBox btnBox = new HBox(15, saveBtn, cancelBtn);
         btnBox.setAlignment(Pos.CENTER);
 
@@ -289,6 +303,9 @@ public class CreateOrderDialog {
         );
 
         Scene scene = new Scene(root);
+        scene.getStylesheets().add(
+                CreateOrderDialog.class.getResource("/styles.css").toExternalForm()
+        );
         stage.setScene(scene);
 
         saveBtn.setOnAction(e -> {
@@ -301,7 +318,6 @@ public class CreateOrderDialog {
                 return;
             }
 
-            // Проверка: если чекбокс выбран, то дата, время и мастер обязательны
             if (createAppointmentCheck.isSelected()) {
                 if (datePicker.getValue() == null) {
                     showAlert("Выберите дату записи");
@@ -317,9 +333,8 @@ public class CreateOrderDialog {
                 }
             }
 
-            // Создаём заказ со статусом "Новый"
             WorkOrder order = new WorkOrder(clientCombo.getValue());
-            order.setStatus("Новый"); // Устанавливаем статус "Новый"
+            order.setStatus("Новый");
 
             for (int i = 0; i < tempServices.size(); i++) {
                 order.addService(tempServices.get(i), tempServicePrices.get(i));
@@ -330,14 +345,12 @@ public class CreateOrderDialog {
             }
             DataStore.addOrder(order);
 
-            // Создаём запись в календаре
             if (createAppointmentCheck.isSelected()) {
                 String dateStr = datePicker.getValue().toString();
                 String timeStr = timeCombo.getValue();
                 String master = masterCombo.getValue();
                 String serviceName = tempServices.isEmpty() ? "Консультация" : tempServices.get(0);
 
-                // Проверяем, свободно ли время
                 List<Appointment> existing = DataStore.getAppointmentsByDate(dateStr);
                 boolean isFree = true;
                 for (Appointment a : existing) {

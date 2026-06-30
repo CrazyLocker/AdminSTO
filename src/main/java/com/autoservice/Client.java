@@ -8,46 +8,9 @@ public class Client {
     private String carModel;
     private String carNumber;
     private String lastRepairDate;
+    private boolean dirty = false;
 
-    public Client(String name, String phone, String carModel, String carNumber) {
-        this.id = -1;
-        this.name = name;
-        this.lastName = "";
-        this.phone = phone;
-        this.carModel = carModel;
-        this.carNumber = carNumber;
-        this.lastRepairDate = "";
-    }
-
-    public Client(String name, String lastName, String phone, String carModel, String carNumber) {
-        this.id = -1;
-        this.name = name;
-        this.lastName = lastName;
-        this.phone = phone;
-        this.carModel = carModel;
-        this.carNumber = carNumber;
-        this.lastRepairDate = "";
-    }
-
-    public Client(int id, String name, String phone, String carModel, String carNumber) {
-        this.id = id;
-        this.name = name;
-        this.lastName = "";
-        this.phone = phone;
-        this.carModel = carModel;
-        this.carNumber = carNumber;
-        this.lastRepairDate = "";
-    }
-
-    public Client(int id, String name, String lastName, String phone, String carModel, String carNumber) {
-        this.id = id;
-        this.name = name;
-        this.lastName = lastName;
-        this.phone = phone;
-        this.carModel = carModel;
-        this.carNumber = carNumber;
-        this.lastRepairDate = "";
-    }
+    // ==================== КОНСТРУКТОРЫ ====================
 
     public Client(int id, String name, String lastName, String phone, String carModel, String carNumber, String lastRepairDate) {
         this.id = id;
@@ -56,45 +19,82 @@ public class Client {
         this.phone = phone;
         this.carModel = carModel;
         this.carNumber = carNumber;
-        this.lastRepairDate = lastRepairDate != null ? lastRepairDate : "";
+        this.lastRepairDate = lastRepairDate;
+        this.dirty = false;
     }
 
+    public Client(String name, String lastName, String phone, String carModel, String carNumber) {
+        this(-1, name, lastName, phone, carModel, carNumber, "");
+    }
+
+    public Client(String name, String lastName, String phone, String carModel, String carNumber, String lastRepairDate) {
+        this(-1, name, lastName, phone, carModel, carNumber, lastRepairDate);
+    }
+
+    // ==================== ГЕТТЕРЫ ====================
+
     public int getId() { return id; }
-    public void setId(int id) { this.id = id; }
-
     public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-
     public String getLastName() { return lastName; }
-    public void setLastName(String lastName) { this.lastName = lastName; }
-
     public String getPhone() { return phone; }
-    public void setPhone(String phone) { this.phone = phone; }
-
     public String getCarModel() { return carModel; }
-    public void setCarModel(String carModel) { this.carModel = carModel; }
-
     public String getCarNumber() { return carNumber; }
-    public void setCarNumber(String carNumber) { this.carNumber = carNumber; }
-
     public String getLastRepairDate() { return lastRepairDate; }
-    public void setLastRepairDate(String lastRepairDate) { this.lastRepairDate = lastRepairDate; }
+    public boolean isDirty() { return dirty; }
+
+    // ==================== СЕТТЕРЫ ====================
+
+    public void setId(int id) {
+        this.id = id;
+        this.dirty = true;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+        this.dirty = true;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+        this.dirty = true;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+        this.dirty = true;
+    }
+
+    public void setCarModel(String carModel) {
+        this.carModel = carModel;
+        this.dirty = true;
+    }
+
+    public void setCarNumber(String carNumber) {
+        this.carNumber = carNumber;
+        this.dirty = true;
+    }
+
+    public void setLastRepairDate(String lastRepairDate) {
+        this.lastRepairDate = lastRepairDate;
+        this.dirty = true;
+    }
+
+    public void setDirty(boolean dirty) {
+        this.dirty = dirty;
+    }
+
+    // ==================== МЕТОДЫ ====================
+
+    public String getFullName() {
+        return (lastName != null && !lastName.isEmpty()) ? lastName + " " + name : name;
+    }
+
+    public void markClean() {
+        this.dirty = false;
+    }
 
     @Override
     public String toString() {
-        return name + " (" + carNumber + ")";
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (obj == null || getClass() != obj.getClass()) return false;
-        Client client = (Client) obj;
-        return name.equals(client.name) && phone.equals(client.phone);
-    }
-
-    @Override
-    public int hashCode() {
-        return name.hashCode() + phone.hashCode();
+        return getFullName() + " (" + carModel + ", " + carNumber + ")";
     }
 }

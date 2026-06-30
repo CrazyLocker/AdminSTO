@@ -996,3 +996,56 @@
     -fx-padding: 5;
     -fx-alignment: center;
 }
+/* ==================== GOOGLE MATERIAL SYMBOLS ==================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
+
+.material-icon {
+    -fx-font-family: 'Material Symbols Outlined';
+    -fx-font-weight: normal;
+    -fx-font-style: normal;
+    -fx-font-size: 20px;
+    -fx-text-fill: #5f6368;
+    -fx-padding: 0 4 0 0;
+}
+
+.material-icon-sm {
+    -fx-font-family: 'Material Symbols Outlined';
+    -fx-font-weight: normal;
+    -fx-font-style: normal;
+    -fx-font-size: 16px;
+    -fx-text-fill: #5f6368;
+}
+
+.material-icon-lg {
+    -fx-font-family: 'Material Symbols Outlined';
+    -fx-font-weight: normal;
+    -fx-font-style: normal;
+    -fx-font-size: 24px;
+    -fx-text-fill: #5f6368;
+}
+
+.material-icon-white {
+    -fx-font-family: 'Material Symbols Outlined';
+    -fx-font-weight: normal;
+    -fx-font-style: normal;
+    -fx-font-size: 18px;
+    -fx-text-fill: white;
+}
+
+/* Цвета для разных состояний */
+.material-icon-primary {
+    -fx-text-fill: #1976d2;
+}
+
+.material-icon-success {
+    -fx-text-fill: #2ecc71;
+}
+
+.material-icon-danger {
+    -fx-text-fill: #e74c3c;
+}
+
+.material-icon-warning {
+    -fx-text-fill: #f39c12;
+}

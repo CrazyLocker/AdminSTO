@@ -3,13 +3,13 @@ package com.autoservice;
 import com.autoservice.views.DashboardView;
 import com.autoservice.controllers.DictionaryController;
 import com.autoservice.views.*;
+import com.autoservice.utils.IconHelper;
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
 import javafx.scene.Scene;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
+import javafx.scene.shape.SVGPath;
 import javafx.stage.Stage;
 
 public class App extends Application {
@@ -21,44 +21,27 @@ public class App extends Application {
 
         TabPane tabPane = new TabPane();
 
-        final Tab dashTab = new Tab("Дашборд");
+        Tab dashTab = createTab("Дашборд", IconHelper.dashboard());
+        Tab clientTab = createTab("Клиенты", IconHelper.people());
+        Tab orderTab = createTab("Заказы", IconHelper.assignment());
+        Tab dictTab = createTab("Справочники", IconHelper.book());
+        Tab appointmentTab = createTab("Запись", IconHelper.event());
+
         dashTab.setContent(DashboardView.create());
-        dashTab.setClosable(false);
-
-        // Передаём Stage в DashboardView
-        DashboardView.setStage(primaryStage);
-
-        Tab clientTab = new Tab("Клиенты");
         clientTab.setContent(ClientView.create());
-        clientTab.setClosable(false);
-
-        Tab orderTab = new Tab("Заказы");
         orderTab.setContent(OrderView.create());
-        orderTab.setClosable(false);
-
-        Tab dictTab = new Tab("Справочники");
         dictTab.setContent(DictionaryView.create());
-        dictTab.setClosable(false);
-
-        Tab appointmentTab = new Tab("Запись");
         appointmentTab.setContent(AppointmentView.create());
-        appointmentTab.setClosable(false);
 
         tabPane.getTabs().addAll(dashTab, clientTab, orderTab, dictTab, appointmentTab);
 
-        // Обновляем дашборд при переключении на вкладку
-        tabPane.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<Tab>() {
-            @Override
-            public void changed(ObservableValue<? extends Tab> obs, Tab oldTab, Tab newTab) {
-                if (newTab == dashTab) {
-                    System.out.println("Dashboard refresh triggered");
-                    DashboardView.refresh();
-                }
+        tabPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> {
+            if (newTab == dashTab) {
+                DashboardView.refresh();
             }
         });
 
         Scene scene = new Scene(tabPane, 1500, 1000);
-
         scene.getStylesheets().add(
                 App.class.getResource("/styles.css").toExternalForm()
         );
@@ -78,6 +61,13 @@ public class App extends Application {
         com.autoservice.controllers.ClientController.refreshTable();
         com.autoservice.controllers.OrderController.refreshTable();
         DictionaryController.refreshAll();
+    }
+
+    private static Tab createTab(String title, SVGPath icon) {
+        Tab tab = new Tab(title);
+        tab.setClosable(false);
+        tab.setGraphic(icon);
+        return tab;
     }
 
     public static void main(String[] args) {

@@ -4,73 +4,90 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class WorkOrder {
+    public static final String STATUS_DRAFT = "Черновик";
+    public static final String STATUS_IN_PROGRESS = "В работе";
+    public static final String STATUS_CLOSED = "Закрыт";
+    public static final String STATUS_CANCELLED = "Отменён";
+
     private String id;
     private Client client;
-    private List<String> services;
-    private List<Double> servicePrices;
-    private List<SparePart> spareParts;
-    private List<Integer> sparePartQuantities;
-    private double total;
     private String status;
+    private double total;
     private String createdDate;
+    private List<String> services = new ArrayList<>();
+    private List<Double> servicePrices = new ArrayList<>();
+    private List<SparePart> spareParts = new ArrayList<>();
+    private List<Integer> sparePartQuantities = new ArrayList<>();
+    private boolean dirty = false;
 
-    public static final String STATUS_NEW = "НОВЫЙ";
-    public static final String STATUS_DIAGNOSTICS = "ДИАГНОСТИКА";
-    public static final String STATUS_IN_WORK = "В РАБОТЕ";
-    public static final String STATUS_WAITING_PARTS = "ОЖИДАНИЕ ЗАПЧАСТЕЙ";
-    public static final String STATUS_READY = "ГОТОВ";
-    public static final String STATUS_CLOSED = "ЗАКРЫТ";
-
-    public static List<String> getAllStatuses() {
-        List<String> statuses = new ArrayList<>();
-        statuses.add(STATUS_NEW);
-        statuses.add(STATUS_DIAGNOSTICS);
-        statuses.add(STATUS_IN_WORK);
-        statuses.add(STATUS_WAITING_PARTS);
-        statuses.add(STATUS_READY);
-        statuses.add(STATUS_CLOSED);
-        return statuses;
-    }
+    // ==================== КОНСТРУКТОРЫ ====================
 
     public WorkOrder(Client client) {
-        this.id = null;
         this.client = client;
-        this.services = new ArrayList<>();
-        this.servicePrices = new ArrayList<>();
-        this.spareParts = new ArrayList<>();
-        this.sparePartQuantities = new ArrayList<>();
+        this.status = STATUS_DRAFT;
         this.total = 0;
-        this.status = STATUS_NEW;
-        this.createdDate = "";
-    }
-
-    public WorkOrder(String id, Client client, String status, double total) {
-        this.id = id;
-        this.client = client;
-        this.services = new ArrayList<>();
-        this.servicePrices = new ArrayList<>();
-        this.spareParts = new ArrayList<>();
-        this.sparePartQuantities = new ArrayList<>();
-        this.total = total;
-        this.status = status;
-        this.createdDate = "";
+        this.dirty = true;
     }
 
     public WorkOrder(String id, Client client, String status, double total, String createdDate) {
         this.id = id;
         this.client = client;
-        this.services = new ArrayList<>();
-        this.servicePrices = new ArrayList<>();
-        this.spareParts = new ArrayList<>();
-        this.sparePartQuantities = new ArrayList<>();
-        this.total = total;
         this.status = status;
-        this.createdDate = createdDate != null ? createdDate : "";
+        this.total = total;
+        this.createdDate = createdDate;
+        this.dirty = false;
     }
 
+    // ==================== ГЕТТЕРЫ ====================
+
+    public String getId() { return id; }
+    public Client getClient() { return client; }
+    public String getStatus() { return status; }
+    public double getTotal() { return total; }
+    public String getCreatedDate() { return createdDate; }
+    public List<String> getServices() { return services; }
+    public List<Double> getServicePrices() { return servicePrices; }
+    public List<SparePart> getSpareParts() { return spareParts; }
+    public List<Integer> getSparePartQuantities() { return sparePartQuantities; }
+    public boolean isDirty() { return dirty; }
+
+    // ==================== СЕТТЕРЫ ====================
+
+    public void setId(String id) {
+        this.id = id;
+        this.dirty = true;
+    }
+
+    public void setClient(Client client) {
+        this.client = client;
+        this.dirty = true;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+        this.dirty = true;
+    }
+
+    public void setTotal(double total) {
+        this.total = total;
+        this.dirty = true;
+    }
+
+    public void setCreatedDate(String createdDate) {
+        this.createdDate = createdDate;
+        this.dirty = true;
+    }
+
+    public void setDirty(boolean dirty) {
+        this.dirty = dirty;
+    }
+
+    // ==================== МЕТОДЫ ====================
+
     public void addService(String name, double price) {
-        services.add(name);
-        servicePrices.add(price);
+        this.services.add(name);
+        this.servicePrices.add(price);
+        this.dirty = true;
         recalculateTotal();
     }
 
@@ -78,13 +95,15 @@ public class WorkOrder {
         if (index >= 0 && index < services.size()) {
             services.remove(index);
             servicePrices.remove(index);
+            this.dirty = true;
             recalculateTotal();
         }
     }
 
     public void addSparePart(SparePart part, int quantity) {
-        spareParts.add(part);
-        sparePartQuantities.add(quantity);
+        this.spareParts.add(part);
+        this.sparePartQuantities.add(quantity);
+        this.dirty = true;
         recalculateTotal();
     }
 
@@ -92,42 +111,34 @@ public class WorkOrder {
         if (index >= 0 && index < spareParts.size()) {
             spareParts.remove(index);
             sparePartQuantities.remove(index);
+            this.dirty = true;
             recalculateTotal();
         }
     }
 
     public void recalculateTotal() {
-        total = 0;
+        double newTotal = 0;
         for (Double price : servicePrices) {
-            total += price;
+            newTotal += price;
         }
         for (int i = 0; i < spareParts.size(); i++) {
-            total += spareParts.get(i).getRetailPrice() * sparePartQuantities.get(i);
+            newTotal += spareParts.get(i).getRetailPrice() * sparePartQuantities.get(i);
+        }
+        if (this.total != newTotal) {
+            this.total = newTotal;
+            this.dirty = true;
         }
     }
 
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
-
-    public Client getClient() { return client; }
-    public void setClient(Client client) { this.client = client; }
-
-    public double getTotal() { return total; }
-
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
-
-    public List<String> getServices() { return services; }
-    public List<Double> getServicePrices() { return servicePrices; }
-
-    public List<SparePart> getSpareParts() { return spareParts; }
-    public List<Integer> getSparePartQuantities() { return sparePartQuantities; }
-
-    public String getCreatedDate() { return createdDate; }
-    public void setCreatedDate(String createdDate) { this.createdDate = createdDate; }
+    public void markClean() {
+        this.dirty = false;
+        for (SparePart part : spareParts) {
+            if (part != null) part.markClean();
+        }
+    }
 
     @Override
     public String toString() {
-        return (id != null ? id : "Новый") + " | " + client.getName() + " | " + total + " руб. | " + status;
+        return id + " - " + client.getFullName() + " (" + status + ")";
     }
 }

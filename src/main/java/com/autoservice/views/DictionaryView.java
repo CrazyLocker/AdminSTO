@@ -3,6 +3,7 @@ package com.autoservice.views;
 import com.autoservice.*;
 import com.autoservice.controllers.DictionaryController;
 import com.autoservice.dialogs.ImportSparePartsDialog;
+import com.autoservice.utils.IconHelper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -16,13 +17,11 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class DictionaryView {
 
     private static TableView<SparePart> sparePartsTable;
-    private static TableView<SparePart> stockTable;
     private static TextField searchField;
     private static Button stockIncomeBtn;
 
@@ -31,14 +30,17 @@ public class DictionaryView {
         dictPane.getStyleClass().add("dictionary-tabpane");
 
         Tab servicesTab = new Tab("Услуги");
+        servicesTab.setGraphic(IconHelper.book());
         servicesTab.setContent(createServicesPanel());
         servicesTab.setClosable(false);
 
         Tab partsTab = new Tab("Запчасти");
+        partsTab.setGraphic(IconHelper.settings());
         partsTab.setContent(createSparePartsPanel());
         partsTab.setClosable(false);
 
         Tab stockTab = new Tab("Склад");
+        stockTab.setGraphic(IconHelper.assignment());
         stockTab.setContent(createStockPanel());
         stockTab.setClosable(false);
 
@@ -51,6 +53,7 @@ public class DictionaryView {
         VBox.setVgrow(dictPane, Priority.ALWAYS);
         return vbox;
     }
+
     private static VBox createServicesPanel() {
         TableView<Service> table = new TableView<>();
         table.getStyleClass().add("table-view");
@@ -69,7 +72,7 @@ public class DictionaryView {
         colDuration.setPrefWidth(120);
         colDuration.getStyleClass().add("center-column");
 
-        TableColumn<Service, String> colPartNumber = new TableColumn<>("Артикул услуги");
+        TableColumn<Service, String> colPartNumber = new TableColumn<>("Артикул");
         colPartNumber.setCellValueFactory(new PropertyValueFactory<>("partNumber"));
         colPartNumber.setPrefWidth(150);
 
@@ -107,22 +110,27 @@ public class DictionaryView {
         partNumberField.getStyleClass().add("form-field");
 
         Button addBtn = new Button("Добавить услугу");
+        addBtn.setGraphic(IconHelper.add());
         addBtn.getStyleClass().add("add-button");
-        Button deleteBtn = new Button("Удалить выбранную услугу");
+
+        Button deleteBtn = new Button("Удалить выбранную");
+        deleteBtn.setGraphic(IconHelper.delete());
         deleteBtn.getStyleClass().add("delete-button");
 
         HBox formRow = new HBox(10, nameField, priceField, durationField, partNumberField, addBtn, deleteBtn);
         formRow.setAlignment(Pos.CENTER_LEFT);
         formRow.setPadding(new Insets(10, 0, 0, 0));
+
         VBox panel = new VBox(10, table, formRow);
         return panel;
     }
+
     private static VBox createSparePartsPanel() {
         TableView<SparePart> table = new TableView<>();
         table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         table.getStyleClass().add("table-view");
 
-        TableColumn<SparePart, String> colName = new TableColumn<>("Название запчасти");
+        TableColumn<SparePart, String> colName = new TableColumn<>("Название");
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
         colName.setPrefWidth(200);
 
@@ -168,43 +176,37 @@ public class DictionaryView {
         searchField.textProperty().addListener((obs, oldVal, newValue) -> filterSpareParts(newValue));
 
         Button addBtn = new Button("Добавить запчасть");
+        addBtn.setGraphic(IconHelper.add());
         addBtn.getStyleClass().add("add-button");
         addBtn.setOnAction(e -> showAddSparePartDialog());
 
-        Button deleteBtn = new Button("Удалить выбранные запчасти");
+        Button deleteBtn = new Button("Удалить выбранные");
+        deleteBtn.setGraphic(IconHelper.delete());
         deleteBtn.getStyleClass().add("delete-button");
         deleteBtn.setOnAction(e -> {
             List<SparePart> selectedItems = table.getSelectionModel().getSelectedItems();
             if (selectedItems.isEmpty()) { showAlert("Выберите запчасть для удаления"); return; }
-            String countText = formatCount(selectedItems.size());
-            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION, "Удалить " + selectedItems.size() + " " + countText + "?", ButtonType.YES, ButtonType.NO);
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION, "Удалить " + selectedItems.size() + " запчастей?", ButtonType.YES, ButtonType.NO);
             confirm.showAndWait().ifPresent(response -> {
                 if (response == ButtonType.YES) DictionaryController.removeSpareParts(selectedItems);
             });
         });
 
         Button importBtn = new Button("Импорт из файла");
+        importBtn.setGraphic(IconHelper.add());
         importBtn.getStyleClass().add("income-button");
         importBtn.setOnAction(e -> ImportSparePartsDialog.show());
 
         HBox btnRow = new HBox(10, searchField, addBtn, deleteBtn, importBtn);
         btnRow.setAlignment(Pos.CENTER_LEFT);
         btnRow.setPadding(new Insets(10, 0, 0, 0));
+
         VBox panel = new VBox(10, table, btnRow);
         return panel;
     }
 
-    private static String formatCount(int count) {
-        if (count == 1) return "запчасть";
-        int lastTwo = count % 100;
-        int lastOne = count % 10;
-        if (lastTwo >= 11 && lastTwo <= 19) return "запчастей";
-        if (lastOne == 1) return "запчасти";
-        if (lastOne >= 2 && lastOne <= 4) return "запчасти";
-        return "запчастей";
-    }
-
     private static void filterSpareParts(String filterText) {}
+
     private static void showAddSparePartDialog() {
         Stage stage = new Stage();
         stage.setTitle("Новая запчасть");
@@ -268,8 +270,11 @@ public class DictionaryView {
         grid.add(stockField, 1, 6);
 
         Button saveBtn = new Button("Сохранить");
+        saveBtn.setGraphic(IconHelper.save());
         saveBtn.getStyleClass().add("save-button");
+
         Button cancelBtn = new Button("Отмена");
+        cancelBtn.setGraphic(IconHelper.cancel());
         cancelBtn.getStyleClass().add("cancel-button");
 
         HBox btnBox = new HBox(15, saveBtn, cancelBtn);
@@ -292,11 +297,14 @@ public class DictionaryView {
                 part.setCompatibleModels(modelsField.getText().trim());
                 DictionaryController.addSparePart(part);
                 stage.close();
-            } catch (NumberFormatException ex) { showAlert("Проверьте числовые поля"); }
+            } catch (NumberFormatException ex) {
+                showAlert("Проверьте числовые поля");
+            }
         });
         cancelBtn.setOnAction(e -> stage.close());
         stage.showAndWait();
     }
+
     private static VBox createStockPanel() {
         TableView<SparePart> table = new TableView<>();
         table.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
@@ -340,6 +348,7 @@ public class DictionaryView {
         DictionaryController.setStockTable(table);
 
         stockIncomeBtn = new Button("Внести приход");
+        stockIncomeBtn.setGraphic(IconHelper.add());
         stockIncomeBtn.getStyleClass().add("income-button");
         stockIncomeBtn.setDisable(true);
         stockIncomeBtn.setOnAction(e -> {
@@ -357,6 +366,7 @@ public class DictionaryView {
     private static ObservableList<SparePart> getAllParts() {
         return FXCollections.observableArrayList(DataStore.getSpareParts());
     }
+
     private static void editSparePartDialog(SparePart part) {
         Stage stage = new Stage();
         stage.setTitle("Редактировать запчасть");
@@ -414,8 +424,11 @@ public class DictionaryView {
         grid.add(new Label("Место:"), 0, 8); grid.add(locationField, 1, 8);
 
         Button saveBtn = new Button("Сохранить");
+        saveBtn.setGraphic(IconHelper.save());
         saveBtn.getStyleClass().add("save-button");
+
         Button cancelBtn = new Button("Отмена");
+        cancelBtn.setGraphic(IconHelper.cancel());
         cancelBtn.getStyleClass().add("cancel-button");
 
         HBox btnBox = new HBox(15, saveBtn, cancelBtn);
@@ -438,12 +451,15 @@ public class DictionaryView {
                 part.setLocation(locationField.getText().trim());
                 DataStore.addSparePart(part);
                 stage.close();
-            } catch (NumberFormatException ex) { showAlert("Проверьте числовые поля"); }
+            } catch (NumberFormatException ex) {
+                showAlert("Проверьте числовые поля");
+            }
         });
 
         cancelBtn.setOnAction(e -> stage.close());
         stage.showAndWait();
     }
+
     private static void editStockDialog(SparePart part) {
         Stage stage = new Stage();
         stage.setTitle("Приход запчасти");
@@ -480,8 +496,11 @@ public class DictionaryView {
         grid.add(amountField, 1, 1);
 
         Button saveBtn = new Button("Применить");
+        saveBtn.setGraphic(IconHelper.save());
         saveBtn.getStyleClass().add("save-button");
+
         Button cancelBtn = new Button("Отмена");
+        cancelBtn.setGraphic(IconHelper.cancel());
         cancelBtn.getStyleClass().add("cancel-button");
 
         HBox btnBox = new HBox(15, saveBtn, cancelBtn);
@@ -505,12 +524,15 @@ public class DictionaryView {
                     DataStore.addSparePart(part);
                 }
                 stage.close();
-            } catch (NumberFormatException ex) { showAlert("Проверьте числовые поля"); }
+            } catch (NumberFormatException ex) {
+                showAlert("Проверьте числовые поля");
+            }
         });
 
         cancelBtn.setOnAction(e -> stage.close());
         stage.showAndWait();
     }
+
     private static void editServiceDialog(Service service) {
         Stage stage = new Stage();
         stage.setTitle("Редактировать услугу");
@@ -548,10 +570,15 @@ public class DictionaryView {
         grid.add(new Label("Артикул:"), 0, 3); grid.add(partNumberField, 1, 3);
 
         Button saveBtn = new Button("Сохранить");
+        saveBtn.setGraphic(IconHelper.save());
         saveBtn.getStyleClass().add("save-button");
+
         Button deleteBtn = new Button("Удалить");
+        deleteBtn.setGraphic(IconHelper.delete());
         deleteBtn.getStyleClass().add("delete-button");
+
         Button cancelBtn = new Button("Отмена");
+        cancelBtn.setGraphic(IconHelper.cancel());
         cancelBtn.getStyleClass().add("cancel-button");
 
         HBox btnBox = new HBox(15, saveBtn, deleteBtn, cancelBtn);
@@ -569,13 +596,18 @@ public class DictionaryView {
                 service.setPartNumber(partNumberField.getText().trim());
                 DictionaryController.addService(service);
                 stage.close();
-            } catch (NumberFormatException ex) { showAlert("Проверьте числовые поля"); }
+            } catch (NumberFormatException ex) {
+                showAlert("Проверьте числовые поля");
+            }
         });
 
         deleteBtn.setOnAction(e -> {
             Alert confirm = new Alert(Alert.AlertType.CONFIRMATION, "Удалить услугу \"" + service.getName() + "\"?", ButtonType.YES, ButtonType.NO);
             confirm.showAndWait().ifPresent(response -> {
-                if (response == ButtonType.YES) { DictionaryController.removeService(service); stage.close(); }
+                if (response == ButtonType.YES) {
+                    DictionaryController.removeService(service);
+                    stage.close();
+                }
             });
         });
 

@@ -5,8 +5,8 @@ import com.autoservice.Client;
 import com.autoservice.DataStore;
 import com.autoservice.DateUtils;
 import com.autoservice.Validators;
-import com.autoservice.WorkOrder;
 import com.autoservice.controllers.ClientController;
+import com.autoservice.utils.IconHelper;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -151,9 +151,11 @@ public class EditClientDialog {
 
         // Кнопки
         Button saveBtn = new Button(isNew ? "Создать" : "Сохранить");
+        saveBtn.setGraphic(IconHelper.save());
         saveBtn.getStyleClass().add("save-button");
 
         Button cancelBtn = new Button("Отмена");
+        cancelBtn.setGraphic(IconHelper.cancel());
         cancelBtn.getStyleClass().add("cancel-button");
 
         HBox btnBox = new HBox(15, saveBtn, cancelBtn);
@@ -167,8 +169,6 @@ public class EditClientDialog {
                 EditClientDialog.class.getResource("/styles.css").toExternalForm()
         );
         stage.setScene(scene);
-
-        // ==================== ДЕЙСТВИЯ ====================
 
         saveBtn.setOnAction(e -> {
             if (nameField.getText().trim().isEmpty()) {
