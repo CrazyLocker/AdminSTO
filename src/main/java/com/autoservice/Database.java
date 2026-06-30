@@ -1,78 +1,61 @@
 package com.autoservice;
 
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+
 import java.sql.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class Database {
-    private static final String DB_URL = "jdbc:sqlite:autoservice.db";
-    private static Connection connection;
+    private static HikariDataSource dataSource;
 
-    // ==================== УПРАВЛЕНИЕ СОЕДИНЕНИЕМ ====================
+    static {
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl("jdbc:sqlite:autoservice.db");
+        config.setMaximumPoolSize(10);
+        config.setMinimumIdle(2);
+        config.setConnectionTimeout(30000);
+        config.setIdleTimeout(600000);
+        config.setMaxLifetime(1800000);
+        dataSource = new HikariDataSource(config);
+    }
 
     public static void init() {
-        try {
-            connection = DriverManager.getConnection(DB_URL);
-            createTables();
-            createIndexes();
-            System.out.println("Database connected");
+        try (Connection conn = getConnection()) {
+            createTables(conn);
+            System.out.println("Database connected with connection pool");
         } catch (SQLException e) {
             System.err.println("DB connection error: " + e.getMessage());
         }
     }
 
     public static void initForTest() {
-        try {
-            connection = DriverManager.getConnection("jdbc:sqlite:test.db");
-            createTables();
-            createIndexes();
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl("jdbc:sqlite:test.db");
+        config.setMaximumPoolSize(5);
+        dataSource = new HikariDataSource(config);
+
+        try (Connection conn = getConnection()) {
+            createTables(conn);
             System.out.println("Test database connected");
         } catch (SQLException e) {
             System.err.println("Test DB error: " + e.getMessage());
         }
     }
 
-    /**
-     * Переподключается к БД, если соединение потеряно
-     */
-    private static void ensureConnection() throws SQLException {
-        if (connection == null || connection.isClosed()) {
-            connection = DriverManager.getConnection(DB_URL);
+    public static Connection getConnection() throws SQLException {
+        return dataSource.getConnection();
+    }
+
+    public static void close() {
+        if (dataSource != null && !dataSource.isClosed()) {
+            dataSource.close();
         }
     }
 
-    // ==================== СОЗДАНИЕ ИНДЕКСОВ ====================
-
-    private static void createIndexes() {
-        String[] indexes = {
-            "CREATE INDEX IF NOT EXISTS idx_clients_phone ON clients(phone)",
-            "CREATE INDEX IF NOT EXISTS idx_clients_name ON clients(name)",
-            "CREATE INDEX IF NOT EXISTS idx_clients_car_number ON clients(car_number)",
-            "CREATE INDEX IF NOT EXISTS idx_orders_client_id ON orders(client_id)",
-            "CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)",
-            "CREATE INDEX IF NOT EXISTS idx_orders_created_date ON orders(created_date)",
-            "CREATE INDEX IF NOT EXISTS idx_order_services_order_id ON order_services(order_id)",
-            "CREATE INDEX IF NOT EXISTS idx_order_parts_order_id ON order_parts(order_id)",
-            "CREATE INDEX IF NOT EXISTS idx_appointments_client_id ON appointments(client_id)",
-            "CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments(appointment_date)",
-            "CREATE INDEX IF NOT EXISTS idx_appointments_time ON appointments(appointment_time)"
-        };
-
-        try (Statement stmt = connection.createStatement()) {
-            for (String sql : indexes) {
-                stmt.execute(sql);
-            }
-            System.out.println("Indexes created/verified");
-        } catch (SQLException e) {
-            System.err.println("Create indexes error: " + e.getMessage());
-        }
-    }
-
-    // ==================== СОЗДАНИЕ ТАБЛИЦ ====================
-
-    private static void createTables() throws SQLException {
+    private static void createTables(Connection conn) throws SQLException {
         String createClients = """
                     CREATE TABLE IF NOT EXISTS clients (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -155,7 +138,7 @@ public class Database {
                     )
                 """;
 
-        try (Statement stmt = connection.createStatement()) {
+        try (Statement stmt = conn.createStatement()) {
             stmt.execute(createClients);
             stmt.execute(createServices);
             stmt.execute(createSpareParts);
@@ -163,83 +146,49 @@ public class Database {
             stmt.execute(createOrderServices);
             stmt.execute(createOrderParts);
             stmt.execute(createAppointments);
-            System.out.println("Tables created/verified");
+            createIndexes(conn);
+            System.out.println("Tables and indexes created/verified");
         }
     }
 
-    // ==================== МАППЕРЫ (DRY) ====================
-
-    /**
-     * Создаёт объект Client из ResultSet
-     */
-    private static Client mapClient(ResultSet rs) throws SQLException {
-        return new Client(
-                rs.getInt("id"),
-                rs.getString("name"),
-                rs.getString("last_name"),
-                rs.getString("phone"),
-                rs.getString("car_model"),
-                rs.getString("car_number"),
-                rs.getString("last_repair_date")
+    private static void createIndexes(Connection conn) throws SQLException {
+        List<String> indexes = List.of(
+                "CREATE INDEX IF NOT EXISTS idx_orders_client_id ON orders(client_id)",
+                "CREATE INDEX IF NOT EXISTS idx_orders_created_date ON orders(created_date)",
+                "CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)",
+                "CREATE INDEX IF NOT EXISTS idx_appointments_client_id ON appointments(client_id)",
+                "CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments(appointment_date)",
+                "CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments(status)",
+                "CREATE INDEX IF NOT EXISTS idx_order_services_order_id ON order_services(order_id)",
+                "CREATE INDEX IF NOT EXISTS idx_order_parts_order_id ON order_parts(order_id)",
+                "CREATE INDEX IF NOT EXISTS idx_spare_parts_name ON spare_parts(name)"
         );
+
+        try (Statement stmt = conn.createStatement()) {
+            for (String index : indexes) {
+                stmt.execute(index);
+            }
+        }
     }
 
-    /**
-     * Создаёт объект Service из ResultSet
-     */
-    private static Service mapService(ResultSet rs) throws SQLException {
-        Service service = new Service(rs.getString("name"), rs.getDouble("price"));
-        service.setDuration(rs.getInt("duration"));
-        service.setPartNumber(rs.getString("part_number"));
-        return service;
-    }
+    // ==================== ГЕНЕРАЦИЯ ID ЗАКАЗА (ОПТИМИЗИРОВАННАЯ) ====================
 
-    /**
-     * Создаёт объект SparePart из ResultSet
-     */
-    private static SparePart mapSparePart(ResultSet rs) throws SQLException {
-        return new SparePart(
-                rs.getInt("id"),
-                0,
-                rs.getString("name"),
-                rs.getString("part_number"),
-                rs.getString("manufacturer"),
-                rs.getString("compatible_models"),
-                rs.getDouble("purchase_price"),
-                rs.getDouble("retail_price"),
-                rs.getInt("stock"),
-                rs.getInt("min_stock"),
-                rs.getString("location")
-        );
-    }
-
-    // ==================== ГЕНЕРАЦИЯ ID ЗАКАЗА ====================
-
-    private static String generateOrderId() {
+    private static String generateOrderId(Connection conn) {
         String date = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yy"));
-
-        String sql = "SELECT id FROM orders ORDER BY id DESC LIMIT 1";
+        String sql = "SELECT MAX(CAST(SUBSTR(id, INSTR(id, '-') + 1) AS INTEGER)) as max_num FROM orders";
         int lastNumber = 0;
 
-        try (Statement stmt = connection.createStatement();
+        try (Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             if (rs.next()) {
-                String lastId = rs.getString("id");
-                int lastDash = lastId.lastIndexOf("-");
-                if (lastDash >= 0) {
-                    String numPart = lastId.substring(lastDash + 1);
-                    lastNumber = Integer.parseInt(numPart);
-                }
+                lastNumber = rs.getInt("max_num");
             }
         } catch (SQLException e) {
             System.err.println("Generate ID error: " + e.getMessage());
         }
 
-        int newNumber = lastNumber + 1;
-        if (newNumber > 9999) newNumber = 1;
-
-        String newId = String.format("ZAK-%s-%04d", date, newNumber);
-        return newId;
+        int newNumber = (lastNumber % 9999) + 1;
+        return String.format("ZAK-%s-%04d", date, newNumber);
     }
 
     // ==================== CLIENTS ====================
@@ -247,10 +196,20 @@ public class Database {
     public static List<Client> getAllClients() {
         List<Client> clients = new ArrayList<>();
         String sql = "SELECT id, name, last_name, phone, car_model, car_number, last_repair_date FROM clients ORDER BY id";
-        try (Statement stmt = connection.createStatement();
+
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
-                clients.add(mapClient(rs));
+                clients.add(new Client(
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        rs.getString("last_name"),
+                        rs.getString("phone"),
+                        rs.getString("car_model"),
+                        rs.getString("car_number"),
+                        rs.getString("last_repair_date")
+                ));
             }
         } catch (SQLException e) {
             System.err.println("Load clients error: " + e.getMessage());
@@ -261,9 +220,10 @@ public class Database {
     public static void addClient(Client client) {
         String normalizedPhone = Validators.cleanPhone(client.getPhone());
         String normalizedCarNumber = Validators.normalizeCarNumber(client.getCarNumber());
-
         String sql = "INSERT INTO clients (name, last_name, phone, car_model, car_number, last_repair_date) VALUES (?, ?, ?, ?, ?, ?)";
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, client.getName());
             pstmt.setString(2, client.getLastName());
             pstmt.setString(3, normalizedPhone);
@@ -279,9 +239,10 @@ public class Database {
     public static void updateClient(Client client) {
         String normalizedPhone = Validators.cleanPhone(client.getPhone());
         String normalizedCarNumber = Validators.normalizeCarNumber(client.getCarNumber());
-
         String sql = "UPDATE clients SET name = ?, last_name = ?, phone = ?, car_model = ?, car_number = ?, last_repair_date = ? WHERE id = ?";
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, client.getName());
             pstmt.setString(2, client.getLastName());
             pstmt.setString(3, normalizedPhone);
@@ -297,7 +258,9 @@ public class Database {
 
     public static void deleteClient(Client client) {
         String sql = "DELETE FROM clients WHERE id = ?";
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, client.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
@@ -307,10 +270,22 @@ public class Database {
 
     public static Client getClientById(int id) {
         String sql = "SELECT id, name, last_name, phone, car_model, car_number, last_repair_date FROM clients WHERE id = ?";
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, id);
             ResultSet rs = pstmt.executeQuery();
-            if (rs.next()) return mapClient(rs);
+            if (rs.next()) {
+                return new Client(
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        rs.getString("last_name"),
+                        rs.getString("phone"),
+                        rs.getString("car_model"),
+                        rs.getString("car_number"),
+                        rs.getString("last_repair_date")
+                );
+            }
         } catch (SQLException e) {
             System.err.println("Get client error: " + e.getMessage());
         }
@@ -319,12 +294,16 @@ public class Database {
 
     public static int getClientId(Client client) {
         String sql = "SELECT id FROM clients WHERE name = ? AND last_name = ? AND phone = ?";
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, client.getName());
             pstmt.setString(2, client.getLastName());
             pstmt.setString(3, client.getPhone());
             ResultSet rs = pstmt.executeQuery();
-            if (rs.next()) return rs.getInt("id");
+            if (rs.next()) {
+                return rs.getInt("id");
+            }
         } catch (SQLException e) {
             System.err.println("Get client ID error: " + e.getMessage());
         }
@@ -336,10 +315,15 @@ public class Database {
     public static List<Service> getAllServices() {
         List<Service> services = new ArrayList<>();
         String sql = "SELECT name, price, duration, part_number FROM services ORDER BY name";
-        try (Statement stmt = connection.createStatement();
+
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
-                services.add(mapService(rs));
+                Service service = new Service(rs.getString("name"), rs.getDouble("price"));
+                service.setDuration(rs.getInt("duration"));
+                service.setPartNumber(rs.getString("part_number"));
+                services.add(service);
             }
         } catch (SQLException e) {
             System.err.println("Load services error: " + e.getMessage());
@@ -349,7 +333,9 @@ public class Database {
 
     public static void addService(Service service) {
         String sql = "INSERT OR REPLACE INTO services (name, price, duration, part_number) VALUES (?, ?, ?, ?)";
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, service.getName());
             pstmt.setDouble(2, service.getPrice());
             pstmt.setInt(3, service.getDuration());
@@ -362,7 +348,9 @@ public class Database {
 
     public static void deleteService(Service service) {
         String sql = "DELETE FROM services WHERE name = ?";
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, service.getName());
             pstmt.executeUpdate();
         } catch (SQLException e) {
@@ -375,10 +363,24 @@ public class Database {
     public static List<SparePart> getAllSpareParts() {
         List<SparePart> parts = new ArrayList<>();
         String sql = "SELECT id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock, location FROM spare_parts ORDER BY name";
-        try (Statement stmt = connection.createStatement();
+
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
-                parts.add(mapSparePart(rs));
+                parts.add(new SparePart(
+                        rs.getInt("id"),
+                        0,
+                        rs.getString("name"),
+                        rs.getString("part_number"),
+                        rs.getString("manufacturer"),
+                        rs.getString("compatible_models"),
+                        rs.getDouble("purchase_price"),
+                        rs.getDouble("retail_price"),
+                        rs.getInt("stock"),
+                        rs.getInt("min_stock"),
+                        rs.getString("location")
+                ));
             }
         } catch (SQLException e) {
             System.err.println("Load spare parts error: " + e.getMessage());
@@ -387,11 +389,12 @@ public class Database {
     }
 
     public static void addSparePart(SparePart part) {
-        try {
+        String sql;
+        try (Connection conn = getConnection()) {
             if (part.getId() != -1) {
-                String sql = "UPDATE spare_parts SET name = ?, purchase_price = ?, retail_price = ?, stock = ?, " +
+                sql = "UPDATE spare_parts SET name = ?, purchase_price = ?, retail_price = ?, stock = ?, " +
                         "part_number = ?, manufacturer = ?, compatible_models = ?, min_stock = ?, location = ? WHERE id = ?";
-                try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                     pstmt.setString(1, part.getName());
                     pstmt.setDouble(2, part.getPurchasePrice());
                     pstmt.setDouble(3, part.getRetailPrice());
@@ -405,8 +408,8 @@ public class Database {
                     pstmt.executeUpdate();
                 }
             } else {
-                String sql = "INSERT INTO spare_parts (name, purchase_price, retail_price, stock, part_number, manufacturer, compatible_models, min_stock, location) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-                try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+                sql = "INSERT INTO spare_parts (name, purchase_price, retail_price, stock, part_number, manufacturer, compatible_models, min_stock, location) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                     pstmt.setString(1, part.getName());
                     pstmt.setDouble(2, part.getPurchasePrice());
                     pstmt.setDouble(3, part.getRetailPrice());
@@ -421,13 +424,14 @@ public class Database {
             }
         } catch (SQLException e) {
             System.err.println("Add spare part error: " + e.getMessage());
-            e.printStackTrace();
         }
     }
 
     public static void deleteSparePart(SparePart part) {
         String sql = "DELETE FROM spare_parts WHERE id = ?";
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, part.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
@@ -437,7 +441,9 @@ public class Database {
 
     public static void updateSparePartStock(SparePart part, int newStock) {
         String sql = "UPDATE spare_parts SET stock = ? WHERE id = ?";
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, newStock);
             pstmt.setInt(2, part.getId());
             pstmt.executeUpdate();
@@ -447,170 +453,103 @@ public class Database {
         }
     }
 
-    // ==================== ORDERS (ОПТИМИЗИРОВАНО) ====================
+    // ==================== ORDERS (ОПТИМИЗИРОВАННЫЕ) ====================
 
-    /**
-     * Загружает ВСЕ заказы одним JOIN-запросом (без N+1 проблемы).
-     * Подтягивает клиента через JOIN, услуги/запчасти — отдельными запросами по orderId.
-     */
     public static List<WorkOrder> getAllOrders() {
-        List<WorkOrder> orders = new ArrayList<>();
-
-        // Основной запрос с JOIN к clients — 1 запрос вместо N+1
+        Map<String, WorkOrder> orderMap = new LinkedHashMap<>();
         String sql = """
-            SELECT o.id, c.id as client_id, c.name as client_name, c.last_name as client_last_name,
-                   c.phone as client_phone, c.car_model as client_car_model,
-                   c.car_number as client_car_number, c.last_repair_date as client_last_repair_date,
-                   o.status, o.total, o.created_date
+            SELECT 
+                o.id as order_id, o.status, o.total, o.created_date,
+                c.id as client_id, c.name, c.last_name, c.phone, c.car_model, c.car_number, c.last_repair_date,
+                os.service_name, os.price as service_price,
+                op.part_name, op.price as part_price, op.quantity
             FROM orders o
-            JOIN clients c ON o.client_id = c.id
+            LEFT JOIN clients c ON o.client_id = c.id
+            LEFT JOIN order_services os ON o.id = os.order_id
+            LEFT JOIN order_parts op ON o.id = op.order_id
             ORDER BY o.created_date DESC
-            """;
+        """;
 
-        try {
-            ensureConnection();
-            Statement stmt = connection.createStatement();
-            ResultSet rs = stmt.executeQuery(sql);
-
-            // Кэш клиентов для избежания дублирования объектов
-            java.util.Map<Integer, Client> clientCache = new java.util.HashMap<>();
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
 
             while (rs.next()) {
-                String orderId = rs.getString("id");
-                int clientId = rs.getInt("client_id");
+                String orderId = rs.getString("order_id");
+                WorkOrder order = orderMap.get(orderId);
 
-                // Получаем клиента из кэша или создаём
-                Client client = clientCache.get(clientId);
-                if (client == null) {
-                    client = new Client(
+                if (order == null) {
+                    Client client = new Client(
                             rs.getInt("client_id"),
-                            rs.getString("client_name"),
-                            rs.getString("client_last_name"),
-                            rs.getString("client_phone"),
-                            rs.getString("client_car_model"),
-                            rs.getString("client_car_number"),
-                            rs.getString("client_last_repair_date")
+                            rs.getString("name"),
+                            rs.getString("last_name"),
+                            rs.getString("phone"),
+                            rs.getString("car_model"),
+                            rs.getString("car_number"),
+                            rs.getString("last_repair_date")
                     );
-                    clientCache.put(clientId, client);
+
+                    order = new WorkOrder(
+                            orderId,
+                            client,
+                            rs.getString("status"),
+                            rs.getDouble("total"),
+                            rs.getString("created_date")
+                    );
+                    orderMap.put(orderId, order);
                 }
 
-                String status = rs.getString("status");
-                double total = rs.getDouble("total");
-                String createdDate = rs.getString("created_date");
+                String serviceName = rs.getString("service_name");
+                if (serviceName != null && !serviceName.isEmpty()) {
+                    order.addService(serviceName, rs.getDouble("service_price"));
+                }
 
-                WorkOrder order = new WorkOrder(orderId, client, status, total, createdDate);
-
-                // Загружаем услуги одним запросом на заказ
-                loadOrderServices(orderId, order);
-                // Загружаем запчасти одним запросом на заказ
-                loadOrderParts(orderId, order);
-
-                orders.add(order);
+                String partName = rs.getString("part_name");
+                if (partName != null && !partName.isEmpty()) {
+                    SparePart part = new SparePart(partName, 0, rs.getDouble("part_price"), rs.getInt("quantity"));
+                    order.addSparePart(part, rs.getInt("quantity"));
+                }
             }
-            rs.close();
-            stmt.close();
         } catch (SQLException e) {
             System.err.println("Load orders error: " + e.getMessage());
             e.printStackTrace();
+            return new ArrayList<>();
         }
 
-        return orders;
+        return new ArrayList<>(orderMap.values());
     }
 
-    /**
-     * Загружает услуги заказа (1 запрос на заказ)
-     */
-    private static void loadOrderServices(String orderId, WorkOrder order) {
-        String sql = "SELECT service_name, price FROM order_services WHERE order_id = ?";
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            pstmt.setString(1, orderId);
-            ResultSet rs = pstmt.executeQuery();
-            while (rs.next()) {
-                order.addService(rs.getString("service_name"), rs.getDouble("price"));
-            }
-        } catch (SQLException e) {
-            System.err.println("Load order services error: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Загружает запчасти заказа (1 запрос на заказ)
-     */
-    private static void loadOrderParts(String orderId, WorkOrder order) {
-        String sql = "SELECT part_name, price, quantity FROM order_parts WHERE order_id = ?";
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
-            pstmt.setString(1, orderId);
-            ResultSet rs = pstmt.executeQuery();
-            while (rs.next()) {
-                String partName = rs.getString("part_name");
-                double price = rs.getDouble("price");
-                int qty = rs.getInt("quantity");
-                SparePart part = new SparePart(partName, price, price, qty);
-                order.addSparePart(part, qty);
-            }
-        } catch (SQLException e) {
-            System.err.println("Load order parts error: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Создание заказа с ТРАНЗАКЦИЕЙ (атомарность).
-     * Если любой из запросов упадёт — всё откатится.
-     */
     public static void addOrder(WorkOrder order) {
-        int clientId = getClientId(order.getClient());
-        if (clientId == -1) {
-            System.err.println("Client not found, order not saved");
-            return;
-        }
+        try (Connection conn = getConnection()) {
+            int clientId = getClientId(order.getClient());
+            if (clientId == -1) {
+                System.err.println("Client not found, order not saved");
+                return;
+            }
 
-        String orderId = generateOrderId();
-        order.setId(orderId);
+            String orderId = generateOrderId(conn);
+            order.setId(orderId);
 
-        Connection conn = null;
-        boolean originalAutoCommit = true;
-
-        try {
-            ensureConnection();
-            conn = connection;
-            originalAutoCommit = conn.getAutoCommit();
             conn.setAutoCommit(false);
 
-            try {
-                // Вставка заказа
-                String sql = "INSERT INTO orders (id, client_id, status, total, created_date) VALUES (?, ?, ?, ?, datetime('now'))";
-                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                    pstmt.setString(1, orderId);
-                    pstmt.setInt(2, clientId);
-                    pstmt.setString(3, order.getStatus());
-                    pstmt.setDouble(4, order.getTotal());
-                    pstmt.executeUpdate();
-                }
-
-                // Вставка услуг
-                saveOrderServices(conn, orderId, order);
-
-                // Вставка запчастей
-                saveOrderParts(conn, orderId, order);
-
-                // Всё успешно — фиксируем
-                conn.commit();
-                System.out.println("Order " + orderId + " created (transaction committed)");
-            } catch (SQLException e) {
-                // Ошибка — откатываем всё
-                conn.rollback();
-                System.err.println("Add order transaction rolled back: " + e.getMessage());
-                throw e;
+            String sql = "INSERT INTO orders (id, client_id, status, total, created_date) VALUES (?, ?, ?, ?, datetime('now'))";
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, orderId);
+                pstmt.setInt(2, clientId);
+                pstmt.setString(3, order.getStatus());
+                pstmt.setDouble(4, order.getTotal());
+                pstmt.executeUpdate();
             }
+
+            saveOrderServices(conn, orderId, order);
+            saveOrderParts(conn, orderId, order);
+
+            conn.commit();
+            System.out.println("Order saved: " + orderId);
+
         } catch (SQLException e) {
             System.err.println("Add order error: " + e.getMessage());
-        } finally {
-            // Восстанавливаем autoCommit
-            try {
-                if (conn != null) conn.setAutoCommit(originalAutoCommit);
-            } catch (SQLException e) {
-                System.err.println("Restore autoCommit error: " + e.getMessage());
-            }
+            e.printStackTrace();
         }
     }
 
@@ -621,9 +560,8 @@ public class Database {
                 pstmt.setString(1, orderId);
                 pstmt.setString(2, order.getServices().get(i));
                 pstmt.setDouble(3, order.getServicePrices().get(i));
-                pstmt.addBatch();
+                pstmt.executeUpdate();
             }
-            pstmt.executeBatch();
         }
     }
 
@@ -635,15 +573,11 @@ public class Database {
                 pstmt.setString(2, order.getSpareParts().get(i).getName());
                 pstmt.setDouble(3, order.getSpareParts().get(i).getRetailPrice());
                 pstmt.setInt(4, order.getSparePartQuantities().get(i));
-                pstmt.addBatch();
+                pstmt.executeUpdate();
             }
-            pstmt.executeBatch();
         }
     }
 
-    /**
-     * Обновление заказа с ТРАНЗАКЦИЕЙ (атомарность).
-     */
     public static void updateOrder(WorkOrder order) {
         String orderId = order.getId();
         if (orderId == null || orderId.isEmpty()) {
@@ -651,64 +585,44 @@ public class Database {
             return;
         }
 
-        Connection conn = null;
-        boolean originalAutoCommit = true;
-
-        try {
-            ensureConnection();
-            conn = connection;
-            originalAutoCommit = conn.getAutoCommit();
+        try (Connection conn = getConnection()) {
             conn.setAutoCommit(false);
 
-            try {
-                // Обновляем заказ
-                String sql = "UPDATE orders SET status = ?, total = ? WHERE id = ?";
-                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                    pstmt.setString(1, order.getStatus());
-                    pstmt.setDouble(2, order.getTotal());
-                    pstmt.setString(3, orderId);
-                    pstmt.executeUpdate();
-                }
-
-                // Удаляем старые услуги и запчасти
-                try (PreparedStatement pstmt = conn.prepareStatement("DELETE FROM order_services WHERE order_id = ?")) {
-                    pstmt.setString(1, orderId);
-                    pstmt.executeUpdate();
-                }
-                try (PreparedStatement pstmt = conn.prepareStatement("DELETE FROM order_parts WHERE order_id = ?")) {
-                    pstmt.setString(1, orderId);
-                    pstmt.executeUpdate();
-                }
-
-                // Вставляем новые
-                saveOrderServices(conn, orderId, order);
-                saveOrderParts(conn, orderId, order);
-
-                conn.commit();
-                System.out.println("Order " + orderId + " updated (transaction committed)");
-            } catch (SQLException e) {
-                conn.rollback();
-                System.err.println("Update order transaction rolled back: " + e.getMessage());
-                throw e;
+            String updateOrderSql = "UPDATE orders SET status = ?, total = ? WHERE id = ?";
+            try (PreparedStatement pstmt = conn.prepareStatement(updateOrderSql)) {
+                pstmt.setString(1, order.getStatus());
+                pstmt.setDouble(2, order.getTotal());
+                pstmt.setString(3, orderId);
+                pstmt.executeUpdate();
             }
+
+            try (PreparedStatement pstmt = conn.prepareStatement("DELETE FROM order_services WHERE order_id = ?")) {
+                pstmt.setString(1, orderId);
+                pstmt.executeUpdate();
+            }
+
+            try (PreparedStatement pstmt = conn.prepareStatement("DELETE FROM order_parts WHERE order_id = ?")) {
+                pstmt.setString(1, orderId);
+                pstmt.executeUpdate();
+            }
+
+            saveOrderServices(conn, orderId, order);
+            saveOrderParts(conn, orderId, order);
+
+            conn.commit();
+            System.out.println("Order " + orderId + " updated");
+
         } catch (SQLException e) {
             System.err.println("Update order error: " + e.getMessage());
-        } finally {
-            try {
-                if (conn != null) conn.setAutoCommit(originalAutoCommit);
-            } catch (SQLException e) {
-                System.err.println("Restore autoCommit error: " + e.getMessage());
-            }
         }
     }
 
     public static void deleteOrder(String orderId) {
-        try {
-            ensureConnection();
-            try (PreparedStatement pstmt = connection.prepareStatement("DELETE FROM orders WHERE id = ?")) {
-                pstmt.setString(1, orderId);
-                pstmt.executeUpdate();
-            }
+        String sql = "DELETE FROM orders WHERE id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, orderId);
+            pstmt.executeUpdate();
         } catch (SQLException e) {
             System.err.println("Delete order error: " + e.getMessage());
         }
@@ -718,24 +632,29 @@ public class Database {
 
     public static List<Appointment> getAllAppointments() {
         List<Appointment> appointments = new ArrayList<>();
-        String sql = "SELECT id, client_id, order_id, master_name, service_name, appointment_date, appointment_time, status FROM appointments ORDER BY appointment_date, appointment_time";
-        try (Statement stmt = connection.createStatement();
+        String sql = """
+            SELECT id, client_id, order_id, master_name, service_name, appointment_date, appointment_time, status 
+            FROM appointments ORDER BY appointment_date, appointment_time
+        """;
+
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
                 int clientId = rs.getInt("client_id");
                 Client client = getClientById(clientId);
-                if (client == null) continue;
-
-                appointments.add(new Appointment(
-                        rs.getInt("id"),
-                        client,
-                        rs.getString("order_id"),
-                        rs.getString("master_name"),
-                        rs.getString("service_name"),
-                        rs.getString("appointment_date"),
-                        rs.getString("appointment_time"),
-                        rs.getString("status")
-                ));
+                if (client != null) {
+                    appointments.add(new Appointment(
+                            rs.getInt("id"),
+                            client,
+                            rs.getString("order_id"),
+                            rs.getString("master_name"),
+                            rs.getString("service_name"),
+                            rs.getString("appointment_date"),
+                            rs.getString("appointment_time"),
+                            rs.getString("status")
+                    ));
+                }
             }
         } catch (SQLException e) {
             System.err.println("Load appointments error: " + e.getMessage());
@@ -745,7 +664,9 @@ public class Database {
 
     public static void addAppointment(Appointment appointment) {
         String sql = "INSERT INTO appointments (client_id, order_id, master_name, service_name, appointment_date, appointment_time, status) VALUES (?, ?, ?, ?, ?, ?, ?)";
-        try (PreparedStatement pstmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             int clientId = getClientId(appointment.getClient());
             pstmt.setInt(1, clientId);
             pstmt.setString(2, appointment.getOrderId());
@@ -767,7 +688,9 @@ public class Database {
 
     public static void updateAppointment(Appointment appointment) {
         String sql = "UPDATE appointments SET client_id = ?, master_name = ?, service_name = ?, appointment_date = ?, appointment_time = ?, status = ?, order_id = ? WHERE id = ?";
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
             int clientId = getClientId(appointment.getClient());
             pstmt.setInt(1, clientId);
             pstmt.setString(2, appointment.getMasterName());
@@ -785,7 +708,8 @@ public class Database {
 
     public static void deleteAppointment(int id) {
         String sql = "DELETE FROM appointments WHERE id = ?";
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, id);
             pstmt.executeUpdate();
         } catch (SQLException e) {
@@ -796,7 +720,9 @@ public class Database {
     public static List<Appointment> getAppointmentsByDate(String date) {
         List<Appointment> appointments = new ArrayList<>();
         String sql = "SELECT id, client_id, order_id, master_name, service_name, appointment_date, appointment_time, status FROM appointments WHERE appointment_date = ? ORDER BY appointment_time";
-        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, date);
             ResultSet rs = pstmt.executeQuery();
             while (rs.next()) {
@@ -819,17 +745,5 @@ public class Database {
             System.err.println("Load appointments by date error: " + e.getMessage());
         }
         return appointments;
-    }
-
-    public static Connection getConnection() {
-        return connection;
-    }
-
-    public static void close() {
-        try {
-            if (connection != null) connection.close();
-        } catch (SQLException e) {
-            System.err.println("Close DB error: " + e.getMessage());
-        }
     }
 }

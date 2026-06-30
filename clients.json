@@ -1,0 +1,182 @@
+[
+    {
+        "car_model": "Haval Dargo",
+        "car_number": "А123ВС163",
+        "id": 1,
+        "last_name": "Петров",
+        "last_repair_date": "2026-05-21",
+        "name": "Петр",
+        "phone": "+79001234567"
+    },
+    {
+        "car_model": "Haval Jolion",
+        "car_number": "В456ЕК77",
+        "id": 2,
+        "last_name": "Смирнова",
+        "last_repair_date": "2026-05-22",
+        "name": "Елена",
+        "phone": "+79113456789"
+    },
+    {
+        "car_model": "Tank 300",
+        "car_number": "М789НО50",
+        "id": 3,
+        "last_name": "Козлов",
+        "last_repair_date": "2026-05-23",
+        "name": "Сергей",
+        "phone": "+79224567890"
+    },
+    {
+        "car_model": "Great Wall Poer",
+        "car_number": "О159РТ40",
+        "id": 4,
+        "last_name": "Новикова",
+        "last_repair_date": "2026-05-24",
+        "name": "Анна",
+        "phone": "+79335678901"
+    },
+    {
+        "car_model": "Haval F7",
+        "car_number": "У357АЕ99",
+        "id": 5,
+        "last_name": "Морозов",
+        "last_repair_date": "2026-05-25",
+        "name": "Дмитрий",
+        "phone": "+79446789012"
+    },
+    {
+        "car_model": "Haval Dargo",
+        "car_number": "К753ВМ01",
+        "id": 6,
+        "last_name": "Васильева",
+        "last_repair_date": "2026-05-26",
+        "name": "Татьяна",
+        "phone": "+79557890123"
+    },
+    {
+        "car_model": "Tank 500",
+        "car_number": "Х951ТК22",
+        "id": 7,
+        "last_name": "Николаев",
+        "last_repair_date": "2026-05-27",
+        "name": "Алексей",
+        "phone": "+79668901234"
+    },
+    {
+        "car_model": "Haval Jolion",
+        "car_number": "Т357ХО18",
+        "id": 8,
+        "last_name": "Фёдорова",
+        "last_repair_date": "2026-05-28",
+        "name": "Мария",
+        "phone": "+79779012345"
+    },
+    {
+        "car_model": "Great Wall Poer",
+        "car_number": "А159АМ64",
+        "id": 9,
+        "last_name": "Соколов",
+        "last_repair_date": "2026-05-29",
+        "name": "Владимир",
+        "phone": "+79880123456"
+    },
+    {
+        "car_model": "Haval F7",
+        "car_number": "В753НС31",
+        "id": 10,
+        "last_name": "Михайлова",
+        "last_repair_date": "2026-05-30",
+        "name": "Ольга",
+        "phone": "+79991234567"
+    },
+    {
+        "car_model": "Haval Dargo",
+        "car_number": "К123МР77",
+        "id": 11,
+        "last_name": "Кузнецов",
+        "last_repair_date": "2026-05-31",
+        "name": "Павел",
+        "phone": "+79011234568"
+    },
+    {
+        "car_model": "Tank 300",
+        "car_number": "Х456РО99",
+        "id": 12,
+        "last_name": "Попова",
+        "last_repair_date": "2026-05-31",
+        "name": "Наталья",
+        "phone": "+79112345679"
+    },
+    {
+        "car_model": "Haval Jolion",
+        "car_number": "Е789СН22",
+        "id": 13,
+        "last_name": "Лебедев",
+        "last_repair_date": "2026-05-31",
+        "name": "Андрей",
+        "phone": "+79213456780"
+    },
+    {
+        "car_model": "Great Wall Poer",
+        "car_number": "У951КМ44",
+        "id": 14,
+        "last_name": "Соловьёва",
+        "last_repair_date": "2026-05-31",
+        "name": "Юлия",
+        "phone": "+79314567891"
+    },
+    {
+        "car_model": "Haval F7",
+        "car_number": "А753ЕМ55",
+        "id": 15,
+        "last_name": "Тимофеев",
+        "last_repair_date": "2026-05-31",
+        "name": "Максим",
+        "phone": "+79415678902"
+    },
+    {
+        "car_model": "Tank 500",
+        "car_number": "В159А66",
+        "id": 16,
+        "last_name": "Григорьева",
+        "last_repair_date": "2026-05-31",
+        "name": "Светлана",
+        "phone": "+79516789013"
+    },
+    {
+        "car_model": "Haval Dargo",
+        "car_number": "С753РО77",
+        "id": 17,
+        "last_name": "Степанов",
+        "last_repair_date": "2026-05-31",
+        "name": "Никита",
+        "phone": "+79617890124"
+    },
+    {
+        "car_model": "Haval Jolion",
+        "car_number": "М456КС88",
+        "id": 18,
+        "last_name": "Андреева",
+        "last_repair_date": "2026-05-31",
+        "name": "Екатерина",
+        "phone": "+79718901235"
+    },
+    {
+        "car_model": "Great Wall Poer",
+        "car_number": "А753ВС99",
+        "id": 19,
+        "last_name": "Ильин",
+        "last_repair_date": "2026-05-31",
+        "name": "Роман",
+        "phone": "+79819012346"
+    },
+    {
+        "car_model": "Haval F7x",
+        "car_number": "А111АА11",
+        "id": 21,
+        "last_name": "Тестерович",
+        "last_repair_date": "",
+        "name": "Тестер",
+        "phone": "+75553332221"
+    }
+]

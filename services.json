@@ -1,0 +1,72 @@
+[
+    {
+        "duration": 30,
+        "id": 1,
+        "name": "Замена масла",
+        "part_number": "SRV-001",
+        "price": 1500.0
+    },
+    {
+        "duration": 60,
+        "id": 2,
+        "name": "Диагностика двигателя",
+        "part_number": "SRV-002",
+        "price": 1200.0
+    },
+    {
+        "duration": 60,
+        "id": 3,
+        "name": "Замена тормозных колодок",
+        "part_number": "SRV-003",
+        "price": 2500.0
+    },
+    {
+        "duration": 45,
+        "id": 4,
+        "name": "Шиномонтаж",
+        "part_number": "SRV-004",
+        "price": 2000.0
+    },
+    {
+        "duration": 60,
+        "id": 5,
+        "name": "Развал-схождение",
+        "part_number": "SRV-005",
+        "price": 1800.0
+    },
+    {
+        "duration": 180,
+        "id": 6,
+        "name": "Замена ремня ГРМ",
+        "part_number": "SRV-006",
+        "price": 4500.0
+    },
+    {
+        "duration": 30,
+        "id": 7,
+        "name": "Замена свечей зажигания",
+        "part_number": "SRV-007",
+        "price": 1200.0
+    },
+    {
+        "duration": 90,
+        "id": 8,
+        "name": "Замена масла в АКПП",
+        "part_number": "SRV-008",
+        "price": 3000.0
+    },
+    {
+        "duration": 45,
+        "id": 9,
+        "name": "Замена антифриза",
+        "part_number": "SRV-009",
+        "price": 1000.0
+    },
+    {
+        "duration": 30,
+        "id": 10,
+        "name": "Замена тормозной жидкости",
+        "part_number": "SRV-010",
+        "price": 800.0
+    }
+]

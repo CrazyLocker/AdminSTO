@@ -23,19 +23,15 @@ public class DataStore {
     }
 
     public static void save() {
-        // Сохраняем все заказы ИЗ ПАМЯТИ — там уже актуальные статусы
         for (WorkOrder order : orders) {
             Database.updateOrder(order);
         }
-        // Сохраняем всех клиентов
         for (Client client : clients) {
             Database.updateClient(client);
         }
-        // Сохраняем все записи на приём
         for (Appointment a : appointments) {
             Database.updateAppointment(a);
         }
-        // Сохраняем запчасти (обновляем stock)
         for (SparePart sp : spareParts) {
             Database.updateSparePartStock(sp, sp.getStock());
         }
@@ -48,21 +44,47 @@ public class DataStore {
 
     public static void addClient(Client c) {
         Database.addClient(c);
-        clients = Database.getAllClients();
+        // Инкрементальное обновление вместо полной перезагрузки
+        Client lastClient = Database.getClientById(getLastClientId());
+        if (lastClient != null) {
+            clients.add(lastClient);
+        } else {
+            clients = Database.getAllClients(); // fallback
+        }
+    }
+
+    private static int getLastClientId() {
+        int maxId = 0;
+        for (Client c : clients) {
+            if (c.getId() > maxId) maxId = c.getId();
+        }
+        // Проверяем в БД, возможно там есть новые записи
+        List<Client> all = Database.getAllClients();
+        for (Client c : all) {
+            if (c.getId() > maxId) maxId = c.getId();
+        }
+        return maxId;
     }
 
     public static void updateClient(Client client) {
         Database.updateClient(client);
+        // Обновляем в кеше
+        for (int i = 0; i < clients.size(); i++) {
+            if (clients.get(i).getId() == client.getId()) {
+                clients.set(i, client);
+                return;
+            }
+        }
+        // Если не нашли — перезагружаем
         clients = Database.getAllClients();
     }
 
     public static void removeClient(Client c) {
         Database.deleteClient(c);
-        clients = Database.getAllClients();
+        clients.removeIf(client -> client.getId() == c.getId());
     }
 
     public static void deleteClient(Client client) {
-        // Удаляем заказы клиента
         List<WorkOrder> ordersToDelete = new ArrayList<>();
         for (WorkOrder order : orders) {
             if (order.getClient().getId() == client.getId()) {
@@ -74,9 +96,8 @@ public class DataStore {
             orders.remove(order);
         }
 
-        // Удаляем клиента
         Database.deleteClient(client);
-        clients.remove(client);
+        clients.removeIf(c -> c.getId() == client.getId());
     }
 
     // ==================== ORDERS ====================
@@ -91,6 +112,14 @@ public class DataStore {
 
     public static void updateOrder(WorkOrder o) {
         Database.updateOrder(o);
+        // Обновляем в кеше
+        for (int i = 0; i < orders.size(); i++) {
+            if (orders.get(i).getId().equals(o.getId())) {
+                orders.set(i, o);
+                return;
+            }
+        }
+        // Если не нашли — перезагружаем
         orders = Database.getAllOrders();
     }
 
@@ -98,7 +127,7 @@ public class DataStore {
         String orderId = order.getId();
         if (orderId != null && !orderId.isEmpty()) {
             Database.deleteOrder(orderId);
-            orders = Database.getAllOrders();
+            orders.removeIf(o -> o.getId().equals(orderId));
         } else {
             System.err.println("Cannot delete order with ID=" + orderId);
         }
@@ -125,7 +154,7 @@ public class DataStore {
 
     public static void removeService(Service s) {
         Database.deleteService(s);
-        services = Database.getAllServices();
+        services.removeIf(service -> service.getName().equals(s.getName()));
     }
 
     // ==================== SPARE PARTS ====================
@@ -139,11 +168,19 @@ public class DataStore {
 
     public static void removeSparePart(SparePart sp) {
         Database.deleteSparePart(sp);
-        spareParts = Database.getAllSpareParts();
+        spareParts.removeIf(part -> part.getId() == sp.getId());
     }
 
     public static void updateSparePartStock(SparePart part, int newStock) {
         Database.updateSparePartStock(part, newStock);
+        // Обновляем в кеше
+        for (SparePart sp : spareParts) {
+            if (sp.getId() == part.getId()) {
+                sp.setStock(newStock);
+                return;
+            }
+        }
+        // Если не нашли — перезагружаем
         spareParts = Database.getAllSpareParts();
     }
 
@@ -164,11 +201,18 @@ public class DataStore {
 
     public static void updateAppointment(Appointment a) {
         Database.updateAppointment(a);
+        // Обновляем в кеше
+        for (int i = 0; i < appointments.size(); i++) {
+            if (appointments.get(i).getId() == a.getId()) {
+                appointments.set(i, a);
+                return;
+            }
+        }
         appointments = Database.getAllAppointments();
     }
 
     public static void deleteAppointment(int id) {
         Database.deleteAppointment(id);
-        appointments = Database.getAllAppointments();
+        appointments.removeIf(a -> a.getId() == id);
     }
 }
