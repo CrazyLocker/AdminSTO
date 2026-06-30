@@ -888,3 +888,111 @@
 .schedule-grid {
     -fx-background-color: white;
 }
+/* ==================== REPORT VIEW СТИЛИ ==================== */
+
+/* Основной контейнер отчёта */
+.report-root {
+    -fx-background-color: #f5f7fa;
+    -fx-padding: 20;
+}
+
+/* Заголовок отчёта */
+.report-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2c3e50;
+}
+
+.report-date {
+    -fx-font-size: 14px;
+    -fx-text-fill: #7f8c8d;
+}
+
+/* Период */
+.report-period-label {
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+}
+
+.report-period-combo {
+    -fx-font-size: 14px;
+    -fx-padding: 5;
+}
+
+/* Карточки статистики */
+.stat-card {
+    -fx-background-color: white;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 3);
+    -fx-border-width: 2px 0 0 0;
+    -fx-min-width: 100px;
+    -fx-padding: 8 12 8 12;
+    -fx-alignment: center;
+}
+
+.stat-card-title {
+    -fx-font-size: 11px;
+    -fx-text-fill: #7f8c8d;
+}
+
+.stat-card-value {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2c3e50;
+}
+
+/* Заголовки секций */
+.section-title {
+    -fx-font-weight: bold;
+    -fx-font-size: 16px;
+    -fx-text-fill: #2c3e50;
+}
+
+/* Список (статусы, топ-5) */
+.list-box {
+    -fx-background-color: white;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 6, 0, 0, 3);
+    -fx-padding: 8;
+}
+
+.list-row {
+    -fx-padding: 2 0 2 0;
+    -fx-alignment: center-left;
+    -fx-spacing: 10;
+}
+
+.list-rank {
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #7f8c8d;
+    -fx-min-width: 25px;
+}
+
+.list-name {
+    -fx-font-size: 13px;
+    -fx-text-fill: #2c3e50;
+}
+
+.list-count {
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #3498db;
+}
+
+.list-percent {
+    -fx-font-size: 12px;
+    -fx-text-fill: #7f8c8d;
+}
+
+/* График */
+.revenue-chart {
+    -fx-pref-height: 300;
+}
+
+.revenue-box {
+    -fx-padding: 5;
+    -fx-alignment: center;
+}

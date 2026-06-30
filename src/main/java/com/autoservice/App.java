@@ -25,6 +25,9 @@ public class App extends Application {
         dashTab.setContent(DashboardView.create());
         dashTab.setClosable(false);
 
+        // Передаём Stage в DashboardView
+        DashboardView.setStage(primaryStage);
+
         Tab clientTab = new Tab("Клиенты");
         clientTab.setContent(ClientView.create());
         clientTab.setClosable(false);
@@ -54,9 +57,8 @@ public class App extends Application {
             }
         });
 
-        Scene scene = new Scene(tabPane, 1700, 1000);
+        Scene scene = new Scene(tabPane, 1500, 1000);
 
-        // Подключаем CSS
         scene.getStylesheets().add(
                 App.class.getResource("/styles.css").toExternalForm()
         );

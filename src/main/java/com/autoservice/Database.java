@@ -171,24 +171,42 @@ public class Database {
         }
     }
 
-    // ==================== ГЕНЕРАЦИЯ ID ЗАКАЗА (ОПТИМИЗИРОВАННАЯ) ====================
+    // ==================== ГЕНЕРАЦИЯ ID ЗАКАЗА (ИСПРАВЛЕННАЯ) ====================
 
     private static String generateOrderId(Connection conn) {
         String date = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yy"));
-        String sql = "SELECT MAX(CAST(SUBSTR(id, INSTR(id, '-') + 1) AS INTEGER)) as max_num FROM orders";
+
+        String sql = "SELECT id FROM orders ORDER BY id DESC LIMIT 1";
         int lastNumber = 0;
 
         try (Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             if (rs.next()) {
-                lastNumber = rs.getInt("max_num");
+                String lastId = rs.getString("id");
+                // Ищем последний дефис (после даты)
+                int lastDash = lastId.lastIndexOf("-");
+                if (lastDash >= 0) {
+                    String numPart = lastId.substring(lastDash + 1);
+                    try {
+                        lastNumber = Integer.parseInt(numPart);
+                    } catch (NumberFormatException e) {
+                        lastNumber = 0;
+                    }
+                }
             }
         } catch (SQLException e) {
             System.err.println("Generate ID error: " + e.getMessage());
         }
 
-        int newNumber = (lastNumber % 9999) + 1;
-        return String.format("ZAK-%s-%04d", date, newNumber);
+        int newNumber = lastNumber + 1;
+
+        if (newNumber > 9999) {
+            newNumber = 1;
+        }
+
+        String newId = String.format("ZAK-%s-%04d", date, newNumber);
+        System.out.println("Generated order ID: " + newId);
+        return newId;
     }
 
     // ==================== CLIENTS ====================
@@ -453,67 +471,78 @@ public class Database {
         }
     }
 
-    // ==================== ORDERS (ОПТИМИЗИРОВАННЫЕ) ====================
+    // ==================== ORDERS ====================
 
     public static List<WorkOrder> getAllOrders() {
         Map<String, WorkOrder> orderMap = new LinkedHashMap<>();
-        String sql = """
-            SELECT 
-                o.id as order_id, o.status, o.total, o.created_date,
-                c.id as client_id, c.name, c.last_name, c.phone, c.car_model, c.car_number, c.last_repair_date,
-                os.service_name, os.price as service_price,
-                op.part_name, op.price as part_price, op.quantity
+
+        String ordersSql = """
+            SELECT o.id as order_id, o.status, o.total, o.created_date,
+                   c.id as client_id, c.name, c.last_name, c.phone, c.car_model, c.car_number, c.last_repair_date
             FROM orders o
             LEFT JOIN clients c ON o.client_id = c.id
-            LEFT JOIN order_services os ON o.id = os.order_id
-            LEFT JOIN order_parts op ON o.id = op.order_id
             ORDER BY o.created_date DESC
         """;
 
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+             ResultSet rs = stmt.executeQuery(ordersSql)) {
 
             while (rs.next()) {
-                String orderId = rs.getString("order_id");
-                WorkOrder order = orderMap.get(orderId);
+                Client client = new Client(
+                        rs.getInt("client_id"),
+                        rs.getString("name"),
+                        rs.getString("last_name"),
+                        rs.getString("phone"),
+                        rs.getString("car_model"),
+                        rs.getString("car_number"),
+                        rs.getString("last_repair_date")
+                );
 
-                if (order == null) {
-                    Client client = new Client(
-                            rs.getInt("client_id"),
-                            rs.getString("name"),
-                            rs.getString("last_name"),
-                            rs.getString("phone"),
-                            rs.getString("car_model"),
-                            rs.getString("car_number"),
-                            rs.getString("last_repair_date")
-                    );
-
-                    order = new WorkOrder(
-                            orderId,
-                            client,
-                            rs.getString("status"),
-                            rs.getDouble("total"),
-                            rs.getString("created_date")
-                    );
-                    orderMap.put(orderId, order);
-                }
-
-                String serviceName = rs.getString("service_name");
-                if (serviceName != null && !serviceName.isEmpty()) {
-                    order.addService(serviceName, rs.getDouble("service_price"));
-                }
-
-                String partName = rs.getString("part_name");
-                if (partName != null && !partName.isEmpty()) {
-                    SparePart part = new SparePart(partName, 0, rs.getDouble("part_price"), rs.getInt("quantity"));
-                    order.addSparePart(part, rs.getInt("quantity"));
-                }
+                WorkOrder order = new WorkOrder(
+                        rs.getString("order_id"),
+                        client,
+                        rs.getString("status"),
+                        rs.getDouble("total"),
+                        rs.getString("created_date")
+                );
+                orderMap.put(rs.getString("order_id"), order);
             }
         } catch (SQLException e) {
             System.err.println("Load orders error: " + e.getMessage());
             e.printStackTrace();
             return new ArrayList<>();
+        }
+
+        String servicesSql = "SELECT order_id, service_name, price FROM order_services";
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(servicesSql)) {
+            while (rs.next()) {
+                String orderId = rs.getString("order_id");
+                WorkOrder order = orderMap.get(orderId);
+                if (order != null) {
+                    order.addService(rs.getString("service_name"), rs.getDouble("price"));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Load order services error: " + e.getMessage());
+        }
+
+        String partsSql = "SELECT order_id, part_name, price, quantity FROM order_parts";
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(partsSql)) {
+            while (rs.next()) {
+                String orderId = rs.getString("order_id");
+                WorkOrder order = orderMap.get(orderId);
+                if (order != null) {
+                    SparePart part = new SparePart(rs.getString("part_name"), 0, rs.getDouble("price"), rs.getInt("quantity"));
+                    order.addSparePart(part, rs.getInt("quantity"));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Load order parts error: " + e.getMessage());
         }
 
         return new ArrayList<>(orderMap.values());

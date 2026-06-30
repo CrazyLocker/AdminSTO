@@ -1,261 +1,175 @@
-<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="" readonly="0" foreign_keys="" case_sensitive_like="" temp_store="" wal_autocheckpoint="" synchronous=""/><attached/><window><main_tabs open="structure browser pragmas query" current="3"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="100"/><column_width id="3" width="2227"/><column_width id="4" width="0"/></tab_structure><tab_browse><table title="." custom_title="0" dock_id="10" table="0,0:"/><dock_state state="000000ff00000000fd0000000100000002000005e1000003defc0100000009fb000000160064006f0063006b00420072006f00770073006500310100000000000005e10000000000000000fb000000180064006f0063006b00420072006f007700730065003100310100000000000005e10000000000000000fb000000160064006f0063006b00420072006f00770073006500340100000000000005e10000000000000000fb000000160064006f0063006b00420072006f00770073006500350100000000000005e10000000000000000fb000000160064006f0063006b00420072006f00770073006500360100000000000005e10000000000000000fb000000160064006f0063006b00420072006f00770073006500370100000000000005e10000000000000000fb000000160064006f0063006b00420072006f00770073006500380100000000000005e10000000000000000fb000000160064006f0063006b00420072006f00770073006500390100000000000005e10000000000000000fb000000180064006f0063006b00420072006f007700730065003100300100000000ffffffff0000012800ffffff000005e10000000000000004000000040000000800000008fc00000000"/><default_encoding codec=""/><browse_table_settings/></tab_browse><tab_sql><sql name="SQL 1*">-- ============================================
--- УДАЛЕНИЕ СТАРЫХ ТАБЛИЦ (правильный порядок)
--- ============================================
-DROP TABLE IF EXISTS order_parts;
-DROP TABLE IF EXISTS order_services;
-DROP TABLE IF EXISTS appointments;
-DROP TABLE IF EXISTS orders;
-DROP TABLE IF EXISTS spare_parts;
-DROP TABLE IF EXISTS services;
-DROP TABLE IF EXISTS clients;
+<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="" readonly="0" foreign_keys="" case_sensitive_like="" temp_store="" wal_autocheckpoint="" synchronous=""/><attached/><window><main_tabs open="structure browser pragmas query" current="3"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="100"/><column_width id="3" width="2227"/><column_width id="4" width="0"/></tab_structure><tab_browse><table title="." custom_title="0" dock_id="11" table="0,0:"/><dock_state state="000000ff00000000fd000000010000000200000466000003d6fc010000000bfb000000160064006f0063006b00420072006f00770073006500310100000000ffffffff0000000000000000fb000000160064006f0063006b00420072006f00770073006500320100000000000004660000000000000000fb000000160064006f0063006b00420072006f00770073006500330100000000000004660000000000000000fb000000160064006f0063006b00420072006f00770073006500340100000000000004660000000000000000fb000000160064006f0063006b00420072006f00770073006500350100000000ffffffff0000000000000000fb000000160064006f0063006b00420072006f00770073006500360100000000000004660000000000000000fb000000160064006f0063006b00420072006f00770073006500370100000000000004660000000000000000fb000000160064006f0063006b00420072006f00770073006500380100000000ffffffff0000000000000000fb000000160064006f0063006b00420072006f00770073006500390100000000ffffffff0000000000000000fb000000180064006f0063006b00420072006f007700730065003100300100000000000004660000000000000000fb000000180064006f0063006b00420072006f007700730065003100310100000000ffffffff0000012800ffffff000002680000000000000004000000040000000800000008fc00000000"/><default_encoding codec=""/><browse_table_settings/></tab_browse><tab_sql><sql name="SQL 1*">-- ============================================================
+-- 1. УДАЛЕНИЕ ВСЕХ СТАРЫХ ЗАКАЗОВ
+-- ============================================================
 
--- ============================================
--- СОЗДАНИЕ ТАБЛИЦ
--- ============================================
+DELETE FROM appointments;
+DELETE FROM order_parts;
+DELETE FROM order_services;
+DELETE FROM orders;
 
--- Клиенты
-CREATE TABLE clients (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    last_name TEXT DEFAULT '',
-    phone TEXT NOT NULL,
-    car_model TEXT NOT NULL,
-    car_number TEXT NOT NULL,
-    last_repair_date TEXT DEFAULT ''
-);
+-- ============================================================
+-- 2. СОЗДАНИЕ 15 НОВЫХ ЗАКАЗОВ
+-- ============================================================
 
--- Услуги
-CREATE TABLE services (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE,
-    price REAL NOT NULL,
-    duration INTEGER DEFAULT 60,
-    part_number TEXT DEFAULT ''
-);
+INSERT INTO orders (id, client_id, status, total, created_date) VALUES
 
--- Запчасти
-CREATE TABLE spare_parts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE,
-    part_number TEXT DEFAULT '',
-    manufacturer TEXT DEFAULT '',
-    compatible_models TEXT DEFAULT '',
-    purchase_price REAL,
-    retail_price REAL NOT NULL,
-    stock INTEGER DEFAULT 0,
-    min_stock INTEGER DEFAULT 0,
-    location TEXT DEFAULT ''
-);
+-- ПРОШЛЫЕ (ЗАКРЫТЫ) - от 7 до 1 дня назад
+('ZAK-23/06/26-0001', 1, 'Закрыт', 16500.00, '2026-06-23 10:15:00'),
+('ZAK-24/06/26-0002', 2, 'Закрыт', 10800.00, '2026-06-24 11:30:00'),
+('ZAK-25/06/26-0003', 3, 'Закрыт', 31500.00, '2026-06-25 09:00:00'),
+('ZAK-26/06/26-0004', 4, 'Закрыт', 5600.00, '2026-06-26 14:20:00'),
+('ZAK-27/06/26-0005', 5, 'Закрыт', 28900.00, '2026-06-27 16:45:00'),
+('ZAK-28/06/26-0006', 6, 'Закрыт', 40000.00, '2026-06-28 08:30:00'),
+('ZAK-29/06/26-0007', 7, 'Закрыт', 9300.00, '2026-06-29 13:10:00'),
 
--- Заказы
-CREATE TABLE orders (
-    id TEXT PRIMARY KEY,
-    client_id INTEGER NOT NULL,
-    status TEXT NOT NULL,
-    total REAL NOT NULL,
-    created_date TEXT NOT NULL,
-    FOREIGN KEY (client_id) REFERENCES clients(id)
-);
+-- СЕГОДНЯ (разные статусы)
+('ZAK-30/06/26-0008', 8, 'Новый', 0.00, '2026-06-30 09:00:00'),
+('ZAK-30/06/26-0009', 9, 'В работе', 22700.00, '2026-06-30 10:30:00'),
+('ZAK-30/06/26-0010', 10, 'В работе', 11600.00, '2026-06-30 12:00:00'),
+('ZAK-30/06/26-0011', 11, 'Новый', 0.00, '2026-06-30 14:15:00'),
 
--- Услуги в заказе
-CREATE TABLE order_services (
-    order_id TEXT NOT NULL,
-    service_name TEXT NOT NULL,
-    price REAL NOT NULL,
-    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
-);
+-- БУДУЩИЕ (от 1 до 4 дней вперёд)
+('ZAK-01/07/26-0012', 12, 'Новый', 0.00, '2026-07-01 09:30:00'),
+('ZAK-02/07/26-0013', 13, 'Новый', 0.00, '2026-07-02 11:00:00'),
+('ZAK-03/07/26-0014', 14, 'Новый', 0.00, '2026-07-03 10:00:00'),
+('ZAK-04/07/26-0015', 15, 'Новый', 0.00, '2026-07-04 15:30:00');
 
--- Запчасти в заказе
-CREATE TABLE order_parts (
-    order_id TEXT NOT NULL,
-    part_name TEXT NOT NULL,
-    price REAL NOT NULL,
-    quantity INTEGER NOT NULL,
-    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
-);
+-- ============================================================
+-- 3. УСЛУГИ ДЛЯ ЗАКАЗОВ
+-- ============================================================
 
--- Записи в календаре
-CREATE TABLE appointments (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    client_id INTEGER NOT NULL,
-    order_id TEXT,
-    master_name TEXT NOT NULL,
-    service_name TEXT NOT NULL,
-    appointment_date TEXT NOT NULL,
-    appointment_time TEXT NOT NULL,
-    status TEXT NOT NULL,
-    FOREIGN KEY (client_id) REFERENCES clients(id),
-    FOREIGN KEY (order_id) REFERENCES orders(id)
-);
+-- Заказ 1 (ZAK-23/06/26-0001) - Петр Петров, Haval Dargo
+INSERT INTO order_services (order_id, service_name, price) VALUES
+('ZAK-23/06/26-0001', 'Замена моторного масла', 2500.00),
+('ZAK-23/06/26-0001', 'Компьютерная диагностика', 3000.00);
 
--- ============================================
--- 1. КЛИЕНТЫ (4 штуки)
--- ============================================
-INSERT INTO clients (name, last_name, phone, car_model, car_number) VALUES
-('Александр', 'Петров', '+79001234567', 'Haval Dargo', 'А123ВС163'),
-('Мария', 'Иванова', '+79113456789', 'Haval Jolion', 'В456ЕК77'),
-('Дмитрий', 'Сидоров', '+79224567890', 'Tank 300', 'М789НО50'),
-('Елена', 'Кузнецова', '+79335678901', 'Haval F7', 'О159РТ40');
+-- Заказ 2 (ZAK-24/06/26-0002) - Елена Смирнова, Haval Jolion
+INSERT INTO order_services (order_id, service_name, price) VALUES
+('ZAK-24/06/26-0002', 'Замена передних тормозных колодок', 2500.00),
+('ZAK-24/06/26-0002', 'Замена задних тормозных колодок', 2500.00);
 
--- ============================================
--- 2. УСЛУГИ (10 штук)
--- ============================================
-INSERT INTO services (name, price, duration, part_number) VALUES
-('Замена масла двигателя', 1500, 30, 'SRV-001'),
-('Замена масла в АКПП', 3000, 90, 'SRV-002'),
-('Замена тормозных колодок', 2500, 60, 'SRV-003'),
-('Замена ремня ГРМ', 4500, 180, 'SRV-004'),
-('Диагностика двигателя', 1200, 60, 'SRV-005'),
-('Развал-схождение', 1800, 60, 'SRV-006'),
-('Замена свечей зажигания', 1200, 60, 'SRV-007'),
-('Замена антифриза', 1000, 45, 'SRV-008'),
-('Замена тормозной жидкости', 800, 30, 'SRV-009'),
-('Компьютерная диагностика', 1500, 60, 'SRV-010');
+-- Заказ 3 (ZAK-25/06/26-0003) - Сергей Козлов, Tank 300
+INSERT INTO order_services (order_id, service_name, price) VALUES
+('ZAK-25/06/26-0003', 'Ремонт ГБЦ', 18000.00),
+('ZAK-25/06/26-0003', 'Замена моторного масла', 2500.00),
+('ZAK-25/06/26-0003', 'Комплексная диагностика двигателя', 5000.00);
 
--- ============================================
--- 3. ЗАПЧАСТИ (30 штук)
--- ============================================
+-- Заказ 4 (ZAK-26/06/26-0004) - Анна Новикова, Great Wall Poer
+INSERT INTO order_services (order_id, service_name, price) VALUES
+('ZAK-26/06/26-0004', 'Замена масляного фильтра', 800.00),
+('ZAK-26/06/26-0004', 'Замена воздушного фильтра', 1200.00);
 
--- Моторное масло и фильтры
-INSERT INTO spare_parts (name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock, location) VALUES
-('Масло моторное 5W-30 (4л)', 'GWM-OIL-001', 'GWM Original', 'Все модели GWM', 2800, 4500, 20, 5, 'Стеллаж А1'),
-('Масло моторное 0W-20 (4л)', 'GWM-OIL-002', 'GWM Original', 'Все модели GWM', 3200, 5200, 15, 5, 'Стеллаж А1'),
-('Масляный фильтр', 'GWM-FLT-001', 'GWM Original', 'Все модели GWM', 350, 650, 30, 10, 'Стеллаж А2'),
-('Воздушный фильтр', 'GWM-FLT-002', 'GWM Original', 'Все модели GWM', 450, 800, 25, 8, 'Стеллаж А2'),
-('Салонный фильтр', 'GWM-FLT-003', 'GWM Original', 'Все модели GWM', 380, 700, 20, 8, 'Стеллаж А2'),
-('Топливный фильтр', 'GWM-FLT-004', 'GWM Original', 'Все модели GWM', 550, 950, 15, 5, 'Стеллаж А3');
+-- Заказ 5 (ZAK-27/06/26-0005) - Дмитрий Морозов, Haval F7
+INSERT INTO order_services (order_id, service_name, price) VALUES
+('ZAK-27/06/26-0005', 'Ремонт ГБЦ', 18000.00),
+('ZAK-27/06/26-0005', 'Компьютерная диагностика', 3000.00);
 
--- Тормозная система
-INSERT INTO spare_parts (name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock, location) VALUES
-('Колодки тормозные передние', 'GWM-BRK-001', 'GWM Original', 'Haval Dargo, Tank 300', 2500, 4200, 12, 4, 'Стеллаж Б1'),
-('Колодки тормозные задние', 'GWM-BRK-002', 'GWM Original', 'Haval Dargo, Tank 300', 2200, 3800, 10, 4, 'Стеллаж Б1'),
-('Диск тормозной передний', 'GWM-BRK-003', 'GWM Original', 'Haval Dargo', 3800, 6200, 8, 3, 'Стеллаж Б2'),
-('Диск тормозной задний', 'GWM-BRK-004', 'GWM Original', 'Haval Dargo', 3500, 5800, 6, 3, 'Стеллаж Б2'),
-('Жидкость тормозная DOT4 (1л)', 'GWM-BRK-005', 'GWM Original', 'Все модели GWM', 600, 1100, 40, 10, 'Стеллаж Б3');
+-- Заказ 6 (ZAK-28/06/26-0006) - Татьяна Васильева, Haval Dargo
+INSERT INTO order_services (order_id, service_name, price) VALUES
+('ZAK-28/06/26-0006', 'Ремонт ГБЦ', 18000.00),
+('ZAK-28/06/26-0006', 'Замена моторного масла', 2500.00),
+('ZAK-28/06/26-0006', 'Комплексная диагностика двигателя', 5000.00);
 
--- Ходовая часть
-INSERT INTO spare_parts (name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock, location) VALUES
-('Шаровая опора передняя', 'GWM-SUS-001', 'GWM Original', 'Haval Dargo, Tank 300', 3200, 5500, 10, 4, 'Стеллаж В1'),
-('Шаровая опора нижняя', 'GWM-SUS-002', 'GWM Original', 'Haval Jolion', 2800, 4800, 12, 4, 'Стеллаж В1'),
-('Сайлентблок переднего рычага', 'GWM-SUS-003', 'GWM Original', 'Все модели GWM', 850, 1500, 20, 6, 'Стеллаж В2'),
-('Амортизатор передний', 'GWM-SUS-004', 'GWM Original', 'Haval Dargo', 6800, 11500, 6, 2, 'Стеллаж В3'),
-('Амортизатор задний', 'GWM-SUS-005', 'GWM Original', 'Haval Dargo', 6200, 10500, 5, 2, 'Стеллаж В3'),
-('Пыльник ШРУСа', 'GWM-SUS-006', 'GWM Original', 'Все модели GWM', 450, 850, 15, 5, 'Стеллаж В4');
+-- Заказ 7 (ZAK-29/06/26-0007) - Алексей Николаев, Tank 500
+INSERT INTO order_services (order_id, service_name, price) VALUES
+('ZAK-29/06/26-0007', 'Замена передних тормозных колодок', 2500.00),
+('ZAK-29/06/26-0007', 'Регулировка ручного тормоза', 1500.00),
+('ZAK-29/06/26-0007', 'Компьютерная диагностика', 3000.00);
 
--- Двигатель и трансмиссия
-INSERT INTO spare_parts (name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock, location) VALUES
-('Ремень ГРМ (комплект)', 'GWM-ENG-001', 'Gates', 'Haval Dargo, Tank 300', 3800, 6200, 8, 3, 'Стеллаж Г1'),
-('Ремень генератора', 'GWM-ENG-002', 'Contitech', 'Все модели GWM', 850, 1500, 12, 4, 'Стеллаж Г1'),
-('Свечи зажигания (4 шт)', 'GWM-ENG-003', 'NGK', 'Все модели GWM', 1800, 3200, 15, 5, 'Стеллаж Г2'),
-('Катушка зажигания', 'GWM-ENG-004', 'GWM Original', 'Все модели GWM', 2500, 4500, 8, 3, 'Стеллаж Г2'),
-('Термостат', 'GWM-ENG-005', 'GWM Original', 'Все модели GWM', 1200, 2200, 10, 3, 'Стеллаж Г3'),
-('Помпа водяная', 'GWM-ENG-006', 'GWM Original', 'Haval Dargo', 3500, 5800, 5, 2, 'Стеллаж Г3');
+-- Заказ 9 (ZAK-30/06/26-0009) - Владимир Соколов, Great Wall Poer (В работе)
+INSERT INTO order_services (order_id, service_name, price) VALUES
+('ZAK-30/06/26-0009', 'Ремонт ГБЦ', 18000.00),
+('ZAK-30/06/26-0009', 'Компьютерная диагностика', 3000.00);
 
--- Электрика
-INSERT INTO spare_parts (name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock, location) VALUES
-('Аккумулятор 75Ач', 'GWM-ELC-001', 'Exide', 'Все модели GWM', 8500, 13500, 10, 3, 'Стеллаж Д1'),
-('Аккумулятор 90Ач', 'GWM-ELC-002', 'Exide', 'Tank 300', 10500, 16500, 6, 2, 'Стеллаж Д1'),
-('Лампа головного света (ксенон)', 'GWM-ELC-003', 'Osram', 'Все модели GWM', 1800, 3200, 15, 5, 'Стеллаж Д2'),
-('Лампа габаритная LED', 'GWM-ELC-004', 'Osram', 'Все модели GWM', 350, 650, 25, 8, 'Стеллаж Д2'),
-('Щётки стеклоочистителя (комплект)', 'GWM-ELC-005', 'Bosch', 'Все модели GWM', 1200, 2200, 20, 6, 'Стеллаж Д3');
+-- Заказ 10 (ZAK-30/06/26-0010) - Ольга Михайлова, Haval F7 (В работе)
+INSERT INTO order_services (order_id, service_name, price) VALUES
+('ZAK-30/06/26-0010', 'Замена моторного масла', 2500.00),
+('ZAK-30/06/26-0010', 'Замена передних тормозных колодок', 2500.00);
 
--- Охлаждение и жидкости
-INSERT INTO spare_parts (name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock, location) VALUES
-('Антифриз G11 (5л)', 'GWM-CLN-001', 'GWM Original', 'Все модели GWM', 1800, 3200, 20, 5, 'Стеллаж Е1'),
-('Антифриз G12+ (5л)', 'GWM-CLN-002', 'GWM Original', 'Все модели GWM', 2200, 3800, 15, 5, 'Стеллаж Е1'),
-('Жидкость омывателя -30°C', 'GWM-CLN-003', 'GWM Original', 'Все модели GWM', 250, 450, 50, 15, 'Стеллаж Е2');
+-- ============================================================
+-- 4. ЗАПЧАСТИ ДЛЯ ЗАКАЗОВ
+-- ============================================================
 
--- Специфичные для Tank 300
-INSERT INTO spare_parts (name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock, location) VALUES
-('Шаровая опора усиленная', 'TNK-SUS-001', 'GWM Original', 'Tank 300', 4500, 7500, 8, 3, 'Стеллаж В1'),
-('Амортизатор усиленный', 'TNK-SUS-002', 'GWM Original', 'Tank 300', 8900, 14500, 4, 2, 'Стеллаж В3'),
-('Воздушный фильтр салона угольный', 'TNK-FLT-001', 'GWM Original', 'Tank 300', 650, 1200, 12, 4, 'Стеллаж А2');
+-- Заказ 1 (ZAK-23/06/26-0001) - Петр Петров
+INSERT INTO order_parts (order_id, part_name, price, quantity) VALUES
+('ZAK-23/06/26-0001', 'Масло моторное GWM 5W-30 (4л)', 4500.00, 1),
+('ZAK-23/06/26-0001', 'Масляный фильтр GWM', 650.00, 1),
+('ZAK-23/06/26-0001', 'Воздушный фильтр GWM', 800.00, 1),
+('ZAK-23/06/26-0001', 'Салонный фильтр GWM', 700.00, 1);
 
--- Специфичные для Haval Jolion
-INSERT INTO spare_parts (name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock, location) VALUES
-('Шаровая опора Jolion', 'JOL-SUS-001', 'GWM Original', 'Haval Jolion', 2600, 4500, 10, 4, 'Стеллаж В1'),
-('Амортизатор передний Jolion', 'JOL-SUS-002', 'GWM Original', 'Haval Jolion', 5200, 8800, 6, 2, 'Стеллаж В3'),
-('Фильтр масляный Jolion', 'JOL-FLT-001', 'GWM Original', 'Haval Jolion', 320, 580, 15, 5, 'Стеллаж А2');
+-- Заказ 2 (ZAK-24/06/26-0002) - Елена Смирнова
+INSERT INTO order_parts (order_id, part_name, price, quantity) VALUES
+('ZAK-24/06/26-0002', 'Колодки тормозные передние GWM', 4200.00, 1),
+('ZAK-24/06/26-0002', 'Колодки тормозные задние GWM', 3800.00, 1);
 
--- Специфичные для Haval F7
-INSERT INTO spare_parts (name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock, location) VALUES
-('Сайлентблок F7', 'F7-SUS-001', 'GWM Original', 'Haval F7', 750, 1350, 12, 4, 'Стеллаж В2'),
-('Амортизатор задний F7', 'F7-SUS-002', 'GWM Original', 'Haval F7', 4800, 8200, 5, 2, 'Стеллаж В3'),
-('Фильтр воздушный F7', 'F7-FLT-001', 'GWM Original', 'Haval F7', 420, 750, 10, 3, 'Стеллаж А2');
+-- Заказ 3 (ZAK-25/06/26-0003) - Сергей Козлов
+INSERT INTO order_parts (order_id, part_name, price, quantity) VALUES
+('ZAK-25/06/26-0003', 'Ремень ГРМ комплект Dargo', 6200.00, 1),
+('ZAK-25/06/26-0003', 'Ремень генератора GWM', 1500.00, 1),
+('ZAK-25/06/26-0003', 'Масло моторное GWM 5W-30 (4л)', 4500.00, 1),
+('ZAK-25/06/26-0003', 'Масляный фильтр GWM', 650.00, 1),
+('ZAK-25/06/26-0003', 'Антифриз G11 5л GWM', 3200.00, 1);
 
--- ============================================
--- 4. ЗАКАЗЫ (3 штуки, статус ЗАКРЫТ, с прошлыми датами)
--- ============================================
+-- Заказ 4 (ZAK-26/06/26-0004) - Анна Новикова
+INSERT INTO order_parts (order_id, part_name, price, quantity) VALUES
+('ZAK-26/06/26-0004', 'Масляный фильтр GWM', 650.00, 1),
+('ZAK-26/06/26-0004', 'Воздушный фильтр GWM', 800.00, 1);
 
--- Заказ №1: Александр Петров (Haval Dargo) - закрыт 15 марта 2026
-INSERT INTO orders (id, client_id, status, total, created_date) 
-VALUES ('ZAK-15/03/26-0001', 1, 'ЗАКРЫТ', 4500, '2026-03-15 10:30:00');
-INSERT INTO order_services (order_id, service_name, price) VALUES ('ZAK-15/03/26-0001', 'Замена масла двигателя', 1500);
-INSERT INTO order_parts (order_id, part_name, price, quantity) VALUES ('ZAK-15/03/26-0001', 'Масло моторное 5W-30 (4л)', 4500, 1);
+-- Заказ 5 (ZAK-27/06/26-0005) - Дмитрий Морозов
+INSERT INTO order_parts (order_id, part_name, price, quantity) VALUES
+('ZAK-27/06/26-0005', 'Ремень ГРМ комплект Dargo', 6200.00, 1),
+('ZAK-27/06/26-0005', 'Ремень генератора GWM', 1500.00, 1),
+('ZAK-27/06/26-0005', 'Масло моторное GWM 5W-30 (4л)', 4500.00, 1),
+('ZAK-27/06/26-0005', 'Масляный фильтр GWM', 650.00, 1);
 
--- Заказ №2: Мария Иванова (Haval Jolion) - закрыт 20 апреля 2026
-INSERT INTO orders (id, client_id, status, total, created_date) 
-VALUES ('ZAK-20/04/26-0002', 2, 'ЗАКРЫТ', 5400, '2026-04-20 14:15:00');
-INSERT INTO order_services (order_id, service_name, price) VALUES ('ZAK-20/04/26-0002', 'Замена тормозных колодок', 2500);
-INSERT INTO order_services (order_id, service_name, price) VALUES ('ZAK-20/04/26-0002', 'Диагностика двигателя', 1200);
-INSERT INTO order_parts (order_id, part_name, price, quantity) VALUES ('ZAK-20/04/26-0002', 'Колодки тормозные передние', 4200, 1);
+-- Заказ 6 (ZAK-28/06/26-0006) - Татьяна Васильева
+INSERT INTO order_parts (order_id, part_name, price, quantity) VALUES
+('ZAK-28/06/26-0006', 'Ремень ГРМ комплект Dargo', 6200.00, 1),
+('ZAK-28/06/26-0006', 'Ремень генератора GWM', 1500.00, 1),
+('ZAK-28/06/26-0006', 'Масло моторное GWM 5W-30 (4л)', 4500.00, 1),
+('ZAK-28/06/26-0006', 'Масляный фильтр GWM', 650.00, 1),
+('ZAK-28/06/26-0006', 'Воздушный фильтр GWM', 800.00, 1);
 
--- Заказ №3: Дмитрий Сидоров (Tank 300) - закрыт 10 мая 2026
-INSERT INTO orders (id, client_id, status, total, created_date) 
-VALUES ('ZAK-10/05/26-0003', 3, 'ЗАКРЫТ', 6200, '2026-05-10 09:45:00');
-INSERT INTO order_services (order_id, service_name, price) VALUES ('ZAK-10/05/26-0003', 'Замена масла в АКПП', 3000);
-INSERT INTO order_services (order_id, service_name, price) VALUES ('ZAK-10/05/26-0003', 'Замена свечей зажигания', 1200);
-INSERT INTO order_parts (order_id, part_name, price, quantity) VALUES ('ZAK-10/05/26-0003', 'Свечи зажигания (4 шт)', 3200, 1);
+-- Заказ 7 (ZAK-29/06/26-0007) - Алексей Николаев
+INSERT INTO order_parts (order_id, part_name, price, quantity) VALUES
+('ZAK-29/06/26-0007', 'Колодки тормозные передние GWM', 4200.00, 1),
+('ZAK-29/06/26-0007', 'Колодки тормозные задние GWM', 3800.00, 1);
 
--- ============================================
--- 5. ЗАКАЗЫ (3 штуки, статус НОВЫЙ)
--- ============================================
+-- Заказ 9 (ZAK-30/06/26-0009) - Владимир Соколов (В работе)
+INSERT INTO order_parts (order_id, part_name, price, quantity) VALUES
+('ZAK-30/06/26-0009', 'Ремень ГРМ комплект Dargo', 6200.00, 1),
+('ZAK-30/06/26-0009', 'Ремень генератора GWM', 1500.00, 1),
+('ZAK-30/06/26-0009', 'Масло моторное GWM 5W-30 (4л)', 4500.00, 1),
+('ZAK-30/06/26-0009', 'Масляный фильтр GWM', 650.00, 1);
 
--- Заказ №4: Александр Петров (Haval Dargo) - НОВЫЙ
-INSERT INTO orders (id, client_id, status, total, created_date) 
-VALUES ('ZAK-31/05/26-0004', 1, 'НОВЫЙ', 4500, datetime('now'));
-INSERT INTO order_services (order_id, service_name, price) VALUES ('ZAK-31/05/26-0004', 'Замена ремня ГРМ', 4500);
-INSERT INTO order_parts (order_id, part_name, price, quantity) VALUES ('ZAK-31/05/26-0004', 'Ремень ГРМ (комплект)', 6200, 1);
+-- Заказ 10 (ZAK-30/06/26-0010) - Ольга Михайлова (В работе)
+INSERT INTO order_parts (order_id, part_name, price, quantity) VALUES
+('ZAK-30/06/26-0010', 'Масло моторное GWM 5W-30 (4л)', 4500.00, 1),
+('ZAK-30/06/26-0010', 'Масляный фильтр GWM', 650.00, 1),
+('ZAK-30/06/26-0010', 'Колодки тормозные передние GWM', 4200.00, 1);
 
--- Заказ №5: Мария Иванова (Haval Jolion) - НОВЫЙ
-INSERT INTO orders (id, client_id, status, total, created_date) 
-VALUES ('ZAK-31/05/26-0005', 2, 'НОВЫЙ', 2600, datetime('now'));
-INSERT INTO order_services (order_id, service_name, price) VALUES ('ZAK-31/05/26-0005', 'Развал-схождение', 1800);
-INSERT INTO order_services (order_id, service_name, price) VALUES ('ZAK-31/05/26-0005', 'Замена тормозной жидкости', 800);
+-- ============================================================
+-- 5. ЗАПИСИ НА ПРИЁМ
+-- ============================================================
 
--- Заказ №6: Елена Кузнецова (Haval F7) - НОВЫЙ
-INSERT INTO orders (id, client_id, status, total, created_date) 
-VALUES ('ZAK-31/05/26-0006', 4, 'НОВЫЙ', 3000, datetime('now'));
-INSERT INTO order_services (order_id, service_name, price) VALUES ('ZAK-31/05/26-0006', 'Замена масла в АКПП', 3000);
+INSERT INTO appointments (client_id, order_id, master_name, service_name, appointment_date, appointment_time, status) VALUES
+(1, 'ZAK-23/06/26-0001', 'Иван', 'Замена моторного масла', '2026-06-23', '10:00', 'Выполнено'),
+(2, 'ZAK-24/06/26-0002', 'Петр', 'Замена тормозных колодок', '2026-06-24', '11:00', 'Выполнено'),
+(3, 'ZAK-25/06/26-0003', 'Сергей', 'Ремонт ГБЦ', '2026-06-25', '09:00', 'Выполнено'),
+(4, 'ZAK-26/06/26-0004', 'Антон', 'Замена масляного фильтра', '2026-06-26', '14:00', 'Выполнено'),
+(5, 'ZAK-27/06/26-0005', 'Иван', 'Ремонт ГБЦ', '2026-06-27', '16:00', 'Выполнено'),
+(6, 'ZAK-28/06/26-0006', 'Петр', 'Ремонт ГБЦ', '2026-06-28', '08:00', 'Выполнено'),
+(7, 'ZAK-29/06/26-0007', 'Сергей', 'Замена тормозных колодок', '2026-06-29', '13:00', 'Выполнено'),
+(9, 'ZAK-30/06/26-0009', 'Антон', 'Ремонт ГБЦ', '2026-06-30', '10:00', 'В работе'),
+(10, 'ZAK-30/06/26-0010', 'Иван', 'Замена моторного масла', '2026-06-30', '12:00', 'В работе'),
+(12, 'ZAK-01/07/26-0012', 'Петр', 'Замена моторного масла', '2026-07-01', '09:00', 'Запланировано'),
+(13, 'ZAK-02/07/26-0013', 'Сергей', 'Ремонт ГБЦ', '2026-07-02', '11:00', 'Запланировано');
 
--- ============================================
--- 6. ОБНОВЛЕНИЕ ДАТЫ ПОСЛЕДНЕГО РЕМОНТА ДЛЯ КЛИЕНТОВ
--- ============================================
-UPDATE clients SET last_repair_date = '2026-03-15' WHERE name = 'Александр' AND last_name = 'Петров';
-UPDATE clients SET last_repair_date = '2026-04-20' WHERE name = 'Мария' AND last_name = 'Иванова';
-UPDATE clients SET last_repair_date = '2026-05-10' WHERE name = 'Дмитрий' AND last_name = 'Сидоров';
+-- ============================================================
+-- 6. ПРОВЕРКА ДАННЫХ
+-- ============================================================
 
--- ============================================
--- 7. ОБНОВЛЕНИЕ ОСТАТКОВ НА СКЛАДЕ (списываем то, что ушло в заказы)
--- ============================================
-UPDATE spare_parts SET stock = stock - 1 WHERE name = 'Масло моторное 5W-30 (4л)';
-UPDATE spare_parts SET stock = stock - 1 WHERE name = 'Колодки тормозные передние';
-UPDATE spare_parts SET stock = stock - 1 WHERE name = 'Свечи зажигания (4 шт)';
-UPDATE spare_parts SET stock = stock - 1 WHERE name = 'Ремень ГРМ (комплект)';
-
--- ============================================
--- 8. ЗАПИСИ В КАЛЕНДАРЕ (3 записи для новых заказов)
--- ============================================
-INSERT INTO appointments (client_id, order_id, master_name, service_name, appointment_date, appointment_time, status) VALUES 
-(1, 'ZAK-31/05/26-0004', 'Иван', 'Замена ремня ГРМ', date('now'), '09:00', 'ЗАПЛАНИРОВАНО'),
-(2, 'ZAK-31/05/26-0005', 'Петр', 'Развал-схождение', date('now'), '11:00', 'ЗАПЛАНИРОВАНО'),
-(4, 'ZAK-31/05/26-0006', 'Сергей', 'Замена масла в АКПП', date('now', '+1 day'), '14:00', 'ЗАПЛАНИРОВАНО');
-
--- ============================================
--- 9. ПРОВЕРКА (вывод статистики)
--- ============================================
-SELECT 'Клиентов: ' || COUNT(*) FROM clients;
-SELECT 'Услуг: ' || COUNT(*) FROM services;
-SELECT 'Запчастей: ' || COUNT(*) FROM spare_parts;
-SELECT 'Заказов: ' || COUNT(*) FROM orders;
-SELECT 'Записей: ' || COUNT(*) FROM appointments;</sql><current_tab id="0"/></tab_sql></sqlb_project>
+SELECT 'Orders:', COUNT(*) FROM orders;
+SELECT 'Order services:', COUNT(*) FROM order_services;
+SELECT 'Order parts:', COUNT(*) FROM order_parts;
+SELECT 'Appointments:', COUNT(*) FROM appointments;</sql><current_tab id="0"/></tab_sql></sqlb_project>

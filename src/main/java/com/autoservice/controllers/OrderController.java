@@ -9,7 +9,7 @@ import com.autoservice.dialogs.EditOrderDialog;
 import com.autoservice.dialogs.OrderDetailsDialog;
 import com.autoservice.views.AppointmentView;
 import com.autoservice.views.DashboardView;
-import javafx.collections.FXCollections;
+import com.autoservice.views.OrderView;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.TableView;
@@ -22,10 +22,12 @@ public class OrderController {
     }
 
     public static void refreshTable() {
-        if (orderTable != null) {
-            orderTable.setItems(FXCollections.observableArrayList(DataStore.getOrders()));
-            orderTable.refresh();
-        }
+        System.out.println("OrderController.refreshTable() called");
+
+        // Принудительно обновляем OrderView
+        OrderView.refreshOrderList();
+
+        // Обновляем другие вью
         AppointmentView.refresh();
         DashboardView.refresh();
     }
@@ -36,24 +38,33 @@ public class OrderController {
             return;
         }
         CreateOrderDialog.show();
-        refreshTable();  // Добавлено: обновляем таблицу после создания заказа
+        refreshTable();
         DashboardView.refresh();
     }
 
     public static void editOrder(WorkOrder order) {
+        if (order == null) {
+            showAlert("Выберите заказ для редактирования");
+            return;
+        }
         if ("Закрыт".equals(order.getStatus())) {
             showAlert("Нельзя редактировать закрытый заказ");
             return;
         }
         EditOrderDialog.show(order);
-        refreshTable();  // Добавлено: обновляем таблицу после редактирования
+        refreshTable();
     }
 
     public static void viewOrder(WorkOrder order) {
+        if (order == null) {
+            showAlert("Выберите заказ для просмотра");
+            return;
+        }
         OrderDetailsDialog.show(order);
     }
 
     public static void changeOrderStatus(WorkOrder order, String newStatus) {
+        if (order == null) return;
         if (newStatus != null && !newStatus.equals(order.getStatus())) {
             order.setStatus(newStatus);
             DataStore.updateOrder(order);
@@ -62,6 +73,10 @@ public class OrderController {
     }
 
     public static void deleteOrder(WorkOrder order) {
+        if (order == null) {
+            showAlert("Выберите заказ для удаления");
+            return;
+        }
         if ("Закрыт".equals(order.getStatus())) {
             showAlert("Нельзя удалить закрытый заказ");
             return;

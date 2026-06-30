@@ -1,280 +1,436 @@
 package com.autoservice.views;
 
+import com.autoservice.Client;
 import com.autoservice.DataStore;
+import com.autoservice.SparePart;
 import com.autoservice.WorkOrder;
+import com.autoservice.services.ReportGenerator;
+import com.autoservice.dialogs.CreateOrderDialog;
+import com.autoservice.dialogs.EditClientDialog;
+import com.autoservice.controllers.ClientController;
+import com.autoservice.controllers.OrderController;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.chart.BarChart;
-import javafx.scene.chart.CategoryAxis;
-import javafx.scene.chart.NumberAxis;
-import javafx.scene.chart.XYChart;
 import javafx.scene.control.Button;
-import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
-import javafx.scene.control.Separator;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.stage.Stage;
 
+import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.Locale;
 
-public class DashboardView {
+public class DashboardView extends ScrollPane {
 
-    private static VBox root;
-    private static BarChart<String, Number> revenueChart;
-    private static ComboBox<String> periodComboBox;
-    private static int currentDays = 30;
+    private static DashboardView instance;
+    private final GridPane gridPane;
+    private final NumberFormat currencyFormat;
+    private Stage primaryStage;
 
-    public static VBox create() {
-        root = new VBox(20);
-        root.setPadding(new Insets(20));
-        root.setStyle("-fx-background-color: #f0f2f5;");
-        refresh();
-        return root;
+    // ==================== СТАТИЧЕСКИЕ МЕТОДЫ ====================
+
+    public static DashboardView create() {
+        if (instance == null) {
+            instance = new DashboardView();
+        }
+        return instance;
     }
 
     public static void refresh() {
-        if (root != null) {
-            root.getChildren().clear();
-            buildDashboard();
+        if (instance != null) {
+            instance.doRefresh();
         }
     }
 
-    private static void buildDashboard() {
-        Label titleLabel = new Label("Панель управления СТО");
-        titleLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
-
-        GridPane statsGrid = createStatsGrid();
-
-        Separator separator = new Separator();
-        separator.setPadding(new Insets(10, 0, 10, 0));
-
-        // Панель выбора периода
-        HBox periodPanel = createPeriodPanel();
-
-        // График выручки
-        revenueChart = createRevenueChart();
-
-        root.getChildren().addAll(titleLabel, statsGrid, separator, periodPanel, revenueChart);
-    }
-
-    private static HBox createPeriodPanel() {
-        HBox panel = new HBox(15);
-        panel.setAlignment(Pos.CENTER_RIGHT);
-        panel.setPadding(new Insets(5, 0, 10, 0));
-
-        Label periodLabel = new Label("Период:");
-        periodLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold;");
-
-        periodComboBox = new ComboBox<>();
-        periodComboBox.getItems().addAll("7 дней", "14 дней", "30 дней", "60 дней", "90 дней");
-        periodComboBox.setValue("30 дней");
-        periodComboBox.setStyle("-fx-font-size: 13px;");
-        periodComboBox.setOnAction(e -> {
-            String selected = periodComboBox.getValue();
-            if (selected.equals("7 дней")) currentDays = 7;
-            else if (selected.equals("14 дней")) currentDays = 14;
-            else if (selected.equals("30 дней")) currentDays = 30;
-            else if (selected.equals("60 дней")) currentDays = 60;
-            else if (selected.equals("90 дней")) currentDays = 90;
-            updateChart();
-        });
-
-        Button refreshBtn = new Button("Обновить");
-        refreshBtn.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 5 15 5 15;");
-        refreshBtn.setOnAction(e -> updateChart());
-
-        panel.getChildren().addAll(periodLabel, periodComboBox, refreshBtn);
-        return panel;
-    }
-
-    private static void updateChart() {
-        if (revenueChart != null) {
-            revenueChart.getData().clear();
-
-            CategoryAxis xAxis = (CategoryAxis) revenueChart.getXAxis();
-            NumberAxis yAxis = (NumberAxis) revenueChart.getYAxis();
-
-            XYChart.Series<String, Number> series = new XYChart.Series<>();
-            series.setName("Выручка");
-
-            Map<String, Double> dailyRevenue = getDailyRevenue(currentDays);
-
-            for (Map.Entry<String, Double> entry : dailyRevenue.entrySet()) {
-                series.getData().add(new XYChart.Data<>(entry.getKey(), entry.getValue()));
-            }
-
-            revenueChart.getData().add(series);
+    public static void setStage(Stage stage) {
+        if (instance != null) {
+            instance.primaryStage = stage;
         }
     }
 
-    private static GridPane createStatsGrid() {
-        GridPane grid = new GridPane();
-        grid.setHgap(15);
-        grid.setVgap(15);
-        grid.setAlignment(Pos.CENTER);
-        grid.setPadding(new Insets(10));
+    // ==================== КОНСТРУКТОР ====================
 
-        List<WorkOrder> orders = DataStore.getOrders();
+    private DashboardView() {
+        currencyFormat = NumberFormat.getCurrencyInstance(new Locale("ru", "RU"));
 
-        System.out.println("Всего заказов в DataStore: " + orders.size());
+        gridPane = new GridPane();
+        gridPane.setPadding(new Insets(20));
+        gridPane.setHgap(20);
+        gridPane.setVgap(20);
+        gridPane.setAlignment(Pos.TOP_CENTER);
 
-        int totalOrders = orders.size();
-        int newOrders = 0;
-        int inProgressOrders = 0;
-        int closedOrders = 0;
-        double totalRevenue = 0;
+        setContent(gridPane);
+        setFitToWidth(true);
+        setStyle("-fx-background-color: #f4f6f9;");
 
-        Set<String> uniqueClients = new HashSet<>();
-
-        for (WorkOrder order : orders) {
-            String status = order.getStatus();
-
-            System.out.println("Заказ " + order.getId() + " статус: '" + status + "'");
-
-            if (status != null) {
-                if (status.equals("Новый") || status.equals("НОВЫЙ")) {
-                    newOrders++;
-                } else if (status.equals("В работе") || status.equals("В РАБОТЕ")) {
-                    inProgressOrders++;
-                } else if (status.equals("Закрыт") || status.equals("ЗАКРЫТ") || status.equals("Завершён")) {
-                    closedOrders++;
-                    totalRevenue += order.getTotal();
-                }
-            }
-
-            if (order.getClient() != null) {
-                uniqueClients.add(order.getClient().getName());
-            }
-        }
-
-        System.out.println("Статистика:");
-        System.out.println("  Новые: " + newOrders);
-        System.out.println("  В работе: " + inProgressOrders);
-        System.out.println("  Закрытые: " + closedOrders);
-        System.out.println("  Выручка: " + totalRevenue);
-
-        int uniqueClientsCount = uniqueClients.size();
-        double averageOrderValue = closedOrders > 0 ? totalRevenue / closedOrders : 0;
-
-        VBox revenueCard = createStatCard("Общая выручка", formatMoney(totalRevenue), "#27ae60");
-        VBox avgOrderCard = createStatCard("Средний чек", formatMoney(averageOrderValue), "#3498db");
-        VBox ordersCard = createStatCard("Всего заказов", String.valueOf(totalOrders), "#e67e22");
-        VBox newOrdersCard = createStatCard("Новые заказы", String.valueOf(newOrders), "#f39c12");
-        VBox progressCard = createStatCard("В работе", String.valueOf(inProgressOrders), "#1abc9c");
-        VBox closedOrdersCard = createStatCard("Завершено", String.valueOf(closedOrders), "#2ecc71");
-        VBox clientsCard = createStatCard("Клиентов", String.valueOf(uniqueClientsCount), "#3498db");
-        VBox revenuePerClient = createStatCard("Средняя выручка на клиента", formatMoney(uniqueClientsCount > 0 ? totalRevenue / uniqueClientsCount : 0), "#e74c3c");
-
-        grid.add(revenueCard, 0, 0);
-        grid.add(avgOrderCard, 1, 0);
-        grid.add(ordersCard, 2, 0);
-        grid.add(newOrdersCard, 3, 0);
-
-        grid.add(progressCard, 0, 1);
-        grid.add(closedOrdersCard, 1, 1);
-        grid.add(clientsCard, 2, 1);
-        grid.add(revenuePerClient, 3, 1);
-
-        return grid;
+        doRefresh();
     }
 
-    private static VBox createStatCard(String title, String value, String color) {
+    // ==================== ОБНОВЛЕНИЕ ====================
+
+    private void doRefresh() {
+        gridPane.getChildren().clear();
+
+        int row = 0;
+
+        // Строка карточек
+        HBox cardsRow = new HBox(20);
+        cardsRow.setAlignment(Pos.CENTER);
+        cardsRow.setPadding(new Insets(0, 0, 20, 0));
+
+        cardsRow.getChildren().addAll(
+                createStatCard("📋 Заказов", String.valueOf(DataStore.getOrders().size()),
+                        "Всего заказов", "#3498db"),
+                createStatCard("👥 Клиентов", String.valueOf(DataStore.getClients().size()),
+                        "Активных клиентов", "#2ecc71"),
+                createStatCard("⚠️ Остатки", getLowStockCount(),
+                        "Заканчиваются (меньше минимума)", "#e74c3c"),
+                createStatCard("💰 Выручка", getTotalRevenue(),
+                        "Сумма всех заказов", "#f39c12")
+        );
+
+        gridPane.add(cardsRow, 0, row);
+        row++;
+
+        // Активные заказы
+        HBox activeRow = new HBox(20);
+        activeRow.setAlignment(Pos.CENTER);
+        activeRow.setPadding(new Insets(0, 0, 20, 0));
+
+        activeRow.getChildren().addAll(
+                createStatCard("🟡 В работе", String.valueOf(getActiveOrdersCount()),
+                        "Заказов в процессе", "#f1c40f"),
+                createStatCard("✅ Выполнено", String.valueOf(getCompletedOrdersCount()),
+                        "Завершённых заказов", "#27ae60"),
+                createStatCard("📅 Записей", String.valueOf(DataStore.getAppointments().size()),
+                        "Всего записей на приём", "#9b59b6")
+        );
+
+        gridPane.add(activeRow, 0, row);
+        row++;
+
+        // Быстрые действия
+        HBox actionsRow = new HBox(15);
+        actionsRow.setAlignment(Pos.CENTER);
+        actionsRow.setPadding(new Insets(20, 0, 10, 0));
+
+        actionsRow.getChildren().addAll(
+                createActionButton("➕ Новый заказ", "#3498db"),
+                createActionButton("👤 Новый клиент", "#2ecc71"),
+                createActionButton("📅 Запись", "#9b59b6"),
+                createActionButton("📊 Отчёт", "#f39c12")
+        );
+
+        gridPane.add(actionsRow, 0, row);
+        row++;
+
+        // Последние заказы
+        VBox recentOrdersBox = createRecentOrdersBox();
+        gridPane.add(recentOrdersBox, 0, row);
+    }
+
+    // ==================== СОЗДАНИЕ КАРТОЧКИ ====================
+
+    private VBox createStatCard(String title, String value, String subtitle, String color) {
         VBox card = new VBox(5);
         card.setAlignment(Pos.CENTER);
-        card.setPadding(new Insets(15));
-        card.setStyle("-fx-background-color: white; -fx-border-radius: 12; -fx-background-radius: 12; " +
-                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 8, 0, 0, 2);");
-        card.setPrefWidth(180);
-        card.setMinHeight(100);
+        card.setPadding(new Insets(20, 40, 20, 40));
+        card.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-border-radius: 12px;" +
+                        "-fx-background-radius: 12px;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 5);" +
+                        "-fx-border-width: 3px 0 0 0;" +
+                        "-fx-border-color: " + color + ";" +
+                        "-fx-min-width: 180px;" +
+                        "-fx-pref-width: 180px;"
+        );
 
         Label titleLabel = new Label(title);
-        titleLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #7f8c8d;");
+        titleLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #7f8c8d;");
+        titleLabel.setWrapText(true);
 
         Label valueLabel = new Label(value);
-        valueLabel.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: " + color + ";");
+        valueLabel.setStyle("-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
+        valueLabel.setWrapText(true);
 
-        card.getChildren().addAll(titleLabel, valueLabel);
+        Label subtitleLabel = new Label(subtitle);
+        subtitleLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #95a5a6;");
+        subtitleLabel.setWrapText(true);
+
+        card.getChildren().addAll(titleLabel, valueLabel, subtitleLabel);
         return card;
     }
 
-    private static BarChart<String, Number> createRevenueChart() {
-        CategoryAxis xAxis = new CategoryAxis();
-        NumberAxis yAxis = new NumberAxis();
-        xAxis.setLabel("Дата");
-        yAxis.setLabel("Выручка (руб.)");
-        yAxis.setTickLabelFormatter(new NumberAxis.DefaultFormatter(yAxis) {
-            @Override
-            public String toString(Number object) {
-                return String.format("%,.0f", object);
+    // ==================== КНОПКИ БЫСТРЫХ ДЕЙСТВИЙ ====================
+
+    private Button createActionButton(String text, String color) {
+        Button btn = new Button(text);
+        btn.setStyle(
+                "-fx-background-color: " + color + ";" +
+                        "-fx-text-fill: white;" +
+                        "-fx-font-size: 14px;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-padding: 12px 25px;" +
+                        "-fx-border-radius: 8px;" +
+                        "-fx-background-radius: 8px;" +
+                        "-fx-cursor: hand;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 8, 0, 0, 3);"
+        );
+
+        btn.setOnMouseEntered(e -> btn.setStyle(
+                "-fx-background-color: " + darken(color) + ";" +
+                        "-fx-text-fill: white;" +
+                        "-fx-font-size: 14px;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-padding: 12px 25px;" +
+                        "-fx-border-radius: 8px;" +
+                        "-fx-background-radius: 8px;" +
+                        "-fx-cursor: hand;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 12, 0, 0, 4);"
+        ));
+
+        btn.setOnMouseExited(e -> btn.setStyle(
+                "-fx-background-color: " + color + ";" +
+                        "-fx-text-fill: white;" +
+                        "-fx-font-size: 14px;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-padding: 12px 25px;" +
+                        "-fx-border-radius: 8px;" +
+                        "-fx-background-radius: 8px;" +
+                        "-fx-cursor: hand;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 8, 0, 0, 3);"
+        ));
+
+        btn.setOnAction(e -> {
+            String btnText = text;
+
+            if (btnText.contains("Новый заказ")) {
+                openCreateOrderDialog();
+            } else if (btnText.contains("Новый клиент")) {
+                openEditClientDialog();
+            } else if (btnText.contains("Запись")) {
+                openAppointmentView();
+            } else if (btnText.contains("Отчёт")) {
+                generateReport();
             }
         });
 
-        BarChart<String, Number> chart = new BarChart<>(xAxis, yAxis);
-        chart.setTitle("Выручка по дням");
-        chart.setPrefHeight(400);
-        chart.setStyle("-fx-background-color: white; -fx-border-radius: 10; -fx-background-radius: 10;");
-        chart.setLegendVisible(false);
-
-        XYChart.Series<String, Number> series = new XYChart.Series<>();
-        series.setName("Выручка");
-
-        Map<String, Double> dailyRevenue = getDailyRevenue(currentDays);
-
-        for (Map.Entry<String, Double> entry : dailyRevenue.entrySet()) {
-            series.getData().add(new XYChart.Data<>(entry.getKey(), entry.getValue()));
-        }
-
-        chart.getData().add(series);
-
-        return chart;
+        return btn;
     }
 
-    private static Map<String, Double> getDailyRevenue(int days) {
-        Map<String, Double> dailyRevenue = new LinkedHashMap<>();
+    private String darken(String color) {
+        return switch (color) {
+            case "#3498db" -> "#2980b9";
+            case "#2ecc71" -> "#27ae60";
+            case "#9b59b6" -> "#8e44ad";
+            case "#f39c12" -> "#e67e22";
+            default -> color;
+        };
+    }
 
-        LocalDate endDate = LocalDate.now();
-        LocalDate startDate = endDate.minusDays(days - 1);
+    // ==================== ДЕЙСТВИЯ КНОПОК ====================
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM");
+    private void openCreateOrderDialog() {
+        try {
+            CreateOrderDialog.show();
 
-        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
-            dailyRevenue.put(date.format(formatter), 0.0);
+            DataStore.load();
+            refresh();
+            OrderController.refreshTable();
+        } catch (Exception ex) {
+            System.err.println("Ошибка открытия диалога создания заказа: " + ex.getMessage());
+            ex.printStackTrace();
+            showErrorAlert("Ошибка", "Не удалось открыть диалог создания заказа: " + ex.getMessage());
         }
+    }
 
-        List<WorkOrder> orders = DataStore.getOrders();
+    private void openEditClientDialog() {
+        try {
+            Client emptyClient = new Client(-1, "", "", "", "", "");
+            EditClientDialog.show(emptyClient);
 
-        for (WorkOrder order : orders) {
-            String status = order.getStatus();
-            boolean isClosed = false;
+            DataStore.load();
+            refresh();
+            ClientController.refreshTable();
+        } catch (Exception ex) {
+            System.err.println("Ошибка открытия диалога создания клиента: " + ex.getMessage());
+            ex.printStackTrace();
+            showErrorAlert("Ошибка", "Не удалось открыть диалог создания клиента: " + ex.getMessage());
+        }
+    }
 
-            if (status != null) {
-                isClosed = status.equals("Закрыт") || status.equals("ЗАКРЫТ") || status.equals("Завершён");
+    private void openAppointmentView() {
+        try {
+            javafx.scene.Node parent = this;
+            while (parent != null && !(parent instanceof TabPane)) {
+                parent = parent.getParent();
             }
-
-            if (isClosed) {
-                String dateStr = order.getCreatedDate();
-                if (dateStr != null && !dateStr.isEmpty()) {
-                    try {
-                        String datePart = dateStr.split(" ")[0];
-                        LocalDate orderDate = LocalDate.parse(datePart);
-                        if (!orderDate.isBefore(startDate) && !orderDate.isAfter(endDate)) {
-                            String key = orderDate.format(formatter);
-                            dailyRevenue.put(key, dailyRevenue.get(key) + order.getTotal());
-                        }
-                    } catch (Exception e) {
-                        System.err.println("Ошибка парсинга даты: " + dateStr);
+            if (parent instanceof TabPane tabPane) {
+                for (Tab tab : tabPane.getTabs()) {
+                    if ("Запись".equals(tab.getText())) {
+                        tabPane.getSelectionModel().select(tab);
+                        return;
                     }
                 }
             }
+            showInfoAlert("Переключение", "Вкладка 'Запись' не найдена.");
+        } catch (Exception ex) {
+            System.err.println("Ошибка переключения на вкладку Запись: " + ex.getMessage());
+            showErrorAlert("Ошибка", "Не удалось переключиться на вкладку 'Запись'.");
         }
-
-        return dailyRevenue;
     }
 
-    private static String formatMoney(double amount) {
-        return String.format("%,.0f руб.", amount);
+    // ==================== ГЕНЕРАЦИЯ ОТЧЁТА ====================
+
+    private void generateReport() {
+        try {
+            ReportView.show();
+        } catch (Exception ex) {
+            System.err.println("Ошибка открытия отчёта: " + ex.getMessage());
+            ex.printStackTrace();
+            showErrorAlert("Ошибка", "Не удалось открыть отчёт: " + ex.getMessage());
+        }
+    }
+
+    // ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================
+
+    private void showInfoAlert(String title, String message) {
+        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(
+                javafx.scene.control.Alert.AlertType.INFORMATION
+        );
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    private void showErrorAlert(String title, String message) {
+        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(
+                javafx.scene.control.Alert.AlertType.ERROR
+        );
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    private String getLowStockCount() {
+        int count = 0;
+        for (SparePart part : DataStore.getSpareParts()) {
+            if (part.getStock() < part.getMinStock()) {
+                count++;
+            }
+        }
+        return String.valueOf(count);
+    }
+
+    private String getTotalRevenue() {
+        double total = 0;
+        for (WorkOrder order : DataStore.getOrders()) {
+            String status = order.getStatus();
+            if (!"Отменён".equals(status)) {
+                total += order.getTotal();
+            }
+        }
+        return currencyFormat.format(total);
+    }
+
+    private int getActiveOrdersCount() {
+        int count = 0;
+        for (WorkOrder order : DataStore.getOrders()) {
+            if ("В работе".equals(order.getStatus())) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private int getCompletedOrdersCount() {
+        int count = 0;
+        for (WorkOrder order : DataStore.getOrders()) {
+            if ("Выполнен".equals(order.getStatus())) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    // ==================== БЛОК ПОСЛЕДНИХ ЗАКАЗОВ ====================
+
+    private VBox createRecentOrdersBox() {
+        VBox box = new VBox(10);
+        box.setPadding(new Insets(20));
+        box.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-border-radius: 12px;" +
+                        "-fx-background-radius: 12px;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 10, 0, 0, 5);"
+        );
+
+        Label header = new Label("📋 Последние заказы");
+        header.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
+        box.getChildren().add(header);
+
+        var orders = DataStore.getOrders();
+        int limit = Math.min(orders.size(), 5);
+
+        if (orders.isEmpty()) {
+            Label empty = new Label("Нет заказов");
+            empty.setStyle("-fx-text-fill: #95a5a6; -fx-font-size: 14px;");
+            box.getChildren().add(empty);
+            return box;
+        }
+
+        for (int i = 0; i < limit; i++) {
+            WorkOrder order = orders.get(i);
+            HBox row = new HBox(15);
+            row.setAlignment(Pos.CENTER_LEFT);
+            row.setPadding(new Insets(8, 0, 8, 0));
+            row.setStyle("-fx-border-color: #ecf0f1; -fx-border-width: 0 0 1 0;");
+
+            Label number = new Label(order.getId());
+            number.setStyle("-fx-font-weight: bold; -fx-text-fill: #34495e; -fx-min-width: 120px;");
+
+            Label client = new Label(order.getClient().getName() + " " + order.getClient().getLastName());
+            client.setStyle("-fx-text-fill: #2c3e50; -fx-min-width: 150px;");
+
+            Label status = new Label(getStatusText(order.getStatus()));
+            status.setStyle("-fx-text-fill: " + getStatusColor(order.getStatus()) + "; -fx-font-weight: bold;");
+
+            Label total = new Label(currencyFormat.format(order.getTotal()));
+            total.setStyle("-fx-text-fill: #2c3e50; -fx-font-weight: bold;");
+
+            row.getChildren().addAll(number, client, status, total);
+            box.getChildren().add(row);
+        }
+
+        return box;
+    }
+
+    private String getStatusText(String status) {
+        return switch (status) {
+            case "Черновик" -> "📄 Черновик";
+            case "В работе" -> "🟡 В работе";
+            case "Выполнен" -> "✅ Выполнен";
+            case "Отменён" -> "❌ Отменён";
+            default -> status;
+        };
+    }
+
+    private String getStatusColor(String status) {
+        return switch (status) {
+            case "Черновик" -> "#95a5a6";
+            case "В работе" -> "#f39c12";
+            case "Выполнен" -> "#27ae60";
+            case "Отменён" -> "#e74c3c";
+            default -> "#2c3e50";
+        };
     }
 }

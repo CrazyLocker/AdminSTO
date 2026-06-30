@@ -37,10 +37,46 @@ public class CreateOrderDialog {
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
 
-        // ==================== КЛИЕНТ ====================
+        // ==================== КЛИЕНТ (Фамилия Имя — Марка) ====================
         ComboBox<Client> clientCombo = new ComboBox<>(FXCollections.observableArrayList(DataStore.getClients()));
         clientCombo.setPromptText("Выберите клиента");
         clientCombo.setPrefWidth(350);
+
+        // Кастомный CellFactory для отображения: Фамилия Имя — Марка авто
+        clientCombo.setCellFactory(listView -> new ListCell<Client>() {
+            @Override
+            protected void updateItem(Client item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    String lastName = item.getLastName() != null && !item.getLastName().isEmpty()
+                            ? item.getLastName() + " " : "";
+                    String carModel = item.getCarModel() != null && !item.getCarModel().isEmpty()
+                            ? " — " + item.getCarModel()
+                            : "";
+                    setText(lastName + item.getName() + carModel);
+                }
+            }
+        });
+
+        // Кастомный ButtonCell для отображения в поле выбора
+        clientCombo.setButtonCell(new ListCell<Client>() {
+            @Override
+            protected void updateItem(Client item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    String lastName = item.getLastName() != null && !item.getLastName().isEmpty()
+                            ? item.getLastName() + " " : "";
+                    String carModel = item.getCarModel() != null && !item.getCarModel().isEmpty()
+                            ? " — " + item.getCarModel()
+                            : "";
+                    setText(lastName + item.getName() + carModel);
+                }
+            }
+        });
 
         // ==================== ЗАПИСЬ (ДАТА И ВРЕМЯ) ====================
         Label appointmentLabel = new Label("Запись на сервис:");
@@ -281,8 +317,10 @@ public class CreateOrderDialog {
                 }
             }
 
-            // Создаём заказ
+            // Создаём заказ со статусом "Новый"
             WorkOrder order = new WorkOrder(clientCombo.getValue());
+            order.setStatus("Новый"); // Устанавливаем статус "Новый"
+
             for (int i = 0; i < tempServices.size(); i++) {
                 order.addService(tempServices.get(i), tempServicePrices.get(i));
             }
