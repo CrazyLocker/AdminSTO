@@ -18,6 +18,18 @@ public class Appointment {
 
     // ==================== КОНСТРУКТОРЫ ====================
 
+    public Appointment() {
+        this.id = -1;
+        this.client = null;
+        this.orderId = null;
+        this.masterName = "";
+        this.serviceName = "";
+        this.date = "";
+        this.time = "";
+        this.status = STATUS_SCHEDULED;
+        this.dirty = true;
+    }
+
     public Appointment(int id, Client client, String orderId, String masterName,
                        String serviceName, String date, String time, String status) {
         this.id = id;

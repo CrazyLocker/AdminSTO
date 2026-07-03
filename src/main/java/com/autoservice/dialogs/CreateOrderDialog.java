@@ -3,13 +3,17 @@ package com.autoservice.dialogs;
 import com.autoservice.*;
 import com.autoservice.controllers.DictionaryController;
 import com.autoservice.controllers.OrderController;
+import com.autoservice.services.AutoAddSparePartService;
+import com.autoservice.services.SettingService;
 import com.autoservice.utils.OilHelper;
+import com.autoservice.utils.IconHelper;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
@@ -216,6 +220,27 @@ public class CreateOrderDialog {
                 showAlert("Выберите услугу");
                 return;
             }
+
+            // ====== АВТОМАТИЧЕСКОЕ ДОБАВЛЕНИЕ ЗАПЧАСТЕЙ ======
+            if (SettingService.isAutoAddSparePartsEnabled()) {
+                AutoAddSparePartService.SparePartWithQuantity partInfo = showAutoAddPartsDialog(selected.getName());
+                if (partInfo != null) {
+                    SparePart selectedPart = partInfo.getSparePart();
+                    int qty = partInfo.getQuantity();
+
+                    if (qty > 0 && qty <= selectedPart.getStock()) {
+                        tempParts.add(selectedPart);
+                        tempPartQuantities.add(qty);
+                        selectedPart.setStock(selectedPart.getStock() - qty);
+                        partsListView.getItems().add((tempParts.size()) + ". " + selectedPart.getName() + " x" + qty + " = " + (selectedPart.getRetailPrice() * qty) + " руб.");
+                        partStockField.setText(String.valueOf(selectedPart.getStock()));
+                        updateTotal.run();
+                    } else {
+                        showAlert("Недостаточно запчастей на складе");
+                    }
+                }
+            }
+
             tempServices.add(selected.getName());
             tempServicePrices.add(selected.getPrice());
             servicesListView.getItems().add((tempServices.size()) + ". " + selected.getName() + " — " + selected.getPrice() + " руб.");
@@ -418,5 +443,140 @@ public class CreateOrderDialog {
     private static void showAlert(String msg) {
         Alert alert = new Alert(Alert.AlertType.WARNING, msg, ButtonType.OK);
         alert.showAndWait();
+    }
+
+    // ==================== МЕТОД ДИАЛОГА АВТОМАТИЧЕСКОГО ДОБАВЛЕНИЯ ЗАПЧАСТЕЙ ====================
+
+    /**
+     * Показывает диалог с информацией о связанных запчастях для услуги.
+     * Возвращает выбранную запчасть с количеством (или null для отмены).
+     */
+    private static AutoAddSparePartService.SparePartWithQuantity showAutoAddPartsDialog(String serviceName) {
+        List<AutoAddSparePartService.SparePartWithQuantity> parts = AutoAddSparePartService.getSparePartsByService(serviceName);
+
+        if (parts.isEmpty()) {
+            return null; // Нет связанных запчастей
+        }
+
+        // Если не требуется подтверждение - добавляем сразу
+        if (!SettingService.isSparePartConfirmationRequired()) {
+            // Берем первую запчасть
+            return parts.get(0);
+        }
+
+        Stage stage = new Stage();
+        stage.setTitle("Связанные запчасти");
+        stage.setMinWidth(500);
+        stage.setMinHeight(400);
+        stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+
+        VBox root = new VBox(15);
+        root.setPadding(new Insets(20));
+
+        Label titleLabel = new Label("Следующие запчасти будут добавлены автоматически:");
+        titleLabel.getStyleClass().add("dialog-title");
+
+        // Таблица запчастей
+        TableView<AutoAddSparePartService.SparePartWithQuantity> table = new TableView<>();
+        table.setItems(javafx.collections.FXCollections.observableArrayList(parts));
+        table.setPrefHeight(200);
+
+        TableColumn<AutoAddSparePartService.SparePartWithQuantity, String> colName = new TableColumn<>("Название");
+        colName.setCellValueFactory(cell -> javafx.beans.binding.Bindings.createObjectBinding(() -> cell.getValue().getSparePart().getName()));
+        colName.setPrefWidth(200);
+
+        TableColumn<AutoAddSparePartService.SparePartWithQuantity, Integer> colQty = new TableColumn<>("Количество");
+        colQty.setCellValueFactory(cell -> javafx.beans.binding.Bindings.createObjectBinding(() -> cell.getValue().getQuantity()));
+        colQty.setPrefWidth(80);
+
+        TableColumn<AutoAddSparePartService.SparePartWithQuantity, String> colUnitType = new TableColumn<>("Ед. изм.");
+        colUnitType.setCellValueFactory(cell -> javafx.beans.binding.Bindings.createObjectBinding(() -> cell.getValue().getUnitType()));
+        colUnitType.setPrefWidth(80);
+
+        TableColumn<AutoAddSparePartService.SparePartWithQuantity, Double> colPrice = new TableColumn<>("Цена");
+        colPrice.setCellValueFactory(cell -> javafx.beans.binding.Bindings.createObjectBinding(() -> cell.getValue().getSparePart().getRetailPrice()));
+        colPrice.setPrefWidth(80);
+
+        table.getColumns().addAll(colName, colQty, colUnitType, colPrice);
+
+        // Общая стоимость
+        Label totalLabel = new Label("Общая стоимость: 0 руб.");
+        totalLabel.setStyle("-fx-font-weight: bold;");
+
+        // Выбор количества
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(10));
+
+        TextField qtyField = new TextField();
+        qtyField.setPrefWidth(80);
+
+        grid.add(new Label("Количество:"), 0, 0);
+        grid.add(qtyField, 1, 0);
+
+        // Кнопки
+        Button confirmBtn = new Button("Добавить");
+        confirmBtn.getStyleClass().add("save-button");
+
+        Button skipBtn = new Button("Пропустить");
+        skipBtn.getStyleClass().add("cancel-button");
+
+        HBox btnBox = new HBox(15, confirmBtn, skipBtn);
+        btnBox.setAlignment(Pos.CENTER);
+
+        root.getChildren().addAll(titleLabel, table, totalLabel, grid, btnBox);
+
+        Scene scene = new Scene(root);
+        stage.setScene(scene);
+
+        // Объявляем переменную для результата
+        final AutoAddSparePartService.SparePartWithQuantity[] result = {null};
+
+        // Обновление общей стоимости
+        Runnable updateTotal = () -> {
+            double total = 0;
+            try {
+                int qty = Integer.parseInt(qtyField.getText());
+                if (!parts.isEmpty()) {
+                    total += parts.get(0).getSparePart().getRetailPrice() * qty;
+                }
+            } catch (NumberFormatException ex) {
+                if (!parts.isEmpty()) {
+                    total += parts.get(0).getSparePart().getRetailPrice() * parts.get(0).getQuantity();
+                }
+            }
+            totalLabel.setText("Общая стоимость: " + String.format("%.2f", total) + " руб.");
+        };
+
+        qtyField.textProperty().addListener((obs, oldVal, newVal) -> updateTotal.run());
+
+        // Кнопка подтверждения
+        confirmBtn.setOnAction(e -> {
+            try {
+                int qty = Integer.parseInt(qtyField.getText());
+                if (qty <= 0) {
+                    showAlert("Количество должно быть положительным");
+                    return;
+                }
+
+                // Берем первую запчасть из списка
+                if (!parts.isEmpty()) {
+                    result[0] = parts.get(0).copy();
+                    result[0].setQuantity(qty);
+                    stage.close();
+                }
+            } catch (NumberFormatException ex) {
+                showAlert("Введите корректное количество");
+            }
+        });
+
+        // Кнопка пропуска
+        skipBtn.setOnAction(e -> stage.close());
+
+        updateTotal.run();
+        stage.showAndWait();
+
+        return result[0]; // Возвращаем результат
     }
 }

@@ -114,6 +114,12 @@ public class IconHelper {
         return createSVG("M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z", size, color);
     }
 
+    // ==================== НОВАЯ ИКОНКА: ССЫЛКА (link) ====================
+
+    public static SVGPath link(int size, String color) {
+        return createSVG("M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z", size, color);
+    }
+
     // ==================== БЕЗ ПАРАМЕТРОВ (ДЛЯ КНОПОК С БЕЛЫМ ЦВЕТОМ) ====================
 
     public static SVGPath add() { return add("#ffffff"); }
@@ -128,6 +134,8 @@ public class IconHelper {
     public static SVGPath warning() { return warning("#e74c3c"); }
     public static SVGPath report() { return report("#f39c12"); }
     public static SVGPath checkCircle() { return checkCircle("#27ae60"); }
+
+    public static SVGPath link() { return link(20, "#5f6368"); }
 
     // ==================== МЕТОДЫ С ЦВЕТОМ (БЕЗ РАЗМЕРА) ====================
 

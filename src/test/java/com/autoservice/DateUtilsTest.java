@@ -9,6 +9,7 @@ import java.time.LocalDate;
  * Тесты для класса DateUtils
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@Tag(TestTags.UNIT)
 class DateUtilsTest {
 
     @Test

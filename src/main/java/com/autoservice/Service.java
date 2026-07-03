@@ -1,6 +1,7 @@
 package com.autoservice;
 
 public class Service {
+    private int id;
     private String name;
     private double price;
     private int duration;
@@ -16,9 +17,10 @@ public class Service {
 
     // ==================== КОНСТРУКТОРЫ ====================
 
-    public Service(String name, double price) {
-        this.name = name;
-        this.price = price;
+    public Service() {
+        this.id = -1;
+        this.name = "";
+        this.price = 0;
         this.duration = 60;
         this.partNumber = "";
         this.oilVolume = 0;
@@ -26,6 +28,12 @@ public class Service {
         this.sparePartName = "";
         this.sparePartQuantity = 0;
         this.dirty = true;
+    }
+
+    public Service(String name, double price) {
+        this();
+        this.name = name;
+        this.price = price;
     }
 
     public Service(String name, double price, int duration, String partNumber) {
@@ -36,6 +44,7 @@ public class Service {
 
     // ==================== ГЕТТЕРЫ ====================
 
+    public int getId() { return id; }
     public String getName() { return name; }
     public double getPrice() { return price; }
     public int getDuration() { return duration; }
@@ -48,6 +57,7 @@ public class Service {
 
     // ==================== СЕТТЕРЫ ====================
 
+    public void setId(int id) { this.id = id; }
     public void setName(String name) { this.name = name; this.dirty = true; }
     public void setPrice(double price) { this.price = price; this.dirty = true; }
     public void setDuration(int duration) { this.duration = duration; this.dirty = true; }

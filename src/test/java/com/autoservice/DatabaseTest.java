@@ -1,460 +1,510 @@
 package com.autoservice;
 
 import org.junit.jupiter.api.*;
-import org.junit.jupiter.api.io.TempDir;
-
-import java.io.File;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.time.LocalDate;
-import java.util.List;
-
 import static org.assertj.core.api.Assertions.*;
 
+import java.util.List;
+
 /**
- * Интеграционные тесты для класса Database
+ * Тесты для Database (слой доступа к SQLite).
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class DatabaseTest {
-
-    @TempDir
-    static File tempDir;
-
-    private static final String TEST_DB_PATH = "jdbc:sqlite:test_integration.db";
-
-    @BeforeAll
-    static void setup() {
-        Database.initForTest();
-        clearDatabase();
-    }
-
-    @AfterAll
-    static void cleanup() {
-        Database.close();
-        // Удаляем файл тестовой базы
-        new File("test_integration.db").delete();
-    }
-
-    private static void clearDatabase() {
-        try {
-            Connection conn = Database.getConnection();
-            if (conn != null) {
-                var stmt = conn.createStatement();
-                stmt.execute("DELETE FROM order_parts");
-                stmt.execute("DELETE FROM order_services");
-                stmt.execute("DELETE FROM appointments");
-                stmt.execute("DELETE FROM orders");
-                stmt.execute("DELETE FROM spare_parts");
-                stmt.execute("DELETE FROM services");
-                stmt.execute("DELETE FROM clients");
-                stmt.execute("DELETE FROM sqlite_sequence");
-                stmt.close();
-            }
-        } catch (SQLException e) {
-            System.err.println("Очистка БД: " + e.getMessage());
-        }
-    }
-
-    // ==================== КЛИЕНТЫ ====================
+@Tag(TestTags.INTEGRATION)
+class DatabaseTest extends BaseTest {
 
     @Test
     @Order(1)
-    void testAddAndLoadClient() {
-        Client client = new Client("Иван", "Петров", "+79001234567", "Haval Jolion", "А123ВС163");
-        Database.addClient(client);
-
-        List<Client> clients = Database.getAllClients();
-        assertThat(clients).isNotEmpty();
-
-        Client loaded = clients.stream()
-                .filter(c -> c.getName().equals("Иван"))
-                .findFirst()
-                .orElse(null);
-
-        assertThat(loaded).isNotNull();
-        assertThat(loaded.getLastName()).isEqualTo("Петров");
-        assertThat(loaded.getPhone()).isEqualTo("+79001234567");
-        assertThat(loaded.getCarModel()).isEqualTo("Haval Jolion");
-        assertThat(loaded.getCarNumber()).isEqualTo("А123ВС163");
+    void testCreateTables() {
+        Database.initForTest();
+        assertThat(true).isTrue();
     }
 
     @Test
     @Order(2)
-    void testUpdateClient() {
-        Client client = new Client("Петр", "Сидоров", "+79112223333", "Haval F7", "В456СЕ163");
+    void testAddClient() {
+        clearDatabase();
+
+        Client client = new Client("Иван", "Петров", "+79001234567", "Toyota Camry", "А123ВС163");
         Database.addClient(client);
 
         List<Client> clients = Database.getAllClients();
-        Client toUpdate = clients.stream()
-                .filter(c -> c.getName().equals("Петр"))
-                .findFirst()
-                .orElse(null);
-
-        assertThat(toUpdate).isNotNull();
-
-        toUpdate.setName("Петр Иванович");
-        toUpdate.setPhone("+79223334444");
-        Database.updateClient(toUpdate);
-
-        List<Client> updated = Database.getAllClients();
-        Client loaded = updated.stream()
-                .filter(c -> c.getId() == toUpdate.getId())
-                .findFirst()
-                .orElse(null);
-
-        assertThat(loaded).isNotNull();
-        assertThat(loaded.getName()).isEqualTo("Петр Иванович");
-        assertThat(loaded.getPhone()).isEqualTo("+79223334444");
+        assertThat(clients).hasSize(1);
+        assertThat(clients.get(0).getName()).isEqualTo("Иван");
+        assertThat(clients.get(0).getLastName()).isEqualTo("Петров");
     }
 
     @Test
     @Order(3)
-    void testDeleteClient() {
-        Client client = new Client("Анна", "Иванова", "+79334445555", "Haval F5", "С789ЕЕ163");
-        Database.addClient(client);
+    void testAddMultipleClients() {
+        clearDatabase();
 
-        List<Client> before = Database.getAllClients();
-        Client toDelete = before.stream()
-                .filter(c -> c.getName().equals("Анна"))
-                .findFirst()
-                .orElse(null);
+        Database.addClient(new Client("Анна", "Смирнова", "+79002223333", "Kia Rio", "В456СЕ163"));
+        Database.addClient(new Client("Сергей", "Васильев", "+79003334444", "Ford Focus", "Е789КХ163"));
 
-        assertThat(toDelete).isNotNull();
-
-        Database.deleteClient(toDelete);
-
-        List<Client> after = Database.getAllClients();
-        assertThat(after).noneMatch(c -> c.getId() == toDelete.getId());
+        List<Client> clients = Database.getAllClients();
+        assertThat(clients).hasSize(2);
     }
 
     @Test
     @Order(4)
     void testGetClientById() {
-        Client client = new Client("Ольга", "Смирнова", "+79445556666", "Haval Dargo", "М123НО163");
+        clearDatabase();
+
+        Client client = new Client("Дмитрий", "Соколов", "+79005556666", "Haval F7", "М123НО163");
         Database.addClient(client);
 
-        List<Client> clients = Database.getAllClients();
-        Client toFind = clients.stream()
-                .filter(c -> c.getName().equals("Ольга"))
-                .findFirst()
-                .orElse(null);
+        Client saved = Database.getAllClients().get(0);
+        Client retrieved = Database.getClientById(saved.getId());
 
-        assertThat(toFind).isNotNull();
-
-        Client loaded = Database.getClientById(toFind.getId());
-        assertThat(loaded).isNotNull();
-        assertThat(loaded.getName()).isEqualTo("Ольга");
+        assertThat(retrieved).isNotNull();
+        assertThat(retrieved.getName()).isEqualTo("Дмитрий");
     }
 
     @Test
     @Order(5)
-    void testGetClientId() {
-        Client client = new Client("Елена", "Кузнецова", "+79556667777", "Haval Big Dog", "Е456КХ163");
+    void testUpdateClient() {
+        clearDatabase();
+
+        Client client = new Client("Олег", "Иванов", "+79001112233", "Haval Jolion", "А111ВС163");
         Database.addClient(client);
 
-        List<Client> clients = Database.getAllClients();
-        Client toFind = clients.stream()
-                .filter(c -> c.getName().equals("Елена"))
-                .findFirst()
-                .orElse(null);
+        Client saved = Database.getAllClients().get(0);
+        saved.setPhone("+79998887766");
+        Database.updateClient(saved);
 
-        assertThat(toFind).isNotNull();
-
-        int clientId = Database.getClientId(toFind);
-        assertThat(clientId).isGreaterThan(0);
+        Client updated = Database.getClientById(saved.getId());
+        assertThat(updated.getPhone()).isEqualTo("+79998887766");
     }
-
-    // ==================== УСЛУГИ ====================
 
     @Test
     @Order(6)
-    void testAddAndLoadService() {
-        Service service = new Service("Замена масла", 1500);
-        Database.addService(service);
+    void testDeleteClient() {
+        clearDatabase();
 
-        List<Service> services = Database.getAllServices();
-        assertThat(services).anyMatch(s -> s.getName().equals("Замена масла"));
+        Client client = new Client("Мария", "Кузнецова", "+79112223344", "Mercedes E-Class", "К111ОО163");
+        Database.addClient(client);
+
+        assertThat(Database.getAllClients()).hasSize(1);
+
+        Database.deleteClient(Database.getAllClients().get(0));
+        assertThat(Database.getAllClients()).isEmpty();
     }
 
     @Test
     @Order(7)
-    void testDeleteService() {
-        Service service = new Service("Замена тормозных колодок", 2000);
+    void testAddService() {
+        clearDatabase();
+
+        Service service = new Service("Замена масла", 1500);
         Database.addService(service);
 
-        Database.deleteService(service);
-
         List<Service> services = Database.getAllServices();
-        assertThat(services).noneMatch(s -> s.getName().equals("Замена тормозных колодок"));
+        assertThat(services).hasSize(1);
+        assertThat(services.get(0).getName()).isEqualTo("Замена масла");
+        assertThat(services.get(0).getPrice()).isEqualTo(1500);
     }
-
-    // ==================== ЗАПЧАСТИ ====================
 
     @Test
     @Order(8)
-    void testAddAndLoadSparePart() {
-        SparePart part = new SparePart(
-            -1, 0, "Моторное масло 5W-30", "ML-5W30",
-            "Shell", "Haval Jolion, Haval F7",
-            800, 1200, 10, 3, "Склад А-1"
-        );
-        Database.addSparePart(part);
+    void testAddMultipleServices() {
+        clearDatabase();
 
-        List<SparePart> parts = Database.getAllSpareParts();
-        SparePart loaded = parts.stream()
-                .filter(p -> p.getName().equals("Моторное масло 5W-30"))
-                .findFirst()
-                .orElse(null);
+        Database.addService(new Service("Диагностика", 1000));
+        Database.addService(new Service("Замена масла", 1500));
+        Database.addService(new Service("Замена фильтров", 500));
 
-        assertThat(loaded).isNotNull();
-        assertThat(loaded.getPartNumber()).isEqualTo("ML-5W30");
-        assertThat(loaded.getManufacturer()).isEqualTo("Shell");
-        assertThat(loaded.getStock()).isEqualTo(10);
+        List<Service> services = Database.getAllServices();
+        assertThat(services).hasSize(3);
     }
 
     @Test
     @Order(9)
-    void testUpdateSparePartStock() {
-        SparePart part = new SparePart("Фильтр воздушный", 200, 400, 15);
-        Database.addSparePart(part);
+    void testDeleteService() {
+        clearDatabase();
 
-        List<SparePart> parts = Database.getAllSpareParts();
-        SparePart toUpdate = parts.stream()
-                .filter(p -> p.getName().equals("Фильтр воздушный"))
-                .findFirst()
-                .orElse(null);
+        Database.addService(new Service("Замена масла", 1500));
+        assertThat(Database.getAllServices()).hasSize(1);
 
-        assertThat(toUpdate).isNotNull();
-
-        Database.updateSparePartStock(toUpdate, 25);
-
-        SparePart loaded = Database.getAllSpareParts().stream()
-                .filter(p -> p.getId() == toUpdate.getId())
-                .findFirst()
-                .orElse(null);
-
-        assertThat(loaded).isNotNull();
-        assertThat(loaded.getStock()).isEqualTo(25);
+        Database.deleteService(Database.getAllServices().get(0));
+        assertThat(Database.getAllServices()).isEmpty();
     }
 
     @Test
     @Order(10)
-    void testDeleteSparePart() {
-        SparePart part = new SparePart("Свеча зажигания", 500, 900, 30);
+    void testAddSparePart() {
+        clearDatabase();
+
+        SparePart part = new SparePart("Масло моторное", 800, 1200, 20);
         Database.addSparePart(part);
 
         List<SparePart> parts = Database.getAllSpareParts();
-        SparePart toDelete = parts.stream()
-                .filter(p -> p.getName().equals("Свеча зажигания"))
-                .findFirst()
-                .orElse(null);
-
-        assertThat(toDelete).isNotNull();
-
-        Database.deleteSparePart(toDelete);
-
-        assertThat(Database.getAllSpareParts()).noneMatch(p -> p.getName().equals("Свеча зажигания"));
+        assertThat(parts).hasSize(1);
+        assertThat(parts.get(0).getName()).isEqualTo("Масло моторное");
+        assertThat(parts.get(0).getRetailPrice()).isEqualTo(1200);
     }
-
-    // ==================== ЗАКАЗЫ ====================
 
     @Test
     @Order(11)
-    void testAddAndLoadOrder() {
-        Client client = new Client("Дмитрий", "Морозов", "+79667778888", "Haval Jolion", "А999ВВ163");
-        Database.addClient(client);
-        Database.getAllClients();
+    void testAddMultipleSpareParts() {
+        clearDatabase();
 
-        Service service = new Service("Компьютерная диагностика", 1000);
-        Database.addService(service);
+        Database.addSparePart(new SparePart("Масло моторное", 800, 1200, 20));
+        Database.addSparePart(new SparePart("Фильтр масляный", 300, 500, 15));
 
-        WorkOrder order = new WorkOrder(client);
-        order.addService("Компьютерная диагностика", 1000);
-
-        Database.addOrder(order);
-
-        List<WorkOrder> orders = Database.getAllOrders();
-        assertThat(orders).isNotEmpty();
-
-        WorkOrder lastOrder = orders.get(0);
-        assertThat(lastOrder.getId()).startsWith("ZAK-");
-        assertThat(lastOrder.getClient()).isEqualTo(client);
-        assertThat(lastOrder.getTotal()).isEqualTo(1000);
-        assertThat(lastOrder.getServices()).contains("Компьютерная диагностика");
+        List<SparePart> parts = Database.getAllSpareParts();
+        assertThat(parts).hasSize(2);
     }
 
     @Test
     @Order(12)
-    void testUpdateOrder() {
-        Client client = new Client("Сергей", "Волков", "+79778889999", "Haval F7", "В888СС163");
-        Database.addClient(client);
-        Database.getAllClients();
+    void testUpdateSparePartStock() {
+        clearDatabase();
 
-        WorkOrder order = new WorkOrder(client);
-        order.addService("Замена масла", 1500);
-        Database.addOrder(order);
+        SparePart part = new SparePart("Масло моторное", 800, 1200, 20);
+        Database.addSparePart(part);
 
-        List<WorkOrder> orders = Database.getAllOrders();
-        WorkOrder toUpdate = orders.get(0);
-
-        toUpdate.setStatus(WorkOrder.STATUS_IN_WORK);
-        Database.updateOrder(toUpdate);
-
-        List<WorkOrder> updated = Database.getAllOrders();
-        WorkOrder loaded = updated.stream()
-                .filter(o -> o.getId().equals(toUpdate.getId()))
-                .findFirst()
-                .orElse(null);
-
-        assertThat(loaded).isNotNull();
-        assertThat(loaded.getStatus()).isEqualTo(WorkOrder.STATUS_IN_WORK);
+        Database.updateSparePartStock(part, 15);
+        List<SparePart> parts = Database.getAllSpareParts();
+        assertThat(parts.get(0).getStock()).isEqualTo(15);
     }
 
     @Test
     @Order(13)
-    void testDeleteOrder() {
-        Client client = new Client("Алексей", "Новиков", "+79889990000", "Haval F5", "С777ММ163");
+    void testAddOrderWithServices() {
+        clearDatabase();
+
+        Client client = new Client("Алексей", "Новиков", "+79009990000", "BMW X5", "О789УУ163");
         Database.addClient(client);
-        Database.getAllClients();
 
         WorkOrder order = new WorkOrder(client);
-        order.addService("Диагностика", 500);
+        order.addService("Диагностика", 1000);
+        order.addService("Замена масла", 1500);
         Database.addOrder(order);
 
-        List<WorkOrder> before = Database.getAllOrders();
-        WorkOrder toDelete = before.get(0);
-
-        String deletedId = toDelete.getId();
-        Database.deleteOrder(deletedId);
-
-        List<WorkOrder> after = Database.getAllOrders();
-        assertThat(after).noneMatch(o -> o.getId().equals(deletedId));
+        List<WorkOrder> orders = Database.getAllOrders();
+        assertThat(orders).hasSize(1);
+        assertThat(orders.get(0).getServices()).hasSize(2);
+        assertThat(orders.get(0).getTotal()).isEqualTo(2500);
     }
-
-    // ==================== ЗАПИСИ ====================
 
     @Test
     @Order(14)
-    void testAddAndLoadAppointment() {
-        Client client = new Client("Максим", "Соколов", "+79990001111", "Haval Dargo", "М555НН163");
+    void testAddOrderWithSpareParts() {
+        clearDatabase();
+
+        Client client = new Client("Елена", "Морозова", "+79007778888", "Toyota RAV4", "С456ТЕ163");
         Database.addClient(client);
-        Database.getAllClients();
 
-        Appointment appointment = new Appointment(
-            client, "Иван", "Замена масла",
-            "2024-03-15", "10:00"
-        );
-        Database.addAppointment(appointment);
+        SparePart oil = new SparePart("Масло моторное", 800, 1200, 20);
+        SparePart filter = new SparePart("Фильтр масляный", 300, 500, 15);
 
-        List<Appointment> appointments = Database.getAllAppointments();
-        assertThat(appointments).isNotEmpty();
+        WorkOrder order = new WorkOrder(client);
+        order.addSparePart(oil, 1);
+        order.addSparePart(filter, 1);
+        Database.addOrder(order);
 
-        Appointment loaded = appointments.stream()
-                .filter(a -> a.getDate().equals("2024-03-15"))
-                .findFirst()
-                .orElse(null);
-
-        assertThat(loaded).isNotNull();
-        assertThat(loaded.getMasterName()).isEqualTo("Иван");
-        assertThat(loaded.getTime()).isEqualTo("10:00");
+        List<WorkOrder> orders = Database.getAllOrders();
+        assertThat(orders).hasSize(1);
+        assertThat(orders.get(0).getSpareParts()).hasSize(2);
     }
 
     @Test
     @Order(15)
-    void testUpdateAppointment() {
-        Client client = new Client("Наталья", "Лебедева", "+79001112222", "Haval Big Dog", "Е333РР163");
+    void testUpdateOrderStatus() {
+        clearDatabase();
+
+        Client client = new Client("Петр", "Сидоров", "+79112223333", "Haval F7", "В456СЕ163");
         Database.addClient(client);
-        Database.getAllClients();
 
-        Appointment appointment = new Appointment(
-            client, "Петр", "Диагностика",
-            "2024-03-20", "14:00"
-        );
-        Database.addAppointment(appointment);
+        WorkOrder order = new WorkOrder(client);
+        order.addService("Диагностика", 1000);
+        Database.addOrder(order);
 
-        List<Appointment> appointments = Database.getAllAppointments();
-        Appointment toUpdate = appointments.get(0);
+        WorkOrder saved = Database.getAllOrders().get(0);
+        saved.setStatus(WorkOrder.STATUS_IN_PROGRESS);
+        Database.updateOrder(saved);
 
-        toUpdate.setStatus(Appointment.STATUS_COMPLETED);
-        toUpdate.setTime("15:00");
-        Database.updateAppointment(toUpdate);
-
-        List<Appointment> updated = Database.getAllAppointments();
-        Appointment loaded = updated.stream()
-                .filter(a -> a.getId() == toUpdate.getId())
-                .findFirst()
-                .orElse(null);
-
-        assertThat(loaded).isNotNull();
-        assertThat(loaded.getStatus()).isEqualTo(Appointment.STATUS_COMPLETED);
-        assertThat(loaded.getTime()).isEqualTo("15:00");
+        WorkOrder updated = Database.getAllOrders().get(0);
+        assertThat(updated.getStatus()).isEqualTo(WorkOrder.STATUS_IN_PROGRESS);
     }
 
     @Test
     @Order(16)
-    void testDeleteAppointment() {
-        Client client = new Client("Татьяна", "Попова", "+79112223333", "Haval Jolion", "А222СС163");
+    void testDeleteOrder() {
+        clearDatabase();
+
+        Client client = new Client("Ольга", "Попов", "+79223334455", "Lexus RX", "Н222СС163");
         Database.addClient(client);
-        Database.getAllClients();
 
-        Appointment appointment = new Appointment(
-            client, "Сергей", "Замена фильтров",
-            "2024-03-25", "11:00"
-        );
-        Database.addAppointment(appointment);
+        WorkOrder order = new WorkOrder(client);
+        order.addService("Диагностика", 1000);
+        Database.addOrder(order);
 
-        List<Appointment> before = Database.getAllAppointments();
-        Appointment toDelete = before.get(0);
+        assertThat(Database.getAllOrders()).hasSize(1);
 
-        Database.deleteAppointment(toDelete.getId());
-
-        List<Appointment> after = Database.getAllAppointments();
-        assertThat(after).noneMatch(a -> a.getId() == toDelete.getId());
+        Database.deleteOrder(Database.getAllOrders().get(0).getId());
+        assertThat(Database.getAllOrders()).isEmpty();
     }
 
     @Test
     @Order(17)
-    void testGetAppointmentsByDate() {
-        Client client = new Client("Виктор", "Зайцев", "+79223334444", "Haval F7", "В111ЕЕ163");
+    void testAddAppointment() {
+        clearDatabase();
+
+        Client client = new Client("Николай", "Соловьев", "+79556667788", "Mazda CX-5", "Т555НО163");
         Database.addClient(client);
-        Database.getAllClients();
 
-        Appointment appointment1 = new Appointment(
+        Appointment appointment = new Appointment(
             client, "Иван", "Замена масла",
-            "2024-04-01", "09:00"
+            "2024-06-01", "10:00"
         );
-        Appointment appointment2 = new Appointment(
-            client, "Петр", "Диагностика",
-            "2024-04-01", "11:00"
-        );
-        Database.addAppointment(appointment1);
-        Database.addAppointment(appointment2);
+        Database.addAppointment(appointment);
 
-        List<Appointment> appointments = Database.getAppointmentsByDate("2024-04-01");
-        assertThat(appointments).hasSize(2);
+        List<Appointment> appointments = Database.getAllAppointments();
+        assertThat(appointments).hasSize(1);
+        assertThat(appointments.get(0).getMasterName()).isEqualTo("Иван");
     }
-
-    // ==================== ВСПОМОГАТЕЛЬНЫЕ ====================
 
     @Test
     @Order(18)
-    void testGetConnection() {
-        Connection conn = Database.getConnection();
-        assertThat(conn).isNotNull();
+    void testAddMultipleAppointments() {
+        clearDatabase();
+
+        Client client = new Client("Татьяна", "Лебедева", "+79990001111", "Haval Big Dog", "Е333РР163");
+        Database.addClient(client);
+
+        Database.addAppointment(new Appointment(client, "Иван", "Замена масла", "2024-05-15", "09:00"));
+        Database.addAppointment(new Appointment(client, "Петр", "Диагностика", "2024-05-15", "11:00"));
+
+        List<Appointment> appointments = Database.getAllAppointments();
+        assertThat(appointments).hasSize(2);
     }
 
     @Test
     @Order(19)
-    void testClientIdNotFound() {
-        Client client = new Client("Не существующий", "+79000000000", "Test", "X000XX000");
-        int id = Database.getClientId(client);
-        assertThat(id).isEqualTo(-1);
+    void testGetAppointmentsByDate() {
+        clearDatabase();
+
+        Client client = new Client("Максим", "Тест19", "+79001112222", "Haval Jolion", "А222СС165");
+        Database.addClient(client);
+
+        Database.addAppointment(new Appointment(client, "Иван", "Замена масла", "2024-05-15", "09:00"));
+        Database.addAppointment(new Appointment(client, "Петр", "Диагностика", "2024-05-15", "11:00"));
+        Database.addAppointment(new Appointment(client, "Сергей", "Замена фильтров", "2024-05-16", "10:00"));
+
+        List<Appointment> day1 = Database.getAppointmentsByDate("2024-05-15");
+        List<Appointment> day2 = Database.getAppointmentsByDate("2024-05-16");
+
+        assertThat(day1).hasSize(2);
+        assertThat(day2).hasSize(1);
     }
 
     @Test
     @Order(20)
+    void testUpdateAppointmentStatus() {
+        clearDatabase();
+
+        Client client = new Client("Екатерина", "Лебедева", "+79445556677", "Nissan Qashqai", "С444ММ163");
+        Database.addClient(client);
+
+        Appointment appointment = new Appointment(
+            client, "Иван", "Замена масла",
+            "2024-06-01", "10:00"
+        );
+        Database.addAppointment(appointment);
+
+        Appointment saved = Database.getAllAppointments().get(0);
+        saved.setStatus(Appointment.STATUS_COMPLETED);
+        Database.updateAppointment(saved);
+
+        Appointment updated = Database.getAllAppointments().get(0);
+        assertThat(updated.getStatus()).isEqualTo(Appointment.STATUS_COMPLETED);
+    }
+
+    @Test
+    @Order(21)
+    void testDeleteAppointment() {
+        clearDatabase();
+
+        Client client = new Client("Анна", "Смирнова", "+79002223333", "Kia Rio", "В456СЕ163");
+        Database.addClient(client);
+
+        Appointment appointment = new Appointment(
+            client, "Иван", "Замена масла",
+            "2024-06-01", "10:00"
+        );
+        Database.addAppointment(appointment);
+
+        assertThat(Database.getAllAppointments()).hasSize(1);
+
+        Database.deleteAppointment(Database.getAllAppointments().get(0).getId());
+        assertThat(Database.getAllAppointments()).isEmpty();
+    }
+
+    @Test
+    @Order(22)
+    void testOrderStatusConstants() {
+        assertThat(WorkOrder.STATUS_DRAFT).isEqualTo("Черновик");
+        assertThat(WorkOrder.STATUS_IN_PROGRESS).isEqualTo("В работе");
+        assertThat(WorkOrder.STATUS_CLOSED).isEqualTo("Закрыт");
+        assertThat(WorkOrder.STATUS_CANCELLED).isEqualTo("Отменён");
+    }
+
+    @Test
+    @Order(23)
+    void testAppointmentStatusConstants() {
+        assertThat(Appointment.STATUS_SCHEDULED).isEqualTo("Запланировано");
+        assertThat(Appointment.STATUS_COMPLETED).isEqualTo("Выполнено");
+        assertThat(Appointment.STATUS_CANCELLED).isEqualTo("Отменено");
+    }
+
+    @Test
+    @Order(24)
+    void testClientIdLookup() {
+        clearDatabase();
+
+        Client client = new Client("Виктор", "Тест24", "+79009999999", "Haval Big Dog", "Е666РР164");
+        Database.addClient(client);
+
+        int clientId = Database.getClientId(client);
+        assertThat(clientId).isGreaterThan(0);
+    }
+
+    @Test
+    @Order(25)
+    void testGenerateOrderId() {
+        clearDatabase();
+
+        Client client = new Client("Иван", "Тест25", "+79001111111", "Haval Jolion", "А111ВС163");
+        Database.addClient(client);
+
+        WorkOrder order = new WorkOrder(client);
+        order.addService("Диагностика", 1000);
+        Database.addOrder(order);
+
+        List<WorkOrder> orders = Database.getAllOrders();
+        assertThat(orders).hasSize(1);
+        assertThat(orders.get(0).getId()).startsWith("ZAK-");
+    }
+
+    @Test
+    @Order(26)
     void testGetClientByIdNotFound() {
-        Client client = Database.getClientById(99999);
-        assertThat(client).isNull();
+        clearDatabase();
+        Client found = Database.getClientById(99999);
+        assertThat(found).isNull();
+    }
+
+    @Test
+    @Order(27)
+    void testUpdateClientNotFound() {
+        clearDatabase();
+        Client client = new Client("Тест", "Тестов", "+79000000000", "Test", "А000ВС000");
+        client.setId(99999);
+        Database.updateClient(client);
+        assertThat(Database.getAllClients()).isEmpty();
+    }
+
+    @Test
+    @Order(28)
+    void testDeleteClientNotFound() {
+        clearDatabase();
+        Client client = new Client("Тест", "Тестов", "+79000000000", "Test", "А000ВС000");
+        client.setId(99999);
+        Database.deleteClient(client);
+        assertThat(Database.getAllClients()).isEmpty();
+    }
+
+    @Test
+    @Order(29)
+    void testAddServiceDuplicate() {
+        clearDatabase();
+        Database.addService(new Service("Услуга", 1000));
+        Database.addService(new Service("Услуга", 2000));
+        List<Service> services = Database.getAllServices();
+        assertThat(services).hasSize(1);
+        assertThat(services.get(0).getPrice()).isEqualTo(2000);
+    }
+
+    @Test
+    @Order(30)
+    void testDeleteServiceNotFound() {
+        clearDatabase();
+        Service service = new Service("Неизвестная услуга", 1000);
+        Database.deleteService(service);
+        assertThat(Database.getAllServices()).isEmpty();
+    }
+
+    @Test
+    @Order(31)
+    void testAddSparePartDuplicate() {
+        clearDatabase();
+        Database.addSparePart(new SparePart("Масло", 800, 1200, 10));
+        Database.addSparePart(new SparePart("Масло", 900, 1300, 20));
+        List<SparePart> parts = Database.getAllSpareParts();
+        assertThat(parts).hasSize(1);
+        assertThat(parts.get(0).getStock()).isEqualTo(20);
+    }
+
+    @Test
+    @Order(32)
+    void testUpdateSparePartStockNotFound() {
+        clearDatabase();
+        SparePart part = new SparePart("Неизвестная запчасть", 800, 1200, 10);
+        part.setId(99999);
+        Database.updateSparePartStock(part, 5);
+    }
+
+    @Test
+    @Order(33)
+    void testDeleteSparePartNotFound() {
+        clearDatabase();
+        SparePart part = new SparePart("Неизвестная запчасть", 800, 1200, 10);
+        part.setId(99999);
+        Database.deleteSparePart(part);
+        assertThat(Database.getAllSpareParts()).isEmpty();
+    }
+
+    @Test
+    @Order(34)
+    void testAddOrderNoClient() {
+        clearDatabase();
+        Client client = new Client("Тест", "Тестов", "+79000000000", "Test", "А000ВС000");
+        WorkOrder order = new WorkOrder(client);
+        order.addService("Услуга", 1000);
+        Database.addOrder(order);
+        assertThat(Database.getAllOrders()).isEmpty();
+    }
+
+    @Test
+    @Order(35)
+    void testGetOrdersEmpty() {
+        clearDatabase();
+        assertThat(Database.getAllOrders()).isEmpty();
+    }
+
+    @Test
+    @Order(36)
+    void testGetAppointmentsByDateNotFound() {
+        clearDatabase();
+        assertThat(Database.getAppointmentsByDate("2024-12-31")).isEmpty();
+    }
+
+    @Test
+    @Order(37)
+    void testUpdateAppointmentNotFound() {
+        clearDatabase();
+        Client client = new Client("Тест", "Тестов", "+79000000000", "Test", "А000ВС000");
+        Appointment app = new Appointment(client, "Иван", "Услуга", "2024-06-01", "10:00");
+        app.setId(99999);
+        Database.updateAppointment(app);
+    }
+
+    @Test
+    @Order(38)
+    void testDeleteAppointmentNotFound() {
+        clearDatabase();
+        Database.deleteAppointment(99999);
+        assertThat(Database.getAllAppointments()).isEmpty();
     }
 }

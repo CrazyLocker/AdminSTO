@@ -12,6 +12,17 @@ public class Client {
 
     // ==================== КОНСТРУКТОРЫ ====================
 
+    public Client() {
+        this.id = -1;
+        this.name = "";
+        this.lastName = "";
+        this.phone = "";
+        this.carModel = "";
+        this.carNumber = "";
+        this.lastRepairDate = "";
+        this.dirty = true;
+    }
+
     public Client(int id, String name, String lastName, String phone, String carModel, String carNumber, String lastRepairDate) {
         this.id = id;
         this.name = name;

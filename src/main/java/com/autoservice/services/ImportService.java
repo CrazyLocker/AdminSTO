@@ -75,10 +75,11 @@ public class ImportService {
      */
     public static String detectFormat(File file) {
         String name = file.getName().toLowerCase();
+        if (name == null || name.isEmpty()) return "unknown";
         if (name.endsWith(".csv")) return "csv";
         if (name.endsWith(".xml")) return "xml";
         if (name.endsWith(".json")) return "json";
-        return null;
+        return "unknown";
     }
 
     /**

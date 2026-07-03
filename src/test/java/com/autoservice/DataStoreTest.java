@@ -6,44 +6,11 @@ import static org.assertj.core.api.Assertions.*;
 import java.util.List;
 
 /**
- * Тесты для класса DataStore
+ * Тесты для DataStore (слой кэша и координатор CRUD).
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class DataStoreTest {
-
-    @BeforeAll
-    static void setup() {
-        Database.initForTest();
-    }
-
-    @AfterAll
-    static void cleanup() {
-        Database.close();
-        try {
-            java.io.File f = new java.io.File("test.db");
-            f.delete();
-        } catch (Exception e) {
-            // Игнорируем
-        }
-    }
-
-    private static void clearDatabase() {
-        try {
-            var stmt = Database.getConnection().createStatement();
-            stmt.execute("DELETE FROM order_parts");
-            stmt.execute("DELETE FROM order_services");
-            stmt.execute("DELETE FROM appointments");
-            stmt.execute("DELETE FROM orders");
-            stmt.execute("DELETE FROM spare_parts");
-            stmt.execute("DELETE FROM services");
-            stmt.execute("DELETE FROM clients");
-            stmt.execute("DELETE FROM sqlite_sequence");
-            stmt.close();
-        } catch (Exception e) {
-            System.err.println("Очистка БД: " + e.getMessage());
-        }
-        DataStore.load();
-    }
+@Tag(TestTags.INTEGRATION)
+class DataStoreTest extends BaseTest {
 
     @Test
     @Order(1)
@@ -272,10 +239,8 @@ class DataStoreTest {
         DataStore.addOrder(order2);
         DataStore.load();
 
-        // Проверяем что у нас есть 2 заказа
         assertThat(DataStore.getOrders()).hasSize(2);
 
-        // Проверяем что оба заказа принадлежат клиенту (по имени)
         long clientOrdersCount = DataStore.getOrders().stream()
                 .filter(o -> o.getClient().getName().equals("Павел"))
                 .count();
@@ -293,14 +258,14 @@ class DataStoreTest {
         DataStore.load();
 
         WorkOrder order = new WorkOrder(client);
-        order.setStatus(WorkOrder.STATUS_NEW);
+        order.setStatus(WorkOrder.STATUS_DRAFT);
         DataStore.addOrder(order);
 
-        order.setStatus(WorkOrder.STATUS_IN_WORK);
+        order.setStatus(WorkOrder.STATUS_IN_PROGRESS);
         DataStore.updateOrder(order);
         DataStore.load();
 
-        assertThat(DataStore.getOrders().get(0).getStatus()).isEqualTo(WorkOrder.STATUS_IN_WORK);
+        assertThat(DataStore.getOrders().get(0).getStatus()).isEqualTo(WorkOrder.STATUS_IN_PROGRESS);
     }
 
     @Test
@@ -381,17 +346,17 @@ class DataStoreTest {
 
         DataStore.load();
 
-        Client client = new Client("Максим ТестDS16", "+79001112222", "Haval Jolion", "А222СС165");
+        Client client = new Client("Максим", "Тест16", "+79001112222", "Haval Jolion", "А222СС165");
         DataStore.addClient(client);
         DataStore.load();
 
         WorkOrder activeOrder = new WorkOrder(client);
-        activeOrder.addService("Диагностика ТестDS16", 500);
-        activeOrder.setStatus(WorkOrder.STATUS_IN_WORK);
+        activeOrder.addService("Диагностика Тест16", 500);
+        activeOrder.setStatus(WorkOrder.STATUS_DRAFT);
         DataStore.addOrder(activeOrder);
 
         WorkOrder closedOrder = new WorkOrder(client);
-        closedOrder.addService("Замена масла ТестDS16", 1500);
+        closedOrder.addService("Замена масла Тест16", 1500);
         closedOrder.setStatus(WorkOrder.STATUS_CLOSED);
         DataStore.addOrder(closedOrder);
 
@@ -405,14 +370,14 @@ class DataStoreTest {
     void testLoadData() {
         clearDatabase();
 
-        Client client = new Client("Загрузочный клиент", "+79110001111", "Haval F7", "В000СС163");
+        Client client = new Client("Загрузочный", "Клиент", "+79110001111", "Haval F7", "В000СС163");
         DataStore.addClient(client);
         DataStore.load();
 
         DataStore.load();
 
         assertThat(DataStore.getClients()).hasSize(1);
-        assertThat(DataStore.getClients().get(0).getName()).isEqualTo("Загрузочный клиент");
+        assertThat(DataStore.getClients().get(0).getName()).isEqualTo("Загрузочный");
     }
 
     @Test
@@ -420,8 +385,8 @@ class DataStoreTest {
     void testDataIsolation() {
         clearDatabase();
 
-        Client client1 = new Client("Клиент 1", "+79001111111", "Toyota", "А001СС163");
-        Client client2 = new Client("Клиент 2", "+79002222222", "Honda", "В002СС163");
+        Client client1 = new Client("Клиент", "1", "+79001111111", "Toyota", "А001СС163");
+        Client client2 = new Client("Клиент", "2", "+79002222222", "Honda", "В002СС163");
         DataStore.addClient(client1);
         DataStore.addClient(client2);
         DataStore.load();
@@ -432,5 +397,137 @@ class DataStoreTest {
         DataStore.load();
 
         assertThat(DataStore.getClients()).isEmpty();
+    }
+
+    @Test
+    @Order(19)
+    void testUpdateClient() {
+        clearDatabase();
+        DataStore.load();
+
+        Client client = new Client("Тест", "Тестов", "+79000000000", "Test", "А000ВС000");
+        DataStore.addClient(client);
+        DataStore.load();
+
+        Client updatedClient = DataStore.getClients().get(0);
+        updatedClient.setPhone("+79998887766");
+        DataStore.updateClient(updatedClient);
+        DataStore.load();
+
+        assertThat(DataStore.getClients().get(0).getPhone()).isEqualTo("+79998887766");
+    }
+
+    @Test
+    @Order(20)
+    void testUpdateService() {
+        clearDatabase();
+        DataStore.load();
+
+        Service service = new Service("Услуга", 1000);
+        DataStore.addService(service);
+        DataStore.load();
+
+        Service updatedService = DataStore.getServices().get(0);
+        updatedService.setPrice(2000);
+        DataStore.addService(updatedService);
+        DataStore.load();
+
+        assertThat(DataStore.getServices().get(0).getPrice()).isEqualTo(2000);
+    }
+
+    @Test
+    @Order(21)
+    void testUpdateSparePart() {
+        clearDatabase();
+        DataStore.load();
+
+        SparePart part = new SparePart("Масло", 800, 1200, 10);
+        DataStore.addSparePart(part);
+        DataStore.load();
+
+        SparePart updatedPart = DataStore.getSpareParts().get(0);
+        updatedPart.setStock(20);
+        DataStore.addSparePart(updatedPart);
+        DataStore.load();
+
+        assertThat(DataStore.getSpareParts().get(0).getStock()).isEqualTo(20);
+    }
+
+    @Test
+    @Order(22)
+    void testUpdateOrderNotFound() {
+        clearDatabase();
+        DataStore.load();
+
+        Client client = new Client("Тест", "Тестов", "+79000000000", "Test", "А000ВС000");
+        WorkOrder order = new WorkOrder(client);
+        order.setId("ZAK-99/99/99-9999");
+        order.setStatus("Новый");
+        DataStore.updateOrder(order);
+        assertThat(DataStore.getOrders()).isEmpty();
+    }
+
+    @Test
+    @Order(23)
+    void testDeleteSparePart() {
+        clearDatabase();
+        DataStore.load();
+
+        SparePart part = new SparePart("Масло", 800, 1200, 10);
+        DataStore.addSparePart(part);
+        DataStore.load();
+
+        DataStore.removeSparePart(part);
+        DataStore.load();
+
+        assertThat(DataStore.getSpareParts()).isEmpty();
+    }
+
+    @Test
+    @Order(24)
+    void testGetClientsEmpty() {
+        clearDatabase();
+        DataStore.load();
+        assertThat(DataStore.getClients()).isEmpty();
+    }
+
+    @Test
+    @Order(25)
+    void testGetServicesEmpty() {
+        clearDatabase();
+        DataStore.load();
+        assertThat(DataStore.getServices()).isEmpty();
+    }
+
+    @Test
+    @Order(26)
+    void testGetSparePartsEmpty() {
+        clearDatabase();
+        DataStore.load();
+        assertThat(DataStore.getSpareParts()).isEmpty();
+    }
+
+    @Test
+    @Order(27)
+    void testGetOrdersEmpty() {
+        clearDatabase();
+        DataStore.load();
+        assertThat(DataStore.getOrders()).isEmpty();
+    }
+
+    @Test
+    @Order(28)
+    void testGetAppointmentsEmpty() {
+        clearDatabase();
+        DataStore.load();
+        assertThat(DataStore.getAppointments()).isEmpty();
+    }
+
+    @Test
+    @Order(29)
+    void testGetAppointmentsByDateEmpty() {
+        clearDatabase();
+        DataStore.load();
+        assertThat(DataStore.getAppointmentsByDate("2024-12-31")).isEmpty();
     }
 }

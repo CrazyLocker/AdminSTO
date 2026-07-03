@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.*;
  * Тесты для класса Validators
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@Tag(TestTags.UNIT)
 class ValidatorsTest {
 
     @Test
@@ -116,5 +117,86 @@ class ValidatorsTest {
         String result = Validators.normalizeCarNumber("А-123.ВС_163");
         
         assertThat(result).isEqualTo("А123ВС163");
+    }
+
+    @Test
+    @Order(11)
+    void testIsValidPhoneEdgeCases() {
+        assertThat(Validators.isValidPhone("+7900123456")).isFalse();
+        assertThat(Validators.isValidPhone("+790012345678")).isFalse();
+        assertThat(Validators.isValidPhone("+79001234567890")).isFalse();
+    }
+
+    @Test
+    @Order(12)
+    void testCleanPhoneWithSpaces() {
+        String result = Validators.cleanPhone("+7 (900) 123-45-67");
+        assertThat(result).isEqualTo("+79001234567");
+    }
+
+    @Test
+    @Order(13)
+    void testNormalizeCarNumberEdgeCases() {
+        assertThat(Validators.normalizeCarNumber("А 123 ВС 163")).isEqualTo("А123ВС163");
+        assertThat(Validators.normalizeCarNumber("А-123-ВС-163")).isEqualTo("А123ВС163");
+    }
+
+    @Test
+    @Order(14)
+    void testIsValidCarNumberEdgeCases() {
+        assertThat(Validators.isValidCarNumber("А123ВС")).isFalse();
+        assertThat(Validators.isValidCarNumber("А123ВС1634")).isFalse();
+        assertThat(Validators.isValidCarNumber("АА123ВС163")).isFalse();
+    }
+
+    @Test
+    @Order(15)
+    void testCleanPhoneWithHyphens() {
+        String result = Validators.cleanPhone("+7-900-123-45-67");
+        assertThat(result).isEqualTo("+79001234567");
+    }
+
+    @Test
+    @Order(16)
+    void testNormalizeCarNumberWithMixedCase() {
+        String result = Validators.normalizeCarNumber("а123вс163");
+        assertThat(result).isEqualTo("А123ВС163");
+    }
+
+    @Test
+    @Order(17)
+    void testIsValidCarNumberWithAllValidLetters() {
+        assertThat(Validators.isValidCarNumber("А123ВС163")).isTrue();
+        assertThat(Validators.isValidCarNumber("В123ВС163")).isTrue();
+        assertThat(Validators.isValidCarNumber("Е123ВС163")).isTrue();
+        assertThat(Validators.isValidCarNumber("К123ВС163")).isTrue();
+        assertThat(Validators.isValidCarNumber("М123ВС163")).isTrue();
+        assertThat(Validators.isValidCarNumber("Н123ВС163")).isTrue();
+        assertThat(Validators.isValidCarNumber("О123ВС163")).isTrue();
+        assertThat(Validators.isValidCarNumber("Р123ВС163")).isTrue();
+        assertThat(Validators.isValidCarNumber("С123ВС163")).isTrue();
+        assertThat(Validators.isValidCarNumber("Т123ВС163")).isTrue();
+        assertThat(Validators.isValidCarNumber("У123ВС163")).isTrue();
+        assertThat(Validators.isValidCarNumber("Х123ВС163")).isTrue();
+    }
+
+    @Test
+    @Order(18)
+    void testCleanPhoneWithMultipleSpaces() {
+        String result = Validators.cleanPhone("+7  900  123  45  67");
+        assertThat(result).isEqualTo("+79001234567");
+    }
+
+    @Test
+    @Order(19)
+    void testNormalizeCarNumberWithExtraSpaces() {
+        String result = Validators.normalizeCarNumber("А   123   ВС   163");
+        assertThat(result).isEqualTo("А123ВС163");
+    }
+
+    @Test
+    @Order(20)
+    void testIsValidCarNumberWithSingleDigit() {
+        assertThat(Validators.isValidCarNumber("А1ВС163")).isFalse();
     }
 }

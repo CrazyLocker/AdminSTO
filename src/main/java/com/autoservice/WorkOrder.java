@@ -22,11 +22,18 @@ public class WorkOrder {
 
     // ==================== КОНСТРУКТОРЫ ====================
 
-    public WorkOrder(Client client) {
-        this.client = client;
+    public WorkOrder() {
+        this.id = "";
+        this.client = null;
         this.status = STATUS_DRAFT;
         this.total = 0;
+        this.createdDate = "";
         this.dirty = true;
+    }
+
+    public WorkOrder(Client client) {
+        this();
+        this.client = client;
     }
 
     public WorkOrder(String id, Client client, String status, double total, String createdDate) {

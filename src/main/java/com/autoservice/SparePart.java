@@ -22,6 +22,24 @@ public class SparePart {
 
     // ==================== КОНСТРУКТОРЫ ====================
 
+    public SparePart() {
+        this.id = -1;
+        this.orderId = 0;
+        this.name = "";
+        this.partNumber = "";
+        this.manufacturer = "";
+        this.compatibleModels = "";
+        this.purchasePrice = 0;
+        this.retailPrice = 0;
+        this.stock = 0;
+        this.minStock = 0;
+        this.unitVolume = 1.0;
+        this.unitType = "шт";
+        this.isLiquid = false;
+        this.location = "";
+        this.dirty = true;
+    }
+
     // Полный конструктор
     public SparePart(int id, int orderId, String name, String partNumber, String manufacturer,
                      String compatibleModels, double purchasePrice, double retailPrice,

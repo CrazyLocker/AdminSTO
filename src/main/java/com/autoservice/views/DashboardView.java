@@ -3,6 +3,7 @@ package com.autoservice.views;
 import com.autoservice.*;
 import com.autoservice.controllers.ClientController;
 import com.autoservice.controllers.OrderController;
+import com.autoservice.controllers.SettingsController;
 import com.autoservice.dialogs.CreateOrderDialog;
 import com.autoservice.dialogs.EditClientDialog;
 import com.autoservice.dialogs.OrderDetailsDialog;
@@ -124,7 +125,8 @@ public class DashboardView extends ScrollPane {
                 createActionButton("Новый заказ", "#3498db"),
                 createActionButton("Новый клиент", "#2ecc71"),
                 createActionButton("Запись", "#9b59b6"),
-                createActionButton("Отчёт", "#f39c12")
+                createActionButton("Отчёт", "#f39c12"),
+                createActionButton("Настройки", "#95a5a6")
         );
 
         gridPane.add(actionsRow, 0, row);
@@ -212,6 +214,8 @@ public class DashboardView extends ScrollPane {
                 openAppointmentView();
             } else if (btnText.contains("Отчёт")) {
                 generateReport();
+            } else if (btnText.contains("Настройки")) {
+                openSettings();
             }
         });
 
@@ -281,6 +285,14 @@ public class DashboardView extends ScrollPane {
             ReportView.show();
         } catch (Exception ex) {
             showErrorAlert("Ошибка", "Не удалось открыть отчёт");
+        }
+    }
+
+    private void openSettings() {
+        try {
+            SettingsController.showSettings();
+        } catch (Exception ex) {
+            showErrorAlert("Ошибка", "Не удалось открыть настройки");
         }
     }
 

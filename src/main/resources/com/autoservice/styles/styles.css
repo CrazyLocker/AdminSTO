@@ -1,0 +1,973 @@
+/* ========================================================================
+   ОСНОВНЫЕ СТИЛИ
+   ======================================================================== */
+
+/* Цветовая схема */
+.root {
+    -primary-color: #1976d2;
+    -primary-dark: #1565c0;
+    -primary-darker: #0d47a1;
+
+    -success-color: #2ecc71;
+    -success-dark: #27ae60;
+    -success-darker: #1e8449;
+
+    -warning-color: #f39c12;
+    -warning-dark: #d68910;
+    -warning-darker: #b7950b;
+
+    -danger-color: #e74c3c;
+    -danger-dark: #c0392b;
+    -danger-darker: #922b21;
+
+    -info-color: #3498db;
+    -info-dark: #2980b9;
+    -info-darker: #1a5276;
+
+    -purple-color: #9b59b6;
+    -purple-dark: #7d3c98;
+    -purple-darker: #6c3483;
+
+    -secondary-color: #95a5a6;
+    -secondary-dark: #7f8c8d;
+    -secondary-darker: #616a6b;
+
+    -text-dark: #2c3e50;
+    -text-medium: #5f6368;
+    -text-light: #7f8c8d;
+    -text-white: #ffffff;
+
+    -bg-light: #f5f7fa;
+    -bg-white: #ffffff;
+    -bg-hover: #f5f5f5;
+    -bg-selected: #e3f2fd;
+
+    -border-color: #e0e0e0;
+    -border-light: #ecf0f1;
+
+    -font-family: 'Segoe UI', 'Roboto', 'Open Sans', sans-serif;
+}
+
+
+/* ========================================================================
+   1. ТАБЛИЦЫ
+   ======================================================================== */
+
+.table-view {
+    -fx-background-color: transparent;
+    -fx-border-color: -border-color;
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+    -fx-font-family: -font-family;
+    -fx-font-size: 13px;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: #381CC1;
+    -fx-pref-height: 36px;
+    -fx-min-height: 36px;
+    -fx-max-height: 36px;
+    -fx-background-radius: 0;
+}
+
+.table-view .column-header {
+    -fx-background-color: transparent;
+    -fx-border-color: rgba(255, 255, 255, 0.2);
+    -fx-border-width: 0 1px 0 0;
+    -fx-padding: 0 8px;
+}
+
+.table-view .column-header:last-child {
+    -fx-border-width: 0;
+}
+
+.table-view .column-header .label {
+    -fx-font-weight: bold;
+    -fx-text-fill: -text-white;
+    -fx-font-size: 12px;
+    -fx-padding: 6px 4px;
+    -fx-alignment: CENTER-LEFT;
+}
+
+.table-view .column-header .arrow {
+    -fx-background-color: -text-white;
+}
+
+/* Высота строк */
+.table-row-cell {
+    -fx-pref-height: 37px;
+    -fx-cell-size: 37px;
+    -fx-min-height: 33px;
+}
+
+.table-row-cell .table-cell {
+    -fx-padding: 4px 10px;
+    -fx-border-color: transparent;
+    -fx-font-size: 12px;
+}
+
+/* Чередование строк */
+.table-row-cell:odd {
+    -fx-background-color: -bg-white;
+}
+
+.table-row-cell:even {
+    -fx-background-color: #f8f9fa;
+}
+
+.table-row-cell:selected {
+    -fx-background-color: -bg-selected;
+    -fx-border-color: #bbdefb;
+    -fx-border-width: 1px 0;
+}
+
+.table-row-cell:selected .table-cell {
+    -fx-text-fill: #1565c0;
+    -fx-font-weight: 500;
+}
+
+.table-row-cell:hover {
+    -fx-background-color: -bg-hover;
+    -fx-cursor: hand;
+}
+
+.table-row-cell:selected:hover {
+    -fx-background-color: #d0e9ff;
+}
+
+/* Полоса прокрутки */
+.scroll-bar:vertical {
+    -fx-background-color: transparent;
+    -fx-pref-width: 8px;
+}
+
+.scroll-bar:vertical .thumb {
+    -fx-background-color: #c0c0c0;
+    -fx-background-radius: 8;
+}
+
+.scroll-bar:vertical .thumb:hover {
+    -fx-background-color: #a0a0a0;
+}
+
+.scroll-bar:vertical .track {
+    -fx-background-color: #f0f0f0;
+    -fx-background-radius: 8;
+}
+
+
+/* ========================================================================
+   2. КНОПКИ
+   ======================================================================== */
+
+.button {
+    -fx-background-color: -primary-color;
+    -fx-text-fill: -text-white;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-padding: 4px 14px;
+    -fx-pref-height: 30px;
+    -fx-min-height: 28px;
+    -fx-max-height: 34px;
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+    -fx-cursor: hand;
+    -fx-font-family: -font-family;
+}
+
+.button:hover {
+    -fx-background-color: -primary-dark;
+}
+
+.button:pressed {
+    -fx-background-color: -primary-darker;
+}
+
+.button:disabled {
+    -fx-opacity: 0.5;
+    -fx-cursor: default;
+}
+
+.button .graphic {
+    -fx-padding: 0 4px 0 0;
+}
+
+/* Цветовые варианты */
+.button-success, .add-button, .save-button,
+.add-appointment-button, .add-slot-button {
+    -fx-background-color: -success-color;
+}
+
+.button-success:hover, .add-button:hover, .save-button:hover,
+.add-appointment-button:hover, .add-slot-button:hover {
+    -fx-background-color: -success-dark;
+}
+
+.button-success:pressed, .add-button:pressed, .save-button:pressed,
+.add-appointment-button:pressed, .add-slot-button:pressed {
+    -fx-background-color: -success-darker;
+}
+
+.button-info, .income-button, .today-button {
+    -fx-background-color: -info-color;
+}
+
+.button-info:hover, .income-button:hover, .today-button:hover {
+    -fx-background-color: -info-dark;
+}
+
+.button-info:pressed, .income-button:pressed, .today-button:pressed {
+    -fx-background-color: -info-darker;
+}
+
+.button-warning, .edit-button, .edit-appointment-btn {
+    -fx-background-color: -warning-color;
+}
+
+.button-warning:hover, .edit-button:hover, .edit-appointment-btn:hover {
+    -fx-background-color: -warning-dark;
+}
+
+.button-warning:pressed, .edit-button:pressed, .edit-appointment-btn:pressed {
+    -fx-background-color: -warning-darker;
+}
+
+.button-danger, .delete-button, .cancel-button,
+.clear-button, .reset-button {
+    -fx-background-color: -danger-color;
+}
+
+.button-danger:hover, .delete-button:hover, .cancel-button:hover,
+.clear-button:hover, .reset-button:hover {
+    -fx-background-color: -danger-dark;
+}
+
+.button-danger:pressed, .delete-button:pressed, .cancel-button:pressed,
+.clear-button:pressed, .reset-button:pressed {
+    -fx-background-color: -danger-darker;
+}
+
+.button-purple, .print-button {
+    -fx-background-color: -purple-color;
+}
+
+.button-purple:hover, .print-button:hover {
+    -fx-background-color: -purple-dark;
+}
+
+.button-purple:pressed, .print-button:pressed {
+    -fx-background-color: -purple-darker;
+}
+
+.button-secondary, .refresh-button {
+    -fx-background-color: -secondary-color;
+}
+
+.button-secondary:hover, .refresh-button:hover {
+    -fx-background-color: -secondary-dark;
+}
+
+.button-secondary:pressed, .refresh-button:pressed {
+    -fx-background-color: -secondary-darker;
+}
+
+/* Кнопки в панелях таблиц */
+.action-button {
+    -fx-text-fill: -text-white;
+    -fx-font-weight: bold;
+    -fx-padding: 4px 10px;
+    -fx-pref-height: 30px;
+    -fx-min-height: 28px;
+    -fx-max-height: 34px;
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+    -fx-cursor: hand;
+    -fx-font-size: 12px;
+}
+
+.action-button:hover {
+    -fx-opacity: 0.9;
+}
+
+.action-button:disabled {
+    -fx-opacity: 0.5;
+    -fx-cursor: default;
+}
+
+/* Кнопки в диалогах */
+.dialog-button {
+    -fx-pref-width: 120px;
+    -fx-pref-height: 30px;
+    -fx-min-height: 28px;
+    -fx-max-height: 34px;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+    -fx-padding: 4px 16px;
+    -fx-cursor: hand;
+}
+
+.dialog-button:disabled {
+    -fx-opacity: 0.5;
+    -fx-cursor: default;
+}
+
+
+/* ========================================================================
+   3. ПОЛЯ ВВОДА
+   ======================================================================== */
+
+.search-field {
+    -fx-background-color: -bg-white;
+    -fx-border-color: -border-color;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 6px 12px;
+    -fx-font-size: 13px;
+    -fx-pref-height: 32px;
+}
+
+.search-field:focused {
+    -fx-border-color: -primary-color;
+    -fx-border-width: 2px;
+}
+
+.form-field {
+    -fx-background-color: -bg-white;
+    -fx-border-color: -border-color;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-padding: 5px 10px;
+    -fx-font-size: 12px;
+    -fx-pref-height: 30px;
+}
+
+.form-field:focused {
+    -fx-border-color: -primary-color;
+    -fx-border-width: 2px;
+}
+
+
+/* ========================================================================
+   4. COMBOBOX — БЕЛЫЙ ФОН, ЧЁРНЫЙ ТЕКСТ (ЕДИНЫЙ СТИЛЬ)
+   ======================================================================== */
+
+/* Базовый ComboBox */
+.combo-box {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #e0e0e0;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+    -fx-padding: 4px 8px;
+    -fx-font-size: 13px;
+    -fx-pref-height: 32px;
+    -fx-min-height: 30px;
+    -fx-text-fill: #2c3e50;
+}
+
+.combo-box:focused {
+    -fx-border-color: #1976d2;
+    -fx-border-width: 2px;
+}
+
+/* Стрелка */
+.combo-box .arrow-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0 4px;
+}
+
+.combo-box .arrow {
+    -fx-background-color: #666;
+}
+
+/* ====== COMBOBOX В ДИАЛОГАХ ====== */
+.dialog-combo {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #e0e0e0;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+    -fx-padding: 4px 10px;
+    -fx-font-size: 13px;
+    -fx-pref-height: 32px;
+    -fx-min-height: 30px;
+    -fx-text-fill: #2c3e50;
+}
+
+.dialog-combo:focused {
+    -fx-border-color: #1976d2;
+    -fx-border-width: 2px;
+}
+
+/* ====== COMBOBOX В ТАБЛИЦАХ ====== */
+.table-view .combo-box {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #e0e0e0;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+    -fx-padding: 0 4px;
+    -fx-pref-height: 28px;
+    -fx-min-height: 26px;
+    -fx-max-height: 30px;
+    -fx-pref-width: 110px;
+    -fx-min-width: 90px;
+    -fx-max-width: 150px;
+    -fx-font-size: 12px;
+    -fx-text-fill: #2c3e50;
+}
+
+
+/* ========================================================================
+   5. ДИАЛОГИ
+   ======================================================================== */
+
+.dialog-root {
+    -fx-background-color: -bg-light;
+}
+
+.dialog-title {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -text-dark;
+}
+
+.dialog-grid {
+    -fx-background-color: -bg-white;
+    -fx-padding: 15px;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+
+.dialog-grid .label {
+    -fx-font-weight: bold;
+    -fx-text-fill: #555;
+}
+
+.dialog-datepicker {
+    -fx-font-size: 13px;
+    -fx-pref-height: 30px;
+}
+
+.create-order-checkbox {
+    -fx-font-size: 13px;
+}
+
+.low-stock-row {
+    -fx-background-color: #ffcccc !important;
+}
+
+.low-stock-row .text {
+    -fx-fill: -danger-color !important;
+}
+
+
+/* ========================================================================
+   6. ПАНЕЛИ И КОНТЕЙНЕРЫ
+   ======================================================================== */
+
+.main-container {
+    -fx-background-color: -bg-light;
+    -fx-padding: 20px;
+}
+
+.section-title {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -text-dark;
+    -fx-padding: 0 0 16px 0;
+}
+
+.top-panel {
+    -fx-background-color: -bg-white;
+    -fx-border-color: -border-color;
+    -fx-border-width: 0 0 1px 0;
+    -fx-padding: 8px 12px;
+}
+
+.separator {
+    -fx-text-fill: #bdc3c7;
+    -fx-font-size: 18px;
+    -fx-padding: 0 5px;
+}
+
+.filter-panel {
+    -fx-background-color: -bg-white;
+    -fx-border-color: -border-color;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-padding: 10px;
+}
+
+.filter-title {
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+}
+
+.filter-label {
+    -fx-font-weight: bold;
+}
+
+.result-label {
+    -fx-text-fill: #666;
+    -fx-font-size: 11px;
+    -fx-padding: 0 0 0 10px;
+}
+
+.toggle-button {
+    -fx-background-color: #ecf0f1;
+    -fx-font-size: 11px;
+    -fx-padding: 4px 10px;
+    -fx-pref-height: 28px;
+}
+
+
+/* ========================================================================
+   7. ВКЛАДКИ (TABS)
+   ======================================================================== */
+
+.tab-pane {
+    -fx-background-color: -bg-light;
+    -fx-background-radius: 12;
+    -fx-border-color: -border-color;
+    -fx-border-radius: 12;
+}
+
+.tab-pane .tab-header-area {
+    -fx-padding: 6px 12px 0 12px;
+    -fx-background-color: transparent;
+}
+
+.tab-pane .tab-header-background {
+    -fx-background-color: -bg-white;
+    -fx-background-radius: 12 12 0 0;
+    -fx-border-color: -border-color;
+    -fx-border-width: 0 0 1px 0;
+}
+
+.tab {
+    -fx-background-color: transparent;
+    -fx-padding: 8px 18px;
+    -fx-font-size: 14px;
+    -fx-font-weight: normal;
+    -fx-text-fill: -text-medium;
+    -fx-border-color: transparent;
+    -fx-border-width: 0 0 3px 0;
+    -fx-cursor: hand;
+}
+
+.tab:hover {
+    -fx-text-fill: #4D76DE;
+}
+
+.tab:selected {
+    -fx-text-fill: #4D76DE;
+    -fx-font-weight: bold;
+    -fx-border-color: #4D76DE;
+    -fx-border-width: 0 0 3px 0;
+    -fx-background-color: transparent;
+}
+
+.tab .tab-label {
+    -fx-graphic-text-gap: 8px;
+    -fx-alignment: CENTER;
+}
+
+.tab .tab-close-button {
+    -fx-background-color: -danger-color;
+    -fx-shape: "M0,0 L1,1 M1,0 L0,1";
+    -fx-scale-shape: false;
+}
+
+.tab .tab-close-button:hover {
+    -fx-background-color: -danger-dark;
+}
+
+.tab-pane .tab-content-area {
+    -fx-background-color: transparent;
+    -fx-padding: 12px;
+}
+
+.dictionary-tabpane {
+    -fx-background-color: transparent;
+}
+
+
+/* ========================================================================
+   8. ОТЧЁТ (REPORT VIEW)
+   ======================================================================== */
+
+.report-root {
+    -fx-background-color: -bg-light;
+    -fx-padding: 20px;
+}
+
+.report-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -text-dark;
+}
+
+.report-date {
+    -fx-font-size: 14px;
+    -fx-text-fill: -text-light;
+}
+
+.report-period-label {
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+}
+
+.report-period-combo {
+    -fx-font-size: 14px;
+    -fx-padding: 4px 8px;
+    -fx-pref-height: 30px;
+}
+
+.stat-card {
+    -fx-background-color: -bg-white;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 3);
+    -fx-border-width: 2px 0 0 0;
+    -fx-min-width: 100px;
+    -fx-padding: 8px 12px;
+    -fx-alignment: center;
+}
+
+.stat-card-title {
+    -fx-font-size: 11px;
+    -fx-text-fill: -text-light;
+}
+
+.stat-card-value {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -text-dark;
+}
+
+.list-box {
+    -fx-background-color: -bg-white;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 6, 0, 0, 3);
+    -fx-padding: 8px;
+}
+
+.list-row {
+    -fx-padding: 2px 0;
+    -fx-alignment: center-left;
+    -fx-spacing: 10px;
+}
+
+.list-rank {
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -text-light;
+    -fx-min-width: 25px;
+}
+
+.list-name {
+    -fx-font-size: 13px;
+    -fx-text-fill: -text-dark;
+}
+
+.list-count {
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -info-color;
+}
+
+.list-percent {
+    -fx-font-size: 12px;
+    -fx-text-fill: -text-light;
+}
+
+.revenue-chart {
+    -fx-pref-height: 300px;
+}
+
+.revenue-box {
+    -fx-padding: 5px;
+    -fx-alignment: center;
+}
+
+
+/* ========================================================================
+   9. APPOINTMENT VIEW (ЗАПИСЬ)
+   ======================================================================== */
+
+.appointment-top-panel {
+    -fx-background-color: -bg-white;
+    -fx-padding: 8px 12px;
+    -fx-border-color: -border-color;
+    -fx-border-width: 0 0 1px 0;
+}
+
+.view-box {
+    -fx-padding: 4px 8px;
+    -fx-border-color: #bdc3c7;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+}
+
+.view-radio {
+    -fx-font-size: 13px;
+    -fx-padding: 4px 8px;
+}
+
+.selected-date-label {
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -text-dark;
+}
+
+.appointment-datepicker {
+    -fx-font-size: 13px;
+    -fx-background-color: -bg-white;
+    -fx-border-color: -border-color;
+    -fx-border-radius: 4;
+    -fx-pref-height: 30px;
+}
+
+.schedule-scrollpane {
+    -fx-background-color: -bg-white;
+    -fx-border-color: -border-color;
+    -fx-border-radius: 8;
+}
+
+.schedule-grid {
+    -fx-background-color: -bg-white;
+}
+
+.schedule-header {
+    -fx-font-weight: bold;
+    -fx-background-color: #34495e;
+    -fx-text-fill: -text-white;
+    -fx-padding: 8px 12px;
+    -fx-font-size: 12px;
+}
+
+.time-label {
+    -fx-padding: 8px 12px;
+    -fx-background-color: #ecf0f1;
+    -fx-border-color: #dddddd;
+    -fx-border-width: 0 0 1px 0;
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
+}
+
+.week-day-header, .month-day-header, .week-cell, .month-cell {
+    -fx-min-width: 200px;
+    -fx-pref-width: 200px;
+}
+
+.time-label, .time-label-week {
+    -fx-min-width: 120px;
+    -fx-pref-width: 120px;
+    -fx-max-width: 120px;
+}
+
+.schedule-header, .week-day-header, .month-day-header {
+    -fx-background-color: #9dcdf6;
+    -fx-text-fill: black;
+    -fx-font-weight: normal;
+    -fx-font-size: 12px;
+    -fx-pref-height: 40px;
+    -fx-min-height: 36px;
+    -fx-max-height: 44px;
+    -fx-alignment: CENTER;
+}
+
+.week-day-header {
+    -fx-wrap-text: true;
+    -fx-text-alignment: center;
+    -fx-alignment: CENTER;
+    -fx-padding: 4px 2px;
+}
+
+.week-cell, .month-cell, .time-label, .time-label-week {
+    -fx-pref-height: 80px;
+    -fx-min-height: 60px;
+}
+
+.time-label, .time-label-week {
+    -fx-padding: 4px 6px;
+    -fx-background-color: #ecf0f1;
+    -fx-border-color: #dddddd;
+    -fx-border-width: 0 0 1px 0;
+    -fx-font-size: 12px;
+    -fx-alignment: CENTER;
+}
+
+.week-cell {
+    -fx-padding: 4px 6px;
+    -fx-border-color: #dddddd;
+    -fx-border-width: 0 0 1px 1px;
+}
+
+.month-cell {
+    -fx-padding: 4px 6px;
+    -fx-border-color: #dddddd;
+    -fx-border-width: 1px;
+}
+
+.week-client-name, .week-car-info, .week-service, .month-appointment-label {
+    -fx-wrap-text: true;
+    -fx-font-size: 11px;
+}
+
+.week-client-name {
+    -fx-font-weight: bold;
+}
+
+.month-date-label {
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+}
+
+.month-appointment-label {
+    -fx-font-size: 10px;
+    -fx-text-fill: #2980b9;
+}
+
+.week-cell-free-label, .month-free-label {
+    -fx-font-size: 11px;
+    -fx-text-fill: #27ae60;
+    -fx-font-style: italic;
+}
+
+.week-cell-booked {
+    -fx-background-color: #ffcccc;
+}
+
+.week-cell-free {
+    -fx-background-color: #d5f5e3;
+}
+
+.schedule-grid {
+    -fx-background-color: -bg-white;
+}
+
+.price-column {
+    -fx-alignment: CENTER-RIGHT;
+}
+
+.center-column {
+    -fx-alignment: CENTER;
+}
+
+.info-label {
+    -fx-font-weight: bold;
+}
+
+
+/* ========================================================================
+   10. GOOGLE MATERIAL SYMBOLS
+   ======================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
+
+.material-icon {
+    -fx-font-family: 'Material Symbols Outlined';
+    -fx-font-weight: normal;
+    -fx-font-style: normal;
+    -fx-font-size: 20px;
+    -fx-text-fill: -text-medium;
+    -fx-padding: 0 4px 0 0;
+}
+
+.material-icon-sm {
+    -fx-font-family: 'Material Symbols Outlined';
+    -fx-font-weight: normal;
+    -fx-font-style: normal;
+    -fx-font-size: 16px;
+    -fx-text-fill: -text-medium;
+}
+
+.material-icon-lg {
+    -fx-font-family: 'Material Symbols Outlined';
+    -fx-font-weight: normal;
+    -fx-font-style: normal;
+    -fx-font-size: 24px;
+    -fx-text-fill: -text-medium;
+}
+
+.material-icon-white {
+    -fx-font-family: 'Material Symbols Outlined';
+    -fx-font-weight: normal;
+    -fx-font-style: normal;
+    -fx-font-size: 18px;
+    -fx-text-fill: -text-white;
+}
+
+.material-icon-primary { -fx-text-fill: -primary-color; }
+.material-icon-success { -fx-text-fill: -success-color; }
+.material-icon-danger { -fx-text-fill: -danger-color; }
+.material-icon-warning { -fx-text-fill: -warning-color; }
+
+
+/* ========================================================================
+   11. ДОПОЛНИТЕЛЬНЫЕ СТИЛИ
+   ======================================================================== */
+
+.clear-button {
+    -fx-background-color: -danger-color;
+    -fx-text-fill: -text-white;
+    -fx-font-weight: bold;
+    -fx-padding: 3px 8px;
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+    -fx-pref-height: 28px;
+    -fx-min-height: 26px;
+    -fx-max-height: 32px;
+    -fx-cursor: hand;
+    -fx-font-size: 12px;
+}
+
+.clear-button:hover {
+    -fx-background-color: -danger-dark;
+}
+
+.clear-button:pressed {
+    -fx-background-color: -danger-darker;
+}
+
+.card {
+    -fx-background-color: -bg-white;
+    -fx-background-radius: 12;
+    -fx-border-color: -border-color;
+    -fx-border-radius: 12;
+    -fx-padding: 16px;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 4, 0, 0, 2);
+}
+
+.card .label {
+    -fx-text-fill: #555;
+    -fx-font-size: 12px;
+    -fx-font-weight: normal;
+}
+
+.card .text-field {
+    -fx-background-color: -bg-white;
+    -fx-border-color: -border-color;
+    -fx-border-width: 1px;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 6px 12px;
+    -fx-font-size: 13px;
+    -fx-pref-height: 32px;
+}
+
+.card .text-field:focused {
+    -fx-border-color: -primary-color;
+    -fx-border-width: 2px;
+}
+
+.button .text {
+    -fx-font-family: -font-family;
+}

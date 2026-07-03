@@ -1,5 +1,10 @@
 package com.autoservice;
 
+import com.autoservice.model.ServiceSparePart;
+import com.autoservice.model.ToPart;
+import com.autoservice.model.Setting;
+import com.autoservice.services.AutoAddSparePartService;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -9,19 +14,27 @@ public class DataStore {
     private static List<Service> services = new ArrayList<>();
     private static List<SparePart> spareParts = new ArrayList<>();
     private static List<Appointment> appointments = new ArrayList<>();
+    private static List<ServiceSparePart> serviceSpareParts = new ArrayList<>();
+    private static List<ToPart> toParts = new ArrayList<>();
+    private static List<Setting> settings = new ArrayList<>();
 
     private static boolean isDirty = false;
 
     public static void load() {
-        clients = Database.getAllClients();
-        services = Database.getAllServices();
-        spareParts = Database.getAllSpareParts();
-        orders = Database.getAllOrders();
-        appointments = Database.getAllAppointments();
+        clients = DatabaseFactory.getDatabase().getAllClients();
+        services = DatabaseFactory.getDatabase().getAllServices();
+        spareParts = DatabaseFactory.getDatabase().getAllSpareParts();
+        orders = DatabaseFactory.getDatabase().getAllOrders();
+        appointments = DatabaseFactory.getDatabase().getAllAppointments();
+        serviceSpareParts = DatabaseFactory.getDatabase().getServiceSparePartsByServiceId(-1);
+        toParts = DatabaseFactory.getDatabase().getToPartsByCarModel("");
+        settings = DatabaseFactory.getDatabase().getAllSettings();
         isDirty = false;
         System.out.println("DataStore loaded: " + clients.size() + " clients, " +
                 orders.size() + " orders, " + services.size() + " services, " +
-                spareParts.size() + " spare parts, " + appointments.size() + " appointments");
+                spareParts.size() + " spare parts, " + appointments.size() + " appointments, " +
+                serviceSpareParts.size() + " service-spare part relations, " +
+                toParts.size() + " to parts, " + settings.size() + " settings");
     }
 
     public static void save() {
@@ -67,6 +80,30 @@ public class DataStore {
             }
         }
 
+        for (ServiceSparePart ssp : serviceSpareParts) {
+            if (ssp.isDirty()) {
+                Database.updateServiceSparePart(ssp);
+                ssp.setDirty(false);
+                saved++;
+            }
+        }
+
+        for (ToPart tp : toParts) {
+            if (tp.isDirty()) {
+                Database.updateToPart(tp);
+                tp.setDirty(false);
+                saved++;
+            }
+        }
+
+        for (Setting setting : settings) {
+            if (setting.isDirty()) {
+                Database.updateSetting(setting);
+                setting.markClean();
+                saved++;
+            }
+        }
+
         isDirty = false;
         long endTime = System.currentTimeMillis();
         System.out.println("Saved " + saved + " items to DB in " + (endTime - startTime) + " ms");
@@ -81,21 +118,21 @@ public class DataStore {
     public static List<Client> getClients() { return clients; }
 
     public static void addClient(Client c) {
-        Database.addClient(c);
-        clients = Database.getAllClients();
+        DatabaseFactory.getDatabase().addClient(c);
+        clients = DatabaseFactory.getDatabase().getAllClients();
         isDirty = true;
     }
 
     public static void updateClient(Client client) {
         client.setDirty(true);
-        Database.updateClient(client);
-        clients = Database.getAllClients();
+        DatabaseFactory.getDatabase().updateClient(client);
+        clients = DatabaseFactory.getDatabase().getAllClients();
         isDirty = true;
     }
 
     public static void removeClient(Client c) {
-        Database.deleteClient(c);
-        clients = Database.getAllClients();
+        DatabaseFactory.getDatabase().deleteClient(c);
+        clients = DatabaseFactory.getDatabase().getAllClients();
         isDirty = true;
     }
 
@@ -107,11 +144,11 @@ public class DataStore {
             }
         }
         for (WorkOrder order : ordersToDelete) {
-            Database.deleteOrder(order.getId());
+            DatabaseFactory.getDatabase().deleteOrder(order.getId());
             orders.remove(order);
         }
 
-        Database.deleteClient(client);
+        DatabaseFactory.getDatabase().deleteClient(client);
         clients.remove(client);
         isDirty = true;
     }
@@ -121,23 +158,23 @@ public class DataStore {
     public static List<WorkOrder> getOrders() { return orders; }
 
     public static void addOrder(WorkOrder o) {
-        Database.addOrder(o);
-        orders = Database.getAllOrders();
+        DatabaseFactory.getDatabase().addOrder(o);
+        orders = DatabaseFactory.getDatabase().getAllOrders();
         isDirty = true;
         System.out.println("Orders after add: " + orders.size());
     }
 
     public static void updateOrder(WorkOrder o) {
         o.setDirty(true);
-        Database.updateOrder(o);
-        orders = Database.getAllOrders();
+        DatabaseFactory.getDatabase().updateOrder(o);
+        orders = DatabaseFactory.getDatabase().getAllOrders();
         isDirty = true;
     }
 
     public static void deleteOrder(WorkOrder order) {
         String orderId = order.getId();
         if (orderId != null && !orderId.isEmpty()) {
-            Database.deleteOrder(orderId);
+            DatabaseFactory.getDatabase().deleteOrder(orderId);
             orders.removeIf(o -> o.getId().equals(orderId));
             isDirty = true;
         } else {
@@ -160,15 +197,29 @@ public class DataStore {
     public static List<Service> getServices() { return services; }
 
     public static void addService(Service s) {
-        Database.addService(s);
-        services = Database.getAllServices();
+        DatabaseFactory.getDatabase().addService(s);
+        services = DatabaseFactory.getDatabase().getAllServices();
         isDirty = true;
     }
 
     public static void removeService(Service s) {
-        Database.deleteService(s);
-        services = Database.getAllServices();
+        DatabaseFactory.getDatabase().deleteService(s);
+        services = DatabaseFactory.getDatabase().getAllServices();
         isDirty = true;
+    }
+
+    public static Service getServiceByName(String name) {
+        return services.stream()
+                .filter(s -> s.getName().equals(name))
+                .findFirst()
+                .orElse(null);
+    }
+
+    public static SparePart getSparePartById(int id) {
+        return spareParts.stream()
+                .filter(s -> s.getId() == id)
+                .findFirst()
+                .orElse(null);
     }
 
     // ==================== SPARE PARTS ====================
@@ -176,23 +227,35 @@ public class DataStore {
     public static List<SparePart> getSpareParts() { return spareParts; }
 
     public static void addSparePart(SparePart sp) {
-        Database.addSparePart(sp);
-        spareParts = Database.getAllSpareParts();
+        DatabaseFactory.getDatabase().addSparePart(sp);
+        spareParts = DatabaseFactory.getDatabase().getAllSpareParts();
         isDirty = true;
     }
 
     public static void removeSparePart(SparePart sp) {
-        Database.deleteSparePart(sp);
-        spareParts = Database.getAllSpareParts();
+        DatabaseFactory.getDatabase().deleteSparePart(sp);
+        spareParts = DatabaseFactory.getDatabase().getAllSpareParts();
         isDirty = true;
     }
 
     public static void updateSparePartStock(SparePart part, double newStock) {
         part.setDirty(true);
         part.setStock(newStock);
-        Database.updateSparePartStock(part, newStock);
-        spareParts = Database.getAllSpareParts();
+        DatabaseFactory.getDatabase().updateSparePartStock(part, newStock);
+        spareParts = DatabaseFactory.getDatabase().getAllSpareParts();
         isDirty = true;
+    }
+
+    public static void updateSparePartStock(String serviceName, int qty) {
+        // Получаем запчасти, связанные с услугой
+        List<AutoAddSparePartService.SparePartWithQuantity> parts = AutoAddSparePartService.getSparePartsByService(serviceName);
+        if (!parts.isEmpty()) {
+            SparePart part = parts.get(0).getSparePart();
+            if (part != null) {
+                part.setStock(part.getStock() - qty);
+                DataStore.updateSparePartStock(part, part.getStock());
+            }
+        }
     }
 
     // ==================== APPOINTMENTS ====================
@@ -206,21 +269,118 @@ public class DataStore {
     }
 
     public static void addAppointment(Appointment a) {
-        Database.addAppointment(a);
-        appointments = Database.getAllAppointments();
+        DatabaseFactory.getDatabase().addAppointment(a);
+        appointments = DatabaseFactory.getDatabase().getAllAppointments();
         isDirty = true;
     }
 
     public static void updateAppointment(Appointment a) {
         a.setDirty(true);
-        Database.updateAppointment(a);
-        appointments = Database.getAllAppointments();
+        DatabaseFactory.getDatabase().updateAppointment(a);
+        appointments = DatabaseFactory.getDatabase().getAllAppointments();
         isDirty = true;
     }
 
     public static void deleteAppointment(int id) {
-        Database.deleteAppointment(id);
+        DatabaseFactory.getDatabase().deleteAppointment(id);
         appointments.removeIf(a -> a.getId() == id);
         isDirty = true;
+    }
+
+    // ==================== SERVICE-SPARE PART RELATIONSHIPS ====================
+
+    public static List<ServiceSparePart> getServiceSparePartsByServiceId(int serviceId) {
+        if (serviceId == -1) {
+            return serviceSpareParts;
+        }
+        return DatabaseFactory.getDatabase().getServiceSparePartsByServiceId(serviceId);
+    }
+
+    public static void addServiceSparePart(ServiceSparePart relation) {
+        DatabaseFactory.getDatabase().addServiceSparePart(relation);
+        serviceSpareParts.add(relation);
+        isDirty = true;
+    }
+
+    public static void updateServiceSparePart(ServiceSparePart relation) {
+        relation.setDirty(true);
+        DatabaseFactory.getDatabase().updateServiceSparePart(relation);
+        serviceSpareParts = DatabaseFactory.getDatabase().getServiceSparePartsByServiceId(-1);
+        isDirty = true;
+    }
+
+    public static void deleteServiceSparePart(ServiceSparePart relation) {
+        DatabaseFactory.getDatabase().deleteServiceSparePart(relation);
+        serviceSpareParts.remove(relation);
+        isDirty = true;
+    }
+
+    public static void deleteServiceSparePartsByServiceId(int serviceId) {
+        DatabaseFactory.getDatabase().deleteServiceSparePartsByServiceId(serviceId);
+        serviceSpareParts.removeIf(s -> s.getServiceId() == serviceId);
+        isDirty = true;
+    }
+
+    // ==================== TO PARTS ====================
+
+    public static List<ToPart> getToPartsByCarModel(String carModel) {
+        if (carModel == null || carModel.isEmpty()) {
+            return toParts;
+        }
+        return DatabaseFactory.getDatabase().getToPartsByCarModel(carModel);
+    }
+
+    public static void addToPart(ToPart part) {
+        DatabaseFactory.getDatabase().addToPart(part);
+        toParts.add(part);
+        isDirty = true;
+    }
+
+    public static void updateToPart(ToPart part) {
+        part.setDirty(true);
+        DatabaseFactory.getDatabase().updateToPart(part);
+        toParts = DatabaseFactory.getDatabase().getToPartsByCarModel("");
+        isDirty = true;
+    }
+
+    public static void deleteToPart(ToPart part) {
+        DatabaseFactory.getDatabase().deleteToPart(part);
+        toParts.remove(part);
+        isDirty = true;
+    }
+
+    public static void deleteToPartsByCarModel(String carModel) {
+        DatabaseFactory.getDatabase().deleteToPartsByCarModel(carModel);
+        toParts.removeIf(t -> t.getCarModel().equals(carModel));
+        isDirty = true;
+    }
+
+    // ==================== SETTINGS ====================
+
+    public static List<Setting> getAllSettings() {
+        return settings;
+    }
+
+    public static void addSetting(Setting setting) {
+        DatabaseFactory.getDatabase().addSetting(setting);
+        settings.add(setting);
+        isDirty = true;
+    }
+
+    public static void updateSetting(Setting setting) {
+        setting.setDirty(true);
+        DatabaseFactory.getDatabase().updateSetting(setting);
+        settings = DatabaseFactory.getDatabase().getAllSettings();
+        isDirty = true;
+    }
+
+    public static void deleteSetting(Setting setting) {
+        DatabaseFactory.getDatabase().deleteSetting(setting);
+        settings.remove(setting);
+        isDirty = true;
+    }
+
+    public static Setting getSettingByKey(String key) {
+        return DatabaseFactory.getDatabase().getSettingByKey(key);
     }
 }
