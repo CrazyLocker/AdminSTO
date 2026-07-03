@@ -108,6 +108,12 @@ public class IconHelper {
         return createSVG("M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z", size, color);
     }
 
+    // ==================== НОВАЯ ИКОНКА: ГАЛОЧКА (checkCircle) ====================
+
+    public static SVGPath checkCircle(int size, String color) {
+        return createSVG("M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z", size, color);
+    }
+
     // ==================== БЕЗ ПАРАМЕТРОВ (ДЛЯ КНОПОК С БЕЛЫМ ЦВЕТОМ) ====================
 
     public static SVGPath add() { return add("#ffffff"); }
@@ -121,6 +127,7 @@ public class IconHelper {
     public static SVGPath search() { return search("#5f6368"); }
     public static SVGPath warning() { return warning("#e74c3c"); }
     public static SVGPath report() { return report("#f39c12"); }
+    public static SVGPath checkCircle() { return checkCircle("#27ae60"); }
 
     // ==================== МЕТОДЫ С ЦВЕТОМ (БЕЗ РАЗМЕРА) ====================
 
@@ -182,5 +189,9 @@ public class IconHelper {
 
     public static SVGPath event(String color) {
         return createSVG("M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z", color);
+    }
+
+    public static SVGPath checkCircle(String color) {
+        return createSVG("M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z", color);
     }
 }

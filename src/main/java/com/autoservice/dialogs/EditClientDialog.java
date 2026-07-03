@@ -6,7 +6,6 @@ import com.autoservice.DataStore;
 import com.autoservice.DateUtils;
 import com.autoservice.Validators;
 import com.autoservice.controllers.ClientController;
-import com.autoservice.utils.IconHelper;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -33,7 +32,7 @@ public class EditClientDialog {
 
         Stage stage = new Stage();
         stage.setTitle(isNew ? "Новый клиент" : "Редактирование клиента");
-        stage.setMinWidth(700);
+        stage.setMinWidth(550);
         stage.setMinHeight(550);
         stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
 
@@ -149,13 +148,11 @@ public class EditClientDialog {
             grid.add(currentAppointmentLabel, 1, 6);
         }
 
-        // Кнопки
+        // ====== КНОПКИ БЕЗ ИКОНОК ======
         Button saveBtn = new Button(isNew ? "Создать" : "Сохранить");
-        saveBtn.setGraphic(IconHelper.save());
         saveBtn.getStyleClass().add("save-button");
 
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.setGraphic(IconHelper.cancel());
         cancelBtn.getStyleClass().add("cancel-button");
 
         HBox btnBox = new HBox(15, saveBtn, cancelBtn);

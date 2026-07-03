@@ -74,7 +74,11 @@ public class Database {
                         name TEXT NOT NULL UNIQUE,
                         price REAL NOT NULL,
                         duration INTEGER DEFAULT 60,
-                        part_number TEXT DEFAULT ''
+                        part_number TEXT DEFAULT '',
+                        oil_volume REAL DEFAULT 0,
+                        uses_oil INTEGER DEFAULT 0,
+                        spare_part_name TEXT DEFAULT '',
+                        spare_part_quantity INTEGER DEFAULT 0
                     )
                 """;
 
@@ -87,9 +91,12 @@ public class Database {
                         compatible_models TEXT DEFAULT '',
                         purchase_price REAL,
                         retail_price REAL NOT NULL,
-                        stock INTEGER DEFAULT 0,
-                        min_stock INTEGER DEFAULT 0,
-                        location TEXT DEFAULT ''
+                        stock REAL DEFAULT 0,
+                        min_stock REAL DEFAULT 0,
+                        location TEXT DEFAULT '',
+                        unit_volume REAL DEFAULT 1.0,
+                        unit_type TEXT DEFAULT 'шт',
+                        is_liquid INTEGER DEFAULT 0
                     )
                 """;
 
@@ -161,7 +168,8 @@ public class Database {
                 "CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments(status)",
                 "CREATE INDEX IF NOT EXISTS idx_order_services_order_id ON order_services(order_id)",
                 "CREATE INDEX IF NOT EXISTS idx_order_parts_order_id ON order_parts(order_id)",
-                "CREATE INDEX IF NOT EXISTS idx_spare_parts_name ON spare_parts(name)"
+                "CREATE INDEX IF NOT EXISTS idx_spare_parts_name ON spare_parts(name)",
+                "CREATE INDEX IF NOT EXISTS idx_clients_name_lastname_phone ON clients(name, last_name, phone)"
         );
 
         try (Statement stmt = conn.createStatement()) {
@@ -171,42 +179,24 @@ public class Database {
         }
     }
 
-    // ==================== ГЕНЕРАЦИЯ ID ЗАКАЗА (ИСПРАВЛЕННАЯ) ====================
+    // ==================== ГЕНЕРАЦИЯ ID ЗАКАЗА ====================
 
     private static String generateOrderId(Connection conn) {
         String date = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yy"));
-
-        String sql = "SELECT id FROM orders ORDER BY id DESC LIMIT 1";
+        String sql = "SELECT MAX(CAST(SUBSTR(id, INSTR(id, '-') + 1) AS INTEGER)) as max_num FROM orders";
         int lastNumber = 0;
 
         try (Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             if (rs.next()) {
-                String lastId = rs.getString("id");
-                // Ищем последний дефис (после даты)
-                int lastDash = lastId.lastIndexOf("-");
-                if (lastDash >= 0) {
-                    String numPart = lastId.substring(lastDash + 1);
-                    try {
-                        lastNumber = Integer.parseInt(numPart);
-                    } catch (NumberFormatException e) {
-                        lastNumber = 0;
-                    }
-                }
+                lastNumber = rs.getInt("max_num");
             }
         } catch (SQLException e) {
             System.err.println("Generate ID error: " + e.getMessage());
         }
 
-        int newNumber = lastNumber + 1;
-
-        if (newNumber > 9999) {
-            newNumber = 1;
-        }
-
-        String newId = String.format("ZAK-%s-%04d", date, newNumber);
-        System.out.println("Generated order ID: " + newId);
-        return newId;
+        int newNumber = (lastNumber % 9999) + 1;
+        return String.format("ZAK-%s-%04d", date, newNumber);
     }
 
     // ==================== CLIENTS ====================
@@ -332,7 +322,7 @@ public class Database {
 
     public static List<Service> getAllServices() {
         List<Service> services = new ArrayList<>();
-        String sql = "SELECT name, price, duration, part_number FROM services ORDER BY name";
+        String sql = "SELECT name, price, duration, part_number, oil_volume, uses_oil, spare_part_name, spare_part_quantity FROM services ORDER BY name";
 
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement();
@@ -341,6 +331,10 @@ public class Database {
                 Service service = new Service(rs.getString("name"), rs.getDouble("price"));
                 service.setDuration(rs.getInt("duration"));
                 service.setPartNumber(rs.getString("part_number"));
+                service.setOilVolume(rs.getDouble("oil_volume"));
+                service.setUsesOil(rs.getInt("uses_oil") == 1);
+                service.setSparePartName(rs.getString("spare_part_name"));
+                service.setSparePartQuantity(rs.getInt("spare_part_quantity"));
                 services.add(service);
             }
         } catch (SQLException e) {
@@ -350,7 +344,7 @@ public class Database {
     }
 
     public static void addService(Service service) {
-        String sql = "INSERT OR REPLACE INTO services (name, price, duration, part_number) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT OR REPLACE INTO services (name, price, duration, part_number, oil_volume, uses_oil, spare_part_name, spare_part_quantity) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -358,6 +352,10 @@ public class Database {
             pstmt.setDouble(2, service.getPrice());
             pstmt.setInt(3, service.getDuration());
             pstmt.setString(4, service.getPartNumber());
+            pstmt.setDouble(5, service.getOilVolume());
+            pstmt.setInt(6, service.isUsesOil() ? 1 : 0);
+            pstmt.setString(7, service.getSparePartName());
+            pstmt.setInt(8, service.getSparePartQuantity());
             pstmt.executeUpdate();
         } catch (SQLException e) {
             System.err.println("Add service error: " + e.getMessage());
@@ -380,7 +378,7 @@ public class Database {
 
     public static List<SparePart> getAllSpareParts() {
         List<SparePart> parts = new ArrayList<>();
-        String sql = "SELECT id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock, location FROM spare_parts ORDER BY name";
+        String sql = "SELECT id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock, location, unit_volume, unit_type, is_liquid FROM spare_parts ORDER BY name";
 
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement();
@@ -395,8 +393,11 @@ public class Database {
                         rs.getString("compatible_models"),
                         rs.getDouble("purchase_price"),
                         rs.getDouble("retail_price"),
-                        rs.getInt("stock"),
-                        rs.getInt("min_stock"),
+                        rs.getDouble("stock"),
+                        rs.getDouble("min_stock"),
+                        rs.getDouble("unit_volume"),
+                        rs.getString("unit_type"),
+                        rs.getInt("is_liquid") == 1,
                         rs.getString("location")
                 ));
             }
@@ -411,32 +412,39 @@ public class Database {
         try (Connection conn = getConnection()) {
             if (part.getId() != -1) {
                 sql = "UPDATE spare_parts SET name = ?, purchase_price = ?, retail_price = ?, stock = ?, " +
-                        "part_number = ?, manufacturer = ?, compatible_models = ?, min_stock = ?, location = ? WHERE id = ?";
+                        "part_number = ?, manufacturer = ?, compatible_models = ?, min_stock = ?, location = ?, " +
+                        "unit_volume = ?, unit_type = ?, is_liquid = ? WHERE id = ?";
                 try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                     pstmt.setString(1, part.getName());
                     pstmt.setDouble(2, part.getPurchasePrice());
                     pstmt.setDouble(3, part.getRetailPrice());
-                    pstmt.setInt(4, part.getStock());
+                    pstmt.setDouble(4, part.getStock());
                     pstmt.setString(5, part.getPartNumber());
                     pstmt.setString(6, part.getManufacturer());
                     pstmt.setString(7, part.getCompatibleModels());
-                    pstmt.setInt(8, part.getMinStock());
+                    pstmt.setDouble(8, part.getMinStock());
                     pstmt.setString(9, part.getLocation());
-                    pstmt.setInt(10, part.getId());
+                    pstmt.setDouble(10, part.getUnitVolume());
+                    pstmt.setString(11, part.getUnitType());
+                    pstmt.setInt(12, part.isLiquid() ? 1 : 0);
+                    pstmt.setInt(13, part.getId());
                     pstmt.executeUpdate();
                 }
             } else {
-                sql = "INSERT INTO spare_parts (name, purchase_price, retail_price, stock, part_number, manufacturer, compatible_models, min_stock, location) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                sql = "INSERT INTO spare_parts (name, purchase_price, retail_price, stock, part_number, manufacturer, compatible_models, min_stock, location, unit_volume, unit_type, is_liquid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                     pstmt.setString(1, part.getName());
                     pstmt.setDouble(2, part.getPurchasePrice());
                     pstmt.setDouble(3, part.getRetailPrice());
-                    pstmt.setInt(4, part.getStock());
+                    pstmt.setDouble(4, part.getStock());
                     pstmt.setString(5, part.getPartNumber());
                     pstmt.setString(6, part.getManufacturer());
                     pstmt.setString(7, part.getCompatibleModels());
-                    pstmt.setInt(8, part.getMinStock());
+                    pstmt.setDouble(8, part.getMinStock());
                     pstmt.setString(9, part.getLocation());
+                    pstmt.setDouble(10, part.getUnitVolume());
+                    pstmt.setString(11, part.getUnitType());
+                    pstmt.setInt(12, part.isLiquid() ? 1 : 0);
                     pstmt.executeUpdate();
                 }
             }
@@ -457,12 +465,12 @@ public class Database {
         }
     }
 
-    public static void updateSparePartStock(SparePart part, int newStock) {
+    public static void updateSparePartStock(SparePart part, double newStock) {
         String sql = "UPDATE spare_parts SET stock = ? WHERE id = ?";
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setInt(1, newStock);
+            pstmt.setDouble(1, newStock);
             pstmt.setInt(2, part.getId());
             pstmt.executeUpdate();
             part.setStock(newStock);
@@ -478,7 +486,8 @@ public class Database {
 
         String ordersSql = """
             SELECT o.id as order_id, o.status, o.total, o.created_date,
-                   c.id as client_id, c.name, c.last_name, c.phone, c.car_model, c.car_number, c.last_repair_date
+                   c.id as client_id, c.name, c.last_name, c.phone, 
+                   c.car_model, c.car_number, c.last_repair_date
             FROM orders o
             LEFT JOIN clients c ON o.client_id = c.id
             ORDER BY o.created_date DESC
@@ -491,12 +500,12 @@ public class Database {
             while (rs.next()) {
                 Client client = new Client(
                         rs.getInt("client_id"),
-                        rs.getString("name"),
-                        rs.getString("last_name"),
-                        rs.getString("phone"),
-                        rs.getString("car_model"),
-                        rs.getString("car_number"),
-                        rs.getString("last_repair_date")
+                        rs.getString("name") != null ? rs.getString("name") : "",
+                        rs.getString("last_name") != null ? rs.getString("last_name") : "",
+                        rs.getString("phone") != null ? rs.getString("phone") : "",
+                        rs.getString("car_model") != null ? rs.getString("car_model") : "",
+                        rs.getString("car_number") != null ? rs.getString("car_number") : "",
+                        rs.getString("last_repair_date") != null ? rs.getString("last_repair_date") : ""
                 );
 
                 WorkOrder order = new WorkOrder(
@@ -537,7 +546,12 @@ public class Database {
                 String orderId = rs.getString("order_id");
                 WorkOrder order = orderMap.get(orderId);
                 if (order != null) {
-                    SparePart part = new SparePart(rs.getString("part_name"), 0, rs.getDouble("price"), rs.getInt("quantity"));
+                    SparePart part = new SparePart(
+                            rs.getString("part_name"),
+                            0,
+                            rs.getDouble("price"),
+                            rs.getInt("quantity")
+                    );
                     order.addSparePart(part, rs.getInt("quantity"));
                 }
             }
@@ -662,28 +676,38 @@ public class Database {
     public static List<Appointment> getAllAppointments() {
         List<Appointment> appointments = new ArrayList<>();
         String sql = """
-            SELECT id, client_id, order_id, master_name, service_name, appointment_date, appointment_time, status 
-            FROM appointments ORDER BY appointment_date, appointment_time
+            SELECT a.id, a.client_id, a.order_id, a.master_name, 
+                   a.service_name, a.appointment_date, a.appointment_time, a.status,
+                   c.name, c.last_name, c.phone, c.car_model, c.car_number, c.last_repair_date
+            FROM appointments a
+            LEFT JOIN clients c ON a.client_id = c.id
+            ORDER BY a.appointment_date, a.appointment_time
         """;
 
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
-                int clientId = rs.getInt("client_id");
-                Client client = getClientById(clientId);
-                if (client != null) {
-                    appointments.add(new Appointment(
-                            rs.getInt("id"),
-                            client,
-                            rs.getString("order_id"),
-                            rs.getString("master_name"),
-                            rs.getString("service_name"),
-                            rs.getString("appointment_date"),
-                            rs.getString("appointment_time"),
-                            rs.getString("status")
-                    ));
-                }
+                Client client = new Client(
+                        rs.getInt("client_id"),
+                        rs.getString("name") != null ? rs.getString("name") : "",
+                        rs.getString("last_name") != null ? rs.getString("last_name") : "",
+                        rs.getString("phone") != null ? rs.getString("phone") : "",
+                        rs.getString("car_model") != null ? rs.getString("car_model") : "",
+                        rs.getString("car_number") != null ? rs.getString("car_number") : "",
+                        rs.getString("last_repair_date") != null ? rs.getString("last_repair_date") : ""
+                );
+
+                appointments.add(new Appointment(
+                        rs.getInt("id"),
+                        client,
+                        rs.getString("order_id"),
+                        rs.getString("master_name"),
+                        rs.getString("service_name"),
+                        rs.getString("appointment_date"),
+                        rs.getString("appointment_time"),
+                        rs.getString("status")
+                ));
             }
         } catch (SQLException e) {
             System.err.println("Load appointments error: " + e.getMessage());
@@ -748,27 +772,41 @@ public class Database {
 
     public static List<Appointment> getAppointmentsByDate(String date) {
         List<Appointment> appointments = new ArrayList<>();
-        String sql = "SELECT id, client_id, order_id, master_name, service_name, appointment_date, appointment_time, status FROM appointments WHERE appointment_date = ? ORDER BY appointment_time";
+        String sql = """
+            SELECT a.id, a.client_id, a.order_id, a.master_name, 
+                   a.service_name, a.appointment_date, a.appointment_time, a.status,
+                   c.name, c.last_name, c.phone, c.car_model, c.car_number, c.last_repair_date
+            FROM appointments a
+            LEFT JOIN clients c ON a.client_id = c.id
+            WHERE a.appointment_date = ?
+            ORDER BY a.appointment_time
+        """;
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, date);
             ResultSet rs = pstmt.executeQuery();
             while (rs.next()) {
-                int clientId = rs.getInt("client_id");
-                Client client = getClientById(clientId);
-                if (client != null) {
-                    appointments.add(new Appointment(
-                            rs.getInt("id"),
-                            client,
-                            rs.getString("order_id"),
-                            rs.getString("master_name"),
-                            rs.getString("service_name"),
-                            rs.getString("appointment_date"),
-                            rs.getString("appointment_time"),
-                            rs.getString("status")
-                    ));
-                }
+                Client client = new Client(
+                        rs.getInt("client_id"),
+                        rs.getString("name") != null ? rs.getString("name") : "",
+                        rs.getString("last_name") != null ? rs.getString("last_name") : "",
+                        rs.getString("phone") != null ? rs.getString("phone") : "",
+                        rs.getString("car_model") != null ? rs.getString("car_model") : "",
+                        rs.getString("car_number") != null ? rs.getString("car_number") : "",
+                        rs.getString("last_repair_date") != null ? rs.getString("last_repair_date") : ""
+                );
+
+                appointments.add(new Appointment(
+                        rs.getInt("id"),
+                        client,
+                        rs.getString("order_id"),
+                        rs.getString("master_name"),
+                        rs.getString("service_name"),
+                        rs.getString("appointment_date"),
+                        rs.getString("appointment_time"),
+                        rs.getString("status")
+                ));
             }
         } catch (SQLException e) {
             System.err.println("Load appointments by date error: " + e.getMessage());

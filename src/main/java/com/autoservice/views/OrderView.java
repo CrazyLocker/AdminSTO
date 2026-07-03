@@ -4,7 +4,6 @@ import com.autoservice.DataStore;
 import com.autoservice.WorkOrder;
 import com.autoservice.controllers.OrderController;
 import com.autoservice.dialogs.PrintOrderDialog;
-import com.autoservice.utils.IconHelper;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -55,10 +54,11 @@ public class OrderView {
 
         HBox searchBox = createSearchPanel();
 
-        editBtn = createActionButton("Изменить", IconHelper.edit());
-        deleteBtn = createActionButton("Удалить", IconHelper.delete());
-        printBtn = createActionButton("Печать", IconHelper.print());
-        createOrderBtn = createActionButton("Новый", IconHelper.add());
+        // ====== КНОПКИ БЕЗ ИКОНОК ======
+        editBtn = createActionButton("Изменить");
+        deleteBtn = createActionButton("Удалить");
+        printBtn = createActionButton("Печать");
+        createOrderBtn = createActionButton("Новый");
 
         editBtn.setStyle("-fx-background-color: #f39c12;");
         deleteBtn.setStyle("-fx-background-color: #e74c3c;");
@@ -79,7 +79,6 @@ public class OrderView {
 
         // ========== ПАНЕЛЬ РАСШИРЕННЫХ ФИЛЬТРОВ ==========
         advancedToggleBtn = new ToggleButton("Расширенный фильтр");
-        advancedToggleBtn.setGraphic(IconHelper.settings());
         advancedToggleBtn.getStyleClass().add("toggle-button");
         advancedToggleBtn.setSelected(false);
 
@@ -185,7 +184,6 @@ public class OrderView {
         maxTotalField.textProperty().addListener((obs, oldVal, newVal) -> applyFilters());
 
         resetFiltersBtn = new Button("Сбросить");
-        resetFiltersBtn.setGraphic(IconHelper.cancel());
         resetFiltersBtn.getStyleClass().add("reset-button");
         resetFiltersBtn.setOnAction(e -> resetFilters());
 
@@ -205,7 +203,6 @@ public class OrderView {
     }
 
     private static void setupTableColumns() {
-        // ... (колонки остаются без изменений, только убираем эмодзи из заголовков) ...
         TableColumn<WorkOrder, String> colId = new TableColumn<>("№ заказа");
         colId.setCellValueFactory(new PropertyValueFactory<>("id"));
         colId.setPrefWidth(160);
@@ -285,9 +282,8 @@ public class OrderView {
         });
     }
 
-    private static Button createActionButton(String text, javafx.scene.Node icon) {
+    private static Button createActionButton(String text) {
         Button btn = new Button(text);
-        btn.setGraphic(icon);
         btn.setPrefWidth(100);
         btn.getStyleClass().add("action-button");
         return btn;
@@ -300,8 +296,14 @@ public class OrderView {
         searchField.getStyleClass().add("search-field");
         searchField.textProperty().addListener((obs, oldVal, newVal) -> applyFilters());
 
-        Button clearBtn = new Button();
-        clearBtn.setGraphic(IconHelper.cancel());  // крестик
+        Button clearBtn = new Button("✕");
+        clearBtn.setStyle(
+                "-fx-background-color: #dc3545;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-padding: 4 8 4 8;" +
+                        "-fx-background-radius: 4;"
+        );
         clearBtn.getStyleClass().add("clear-button");
         clearBtn.setOnAction(e -> {
             searchField.clear();

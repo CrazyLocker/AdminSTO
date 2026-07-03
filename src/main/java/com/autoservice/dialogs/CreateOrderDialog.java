@@ -3,14 +3,13 @@ package com.autoservice.dialogs;
 import com.autoservice.*;
 import com.autoservice.controllers.DictionaryController;
 import com.autoservice.controllers.OrderController;
-import com.autoservice.utils.IconHelper;
+import com.autoservice.utils.OilHelper;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
-import javafx.scene.control.Separator;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
@@ -31,14 +30,19 @@ public class CreateOrderDialog {
     public static void show() {
         Stage stage = new Stage();
         stage.setTitle("Новый заказ");
-        stage.setMinWidth(700);
-        stage.setMinHeight(700);
+        stage.setMinWidth(650);
+        stage.setMinHeight(650);
         stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
 
-        VBox root = new VBox(15);
+        VBox root = new VBox(12);
         root.setPadding(new Insets(20));
 
-        // ==================== КЛИЕНТ ====================
+        // ============================================================
+        // 1. КЛИЕНТ
+        // ============================================================
+        Label clientLabel = new Label("Клиент:");
+        clientLabel.setStyle("-fx-font-weight: bold;");
+
         ComboBox<Client> clientCombo = new ComboBox<>(FXCollections.observableArrayList(DataStore.getClients()));
         clientCombo.setPromptText("Выберите клиента");
         clientCombo.setPrefWidth(350);
@@ -50,16 +54,16 @@ public class CreateOrderDialog {
                 if (empty || item == null) {
                     setText(null);
                 } else {
-                    String lastName = item.getLastName() != null && !item.getLastName().isEmpty()
-                            ? item.getLastName() + " " : "";
-                    String carModel = item.getCarModel() != null && !item.getCarModel().isEmpty()
-                            ? " — " + item.getCarModel()
+                    String name = item.getLastName() != null && !item.getLastName().isEmpty()
+                            ? item.getLastName() + " " + item.getName()
+                            : item.getName();
+                    String car = item.getCarModel() != null && !item.getCarModel().isEmpty()
+                            ? " (" + item.getCarModel() + ")"
                             : "";
-                    setText(lastName + item.getName() + carModel);
+                    setText(name + car);
                 }
             }
         });
-
         clientCombo.setButtonCell(new ListCell<Client>() {
             @Override
             protected void updateItem(Client item, boolean empty) {
@@ -67,52 +71,62 @@ public class CreateOrderDialog {
                 if (empty || item == null) {
                     setText(null);
                 } else {
-                    String lastName = item.getLastName() != null && !item.getLastName().isEmpty()
-                            ? item.getLastName() + " " : "";
-                    String carModel = item.getCarModel() != null && !item.getCarModel().isEmpty()
-                            ? " — " + item.getCarModel()
+                    String name = item.getLastName() != null && !item.getLastName().isEmpty()
+                            ? item.getLastName() + " " + item.getName()
+                            : item.getName();
+                    String car = item.getCarModel() != null && !item.getCarModel().isEmpty()
+                            ? " (" + item.getCarModel() + ")"
                             : "";
-                    setText(lastName + item.getName() + carModel);
+                    setText(name + car);
                 }
             }
         });
 
-        // ==================== ЗАПИСЬ ====================
+        // ============================================================
+        // 2. ЗАПИСЬ
+        // ============================================================
         Label appointmentLabel = new Label("Запись на сервис:");
         appointmentLabel.setStyle("-fx-font-weight: bold;");
 
         DatePicker datePicker = new DatePicker(LocalDate.now());
-        datePicker.setPrefWidth(200);
+        datePicker.setPrefWidth(150);
 
         ComboBox<String> timeCombo = new ComboBox<>(FXCollections.observableArrayList(TIME_SLOTS));
-        timeCombo.setPromptText("Выберите время");
-        timeCombo.setPrefWidth(100);
+        timeCombo.setPromptText("Время");
+        timeCombo.setPrefWidth(80);
 
         ComboBox<String> masterCombo = new ComboBox<>(FXCollections.observableArrayList(MASTERS));
-        masterCombo.setPromptText("Выберите мастера");
-        masterCombo.setPrefWidth(150);
+        masterCombo.setPromptText("Мастер");
+        masterCombo.setPrefWidth(120);
 
         CheckBox createAppointmentCheck = new CheckBox("Создать запись в календаре");
         createAppointmentCheck.setSelected(true);
 
-        HBox appointmentBox = new HBox(10, new Label("Дата:"), datePicker, new Label("Время:"), timeCombo,
-                new Label("Мастер:"), masterCombo);
+        HBox appointmentBox = new HBox(10);
         appointmentBox.setAlignment(Pos.CENTER_LEFT);
+        appointmentBox.getChildren().addAll(
+                new Label("Дата:"), datePicker,
+                new Label("Время:"), timeCombo,
+                new Label("Мастер:"), masterCombo
+        );
 
-        // ==================== УСЛУГИ ====================
+        // ============================================================
+        // 3. УСЛУГИ
+        // ============================================================
         Label servicesHeader = new Label("Услуги:");
         servicesHeader.setStyle("-fx-font-weight: bold;");
 
         ListView<String> servicesListView = new ListView<>();
-        servicesListView.setPrefHeight(120);
+        servicesListView.setPrefHeight(100);
 
         ComboBox<Service> serviceCombo = new ComboBox<>(FXCollections.observableArrayList(DataStore.getServices()));
         serviceCombo.setPromptText("Выберите услугу");
-        serviceCombo.setPrefWidth(300);
+        serviceCombo.setPrefWidth(250);
 
         TextField servicePriceField = new TextField();
         servicePriceField.setEditable(false);
-        servicePriceField.setPrefWidth(100);
+        servicePriceField.setPrefWidth(80);
+        servicePriceField.setPromptText("Цена");
 
         serviceCombo.setOnAction(e -> {
             Service selected = serviceCombo.getValue();
@@ -121,32 +135,38 @@ public class CreateOrderDialog {
             }
         });
 
-        Button addServiceBtn = new Button("Добавить услугу");
-        addServiceBtn.setGraphic(IconHelper.add());
-        addServiceBtn.getStyleClass().add("add-button");
+        Button addServiceBtn = new Button("+ Добавить");
 
-        // ==================== ЗАПЧАСТИ ====================
+        HBox serviceAddBox = new HBox(8, serviceCombo, servicePriceField, addServiceBtn);
+        serviceAddBox.setAlignment(Pos.CENTER_LEFT);
+
+        Button removeServiceBtn = new Button("Удалить выбранную");
+
+        // ============================================================
+        // 4. ЗАПЧАСТИ
+        // ============================================================
         Label partsHeader = new Label("Запчасти:");
         partsHeader.setStyle("-fx-font-weight: bold;");
 
         ListView<String> partsListView = new ListView<>();
-        partsListView.setPrefHeight(120);
+        partsListView.setPrefHeight(100);
 
         ComboBox<SparePart> partCombo = new ComboBox<>(FXCollections.observableArrayList(DataStore.getSpareParts()));
         partCombo.setPromptText("Выберите запчасть");
-        partCombo.setPrefWidth(300);
+        partCombo.setPrefWidth(200);
 
         TextField partPriceField = new TextField();
         partPriceField.setEditable(false);
-        partPriceField.setPrefWidth(100);
+        partPriceField.setPrefWidth(80);
+        partPriceField.setPromptText("Цена");
 
         TextField partStockField = new TextField();
         partStockField.setEditable(false);
-        partStockField.setPrefWidth(60);
+        partStockField.setPrefWidth(50);
+        partStockField.setPromptText("Ост.");
 
-        TextField partQtyField = new TextField();
-        partQtyField.setText("1");
-        partQtyField.setPrefWidth(60);
+        TextField partQtyField = new TextField("1");
+        partQtyField.setPrefWidth(50);
 
         partCombo.setOnAction(e -> {
             SparePart selected = partCombo.getValue();
@@ -156,26 +176,25 @@ public class CreateOrderDialog {
             }
         });
 
-        Button addPartBtn = new Button("Добавить запчасть");
-        addPartBtn.setGraphic(IconHelper.add());
-        addPartBtn.getStyleClass().add("add-button");
+        Button addPartBtn = new Button("+ Добавить");
 
-        // Временные списки
+        HBox partAddBox = new HBox(8, partCombo, partPriceField, new Label("Ост:"), partStockField,
+                new Label("Кол:"), partQtyField, addPartBtn);
+        partAddBox.setAlignment(Pos.CENTER_LEFT);
+
+        Button removePartBtn = new Button("Удалить выбранную");
+
+        // ============================================================
+        // 5. ВРЕМЕННЫЕ СПИСКИ
+        // ============================================================
         List<String> tempServices = new ArrayList<>();
         List<Double> tempServicePrices = new ArrayList<>();
         List<SparePart> tempParts = new ArrayList<>();
         List<Integer> tempPartQuantities = new ArrayList<>();
 
-        // ==================== КНОПКИ УДАЛЕНИЯ ====================
-        Button removeServiceBtn = new Button("Удалить выбранную");
-        removeServiceBtn.setGraphic(IconHelper.delete());
-        removeServiceBtn.getStyleClass().add("delete-button");
-
-        Button removePartBtn = new Button("Удалить выбранную");
-        removePartBtn.setGraphic(IconHelper.delete());
-        removePartBtn.getStyleClass().add("delete-button");
-
-        // ==================== ИТОГО ====================
+        // ============================================================
+        // 6. ИТОГО
+        // ============================================================
         Label totalLabel = new Label("Итого: 0 руб.");
         totalLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
 
@@ -188,7 +207,9 @@ public class CreateOrderDialog {
             totalLabel.setText("Итого: " + String.format("%.2f", total) + " руб.");
         };
 
-        // ==================== ЛОГИКА ДОБАВЛЕНИЯ ====================
+        // ============================================================
+        // 7. ЛОГИКА ДОБАВЛЕНИЯ/УДАЛЕНИЯ
+        // ============================================================
         addServiceBtn.setOnAction(e -> {
             Service selected = serviceCombo.getValue();
             if (selected == null) {
@@ -197,10 +218,25 @@ public class CreateOrderDialog {
             }
             tempServices.add(selected.getName());
             tempServicePrices.add(selected.getPrice());
-            servicesListView.getItems().add(tempServices.size() + ". " + selected.getName() + " — " + selected.getPrice() + " руб.");
+            servicesListView.getItems().add((tempServices.size()) + ". " + selected.getName() + " — " + selected.getPrice() + " руб.");
             serviceCombo.setValue(null);
             servicePriceField.clear();
             updateTotal.run();
+        });
+
+        removeServiceBtn.setOnAction(e -> {
+            int idx = servicesListView.getSelectionModel().getSelectedIndex();
+            if (idx >= 0 && idx < tempServices.size()) {
+                tempServices.remove(idx);
+                tempServicePrices.remove(idx);
+                servicesListView.getItems().clear();
+                for (int i = 0; i < tempServices.size(); i++) {
+                    servicesListView.getItems().add((i + 1) + ". " + tempServices.get(i) + " — " + tempServicePrices.get(i) + " руб.");
+                }
+                updateTotal.run();
+            } else {
+                showAlert("Выберите услугу");
+            }
         });
 
         addPartBtn.setOnAction(e -> {
@@ -227,27 +263,12 @@ public class CreateOrderDialog {
             tempParts.add(selected);
             tempPartQuantities.add(qty);
             selected.setStock(selected.getStock() - qty);
-            partsListView.getItems().add(tempParts.size() + ". " + selected.getName() + " — " + selected.getRetailPrice() + " руб. x " + qty + " = " + (selected.getRetailPrice() * qty) + " руб.");
+            partsListView.getItems().add((tempParts.size()) + ". " + selected.getName() + " x" + qty + " = " + (selected.getRetailPrice() * qty) + " руб.");
             partStockField.setText(String.valueOf(selected.getStock()));
             partCombo.setValue(null);
             partPriceField.clear();
             partQtyField.setText("1");
             updateTotal.run();
-        });
-
-        removeServiceBtn.setOnAction(e -> {
-            int idx = servicesListView.getSelectionModel().getSelectedIndex();
-            if (idx >= 0 && idx < tempServices.size()) {
-                tempServices.remove(idx);
-                tempServicePrices.remove(idx);
-                servicesListView.getItems().clear();
-                for (int i = 0; i < tempServices.size(); i++) {
-                    servicesListView.getItems().add((i+1) + ". " + tempServices.get(i) + " — " + tempServicePrices.get(i) + " руб.");
-                }
-                updateTotal.run();
-            } else {
-                showAlert("Выберите услугу");
-            }
         });
 
         removePartBtn.setOnAction(e -> {
@@ -262,7 +283,7 @@ public class CreateOrderDialog {
                 for (int i = 0; i < tempParts.size(); i++) {
                     SparePart p = tempParts.get(i);
                     int q = tempPartQuantities.get(i);
-                    partsListView.getItems().add((i+1) + ". " + p.getName() + " — " + p.getRetailPrice() + " руб. x " + q + " = " + (p.getRetailPrice() * q) + " руб.");
+                    partsListView.getItems().add((i + 1) + ". " + p.getName() + " x" + q + " = " + (p.getRetailPrice() * q) + " руб.");
                 }
                 partCombo.setItems(FXCollections.observableArrayList(DataStore.getSpareParts()));
                 updateTotal.run();
@@ -271,43 +292,36 @@ public class CreateOrderDialog {
             }
         });
 
-        // ==================== КНОПКИ СОХРАНЕНИЯ ====================
+        // ============================================================
+        // 8. КНОПКИ СОХРАНЕНИЯ
+        // ============================================================
         Button saveBtn = new Button("Создать заказ");
-        saveBtn.setGraphic(IconHelper.save());
-        saveBtn.getStyleClass().add("save-button");
-
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.setGraphic(IconHelper.cancel());
-        cancelBtn.getStyleClass().add("cancel-button");
 
         HBox btnBox = new HBox(15, saveBtn, cancelBtn);
         btnBox.setAlignment(Pos.CENTER);
 
-        // Сборка интерфейса
-        HBox serviceAddBox = new HBox(10, serviceCombo, servicePriceField, addServiceBtn);
-        HBox partAddBox = new HBox(10, partCombo, partPriceField, new Label("Остаток:"), partStockField,
-                new Label("Кол-во:"), partQtyField, addPartBtn);
-
+        // ============================================================
+        // 9. СБОРКА ИНТЕРФЕЙСА
+        // ============================================================
         root.getChildren().addAll(
-                new Label("Клиент:"), clientCombo,
+                clientLabel, clientCombo,
                 new Separator(),
                 appointmentLabel, appointmentBox, createAppointmentCheck,
                 new Separator(),
-                servicesHeader, servicesListView,
-                serviceAddBox, removeServiceBtn,
+                servicesHeader, servicesListView, serviceAddBox, removeServiceBtn,
                 new Separator(),
-                partsHeader, partsListView,
-                partAddBox, removePartBtn,
+                partsHeader, partsListView, partAddBox, removePartBtn,
                 new Separator(),
                 totalLabel, btnBox
         );
 
         Scene scene = new Scene(root);
-        scene.getStylesheets().add(
-                CreateOrderDialog.class.getResource("/styles.css").toExternalForm()
-        );
         stage.setScene(scene);
 
+        // ============================================================
+        // 10. ДЕЙСТВИЯ
+        // ============================================================
         saveBtn.setOnAction(e -> {
             if (clientCombo.getValue() == null) {
                 showAlert("Выберите клиента");
@@ -333,18 +347,29 @@ public class CreateOrderDialog {
                 }
             }
 
+            // ====== СОЗДАЁМ ЗАКАЗ ======
             WorkOrder order = new WorkOrder(clientCombo.getValue());
             order.setStatus("Новый");
 
+            // ====== ДОБАВЛЯЕМ УСЛУГИ ======
             for (int i = 0; i < tempServices.size(); i++) {
                 order.addService(tempServices.get(i), tempServicePrices.get(i));
             }
+
+            // ====== ДОБАВЛЯЕМ РУЧНЫЕ ЗАПЧАСТИ ======
             for (int i = 0; i < tempParts.size(); i++) {
                 order.addSparePart(tempParts.get(i), tempPartQuantities.get(i));
                 DataStore.updateSparePartStock(tempParts.get(i), tempParts.get(i).getStock());
             }
+
+            // ====== 🆕 АВТОМАТИЧЕСКИ ДОБАВЛЯЕМ МАСЛО И РАСХОДНИКИ ======
+            List<String> serviceNames = new ArrayList<>(tempServices);
+            OilHelper.addOilAndPartsToOrder(order, serviceNames);
+
+            // ====== СОХРАНЯЕМ ЗАКАЗ ======
             DataStore.addOrder(order);
 
+            // ====== ЗАПИСЬ В КАЛЕНДАРЬ ======
             if (createAppointmentCheck.isSelected()) {
                 String dateStr = datePicker.getValue().toString();
                 String timeStr = timeCombo.getValue();

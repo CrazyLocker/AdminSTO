@@ -2,6 +2,7 @@ package com.autoservice.dialogs;
 
 import com.autoservice.*;
 import com.autoservice.controllers.OrderController;
+import com.autoservice.utils.OilHelper;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -21,7 +22,7 @@ public class EditOrderDialog {
     private static final String[] TIME_SLOTS = {
             "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
             "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30",
-            "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00"
+            "16:00", "16:30", "17:00"
     };
 
     private static final String[] MASTERS = {"Иван", "Петр", "Сергей", "Антон"};
@@ -65,7 +66,7 @@ public class EditOrderDialog {
         infoLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
 
         // ==================== ЗАПИСЬ В КАЛЕНДАРЬ ====================
-        Label appointmentHeader = new Label("📅 ЗАПИСЬ В КАЛЕНДАРЬ");
+        Label appointmentHeader = new Label("ЗАПИСЬ В КАЛЕНДАРЬ");
         appointmentHeader.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
 
         // Находим существующую запись для этого заказа
@@ -95,11 +96,11 @@ public class EditOrderDialog {
                 formattedDate = LocalDate.parse(dateStr).format(DATE_FORMATTER);
             } catch (Exception e) {}
 
-            currentAppointmentInfo.setText("📌 Текущая запись: " + formattedDate + " " + timeStr + ", мастер: " + master + ", услуга: " + service);
+            currentAppointmentInfo.setText("Текущая запись: " + formattedDate + " " + timeStr + ", мастер: " + master + ", услуга: " + service);
             currentAppointmentInfo.setStyle("-fx-text-fill: #2196F3; -fx-font-size: 12px; -fx-padding: 5 0 5 0;");
         } else {
             hasAppointmentCheck.setSelected(false);
-            currentAppointmentInfo.setText("⚠ Запись в календаре отсутствует");
+            currentAppointmentInfo.setText("Запись в календаре отсутствует");
             currentAppointmentInfo.setStyle("-fx-text-fill: #FF9800; -fx-font-size: 12px; -fx-padding: 5 0 5 0;");
         }
 
@@ -130,11 +131,11 @@ public class EditOrderDialog {
                 datePicker.setValue(null);
                 timeCombo.setValue(null);
                 masterCombo.setValue(null);
-                currentAppointmentInfo.setText("⚠ Запись будет удалена");
+                currentAppointmentInfo.setText("Запись будет удалена");
                 currentAppointmentInfo.setStyle("-fx-text-fill: #f44336; -fx-font-size: 12px; -fx-padding: 5 0 5 0;");
             } else {
                 datePicker.setValue(LocalDate.now());
-                currentAppointmentInfo.setText("📌 Будет создана новая запись");
+                currentAppointmentInfo.setText("Будет создана новая запись");
                 currentAppointmentInfo.setStyle("-fx-text-fill: #4CAF50; -fx-font-size: 12px; -fx-padding: 5 0 5 0;");
             }
         });
@@ -148,7 +149,7 @@ public class EditOrderDialog {
         VBox appointmentSection = new VBox(5, appointmentHeader, currentAppointmentInfo, hasAppointmentCheck, appointmentBox);
 
         // ==================== УСЛУГИ ====================
-        Label servicesHeader = new Label("📋 УСЛУГИ");
+        Label servicesHeader = new Label("УСЛУГИ");
         servicesHeader.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
 
         servicesListView = new ListView<>();
@@ -174,12 +175,12 @@ public class EditOrderDialog {
             }
         });
 
-        Button addServiceBtn = new Button("➕ Добавить услугу");
-        addServiceBtn.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white;");
+        Button addServiceBtn = new Button("Добавить услугу");
+        addServiceBtn.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold;");
         HBox serviceAddBox = new HBox(10, serviceCombo, servicePriceField, addServiceBtn);
 
         // ==================== ЗАПЧАСТИ ====================
-        Label partsHeader = new Label("🔧 ЗАПЧАСТИ");
+        Label partsHeader = new Label("ЗАПЧАСТИ");
         partsHeader.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
 
         partsListView = new ListView<>();
@@ -214,19 +215,19 @@ public class EditOrderDialog {
             }
         });
 
-        Button addPartBtn = new Button("➕ Добавить запчасть");
-        addPartBtn.setStyle("-fx-background-color: #2196F3; -fx-text-fill: white;");
+        Button addPartBtn = new Button("Добавить запчасть");
+        addPartBtn.setStyle("-fx-background-color: #2196F3; -fx-text-fill: white; -fx-font-weight: bold;");
         HBox partAddBox = new HBox(10, partCombo, partPriceField, new Label("Остаток:"), partStockField,
                 new Label("Кол-во:"), partQtyField, addPartBtn);
 
         // ==================== КНОПКИ УДАЛЕНИЯ ====================
-        Button removeServiceBtn = new Button("❌ Удалить выбранную услугу");
-        removeServiceBtn.setStyle("-fx-background-color: #f44336; -fx-text-fill: white;");
-        Button removePartBtn = new Button("❌ Удалить выбранную запчасть");
-        removePartBtn.setStyle("-fx-background-color: #f44336; -fx-text-fill: white;");
+        Button removeServiceBtn = new Button("Удалить выбранную услугу");
+        removeServiceBtn.setStyle("-fx-background-color: #f44336; -fx-text-fill: white; -fx-font-weight: bold;");
+        Button removePartBtn = new Button("Удалить выбранную запчасть");
+        removePartBtn.setStyle("-fx-background-color: #f44336; -fx-text-fill: white; -fx-font-weight: bold;");
 
         // ==================== ИТОГО ====================
-        totalLabel = new Label("💰 ИТОГО: " + calculateTotal() + " руб.");
+        totalLabel = new Label("ИТОГО: " + calculateTotal() + " руб.");
         totalLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 16px; -fx-text-fill: #2E7D32;");
 
         // ==================== ЛОГИКА ДОБАВЛЕНИЯ ====================
@@ -314,10 +315,10 @@ public class EditOrderDialog {
         });
 
         // ==================== КНОПКИ СОХРАНЕНИЯ ====================
-        Button saveBtn = new Button("💾 СОХРАНИТЬ ИЗМЕНЕНИЯ");
+        Button saveBtn = new Button("Сохранить изменения");
         saveBtn.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
-        Button cancelBtn = new Button("❌ ОТМЕНА");
-        cancelBtn.setStyle("-fx-background-color: #f44336; -fx-text-fill: white; -fx-font-size: 14px;");
+        Button cancelBtn = new Button("Отмена");
+        cancelBtn.setStyle("-fx-background-color: #f44336; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
         HBox btnBox = new HBox(15, saveBtn, cancelBtn);
         btnBox.setAlignment(Pos.CENTER);
 
@@ -410,7 +411,7 @@ public class EditOrderDialog {
         System.out.println("Услуг: " + tempServices.size());
         System.out.println("Запчастей: " + tempParts.size());
 
-        // Очищаем старые услуги
+        // ====== ОЧИЩАЕМ СТАРЫЕ УСЛУГИ ======
         while (order.getServices().size() > 0) {
             order.removeService(0);
         }
@@ -418,18 +419,24 @@ public class EditOrderDialog {
             order.addService(tempServices.get(i), tempServicePrices.get(i));
         }
 
-        // Очищаем старые запчасти
+        // ====== ОЧИЩАЕМ СТАРЫЕ ЗАПЧАСТИ ======
         while (order.getSpareParts().size() > 0) {
             order.removeSparePart(0);
         }
+
+        // ====== ДОБАВЛЯЕМ РУЧНЫЕ ЗАПЧАСТИ ======
         for (int i = 0; i < tempParts.size(); i++) {
             order.addSparePart(tempParts.get(i), tempPartQuantities.get(i));
         }
 
-        // Сохраняем заказ
+        // ====== 🆕 АВТОМАТИЧЕСКИ ДОБАВЛЯЕМ МАСЛО И РАСХОДНИКИ ======
+        List<String> serviceNames = new ArrayList<>(tempServices);
+        OilHelper.addOilAndPartsToOrder(order, serviceNames);
+
+        // ====== СОХРАНЯЕМ ЗАКАЗ ======
         DataStore.updateOrder(order);
 
-        // Обработка записи в календаре
+        // ====== ОБРАБОТКА ЗАПИСИ В КАЛЕНДАРЕ ======
         if (hasAppointmentCheck.isSelected()) {
             LocalDate selectedDate = datePicker.getValue();
             String selectedTime = timeCombo.getValue();
@@ -491,7 +498,7 @@ public class EditOrderDialog {
         for (int i = 0; i < tempParts.size(); i++) {
             total += tempParts.get(i).getRetailPrice() * tempPartQuantities.get(i);
         }
-        totalLabel.setText("💰 ИТОГО: " + String.format("%.2f", total) + " руб.");
+        totalLabel.setText("ИТОГО: " + String.format("%.2f", total) + " руб.");
     }
 
     private static double calculateTotal() {

@@ -22,12 +22,7 @@ public class OrderController {
     }
 
     public static void refreshTable() {
-        System.out.println("OrderController.refreshTable() called");
-
-        // Принудительно обновляем OrderView
         OrderView.refreshOrderList();
-
-        // Обновляем другие вью
         AppointmentView.refresh();
         DashboardView.refresh();
     }
@@ -107,7 +102,9 @@ public class OrderController {
         for (int i = 0; i < order.getSpareParts().size(); i++) {
             SparePart part = order.getSpareParts().get(i);
             int quantity = order.getSparePartQuantities().get(i);
-            int newStock = part.getStock() + quantity;
+
+            // Используем double для расчёта нового остатка
+            double newStock = part.getStock() + quantity;
             DataStore.updateSparePartStock(part, newStock);
             System.out.println("Возвращено на склад: " + part.getName() + " +" + quantity);
         }

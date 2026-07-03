@@ -1,10 +1,8 @@
 package com.autoservice.controllers;
 
 import com.autoservice.DataStore;
-import com.autoservice.Service;
 import com.autoservice.SparePart;
-import com.autoservice.dialogs.StockIncomeDialog;
-import javafx.collections.FXCollections;
+import com.autoservice.Service;
 import javafx.scene.control.TableView;
 
 import java.util.List;
@@ -34,20 +32,32 @@ public class DictionaryController {
 
     public static void refreshServices() {
         if (servicesTable != null) {
-            servicesTable.setItems(FXCollections.observableArrayList(DataStore.getServices()));
+            servicesTable.setItems(javafx.collections.FXCollections.observableArrayList(DataStore.getServices()));
         }
     }
 
     public static void refreshSpareParts() {
         if (sparePartsTable != null) {
-            sparePartsTable.setItems(FXCollections.observableArrayList(DataStore.getSpareParts()));
+            sparePartsTable.setItems(javafx.collections.FXCollections.observableArrayList(DataStore.getSpareParts()));
         }
     }
 
     public static void refreshStock() {
         if (stockTable != null) {
-            stockTable.setItems(FXCollections.observableArrayList(DataStore.getSpareParts()));
+            stockTable.setItems(javafx.collections.FXCollections.observableArrayList(DataStore.getSpareParts()));
         }
+    }
+
+    public static void addSparePart(SparePart part) {
+        DataStore.addSparePart(part);
+        refreshAll();
+    }
+
+    public static void removeSpareParts(List<SparePart> parts) {
+        for (SparePart part : parts) {
+            DataStore.removeSparePart(part);
+        }
+        refreshAll();
     }
 
     public static void addService(Service service) {
@@ -58,36 +68,5 @@ public class DictionaryController {
     public static void removeService(Service service) {
         DataStore.removeService(service);
         refreshServices();
-    }
-
-    public static void addSparePart(SparePart part) {
-        DataStore.addSparePart(part);
-        refreshSpareParts();
-        refreshStock();
-    }
-
-    public static void removeSparePart(SparePart part) {
-        DataStore.removeSparePart(part);
-        refreshSpareParts();
-        refreshStock();
-    }
-
-    public static void removeSpareParts(List<SparePart> parts) {
-        for (SparePart part : parts) {
-            DataStore.removeSparePart(part);
-        }
-        refreshSpareParts();
-        refreshStock();
-    }
-
-    public static void incomeSparePart(SparePart part, int amount) {
-        int newStock = part.getStock() + amount;
-        DataStore.updateSparePartStock(part, newStock);
-        refreshSpareParts();
-        refreshStock();
-    }
-
-    public static void showStockIncome(SparePart part) {
-        StockIncomeDialog.show(part);
     }
 }

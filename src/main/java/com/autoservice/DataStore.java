@@ -187,8 +187,9 @@ public class DataStore {
         isDirty = true;
     }
 
-    public static void updateSparePartStock(SparePart part, int newStock) {
+    public static void updateSparePartStock(SparePart part, double newStock) {
         part.setDirty(true);
+        part.setStock(newStock);
         Database.updateSparePartStock(part, newStock);
         spareParts = Database.getAllSpareParts();
         isDirty = true;

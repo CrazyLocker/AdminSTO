@@ -1,13 +1,11 @@
 package com.autoservice.views;
 
-import javafx.scene.layout.Region;
 import com.autoservice.Client;
 import com.autoservice.DataStore;
 import com.autoservice.DateUtils;
 import com.autoservice.Validators;
 import com.autoservice.controllers.ClientController;
 import com.autoservice.dialogs.EditClientDialog;
-import com.autoservice.utils.IconHelper;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -18,6 +16,7 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
 import java.util.Arrays;
@@ -52,13 +51,12 @@ public class ClientView {
         topPanel.setAlignment(Pos.CENTER_LEFT);
         topPanel.setPadding(new Insets(0, 0, 10, 0));
 
+        // ====== КНОПКИ БЕЗ ИКОНОК ======
         addBtn = new Button("Новый клиент");
-        addBtn.setGraphic(IconHelper.add());
         addBtn.getStyleClass().add("add-button");
         addBtn.setOnAction(e -> showAddClientDialog());
 
         editBtn = new Button("Изменить");
-        editBtn.setGraphic(IconHelper.edit());
         editBtn.getStyleClass().add("edit-button");
         editBtn.setDisable(true);
         editBtn.setOnAction(e -> {
@@ -69,7 +67,6 @@ public class ClientView {
         });
 
         deleteBtn = new Button("Удалить");
-        deleteBtn.setGraphic(IconHelper.delete());
         deleteBtn.getStyleClass().add("delete-button");
         deleteBtn.setDisable(true);
         deleteBtn.setOnAction(e -> {
@@ -108,8 +105,14 @@ public class ClientView {
 
         searchField.textProperty().addListener((observable, oldValue, newValue) -> filterClients(newValue));
 
-        Button clearBtn = new Button();
-        clearBtn.setGraphic(IconHelper.cancel());
+        Button clearBtn = new Button("✕");
+        clearBtn.setStyle(
+                "-fx-background-color: #dc3545;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-padding: 4 8 4 8;" +
+                        "-fx-background-radius: 4;"
+        );
         clearBtn.getStyleClass().add("clear-button");
         clearBtn.setOnAction(e -> {
             searchField.clear();

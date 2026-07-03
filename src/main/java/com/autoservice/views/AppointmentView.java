@@ -2,7 +2,6 @@ package com.autoservice.views;
 
 import com.autoservice.*;
 import com.autoservice.controllers.OrderController;
-import com.autoservice.utils.IconHelper;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -83,8 +82,8 @@ public class AppointmentView {
         datePicker.getStyleClass().add("appointment-datepicker");
         datePicker.setOnAction(e -> refreshView());
 
+        // ====== КНОПКИ БЕЗ ИКОНОК ======
         Button todayBtn = new Button("Сегодня");
-        todayBtn.setGraphic(IconHelper.event());
         todayBtn.getStyleClass().add("today-button");
         todayBtn.setOnAction(e -> {
             datePicker.setValue(LocalDate.now());
@@ -92,12 +91,10 @@ public class AppointmentView {
         });
 
         Button refreshBtn = new Button("Обновить");
-        refreshBtn.setGraphic(IconHelper.refresh());
         refreshBtn.getStyleClass().add("refresh-button");
         refreshBtn.setOnAction(e -> refreshView());
 
         Button addBtn = new Button("Новая запись");
-        addBtn.setGraphic(IconHelper.add());
         addBtn.getStyleClass().add("add-appointment-button");
         addBtn.setOnAction(e -> showAddAppointmentDialog(null));
 
@@ -432,7 +429,6 @@ public class AppointmentView {
         btnBox.setAlignment(Pos.CENTER);
 
         Button closeBtn = new Button("Закрыть");
-        closeBtn.setGraphic(IconHelper.cancel());
         closeBtn.getStyleClass().add("cancel-button");
         closeBtn.setOnAction(e -> stage.close());
 
@@ -560,7 +556,6 @@ public class AppointmentView {
         btnBox.setAlignment(Pos.CENTER);
 
         Button closeBtn = new Button("Закрыть");
-        closeBtn.setGraphic(IconHelper.cancel());
         closeBtn.getStyleClass().add("cancel-button");
         closeBtn.setOnAction(e -> stage.close());
 
@@ -631,16 +626,14 @@ public class AppointmentView {
         HBox btnBox = new HBox(15);
         btnBox.setAlignment(Pos.CENTER);
 
+        // ====== КНОПКИ БЕЗ ИКОНОК ======
         Button saveBtn = new Button("Сохранить");
-        saveBtn.setGraphic(IconHelper.save());
         saveBtn.getStyleClass().add("save-button");
 
         Button deleteBtn = new Button("Удалить");
-        deleteBtn.setGraphic(IconHelper.delete());
         deleteBtn.getStyleClass().add("delete-button");
 
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.setGraphic(IconHelper.cancel());
         cancelBtn.getStyleClass().add("cancel-button");
 
         btnBox.getChildren().addAll(saveBtn, deleteBtn, cancelBtn);
@@ -762,12 +755,11 @@ public class AppointmentView {
         HBox btnBox = new HBox(15);
         btnBox.setAlignment(Pos.CENTER);
 
+        // ====== КНОПКИ БЕЗ ИКОНОК ======
         Button saveBtn = new Button("Создать запись");
-        saveBtn.setGraphic(IconHelper.save());
         saveBtn.getStyleClass().add("save-button");
 
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.setGraphic(IconHelper.cancel());
         cancelBtn.getStyleClass().add("cancel-button");
 
         btnBox.getChildren().addAll(saveBtn, cancelBtn);

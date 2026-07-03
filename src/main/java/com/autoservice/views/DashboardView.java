@@ -1,30 +1,31 @@
 package com.autoservice.views;
 
-import com.autoservice.Client;
-import com.autoservice.DataStore;
-import com.autoservice.SparePart;
-import com.autoservice.WorkOrder;
-import com.autoservice.dialogs.CreateOrderDialog;
-import com.autoservice.dialogs.EditClientDialog;
+import com.autoservice.*;
 import com.autoservice.controllers.ClientController;
 import com.autoservice.controllers.OrderController;
+import com.autoservice.dialogs.CreateOrderDialog;
+import com.autoservice.dialogs.EditClientDialog;
+import com.autoservice.dialogs.OrderDetailsDialog;
 import com.autoservice.utils.IconHelper;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.ScrollPane;
-import javafx.scene.control.Tab;
-import javafx.scene.control.TabPane;
+import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 import java.text.NumberFormat;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
+
 public class DashboardView extends ScrollPane {
 
     private static DashboardView instance;
@@ -78,77 +79,77 @@ public class DashboardView extends ScrollPane {
 
         int row = 0;
 
-        // Строка карточек
+        // ====== ВЕРХНИЕ КАРТОЧКИ (320x140) ======
         HBox cardsRow = new HBox(20);
         cardsRow.setAlignment(Pos.CENTER);
         cardsRow.setPadding(new Insets(0, 0, 20, 0));
 
         cardsRow.getChildren().addAll(
-                createStatCard(IconHelper.assignment(24, "#3498db"), "Заказов",
+                createStatCard(IconHelper.assignment(32, "#3498db"), "Заказов",
                         String.valueOf(DataStore.getOrders().size()), "#3498db"),
-                createStatCard(IconHelper.people(24, "#2ecc71"), "Клиентов",
+                createStatCard(IconHelper.people(32, "#2ecc71"), "Клиентов",
                         String.valueOf(DataStore.getClients().size()), "#2ecc71"),
-                createStatCard(IconHelper.warning(24, "#e74c3c"), "Остатки",
+                createStatCard(IconHelper.warning(32, "#e74c3c"), "Остатки",
                         getLowStockCount(), "#e74c3c"),
-                createStatCard(IconHelper.report(24, "#f39c12"), "Выручка",
+                createStatCard(IconHelper.report(32, "#f39c12"), "Выручка",
                         getTotalRevenue(), "#f39c12")
         );
 
         gridPane.add(cardsRow, 0, row);
         row++;
 
-        // Активные заказы
+        // ====== КАРТОЧКИ СТАТУСОВ (320x140) ======
         HBox activeRow = new HBox(20);
         activeRow.setAlignment(Pos.CENTER);
         activeRow.setPadding(new Insets(0, 0, 20, 0));
 
         activeRow.getChildren().addAll(
-                createStatCard(IconHelper.edit(24, "#f1c40f"), "В работе",
+                createStatCard(IconHelper.settings(32, "#f1c40f"), "В работе",
                         String.valueOf(getActiveOrdersCount()), "#f1c40f"),
-                createStatCard(IconHelper.save(24, "#27ae60"), "Выполнено",
+                createStatCard(IconHelper.checkCircle(32, "#27ae60"), "Выполнено",
                         String.valueOf(getCompletedOrdersCount()), "#27ae60"),
-                createStatCard(IconHelper.event(24, "#9b59b6"), "Записей",
+                createStatCard(IconHelper.event(32, "#9b59b6"), "Записей",
                         String.valueOf(DataStore.getAppointments().size()), "#9b59b6")
         );
 
         gridPane.add(activeRow, 0, row);
         row++;
 
-        // Быстрые действия
+        // ====== КНОПКИ БЫСТРЫХ ДЕЙСТВИЙ (190x40) ======
         HBox actionsRow = new HBox(15);
         actionsRow.setAlignment(Pos.CENTER);
         actionsRow.setPadding(new Insets(20, 0, 10, 0));
 
         actionsRow.getChildren().addAll(
-                createActionButton("Новый заказ", "#3498db", IconHelper.add()),
-                createActionButton("Новый клиент", "#2ecc71", IconHelper.add()),
-                createActionButton("Запись", "#9b59b6", IconHelper.event()),
-                createActionButton("Отчёт", "#f39c12", IconHelper.report())
+                createActionButton("Новый заказ", "#3498db"),
+                createActionButton("Новый клиент", "#2ecc71"),
+                createActionButton("Запись", "#9b59b6"),
+                createActionButton("Отчёт", "#f39c12")
         );
 
         gridPane.add(actionsRow, 0, row);
         row++;
 
-        // Последние заказы
-        VBox recentOrdersBox = createRecentOrdersBox();
-        gridPane.add(recentOrdersBox, 0, row);
+        // ====== ЗАПИСИ НА ТЕКУЩУЮ НЕДЕЛЮ ======
+        VBox appointmentsBox = createAppointmentsWeekBox();
+        gridPane.add(appointmentsBox, 0, row);
     }
 
-    // ==================== СОЗДАНИЕ КАРТОЧКИ ====================
+    // ==================== СОЗДАНИЕ КАРТОЧКИ (320x140) ====================
 
     private VBox createStatCard(Node icon, String title, String value, String color) {
         VBox card = new VBox(5);
         card.setAlignment(Pos.CENTER);
-        card.setPadding(new Insets(20, 40, 20, 40));
+        card.setPrefSize(320, 140);
+        card.setMinSize(320, 140);
+        card.setMaxSize(320, 140);
         card.setStyle(
                 "-fx-background-color: white;" +
                         "-fx-border-radius: 12px;" +
                         "-fx-background-radius: 12px;" +
                         "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 5);" +
-                        "-fx-border-width: 3px 0 0 0;" +
-                        "-fx-border-color: " + color + ";" +
-                        "-fx-min-width: 180px;" +
-                        "-fx-pref-width: 180px;"
+                        "-fx-border-width: 4px 0 0 0;" +
+                        "-fx-border-color: " + color + ";"
         );
 
         Label titleLabel = new Label(title);
@@ -156,26 +157,25 @@ public class DashboardView extends ScrollPane {
         titleLabel.setWrapText(true);
 
         Label valueLabel = new Label(value);
-        valueLabel.setStyle("-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
+        valueLabel.setStyle("-fx-font-size: 32px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
         valueLabel.setWrapText(true);
 
         card.getChildren().addAll(icon, titleLabel, valueLabel);
         return card;
     }
 
-    // ==================== КНОПКИ БЫСТРЫХ ДЕЙСТВИЙ ====================
+    // ==================== КНОПКИ БЫСТРЫХ ДЕЙСТВИЙ (190x40) ====================
 
-    private Button createActionButton(String text, String color, Node icon) {
+    private Button createActionButton(String text, String color) {
         Button btn = new Button(text);
-        btn.setGraphic(icon);
+        btn.setPrefSize(190, 40);
         btn.setStyle(
                 "-fx-background-color: " + color + ";" +
                         "-fx-text-fill: white;" +
                         "-fx-font-size: 14px;" +
                         "-fx-font-weight: bold;" +
-                        "-fx-padding: 12px 25px;" +
-                        "-fx-border-radius: 8px;" +
                         "-fx-background-radius: 8px;" +
+                        "-fx-border-radius: 8px;" +
                         "-fx-cursor: hand;" +
                         "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 8, 0, 0, 3);"
         );
@@ -185,9 +185,8 @@ public class DashboardView extends ScrollPane {
                         "-fx-text-fill: white;" +
                         "-fx-font-size: 14px;" +
                         "-fx-font-weight: bold;" +
-                        "-fx-padding: 12px 25px;" +
-                        "-fx-border-radius: 8px;" +
                         "-fx-background-radius: 8px;" +
+                        "-fx-border-radius: 8px;" +
                         "-fx-cursor: hand;" +
                         "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 12, 0, 0, 4);"
         ));
@@ -197,16 +196,14 @@ public class DashboardView extends ScrollPane {
                         "-fx-text-fill: white;" +
                         "-fx-font-size: 14px;" +
                         "-fx-font-weight: bold;" +
-                        "-fx-padding: 12px 25px;" +
-                        "-fx-border-radius: 8px;" +
                         "-fx-background-radius: 8px;" +
+                        "-fx-border-radius: 8px;" +
                         "-fx-cursor: hand;" +
                         "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 8, 0, 0, 3);"
         ));
 
         btn.setOnAction(e -> {
             String btnText = text;
-
             if (btnText.contains("Новый заказ")) {
                 openCreateOrderDialog();
             } else if (btnText.contains("Новый клиент")) {
@@ -243,9 +240,7 @@ public class DashboardView extends ScrollPane {
             refresh();
             OrderController.refreshTable();
         } catch (Exception ex) {
-            System.err.println("Ошибка открытия диалога создания заказа: " + ex.getMessage());
-            ex.printStackTrace();
-            showErrorAlert("Ошибка", "Не удалось открыть диалог создания заказа: " + ex.getMessage());
+            showErrorAlert("Ошибка", "Не удалось открыть диалог создания заказа");
         }
     }
 
@@ -257,9 +252,7 @@ public class DashboardView extends ScrollPane {
             refresh();
             ClientController.refreshTable();
         } catch (Exception ex) {
-            System.err.println("Ошибка открытия диалога создания клиента: " + ex.getMessage());
-            ex.printStackTrace();
-            showErrorAlert("Ошибка", "Не удалось открыть диалог создания клиента: " + ex.getMessage());
+            showErrorAlert("Ошибка", "Не удалось открыть диалог создания клиента");
         }
     }
 
@@ -279,7 +272,6 @@ public class DashboardView extends ScrollPane {
             }
             showInfoAlert("Переключение", "Вкладка 'Запись' не найдена.");
         } catch (Exception ex) {
-            System.err.println("Ошибка переключения на вкладку Запись: " + ex.getMessage());
             showErrorAlert("Ошибка", "Не удалось переключиться на вкладку 'Запись'.");
         }
     }
@@ -288,13 +280,9 @@ public class DashboardView extends ScrollPane {
         try {
             ReportView.show();
         } catch (Exception ex) {
-            System.err.println("Ошибка открытия отчёта: " + ex.getMessage());
-            ex.printStackTrace();
-            showErrorAlert("Ошибка", "Не удалось открыть отчёт: " + ex.getMessage());
+            showErrorAlert("Ошибка", "Не удалось открыть отчёт");
         }
     }
-
-    // ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================
 
     private void showInfoAlert(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
@@ -311,6 +299,8 @@ public class DashboardView extends ScrollPane {
         alert.setContentText(message);
         alert.showAndWait();
     }
+
+    // ==================== СТАТИСТИКА ====================
 
     private String getLowStockCount() {
         int count = 0;
@@ -353,9 +343,9 @@ public class DashboardView extends ScrollPane {
         return count;
     }
 
-    // ==================== БЛОК ПОСЛЕДНИХ ЗАКАЗОВ ====================
+// ==================== ЗАПИСИ НА ТЕКУЩУЮ НЕДЕЛЮ ====================
 
-    private VBox createRecentOrdersBox() {
+    private VBox createAppointmentsWeekBox() {
         VBox box = new VBox(10);
         box.setPadding(new Insets(20));
         box.setStyle(
@@ -365,54 +355,193 @@ public class DashboardView extends ScrollPane {
                         "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 10, 0, 0, 5);"
         );
 
-        Label header = new Label("Последние заказы");
-        header.setGraphic(IconHelper.assignment(20, "#2c3e50"));
-        header.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
+        Label header = new Label("Записи на текущую неделю");
+        header.setGraphic(IconHelper.event(20, "#2c3e50"));
+        header.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2c3e50; -fx-graphic-text-gap: 8;");
         box.getChildren().add(header);
 
-        var orders = DataStore.getOrders();
-        int limit = Math.min(orders.size(), 5);
+        // Получаем записи на текущую неделю
+        List<Appointment> weekAppointments = getWeekAppointments();
 
-        if (orders.isEmpty()) {
-            Label empty = new Label("Нет заказов");
+        if (weekAppointments.isEmpty()) {
+            Label empty = new Label("Нет записей на текущую неделю");
             empty.setStyle("-fx-text-fill: #95a5a6; -fx-font-size: 14px;");
             box.getChildren().add(empty);
             return box;
         }
 
-        for (int i = 0; i < limit; i++) {
-            WorkOrder order = orders.get(i);
-            HBox row = new HBox(15);
-            row.setAlignment(Pos.CENTER_LEFT);
-            row.setPadding(new Insets(8, 0, 8, 0));
-            row.setStyle("-fx-border-color: #ecf0f1; -fx-border-width: 0 0 1 0;");
+        // Создаём таблицу
+        TableView<AppointmentRow> table = new TableView<>();
+        table.getStyleClass().add("table-view");
+        table.setPrefHeight(300);
 
-            Label number = new Label(order.getId());
-            number.setStyle("-fx-font-weight: bold; -fx-text-fill: #34495e; -fx-min-width: 120px;");
+        // Отключаем автоматическое добавление колонок
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-            Label client = new Label(order.getClient().getName() + " " + order.getClient().getLastName());
-            client.setStyle("-fx-text-fill: #2c3e50; -fx-min-width: 150px;");
+        // ====== КОЛОНКА 1: ЗАКАЗ ======
+        TableColumn<AppointmentRow, String> colOrder = new TableColumn<>("Заказ");
+        colOrder.setCellValueFactory(new PropertyValueFactory<>("orderId"));
+        colOrder.setPrefWidth(150);
 
-            Label status = new Label(order.getStatus());
-            status.setStyle("-fx-text-fill: " + getStatusColor(order.getStatus()) + "; -fx-font-weight: bold;");
+        // ====== КОЛОНКА 2: КЛИЕНТ ======
+        TableColumn<AppointmentRow, String> colClient = new TableColumn<>("Клиент");
+        colClient.setCellValueFactory(new PropertyValueFactory<>("clientName"));
+        colClient.setPrefWidth(180);
 
-            Label total = new Label(currencyFormat.format(order.getTotal()));
-            total.setStyle("-fx-text-fill: #2c3e50; -fx-font-weight: bold;");
+        // ====== КОЛОНКА 3: АВТОМОБИЛЬ ======
+        TableColumn<AppointmentRow, String> colCar = new TableColumn<>("Автомобиль");
+        colCar.setCellValueFactory(new PropertyValueFactory<>("carModel"));
+        colCar.setPrefWidth(180);
 
-            row.getChildren().addAll(number, client, status, total);
-            box.getChildren().add(row);
+        // ====== КОЛОНКА 4: УСЛУГА ======
+        TableColumn<AppointmentRow, String> colService = new TableColumn<>("Услуга");
+        colService.setCellValueFactory(new PropertyValueFactory<>("serviceName"));
+        colService.setPrefWidth(200);
+
+        // ====== КОЛОНКА 5: ДАТА И ВРЕМЯ ======
+        TableColumn<AppointmentRow, String> colDateTime = new TableColumn<>("Дата и время");
+        colDateTime.setCellValueFactory(new PropertyValueFactory<>("dateTime"));
+        colDateTime.setPrefWidth(180);
+
+        // Добавляем только 5 колонок
+        table.getColumns().addAll(colOrder, colClient, colCar, colService, colDateTime);
+
+        // Заполняем данные
+        ObservableList<AppointmentRow> items = FXCollections.observableArrayList();
+        for (Appointment a : weekAppointments) {
+            Client client = a.getClient();
+            String orderId = a.getOrderId() != null ? a.getOrderId() : "—";
+            String clientName = (client.getLastName() != null && !client.getLastName().isEmpty())
+                    ? client.getLastName() + " " + client.getName()
+                    : client.getName();
+            String carModel = client.getCarModel() != null ? client.getCarModel() : "—";
+            String serviceName = a.getServiceName() != null ? a.getServiceName() : "—";
+            String dateTime = DateUtils.formatDate(a.getDate()) + " " + a.getTime();
+
+            // Пытаемся найти заказ для открытия
+            WorkOrder linkedOrder = null;
+            if (a.getOrderId() != null && !a.getOrderId().isEmpty()) {
+                for (WorkOrder order : DataStore.getOrders()) {
+                    if (a.getOrderId().equals(order.getId())) {
+                        linkedOrder = order;
+                        break;
+                    }
+                }
+            }
+
+            AppointmentRow row = new AppointmentRow(
+                    orderId,
+                    clientName,
+                    carModel,
+                    serviceName,
+                    dateTime,
+                    linkedOrder
+            );
+            items.add(row);
         }
 
+        table.setItems(items);
+
+        // Клик по строке — открываем заказ
+        table.setOnMouseClicked(event -> {
+            if (event.getClickCount() == 2) {
+                AppointmentRow selected = table.getSelectionModel().getSelectedItem();
+                if (selected != null && selected.getLinkedOrder() != null) {
+                    OrderDetailsDialog.show(selected.getLinkedOrder());
+                } else if (selected != null) {
+                    showInfoAlert("Информация", "Для этой записи нет связанного заказа");
+                }
+            }
+        });
+
+        // Добавляем подсказку
+        Label hint = new Label("💡 Двойной клик по строке — просмотр заказа");
+        hint.setStyle("-fx-font-size: 12px; -fx-text-fill: #7f8c8d; -fx-padding: 8 0 0 0;");
+
+        box.getChildren().addAll(table, hint);
         return box;
     }
 
-    private String getStatusColor(String status) {
-        return switch (status) {
-            case "Черновик" -> "#95a5a6";
-            case "В работе" -> "#f39c12";
-            case "Выполнен" -> "#27ae60";
-            case "Отменён" -> "#e74c3c";
-            default -> "#2c3e50";
-        };
+    /**
+     * Возвращает список записей на текущую неделю (с понедельника по воскресенье)
+     * Только активные записи (не закрытые и не выполненные)
+     */
+    private List<Appointment> getWeekAppointments() {
+        List<Appointment> result = new ArrayList<>();
+        LocalDate today = LocalDate.now();
+
+        // Определяем понедельник текущей недели
+        LocalDate monday = today;
+        while (monday.getDayOfWeek().getValue() != 1) {
+            monday = monday.minusDays(1);
+        }
+        // Воскресенье
+        LocalDate sunday = monday.plusDays(6);
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+        for (Appointment a : DataStore.getAppointments()) {
+            try {
+                LocalDate appointmentDate = LocalDate.parse(a.getDate(), formatter);
+
+                // Проверяем, что запись в пределах недели
+                if (appointmentDate.isBefore(monday) || appointmentDate.isAfter(sunday)) {
+                    continue;
+                }
+
+                // Проверяем, что запись активна (не закрыта и не выполнена)
+                String status = a.getStatus();
+                if (status == null) {
+                    continue;
+                }
+
+                // Исключаем закрытые и выполненные записи
+                if (status.equals("Выполнено") || status.equals("Закрыт")) {
+                    continue;
+                }
+
+                result.add(a);
+
+            } catch (Exception ignored) {
+                // Если дата не парсится — пропускаем
+            }
+        }
+
+        // Сортируем по дате и времени
+        result.sort((a1, a2) -> {
+            int dateCompare = a1.getDate().compareTo(a2.getDate());
+            if (dateCompare != 0) return dateCompare;
+            return a1.getTime().compareTo(a2.getTime());
+        });
+
+        return result;
+    }
+
+    // ==================== ВНУТРЕННИЙ КЛАСС ДЛЯ ТАБЛИЦЫ ====================
+
+    public static class AppointmentRow {
+        private final String orderId;
+        private final String clientName;
+        private final String carModel;
+        private final String serviceName;
+        private final String dateTime;
+        private final WorkOrder linkedOrder;
+
+        public AppointmentRow(String orderId, String clientName, String carModel,
+                              String serviceName, String dateTime, WorkOrder linkedOrder) {
+            this.orderId = orderId;
+            this.clientName = clientName;
+            this.carModel = carModel;
+            this.serviceName = serviceName;
+            this.dateTime = dateTime;
+            this.linkedOrder = linkedOrder;
+        }
+
+        public String getOrderId() { return orderId; }
+        public String getClientName() { return clientName; }
+        public String getCarModel() { return carModel; }
+        public String getServiceName() { return serviceName; }
+        public String getDateTime() { return dateTime; }
+        public WorkOrder getLinkedOrder() { return linkedOrder; }
     }
 }

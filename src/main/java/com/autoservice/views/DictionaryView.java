@@ -76,7 +76,22 @@ public class DictionaryView {
         colPartNumber.setCellValueFactory(new PropertyValueFactory<>("partNumber"));
         colPartNumber.setPrefWidth(150);
 
-        table.getColumns().addAll(colName, colPrice, colDuration, colPartNumber);
+        // ====== НОВЫЕ КОЛОНКИ ДЛЯ ГИБРИДНОГО УЧЁТА ======
+        TableColumn<Service, Double> colOilVolume = new TableColumn<>("Масло (л)");
+        colOilVolume.setCellValueFactory(new PropertyValueFactory<>("oilVolume"));
+        colOilVolume.setPrefWidth(100);
+        colOilVolume.getStyleClass().add("center-column");
+
+        TableColumn<Service, String> colSparePart = new TableColumn<>("Расходник");
+        colSparePart.setCellValueFactory(new PropertyValueFactory<>("sparePartName"));
+        colSparePart.setPrefWidth(200);
+
+        TableColumn<Service, Integer> colSpareQty = new TableColumn<>("Кол-во");
+        colSpareQty.setCellValueFactory(new PropertyValueFactory<>("sparePartQuantity"));
+        colSpareQty.setPrefWidth(80);
+        colSpareQty.getStyleClass().add("center-column");
+
+        table.getColumns().addAll(colName, colPrice, colDuration, colPartNumber, colOilVolume, colSparePart, colSpareQty);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(table, Priority.ALWAYS);
 
@@ -109,17 +124,86 @@ public class DictionaryView {
         partNumberField.setPrefWidth(120);
         partNumberField.getStyleClass().add("form-field");
 
+        // ====== НОВЫЕ ПОЛЯ ДЛЯ ГИБРИДНОГО УЧЁТА ======
+        TextField oilVolumeField = new TextField();
+        oilVolumeField.setPromptText("Масло (л)");
+        oilVolumeField.setPrefWidth(80);
+        oilVolumeField.getStyleClass().add("form-field");
+
+        TextField sparePartNameField = new TextField();
+        sparePartNameField.setPromptText("Расходник");
+        sparePartNameField.setPrefWidth(150);
+        sparePartNameField.getStyleClass().add("form-field");
+
+        TextField spareQtyField = new TextField("1");
+        spareQtyField.setPromptText("Кол-во");
+        spareQtyField.setPrefWidth(60);
+        spareQtyField.getStyleClass().add("form-field");
+
         Button addBtn = new Button("Добавить услугу");
-        addBtn.setGraphic(IconHelper.add());
         addBtn.getStyleClass().add("add-button");
 
         Button deleteBtn = new Button("Удалить выбранную");
-        deleteBtn.setGraphic(IconHelper.delete());
         deleteBtn.getStyleClass().add("delete-button");
 
-        HBox formRow = new HBox(10, nameField, priceField, durationField, partNumberField, addBtn, deleteBtn);
+        HBox formRow = new HBox(10, nameField, priceField, durationField, partNumberField,
+                oilVolumeField, sparePartNameField, spareQtyField, addBtn, deleteBtn);
         formRow.setAlignment(Pos.CENTER_LEFT);
         formRow.setPadding(new Insets(10, 0, 0, 0));
+
+        // ====== ЛОГИКА ДОБАВЛЕНИЯ УСЛУГИ ======
+        addBtn.setOnAction(e -> {
+            try {
+                String name = nameField.getText().trim();
+                if (name.isEmpty()) {
+                    showAlert("Введите название услуги");
+                    return;
+                }
+                double price = Double.parseDouble(priceField.getText());
+                int duration = durationField.getText().isEmpty() ? 60 : Integer.parseInt(durationField.getText());
+                String partNumber = partNumberField.getText().trim();
+
+                // Новые поля
+                double oilVolume = oilVolumeField.getText().isEmpty() ? 0 : Double.parseDouble(oilVolumeField.getText());
+                String sparePartName = sparePartNameField.getText().trim();
+                int spareQty = spareQtyField.getText().isEmpty() ? 0 : Integer.parseInt(spareQtyField.getText());
+
+                Service service = new Service(name, price, duration, partNumber);
+                service.setOilVolume(oilVolume);
+                service.setUsesOil(oilVolume > 0);
+                service.setSparePartName(sparePartName);
+                service.setSparePartQuantity(spareQty);
+
+                DictionaryController.addService(service);
+
+                // Очищаем поля
+                nameField.clear();
+                priceField.clear();
+                durationField.clear();
+                partNumberField.clear();
+                oilVolumeField.clear();
+                sparePartNameField.clear();
+                spareQtyField.setText("1");
+            } catch (NumberFormatException ex) {
+                showAlert("Проверьте числовые поля");
+            }
+        });
+
+        deleteBtn.setOnAction(e -> {
+            Service selected = table.getSelectionModel().getSelectedItem();
+            if (selected == null) {
+                showAlert("Выберите услугу для удаления");
+                return;
+            }
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                    "Удалить услугу \"" + selected.getName() + "\"?",
+                    ButtonType.YES, ButtonType.NO);
+            confirm.showAndWait().ifPresent(response -> {
+                if (response == ButtonType.YES) {
+                    DictionaryController.removeService(selected);
+                }
+            });
+        });
 
         VBox panel = new VBox(10, table, formRow);
         return panel;
@@ -151,12 +235,29 @@ public class DictionaryView {
         colRetailPrice.setPrefWidth(130);
         colRetailPrice.getStyleClass().add("price-column");
 
-        TableColumn<SparePart, Integer> colStock = new TableColumn<>("Остаток");
+        // ====== КОЛОНКИ С ПОДДЕРЖКОЙ DOUBLE ======
+        TableColumn<SparePart, Double> colStock = new TableColumn<>("Остаток");
         colStock.setCellValueFactory(new PropertyValueFactory<>("stock"));
-        colStock.setPrefWidth(80);
+        colStock.setPrefWidth(100);
         colStock.getStyleClass().add("center-column");
 
-        table.getColumns().addAll(colName, colPartNumber, colManufacturer, colCompatibleModels, colRetailPrice, colStock);
+        TableColumn<SparePart, String> colUnitType = new TableColumn<>("Ед. изм.");
+        colUnitType.setCellValueFactory(new PropertyValueFactory<>("unitType"));
+        colUnitType.setPrefWidth(80);
+        colUnitType.getStyleClass().add("center-column");
+
+        TableColumn<SparePart, Double> colUnitVolume = new TableColumn<>("Объём ед.");
+        colUnitVolume.setCellValueFactory(new PropertyValueFactory<>("unitVolume"));
+        colUnitVolume.setPrefWidth(80);
+        colUnitVolume.getStyleClass().add("center-column");
+
+        TableColumn<SparePart, Boolean> colIsLiquid = new TableColumn<>("Жидкость");
+        colIsLiquid.setCellValueFactory(new PropertyValueFactory<>("liquid"));
+        colIsLiquid.setPrefWidth(70);
+        colIsLiquid.getStyleClass().add("center-column");
+
+        table.getColumns().addAll(colName, colPartNumber, colManufacturer, colCompatibleModels,
+                colRetailPrice, colStock, colUnitType, colUnitVolume, colIsLiquid);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(table, Priority.ALWAYS);
 
@@ -176,24 +277,28 @@ public class DictionaryView {
         searchField.textProperty().addListener((obs, oldVal, newValue) -> filterSpareParts(newValue));
 
         Button addBtn = new Button("Добавить запчасть");
-        addBtn.setGraphic(IconHelper.add());
         addBtn.getStyleClass().add("add-button");
         addBtn.setOnAction(e -> showAddSparePartDialog());
 
         Button deleteBtn = new Button("Удалить выбранные");
-        deleteBtn.setGraphic(IconHelper.delete());
         deleteBtn.getStyleClass().add("delete-button");
         deleteBtn.setOnAction(e -> {
             List<SparePart> selectedItems = table.getSelectionModel().getSelectedItems();
-            if (selectedItems.isEmpty()) { showAlert("Выберите запчасть для удаления"); return; }
-            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION, "Удалить " + selectedItems.size() + " запчастей?", ButtonType.YES, ButtonType.NO);
+            if (selectedItems.isEmpty()) {
+                showAlert("Выберите запчасть для удаления");
+                return;
+            }
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                    "Удалить " + selectedItems.size() + " запчастей?",
+                    ButtonType.YES, ButtonType.NO);
             confirm.showAndWait().ifPresent(response -> {
-                if (response == ButtonType.YES) DictionaryController.removeSpareParts(selectedItems);
+                if (response == ButtonType.YES) {
+                    DictionaryController.removeSpareParts(selectedItems);
+                }
             });
         });
 
         Button importBtn = new Button("Импорт из файла");
-        importBtn.setGraphic(IconHelper.add());
         importBtn.getStyleClass().add("income-button");
         importBtn.setOnAction(e -> ImportSparePartsDialog.show());
 
@@ -205,13 +310,30 @@ public class DictionaryView {
         return panel;
     }
 
-    private static void filterSpareParts(String filterText) {}
+    private static void filterSpareParts(String filterText) {
+        if (sparePartsTable == null) return;
+        ObservableList<SparePart> all = FXCollections.observableArrayList(DataStore.getSpareParts());
+        if (filterText == null || filterText.trim().isEmpty()) {
+            sparePartsTable.setItems(all);
+            return;
+        }
+        String lower = filterText.toLowerCase().trim();
+        ObservableList<SparePart> filtered = FXCollections.observableArrayList();
+        for (SparePart part : all) {
+            if (part.getName().toLowerCase().contains(lower) ||
+                    part.getPartNumber().toLowerCase().contains(lower) ||
+                    part.getManufacturer().toLowerCase().contains(lower)) {
+                filtered.add(part);
+            }
+        }
+        sparePartsTable.setItems(filtered);
+    }
 
     private static void showAddSparePartDialog() {
         Stage stage = new Stage();
         stage.setTitle("Новая запчасть");
-        stage.setMinWidth(450);
-        stage.setMinHeight(350);
+        stage.setMinWidth(500);
+        stage.setMinHeight(450);
         stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
 
         VBox root = new VBox(15);
@@ -250,9 +372,24 @@ public class DictionaryView {
         purchasePriceField.setPromptText("Закуп. цена");
         purchasePriceField.setPrefWidth(120);
 
-        TextField stockField = new TextField();
+        // ====== ПОЛЯ С ПОДДЕРЖКОЙ DOUBLE ======
+        TextField stockField = new TextField("0");
         stockField.setPromptText("Остаток");
         stockField.setPrefWidth(100);
+
+        TextField minStockField = new TextField("0");
+        minStockField.setPromptText("Мин. остаток");
+        minStockField.setPrefWidth(100);
+
+        TextField unitVolumeField = new TextField("1.0");
+        unitVolumeField.setPromptText("Объём ед.");
+        unitVolumeField.setPrefWidth(80);
+
+        ComboBox<String> unitTypeCombo = new ComboBox<>(FXCollections.observableArrayList("шт", "л", "м", "кг"));
+        unitTypeCombo.setValue("шт");
+        unitTypeCombo.setPrefWidth(80);
+
+        CheckBox isLiquidCheck = new CheckBox("Жидкость");
 
         grid.add(new Label("Название:"), 0, 0);
         grid.add(nameField, 1, 0);
@@ -268,13 +405,19 @@ public class DictionaryView {
         grid.add(purchasePriceField, 1, 5);
         grid.add(new Label("Остаток:"), 0, 6);
         grid.add(stockField, 1, 6);
+        grid.add(new Label("Мин. остаток:"), 0, 7);
+        grid.add(minStockField, 1, 7);
+        grid.add(new Label("Объём ед.:"), 0, 8);
+        grid.add(unitVolumeField, 1, 8);
+        grid.add(new Label("Ед. изм.:"), 0, 9);
+        grid.add(unitTypeCombo, 1, 9);
+        grid.add(new Label(""), 0, 10);
+        grid.add(isLiquidCheck, 1, 10);
 
         Button saveBtn = new Button("Сохранить");
-        saveBtn.setGraphic(IconHelper.save());
         saveBtn.getStyleClass().add("save-button");
 
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.setGraphic(IconHelper.cancel());
         cancelBtn.getStyleClass().add("cancel-button");
 
         HBox btnBox = new HBox(15, saveBtn, cancelBtn);
@@ -287,14 +430,24 @@ public class DictionaryView {
         saveBtn.setOnAction(e -> {
             try {
                 String name = nameField.getText().trim();
-                if (name.isEmpty()) { showAlert("Введите название запчасти"); return; }
+                if (name.isEmpty()) {
+                    showAlert("Введите название запчасти");
+                    return;
+                }
                 double retailPrice = retailPriceField.getText().isEmpty() ? 0 : Double.parseDouble(retailPriceField.getText());
                 double purchasePrice = purchasePriceField.getText().isEmpty() ? 0 : Double.parseDouble(purchasePriceField.getText());
-                int stock = stockField.getText().isEmpty() ? 0 : Integer.parseInt(stockField.getText());
-                SparePart part = new SparePart(name, purchasePrice, retailPrice, stock);
-                part.setPartNumber(partNumberField.getText().trim());
-                part.setManufacturer(manufacturerField.getText().trim());
-                part.setCompatibleModels(modelsField.getText().trim());
+                double stock = stockField.getText().isEmpty() ? 0 : Double.parseDouble(stockField.getText());
+                double minStock = minStockField.getText().isEmpty() ? 0 : Double.parseDouble(minStockField.getText());
+                double unitVolume = unitVolumeField.getText().isEmpty() ? 1.0 : Double.parseDouble(unitVolumeField.getText());
+                String unitType = unitTypeCombo.getValue();
+                boolean isLiquid = isLiquidCheck.isSelected();
+
+                SparePart part = new SparePart(
+                        -1, 0, name, partNumberField.getText().trim(),
+                        manufacturerField.getText().trim(), modelsField.getText().trim(),
+                        purchasePrice, retailPrice, stock, minStock,
+                        unitVolume, unitType, isLiquid, ""
+                );
                 DictionaryController.addSparePart(part);
                 stage.close();
             } catch (NumberFormatException ex) {
@@ -318,21 +471,26 @@ public class DictionaryView {
         colPartNumber.setCellValueFactory(new PropertyValueFactory<>("partNumber"));
         colPartNumber.setPrefWidth(120);
 
-        TableColumn<SparePart, Integer> colStock = new TableColumn<>("Текущий остаток");
+        TableColumn<SparePart, Double> colStock = new TableColumn<>("Текущий остаток");
         colStock.setCellValueFactory(new PropertyValueFactory<>("stock"));
         colStock.setPrefWidth(120);
         colStock.getStyleClass().add("center-column");
 
-        TableColumn<SparePart, Integer> colMinStock = new TableColumn<>("Мин. остаток");
+        TableColumn<SparePart, Double> colMinStock = new TableColumn<>("Мин. остаток");
         colMinStock.setCellValueFactory(new PropertyValueFactory<>("minStock"));
         colMinStock.setPrefWidth(100);
         colMinStock.getStyleClass().add("center-column");
 
-        table.getColumns().addAll(colName, colPartNumber, colStock, colMinStock);
+        TableColumn<SparePart, String> colUnitType = new TableColumn<>("Ед. изм.");
+        colUnitType.setCellValueFactory(new PropertyValueFactory<>("unitType"));
+        colUnitType.setPrefWidth(80);
+        colUnitType.getStyleClass().add("center-column");
+
+        table.getColumns().addAll(colName, colPartNumber, colStock, colMinStock, colUnitType);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(table, Priority.ALWAYS);
 
-        table.setItems(getAllParts());
+        table.setItems(FXCollections.observableArrayList(DataStore.getSpareParts()));
 
         table.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (stockIncomeBtn != null) stockIncomeBtn.setDisable(newVal == null);
@@ -348,7 +506,6 @@ public class DictionaryView {
         DictionaryController.setStockTable(table);
 
         stockIncomeBtn = new Button("Внести приход");
-        stockIncomeBtn.setGraphic(IconHelper.add());
         stockIncomeBtn.getStyleClass().add("income-button");
         stockIncomeBtn.setDisable(true);
         stockIncomeBtn.setOnAction(e -> {
@@ -363,15 +520,11 @@ public class DictionaryView {
         return panel;
     }
 
-    private static ObservableList<SparePart> getAllParts() {
-        return FXCollections.observableArrayList(DataStore.getSpareParts());
-    }
-
     private static void editSparePartDialog(SparePart part) {
         Stage stage = new Stage();
         stage.setTitle("Редактировать запчасть");
-        stage.setMinWidth(450);
-        stage.setMinHeight(400);
+        stage.setMinWidth(500);
+        stage.setMinHeight(500);
         stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
 
         VBox root = new VBox(15);
@@ -404,11 +557,22 @@ public class DictionaryView {
         TextField purchasePriceField = new TextField(String.valueOf(part.getPurchasePrice()));
         purchasePriceField.setPrefWidth(120);
 
+        // ====== ПОЛЯ С ПОДДЕРЖКОЙ DOUBLE ======
         TextField stockField = new TextField(String.valueOf(part.getStock()));
         stockField.setPrefWidth(100);
 
         TextField minStockField = new TextField(String.valueOf(part.getMinStock()));
         minStockField.setPrefWidth(100);
+
+        TextField unitVolumeField = new TextField(String.valueOf(part.getUnitVolume()));
+        unitVolumeField.setPrefWidth(80);
+
+        ComboBox<String> unitTypeCombo = new ComboBox<>(FXCollections.observableArrayList("шт", "л", "м", "кг"));
+        unitTypeCombo.setValue(part.getUnitType());
+        unitTypeCombo.setPrefWidth(80);
+
+        CheckBox isLiquidCheck = new CheckBox("Жидкость");
+        isLiquidCheck.setSelected(part.isLiquid());
 
         TextField locationField = new TextField(part.getLocation());
         locationField.setPrefWidth(150);
@@ -421,14 +585,15 @@ public class DictionaryView {
         grid.add(new Label("Закуп. цена:"), 0, 5); grid.add(purchasePriceField, 1, 5);
         grid.add(new Label("Остаток:"), 0, 6); grid.add(stockField, 1, 6);
         grid.add(new Label("Мин. остаток:"), 0, 7); grid.add(minStockField, 1, 7);
-        grid.add(new Label("Место:"), 0, 8); grid.add(locationField, 1, 8);
+        grid.add(new Label("Объём ед.:"), 0, 8); grid.add(unitVolumeField, 1, 8);
+        grid.add(new Label("Ед. изм.:"), 0, 9); grid.add(unitTypeCombo, 1, 9);
+        grid.add(new Label(""), 0, 10); grid.add(isLiquidCheck, 1, 10);
+        grid.add(new Label("Место:"), 0, 11); grid.add(locationField, 1, 11);
 
         Button saveBtn = new Button("Сохранить");
-        saveBtn.setGraphic(IconHelper.save());
         saveBtn.getStyleClass().add("save-button");
 
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.setGraphic(IconHelper.cancel());
         cancelBtn.getStyleClass().add("cancel-button");
 
         HBox btnBox = new HBox(15, saveBtn, cancelBtn);
@@ -446,8 +611,11 @@ public class DictionaryView {
                 part.setCompatibleModels(modelsField.getText().trim());
                 part.setRetailPrice(Double.parseDouble(retailPriceField.getText()));
                 part.setPurchasePrice(Double.parseDouble(purchasePriceField.getText()));
-                part.setStock(Integer.parseInt(stockField.getText()));
-                part.setMinStock(Integer.parseInt(minStockField.getText()));
+                part.setStock(Double.parseDouble(stockField.getText()));
+                part.setMinStock(Double.parseDouble(minStockField.getText()));
+                part.setUnitVolume(Double.parseDouble(unitVolumeField.getText()));
+                part.setUnitType(unitTypeCombo.getValue());
+                part.setIsLiquid(isLiquidCheck.isSelected());
                 part.setLocation(locationField.getText().trim());
                 DataStore.addSparePart(part);
                 stage.close();
@@ -463,8 +631,8 @@ public class DictionaryView {
     private static void editStockDialog(SparePart part) {
         Stage stage = new Stage();
         stage.setTitle("Приход запчасти");
-        stage.setMinWidth(350);
-        stage.setMinHeight(200);
+        stage.setMinWidth(400);
+        stage.setMinHeight(250);
         stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
 
         VBox root = new VBox(15);
@@ -474,7 +642,7 @@ public class DictionaryView {
         Label titleLabel = new Label("Запчасть: " + part.getName());
         titleLabel.getStyleClass().add("dialog-title");
 
-        Label currentStockLabel = new Label("Текущий остаток: " + part.getStock());
+        Label currentStockLabel = new Label("Текущий остаток: " + part.getStockFormatted());
         currentStockLabel.getStyleClass().add("info-label");
 
         GridPane grid = new GridPane();
@@ -492,15 +660,13 @@ public class DictionaryView {
 
         grid.add(new Label("Мин. остаток:"), 0, 0);
         grid.add(minStockField, 1, 0);
-        grid.add(new Label("Приход (шт):"), 0, 1);
+        grid.add(new Label("Приход:"), 0, 1);
         grid.add(amountField, 1, 1);
 
         Button saveBtn = new Button("Применить");
-        saveBtn.setGraphic(IconHelper.save());
         saveBtn.getStyleClass().add("save-button");
 
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.setGraphic(IconHelper.cancel());
         cancelBtn.getStyleClass().add("cancel-button");
 
         HBox btnBox = new HBox(15, saveBtn, cancelBtn);
@@ -512,14 +678,14 @@ public class DictionaryView {
 
         saveBtn.setOnAction(e -> {
             try {
-                int minStock = Integer.parseInt(minStockField.getText().trim());
-                int amount = amountField.getText().trim().isEmpty() ? 0 : Integer.parseInt(amountField.getText());
+                double minStock = Double.parseDouble(minStockField.getText().trim());
+                double amount = amountField.getText().trim().isEmpty() ? 0 : Double.parseDouble(amountField.getText());
 
                 part.setMinStock(minStock);
                 DataStore.addSparePart(part);
 
                 if (amount > 0) {
-                    int newStock = part.getStock() + amount;
+                    double newStock = part.getStock() + amount;
                     part.setStock(newStock);
                     DataStore.addSparePart(part);
                 }
@@ -536,8 +702,8 @@ public class DictionaryView {
     private static void editServiceDialog(Service service) {
         Stage stage = new Stage();
         stage.setTitle("Редактировать услугу");
-        stage.setMinWidth(400);
-        stage.setMinHeight(300);
+        stage.setMinWidth(500);
+        stage.setMinHeight(400);
         stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
 
         VBox root = new VBox(15);
@@ -564,21 +730,34 @@ public class DictionaryView {
         TextField partNumberField = new TextField(service.getPartNumber());
         partNumberField.setPrefWidth(200);
 
+        // ====== НОВЫЕ ПОЛЯ ======
+        TextField oilVolumeField = new TextField(String.valueOf(service.getOilVolume()));
+        oilVolumeField.setPromptText("Масло (л)");
+        oilVolumeField.setPrefWidth(100);
+
+        TextField sparePartNameField = new TextField(service.getSparePartName());
+        sparePartNameField.setPromptText("Расходник");
+        sparePartNameField.setPrefWidth(200);
+
+        TextField spareQtyField = new TextField(String.valueOf(service.getSparePartQuantity()));
+        spareQtyField.setPromptText("Кол-во");
+        spareQtyField.setPrefWidth(60);
+
         grid.add(new Label("Название:"), 0, 0); grid.add(nameField, 1, 0);
         grid.add(new Label("Цена:"), 0, 1); grid.add(priceField, 1, 1);
         grid.add(new Label("Длительность (мин):"), 0, 2); grid.add(durationField, 1, 2);
         grid.add(new Label("Артикул:"), 0, 3); grid.add(partNumberField, 1, 3);
+        grid.add(new Label("Масло (л):"), 0, 4); grid.add(oilVolumeField, 1, 4);
+        grid.add(new Label("Расходник:"), 0, 5); grid.add(sparePartNameField, 1, 5);
+        grid.add(new Label("Кол-во:"), 0, 6); grid.add(spareQtyField, 1, 6);
 
         Button saveBtn = new Button("Сохранить");
-        saveBtn.setGraphic(IconHelper.save());
         saveBtn.getStyleClass().add("save-button");
 
         Button deleteBtn = new Button("Удалить");
-        deleteBtn.setGraphic(IconHelper.delete());
         deleteBtn.getStyleClass().add("delete-button");
 
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.setGraphic(IconHelper.cancel());
         cancelBtn.getStyleClass().add("cancel-button");
 
         HBox btnBox = new HBox(15, saveBtn, deleteBtn, cancelBtn);
@@ -594,6 +773,10 @@ public class DictionaryView {
                 service.setPrice(Double.parseDouble(priceField.getText()));
                 service.setDuration(Integer.parseInt(durationField.getText()));
                 service.setPartNumber(partNumberField.getText().trim());
+                service.setOilVolume(Double.parseDouble(oilVolumeField.getText()));
+                service.setUsesOil(Double.parseDouble(oilVolumeField.getText()) > 0);
+                service.setSparePartName(sparePartNameField.getText().trim());
+                service.setSparePartQuantity(Integer.parseInt(spareQtyField.getText()));
                 DictionaryController.addService(service);
                 stage.close();
             } catch (NumberFormatException ex) {
@@ -602,7 +785,9 @@ public class DictionaryView {
         });
 
         deleteBtn.setOnAction(e -> {
-            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION, "Удалить услугу \"" + service.getName() + "\"?", ButtonType.YES, ButtonType.NO);
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                    "Удалить услугу \"" + service.getName() + "\"?",
+                    ButtonType.YES, ButtonType.NO);
             confirm.showAndWait().ifPresent(response -> {
                 if (response == ButtonType.YES) {
                     DictionaryController.removeService(service);
