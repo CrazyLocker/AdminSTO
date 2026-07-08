@@ -82,7 +82,7 @@ public class DataStore {
 
         for (ServiceSparePart ssp : serviceSpareParts) {
             if (ssp.isDirty()) {
-                Database.updateServiceSparePart(ssp);
+                Database.addServiceSparePart(ssp);
                 ssp.setDirty(false);
                 saved++;
             }
@@ -299,13 +299,6 @@ public class DataStore {
     public static void addServiceSparePart(ServiceSparePart relation) {
         DatabaseFactory.getDatabase().addServiceSparePart(relation);
         serviceSpareParts.add(relation);
-        isDirty = true;
-    }
-
-    public static void updateServiceSparePart(ServiceSparePart relation) {
-        relation.setDirty(true);
-        DatabaseFactory.getDatabase().updateServiceSparePart(relation);
-        serviceSpareParts = DatabaseFactory.getDatabase().getServiceSparePartsByServiceId(-1);
         isDirty = true;
     }
 

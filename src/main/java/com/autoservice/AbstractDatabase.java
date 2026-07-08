@@ -274,7 +274,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     @Override
     public List<SparePart> getAllSpareParts() {
         List<SparePart> parts = new ArrayList<>();
-        String sql = "SELECT id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock, location, unit_volume, unit_type, is_liquid FROM spare_parts ORDER BY name";
+        String sql = "SELECT id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock, location, unit_type FROM spare_parts ORDER BY name";
 
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement();
@@ -291,9 +291,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                         rs.getDouble("retail_price"),
                         rs.getDouble("stock"),
                         rs.getDouble("min_stock"),
-                        rs.getDouble("unit_volume"),
                         rs.getString("unit_type"),
-                        rs.getInt("is_liquid") == 1,
                         rs.getString("location")
                 ));
             }
@@ -307,7 +305,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     public void updateSparePart(SparePart part) {
         String sql = "UPDATE spare_parts SET name = ?, purchase_price = ?, retail_price = ?, stock = ?, " +
                 "part_number = ?, manufacturer = ?, compatible_models = ?, min_stock = ?, location = ?, " +
-                "unit_volume = ?, unit_type = ?, is_liquid = ? WHERE id = ?";
+                "unit_type = ? WHERE id = ?";
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -320,10 +318,8 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setString(7, part.getCompatibleModels());
             pstmt.setDouble(8, part.getMinStock());
             pstmt.setString(9, part.getLocation());
-            pstmt.setDouble(10, part.getUnitVolume());
-            pstmt.setString(11, part.getUnitType());
-            pstmt.setInt(12, part.isLiquid() ? 1 : 0);
-            pstmt.setInt(13, part.getId());
+            pstmt.setString(10, part.getUnitType());
+            pstmt.setInt(11, part.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
             System.err.println("Update spare part error: " + e.getMessage());
@@ -640,23 +636,6 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.executeUpdate();
         } catch (SQLException e) {
             System.err.println("Add service-spare part relation error: " + e.getMessage());
-        }
-    }
-
-    @Override
-    public void updateServiceSparePart(com.autoservice.model.ServiceSparePart relation) {
-        String sql = "UPDATE service_spare_parts SET spare_part_id = ?, quantity = ?, unit_type = ?, active = ? WHERE id = ?";
-
-        try (Connection conn = getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setInt(1, relation.getSparePartId());
-            pstmt.setInt(2, relation.getQuantity());
-            pstmt.setString(3, relation.getUnitType());
-            pstmt.setInt(4, relation.isActive() ? 1 : 0);
-            pstmt.setInt(5, relation.getId());
-            pstmt.executeUpdate();
-        } catch (SQLException e) {
-            System.err.println("Update service-spare part relation error: " + e.getMessage());
         }
     }
 

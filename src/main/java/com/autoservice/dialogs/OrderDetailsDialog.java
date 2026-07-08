@@ -44,8 +44,8 @@ public class OrderDetailsDialog {
         ListView<String> partsList = new ListView<>();
         for (int i = 0; i < order.getSpareParts().size(); i++) {
             SparePart part = order.getSpareParts().get(i);
-            int qty = order.getSparePartQuantities().get(i);
-            partsList.getItems().add((i+1) + ". " + part.getName() + " — " + part.getRetailPrice() + " руб. x " + qty + " = " + (part.getRetailPrice() * qty) + " руб.");
+            double qty = order.getSparePartQuantities().get(i);
+            partsList.getItems().add((i+1) + ". " + part.getName() + " — " + part.getRetailPrice() + " руб. x " + (int)qty + " = " + (part.getRetailPrice() * qty) + " руб.");
         }
         partsList.setPrefHeight(100);
 

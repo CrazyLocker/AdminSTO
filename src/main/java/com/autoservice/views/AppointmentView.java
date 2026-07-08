@@ -411,8 +411,8 @@ public class AppointmentView {
                         VBox partsBox = new VBox(4);
                         for (int i = 0; i < order.getSpareParts().size(); i++) {
                             SparePart part = order.getSpareParts().get(i);
-                            int quantity = order.getSparePartQuantities().get(i);
-                            Label partLabel = new Label("• " + part.getName() + " x" + quantity);
+                            double quantity = order.getSparePartQuantities().get(i);
+                            Label partLabel = new Label("• " + part.getName() + " x" + (int)quantity);
                             partLabel.setWrapText(true);
                             partLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #7f8c8d;");
                             partsBox.getChildren().add(partLabel);
@@ -538,8 +538,8 @@ public class AppointmentView {
                         VBox partsBox = new VBox(4);
                         for (int i = 0; i < order.getSpareParts().size(); i++) {
                             SparePart part = order.getSpareParts().get(i);
-                            int quantity = order.getSparePartQuantities().get(i);
-                            Label partLabel = new Label("• " + part.getName() + " x" + quantity);
+                            double quantity = order.getSparePartQuantities().get(i);
+                            Label partLabel = new Label("• " + part.getName() + " x" + (int)quantity);
                             partLabel.setWrapText(true);
                             partLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #7f8c8d;");
                             partsBox.getChildren().add(partLabel);

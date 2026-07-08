@@ -26,10 +26,10 @@ public class AutoAddSparePartService {
             return result;
         }
 
-        List<ServiceSparePart> relations = DataStore.getServiceSparePartsByServiceId(-1);
+        List<ServiceSparePart> relations = DataStore.getServiceSparePartsByServiceId(service.getId());
 
         for (ServiceSparePart relation : relations) {
-            if (!relation.isActive() || relation.getServiceId() != service.getId()) {
+            if (!relation.isActive()) {
                 continue;
             }
 
@@ -80,7 +80,7 @@ public class AutoAddSparePartService {
      */
     public static class SparePartWithQuantity {
         private SparePart sparePart;
-        private int quantity;
+        private double quantity;
         private String unitType;
 
         public SparePart getSparePart() {
@@ -91,11 +91,15 @@ public class AutoAddSparePartService {
             this.sparePart = sparePart;
         }
 
-        public int getQuantity() {
+        public double getQuantity() {
             return quantity;
         }
 
         public void setQuantity(int quantity) {
+            this.quantity = quantity;
+        }
+
+        public void setQuantity(double quantity) {
             this.quantity = quantity;
         }
 

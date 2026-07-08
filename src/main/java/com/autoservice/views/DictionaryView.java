@@ -60,38 +60,44 @@ public class DictionaryView {
 
         TableColumn<Service, String> colName = new TableColumn<>("Название услуги");
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
-        colName.setPrefWidth(280);
+        colName.setPrefWidth(580);
+        colName.setStyle("-fx-alignment: CENTER-LEFT;");
 
-        TableColumn<Service, Double> colPrice = new TableColumn<>("Цена (руб.)");
-        colPrice.setCellValueFactory(new PropertyValueFactory<>("price"));
-        colPrice.setPrefWidth(120);
-        colPrice.getStyleClass().add("price-column");
+        TableColumn<Service, String> colSparePart = new TableColumn<>("Расходники");
+        colSparePart.setCellValueFactory(new PropertyValueFactory<>("sparePartName"));
+        colSparePart.setPrefWidth(500);
+        colSparePart.setStyle("-fx-alignment: CENTER-LEFT;");
+        colSparePart.setCellFactory(tc -> new TableCell<Service, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(item);
+                    setStyle("-fx-alignment: CENTER-LEFT;");
+                }
+            }
+        });
 
         TableColumn<Service, Integer> colDuration = new TableColumn<>("Длительность (мин)");
         colDuration.setCellValueFactory(new PropertyValueFactory<>("duration"));
         colDuration.setPrefWidth(120);
         colDuration.getStyleClass().add("center-column");
+        colDuration.setStyle("-fx-alignment: CENTER-LEFT;");
 
         TableColumn<Service, String> colPartNumber = new TableColumn<>("Артикул");
         colPartNumber.setCellValueFactory(new PropertyValueFactory<>("partNumber"));
         colPartNumber.setPrefWidth(150);
+        colPartNumber.setStyle("-fx-alignment: CENTER-LEFT;");
 
-        // ====== НОВЫЕ КОЛОНКИ ДЛЯ ГИБРИДНОГО УЧЁТА ======
-        TableColumn<Service, Double> colOilVolume = new TableColumn<>("Масло (л)");
-        colOilVolume.setCellValueFactory(new PropertyValueFactory<>("oilVolume"));
-        colOilVolume.setPrefWidth(100);
-        colOilVolume.getStyleClass().add("center-column");
+        TableColumn<Service, Double> colPrice = new TableColumn<>("Цена (руб.)");
+        colPrice.setCellValueFactory(new PropertyValueFactory<>("price"));
+        colPrice.setPrefWidth(120);
+        colPrice.getStyleClass().add("price-column");
+        colPrice.setStyle("-fx-alignment: CENTER-LEFT;");
 
-        TableColumn<Service, String> colSparePart = new TableColumn<>("Расходник");
-        colSparePart.setCellValueFactory(new PropertyValueFactory<>("sparePartName"));
-        colSparePart.setPrefWidth(200);
-
-        TableColumn<Service, Integer> colSpareQty = new TableColumn<>("Кол-во");
-        colSpareQty.setCellValueFactory(new PropertyValueFactory<>("sparePartQuantity"));
-        colSpareQty.setPrefWidth(80);
-        colSpareQty.getStyleClass().add("center-column");
-
-        table.getColumns().addAll(colName, colPrice, colDuration, colPartNumber, colOilVolume, colSparePart, colSpareQty);
+        table.getColumns().addAll(colName, colSparePart, colDuration, colPartNumber, colPrice);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(table, Priority.ALWAYS);
 
@@ -217,47 +223,43 @@ public class DictionaryView {
         TableColumn<SparePart, String> colName = new TableColumn<>("Название");
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
         colName.setPrefWidth(200);
+        colName.setStyle("-fx-alignment: CENTER-LEFT;");
 
         TableColumn<SparePart, String> colPartNumber = new TableColumn<>("Артикул");
         colPartNumber.setCellValueFactory(new PropertyValueFactory<>("partNumber"));
         colPartNumber.setPrefWidth(120);
+        colPartNumber.setStyle("-fx-alignment: CENTER-LEFT;");
 
         TableColumn<SparePart, String> colManufacturer = new TableColumn<>("Производитель");
         colManufacturer.setCellValueFactory(new PropertyValueFactory<>("manufacturer"));
         colManufacturer.setPrefWidth(120);
+        colManufacturer.setStyle("-fx-alignment: CENTER-LEFT;");
 
         TableColumn<SparePart, String> colCompatibleModels = new TableColumn<>("Совместимые модели");
         colCompatibleModels.setCellValueFactory(new PropertyValueFactory<>("compatibleModels"));
         colCompatibleModels.setPrefWidth(180);
+        colCompatibleModels.setStyle("-fx-alignment: CENTER-LEFT;");
 
         TableColumn<SparePart, Double> colRetailPrice = new TableColumn<>("Розн. цена (руб.)");
         colRetailPrice.setCellValueFactory(new PropertyValueFactory<>("retailPrice"));
         colRetailPrice.setPrefWidth(130);
         colRetailPrice.getStyleClass().add("price-column");
+        colRetailPrice.setStyle("-fx-alignment: CENTER-LEFT;");
 
         // ====== КОЛОНКИ С ПОДДЕРЖКОЙ DOUBLE ======
         TableColumn<SparePart, Double> colStock = new TableColumn<>("Остаток");
         colStock.setCellValueFactory(new PropertyValueFactory<>("stock"));
         colStock.setPrefWidth(100);
         colStock.getStyleClass().add("center-column");
+        colStock.setStyle("-fx-alignment: CENTER-LEFT;");
 
         TableColumn<SparePart, String> colUnitType = new TableColumn<>("Ед. изм.");
         colUnitType.setCellValueFactory(new PropertyValueFactory<>("unitType"));
         colUnitType.setPrefWidth(80);
-        colUnitType.getStyleClass().add("center-column");
-
-        TableColumn<SparePart, Double> colUnitVolume = new TableColumn<>("Объём ед.");
-        colUnitVolume.setCellValueFactory(new PropertyValueFactory<>("unitVolume"));
-        colUnitVolume.setPrefWidth(80);
-        colUnitVolume.getStyleClass().add("center-column");
-
-        TableColumn<SparePart, Boolean> colIsLiquid = new TableColumn<>("Жидкость");
-        colIsLiquid.setCellValueFactory(new PropertyValueFactory<>("liquid"));
-        colIsLiquid.setPrefWidth(70);
-        colIsLiquid.getStyleClass().add("center-column");
+        colUnitType.setStyle("-fx-alignment: CENTER-LEFT;");
 
         table.getColumns().addAll(colName, colPartNumber, colManufacturer, colCompatibleModels,
-                colRetailPrice, colStock, colUnitType, colUnitVolume, colIsLiquid);
+                colRetailPrice, colStock, colUnitType);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(table, Priority.ALWAYS);
 
@@ -381,15 +383,9 @@ public class DictionaryView {
         minStockField.setPromptText("Мин. остаток");
         minStockField.setPrefWidth(100);
 
-        TextField unitVolumeField = new TextField("1.0");
-        unitVolumeField.setPromptText("Объём ед.");
-        unitVolumeField.setPrefWidth(80);
-
-        ComboBox<String> unitTypeCombo = new ComboBox<>(FXCollections.observableArrayList("шт", "л", "м", "кг"));
+        ComboBox<String> unitTypeCombo = new ComboBox<>(FXCollections.observableArrayList("шт", "л", "компл"));
         unitTypeCombo.setValue("шт");
         unitTypeCombo.setPrefWidth(80);
-
-        CheckBox isLiquidCheck = new CheckBox("Жидкость");
 
         grid.add(new Label("Название:"), 0, 0);
         grid.add(nameField, 1, 0);
@@ -407,12 +403,8 @@ public class DictionaryView {
         grid.add(stockField, 1, 6);
         grid.add(new Label("Мин. остаток:"), 0, 7);
         grid.add(minStockField, 1, 7);
-        grid.add(new Label("Объём ед.:"), 0, 8);
-        grid.add(unitVolumeField, 1, 8);
-        grid.add(new Label("Ед. изм.:"), 0, 9);
-        grid.add(unitTypeCombo, 1, 9);
-        grid.add(new Label(""), 0, 10);
-        grid.add(isLiquidCheck, 1, 10);
+        grid.add(new Label("Ед. изм.:"), 0, 8);
+        grid.add(unitTypeCombo, 1, 8);
 
         Button saveBtn = new Button("Сохранить");
         saveBtn.getStyleClass().add("save-button");
@@ -438,15 +430,13 @@ public class DictionaryView {
                 double purchasePrice = purchasePriceField.getText().isEmpty() ? 0 : Double.parseDouble(purchasePriceField.getText());
                 double stock = stockField.getText().isEmpty() ? 0 : Double.parseDouble(stockField.getText());
                 double minStock = minStockField.getText().isEmpty() ? 0 : Double.parseDouble(minStockField.getText());
-                double unitVolume = unitVolumeField.getText().isEmpty() ? 1.0 : Double.parseDouble(unitVolumeField.getText());
                 String unitType = unitTypeCombo.getValue();
-                boolean isLiquid = isLiquidCheck.isSelected();
 
                 SparePart part = new SparePart(
                         -1, 0, name, partNumberField.getText().trim(),
                         manufacturerField.getText().trim(), modelsField.getText().trim(),
                         purchasePrice, retailPrice, stock, minStock,
-                        unitVolume, unitType, isLiquid, ""
+                        unitType, ""
                 );
                 DictionaryController.addSparePart(part);
                 stage.close();
@@ -466,25 +456,29 @@ public class DictionaryView {
         TableColumn<SparePart, String> colName = new TableColumn<>("Название запчасти");
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
         colName.setPrefWidth(200);
+        colName.setStyle("-fx-alignment: CENTER-LEFT;");
 
         TableColumn<SparePart, String> colPartNumber = new TableColumn<>("Артикул");
         colPartNumber.setCellValueFactory(new PropertyValueFactory<>("partNumber"));
         colPartNumber.setPrefWidth(120);
+        colPartNumber.setStyle("-fx-alignment: CENTER-LEFT;");
 
         TableColumn<SparePart, Double> colStock = new TableColumn<>("Текущий остаток");
         colStock.setCellValueFactory(new PropertyValueFactory<>("stock"));
         colStock.setPrefWidth(120);
         colStock.getStyleClass().add("center-column");
+        colStock.setStyle("-fx-alignment: CENTER-LEFT;");
 
         TableColumn<SparePart, Double> colMinStock = new TableColumn<>("Мин. остаток");
         colMinStock.setCellValueFactory(new PropertyValueFactory<>("minStock"));
         colMinStock.setPrefWidth(100);
         colMinStock.getStyleClass().add("center-column");
+        colMinStock.setStyle("-fx-alignment: CENTER-LEFT;");
 
         TableColumn<SparePart, String> colUnitType = new TableColumn<>("Ед. изм.");
         colUnitType.setCellValueFactory(new PropertyValueFactory<>("unitType"));
         colUnitType.setPrefWidth(80);
-        colUnitType.getStyleClass().add("center-column");
+        colUnitType.setStyle("-fx-alignment: CENTER-LEFT;");
 
         table.getColumns().addAll(colName, colPartNumber, colStock, colMinStock, colUnitType);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
@@ -564,15 +558,9 @@ public class DictionaryView {
         TextField minStockField = new TextField(String.valueOf(part.getMinStock()));
         minStockField.setPrefWidth(100);
 
-        TextField unitVolumeField = new TextField(String.valueOf(part.getUnitVolume()));
-        unitVolumeField.setPrefWidth(80);
-
-        ComboBox<String> unitTypeCombo = new ComboBox<>(FXCollections.observableArrayList("шт", "л", "м", "кг"));
+        ComboBox<String> unitTypeCombo = new ComboBox<>(FXCollections.observableArrayList("шт", "л", "компл"));
         unitTypeCombo.setValue(part.getUnitType());
         unitTypeCombo.setPrefWidth(80);
-
-        CheckBox isLiquidCheck = new CheckBox("Жидкость");
-        isLiquidCheck.setSelected(part.isLiquid());
 
         TextField locationField = new TextField(part.getLocation());
         locationField.setPrefWidth(150);
@@ -585,10 +573,8 @@ public class DictionaryView {
         grid.add(new Label("Закуп. цена:"), 0, 5); grid.add(purchasePriceField, 1, 5);
         grid.add(new Label("Остаток:"), 0, 6); grid.add(stockField, 1, 6);
         grid.add(new Label("Мин. остаток:"), 0, 7); grid.add(minStockField, 1, 7);
-        grid.add(new Label("Объём ед.:"), 0, 8); grid.add(unitVolumeField, 1, 8);
-        grid.add(new Label("Ед. изм.:"), 0, 9); grid.add(unitTypeCombo, 1, 9);
-        grid.add(new Label(""), 0, 10); grid.add(isLiquidCheck, 1, 10);
-        grid.add(new Label("Место:"), 0, 11); grid.add(locationField, 1, 11);
+        grid.add(new Label("Ед. изм.:"), 0, 8); grid.add(unitTypeCombo, 1, 8);
+        grid.add(new Label("Место:"), 0, 9); grid.add(locationField, 1, 9);
 
         Button saveBtn = new Button("Сохранить");
         saveBtn.getStyleClass().add("save-button");
@@ -613,11 +599,9 @@ public class DictionaryView {
                 part.setPurchasePrice(Double.parseDouble(purchasePriceField.getText()));
                 part.setStock(Double.parseDouble(stockField.getText()));
                 part.setMinStock(Double.parseDouble(minStockField.getText()));
-                part.setUnitVolume(Double.parseDouble(unitVolumeField.getText()));
                 part.setUnitType(unitTypeCombo.getValue());
-                part.setIsLiquid(isLiquidCheck.isSelected());
                 part.setLocation(locationField.getText().trim());
-                DataStore.addSparePart(part);
+                DictionaryController.addSparePart(part);
                 stage.close();
             } catch (NumberFormatException ex) {
                 showAlert("Проверьте числовые поля");
@@ -689,6 +673,7 @@ public class DictionaryView {
                     part.setStock(newStock);
                     DataStore.addSparePart(part);
                 }
+                DictionaryController.refreshAll();
                 stage.close();
             } catch (NumberFormatException ex) {
                 showAlert("Проверьте числовые поля");
@@ -730,26 +715,15 @@ public class DictionaryView {
         TextField partNumberField = new TextField(service.getPartNumber());
         partNumberField.setPrefWidth(200);
 
-        // ====== НОВЫЕ ПОЛЯ ======
-        TextField oilVolumeField = new TextField(String.valueOf(service.getOilVolume()));
-        oilVolumeField.setPromptText("Масло (л)");
-        oilVolumeField.setPrefWidth(100);
-
         TextField sparePartNameField = new TextField(service.getSparePartName());
-        sparePartNameField.setPromptText("Расходник");
+        sparePartNameField.setPromptText("Расходники");
         sparePartNameField.setPrefWidth(200);
-
-        TextField spareQtyField = new TextField(String.valueOf(service.getSparePartQuantity()));
-        spareQtyField.setPromptText("Кол-во");
-        spareQtyField.setPrefWidth(60);
 
         grid.add(new Label("Название:"), 0, 0); grid.add(nameField, 1, 0);
         grid.add(new Label("Цена:"), 0, 1); grid.add(priceField, 1, 1);
         grid.add(new Label("Длительность (мин):"), 0, 2); grid.add(durationField, 1, 2);
         grid.add(new Label("Артикул:"), 0, 3); grid.add(partNumberField, 1, 3);
-        grid.add(new Label("Масло (л):"), 0, 4); grid.add(oilVolumeField, 1, 4);
-        grid.add(new Label("Расходник:"), 0, 5); grid.add(sparePartNameField, 1, 5);
-        grid.add(new Label("Кол-во:"), 0, 6); grid.add(spareQtyField, 1, 6);
+        grid.add(new Label("Расходники:"), 0, 4); grid.add(sparePartNameField, 1, 4);
 
         Button saveBtn = new Button("Сохранить");
         saveBtn.getStyleClass().add("save-button");
@@ -773,10 +747,7 @@ public class DictionaryView {
                 service.setPrice(Double.parseDouble(priceField.getText()));
                 service.setDuration(Integer.parseInt(durationField.getText()));
                 service.setPartNumber(partNumberField.getText().trim());
-                service.setOilVolume(Double.parseDouble(oilVolumeField.getText()));
-                service.setUsesOil(Double.parseDouble(oilVolumeField.getText()) > 0);
                 service.setSparePartName(sparePartNameField.getText().trim());
-                service.setSparePartQuantity(Integer.parseInt(spareQtyField.getText()));
                 DictionaryController.addService(service);
                 stage.close();
             } catch (NumberFormatException ex) {

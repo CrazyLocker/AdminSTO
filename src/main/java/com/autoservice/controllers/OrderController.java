@@ -101,7 +101,7 @@ public class OrderController {
     private static void returnSparePartsToStock(WorkOrder order) {
         for (int i = 0; i < order.getSpareParts().size(); i++) {
             SparePart part = order.getSpareParts().get(i);
-            int quantity = order.getSparePartQuantities().get(i);
+            double quantity = order.getSparePartQuantities().get(i);
 
             // Используем double для расчёта нового остатка
             double newStock = part.getStock() + quantity;

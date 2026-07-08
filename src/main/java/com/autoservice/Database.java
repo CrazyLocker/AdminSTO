@@ -138,10 +138,6 @@ public class Database {
         DatabaseFactory.getDatabase().addServiceSparePart(relation);
     }
     
-    public static void updateServiceSparePart(com.autoservice.model.ServiceSparePart relation) {
-        DatabaseFactory.getDatabase().updateServiceSparePart(relation);
-    }
-    
     public static void deleteServiceSparePart(com.autoservice.model.ServiceSparePart relation) {
         DatabaseFactory.getDatabase().deleteServiceSparePart(relation);
     }
@@ -194,3 +190,4 @@ public class Database {
         return DatabaseFactory.getDatabase().getSettingByKey(key);
     }
 }
+

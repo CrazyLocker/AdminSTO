@@ -235,7 +235,7 @@ public class H2Database extends AbstractDatabase {
     
     @Override
     public void addService(Service service) {
-        String sql = "INSERT INTO services (name, price, duration, part_number, oil_volume, uses_oil, spare_part_name, spare_part_quantity) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "MERGE INTO services (name, price, duration, part_number, oil_volume, uses_oil, spare_part_name, spare_part_quantity) KEY(name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -263,7 +263,7 @@ public class H2Database extends AbstractDatabase {
     
     @Override
     public void addSparePart(SparePart part) {
-        String sql = "MERGE INTO spare_parts (name, purchase_price, retail_price, stock, part_number, manufacturer, compatible_models, min_stock, location, unit_volume, unit_type, is_liquid) KEY(name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "MERGE INTO spare_parts (name, purchase_price, retail_price, stock, part_number, manufacturer, compatible_models, min_stock, location, unit_type) KEY(name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -276,9 +276,7 @@ public class H2Database extends AbstractDatabase {
             pstmt.setString(7, part.getCompatibleModels());
             pstmt.setDouble(8, part.getMinStock());
             pstmt.setString(9, part.getLocation());
-            pstmt.setDouble(10, part.getUnitVolume());
-            pstmt.setString(11, part.getUnitType());
-            pstmt.setInt(12, part.isLiquid() ? 1 : 0);
+            pstmt.setString(10, part.getUnitType());
             pstmt.executeUpdate();
         } catch (SQLException e) {
             System.err.println("Add spare part error: " + e.getMessage());
@@ -404,7 +402,7 @@ public class H2Database extends AbstractDatabase {
                 pstmt.setString(1, orderId);
                 pstmt.setString(2, order.getSpareParts().get(i).getName());
                 pstmt.setDouble(3, order.getSpareParts().get(i).getRetailPrice());
-                pstmt.setInt(4, order.getSparePartQuantities().get(i));
+                pstmt.setDouble(4, order.getSparePartQuantities().get(i));
                 pstmt.addBatch();
             }
             pstmt.executeBatch();

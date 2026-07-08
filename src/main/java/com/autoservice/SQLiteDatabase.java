@@ -74,9 +74,7 @@ public class SQLiteDatabase extends AbstractDatabase {
                 "stock REAL DEFAULT 0, " +
                 "min_stock REAL DEFAULT 0, " +
                 "location TEXT DEFAULT '', " +
-                "unit_volume REAL DEFAULT 1.0, " +
-                "unit_type TEXT DEFAULT 'шт', " +
-                "is_liquid INTEGER DEFAULT 0" +
+                "unit_type TEXT DEFAULT 'шт'" +
                 ")";
 
         String createOrders = "CREATE TABLE IF NOT EXISTS orders (" +
@@ -228,7 +226,7 @@ public class SQLiteDatabase extends AbstractDatabase {
     
     @Override
     public void addService(Service service) {
-        String sql = "INSERT INTO services (name, price, duration, part_number, oil_volume, uses_oil, spare_part_name, spare_part_quantity) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT OR REPLACE INTO services (name, price, duration, part_number, oil_volume, uses_oil, spare_part_name, spare_part_quantity) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -256,23 +254,62 @@ public class SQLiteDatabase extends AbstractDatabase {
     
     @Override
     public void addSparePart(SparePart part) {
-        String sql = "INSERT OR REPLACE INTO spare_parts (name, purchase_price, retail_price, stock, part_number, manufacturer, compatible_models, min_stock, location, unit_volume, unit_type, is_liquid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        // Сначала проверяем, существует ли запчасть с таким именем
+        String sqlCheck = "SELECT id FROM spare_parts WHERE name = ?";
+        String sqlInsert = "INSERT INTO spare_parts (name, purchase_price, retail_price, stock, part_number, manufacturer, compatible_models, min_stock, location, unit_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sqlUpdate = "UPDATE spare_parts SET purchase_price = ?, retail_price = ?, stock = ?, part_number = ?, manufacturer = ?, compatible_models = ?, min_stock = ?, location = ?, unit_type = ? WHERE name = ?";
 
-        try (Connection conn = getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, part.getName());
-            pstmt.setDouble(2, part.getPurchasePrice());
-            pstmt.setDouble(3, part.getRetailPrice());
-            pstmt.setDouble(4, part.getStock());
-            pstmt.setString(5, part.getPartNumber());
-            pstmt.setString(6, part.getManufacturer());
-            pstmt.setString(7, part.getCompatibleModels());
-            pstmt.setDouble(8, part.getMinStock());
-            pstmt.setString(9, part.getLocation());
-            pstmt.setDouble(10, part.getUnitVolume());
-            pstmt.setString(11, part.getUnitType());
-            pstmt.setInt(12, part.isLiquid() ? 1 : 0);
-            pstmt.executeUpdate();
+        try (Connection conn = getConnection()) {
+            // Проверяем существование
+            Integer existingId = null;
+            try (PreparedStatement pstmt = conn.prepareStatement(sqlCheck)) {
+                pstmt.setString(1, part.getName());
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    if (rs.next()) {
+                        existingId = rs.getInt("id");
+                    }
+                }
+            }
+
+            if (existingId != null) {
+                // Обновляем существующую запись
+                try (PreparedStatement pstmt = conn.prepareStatement(sqlUpdate)) {
+                    pstmt.setDouble(1, part.getPurchasePrice());
+                    pstmt.setDouble(2, part.getRetailPrice());
+                    pstmt.setDouble(3, part.getStock());
+                    pstmt.setString(4, part.getPartNumber());
+                    pstmt.setString(5, part.getManufacturer());
+                    pstmt.setString(6, part.getCompatibleModels());
+                    pstmt.setDouble(7, part.getMinStock());
+                    pstmt.setString(8, part.getLocation());
+                    pstmt.setString(9, part.getUnitType());
+                    pstmt.setString(10, part.getName());
+                    pstmt.executeUpdate();
+                    // Обновляем id запчасти
+                    part.setId(existingId);
+                }
+            } else {
+                // Вставляем новую запись
+                try (PreparedStatement pstmt = conn.prepareStatement(sqlInsert, Statement.RETURN_GENERATED_KEYS)) {
+                    pstmt.setString(1, part.getName());
+                    pstmt.setDouble(2, part.getPurchasePrice());
+                    pstmt.setDouble(3, part.getRetailPrice());
+                    pstmt.setDouble(4, part.getStock());
+                    pstmt.setString(5, part.getPartNumber());
+                    pstmt.setString(6, part.getManufacturer());
+                    pstmt.setString(7, part.getCompatibleModels());
+                    pstmt.setDouble(8, part.getMinStock());
+                    pstmt.setString(9, part.getLocation());
+                    pstmt.setString(10, part.getUnitType());
+                    pstmt.executeUpdate();
+                    
+                    // Получаем сгенерированный id
+                    ResultSet rs = pstmt.getGeneratedKeys();
+                    if (rs.next()) {
+                        part.setId(rs.getInt(1));
+                    }
+                }
+            }
         } catch (SQLException e) {
             System.err.println("Add spare part error: " + e.getMessage());
         }
@@ -397,7 +434,7 @@ public class SQLiteDatabase extends AbstractDatabase {
                 pstmt.setString(1, orderId);
                 pstmt.setString(2, order.getSpareParts().get(i).getName());
                 pstmt.setDouble(3, order.getSpareParts().get(i).getRetailPrice());
-                pstmt.setInt(4, order.getSparePartQuantities().get(i));
+                pstmt.setDouble(4, order.getSparePartQuantities().get(i));
                 pstmt.addBatch();
             }
             pstmt.executeBatch();
@@ -462,35 +499,11 @@ public class SQLiteDatabase extends AbstractDatabase {
     // ==================== MIGRATION ====================
     
     private void migrateTables(Connection conn) throws SQLException {
-        // Добавляем колонку oil_volume в таблицу services, если её нет
-        if (!columnExists(conn, "services", "oil_volume")) {
-            try (Statement stmt = conn.createStatement()) {
-                stmt.execute("ALTER TABLE services ADD COLUMN oil_volume REAL DEFAULT 0");
-                System.out.println("Added column oil_volume to services");
-            }
-        }
-        
-        // Добавляем колонку unit_volume в таблицу spare_parts, если её нет
-        if (!columnExists(conn, "spare_parts", "unit_volume")) {
-            try (Statement stmt = conn.createStatement()) {
-                stmt.execute("ALTER TABLE spare_parts ADD COLUMN unit_volume REAL DEFAULT 1.0");
-                System.out.println("Added column unit_volume to spare_parts");
-            }
-        }
-        
         // Добавляем колонку unit_type в таблицу spare_parts, если её нет
         if (!columnExists(conn, "spare_parts", "unit_type")) {
             try (Statement stmt = conn.createStatement()) {
                 stmt.execute("ALTER TABLE spare_parts ADD COLUMN unit_type TEXT DEFAULT 'шт'");
                 System.out.println("Added column unit_type to spare_parts");
-            }
-        }
-        
-        // Добавляем колонку is_liquid в таблицу spare_parts, если её нет
-        if (!columnExists(conn, "spare_parts", "is_liquid")) {
-            try (Statement stmt = conn.createStatement()) {
-                stmt.execute("ALTER TABLE spare_parts ADD COLUMN is_liquid INTEGER DEFAULT 0");
-                System.out.println("Added column is_liquid to spare_parts");
             }
         }
         

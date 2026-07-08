@@ -93,8 +93,6 @@ public interface DatabaseInterface {
     
     void addServiceSparePart(com.autoservice.model.ServiceSparePart relation);
     
-    void updateServiceSparePart(com.autoservice.model.ServiceSparePart relation);
-    
     void deleteServiceSparePart(com.autoservice.model.ServiceSparePart relation);
     
     void deleteServiceSparePartsByServiceId(int serviceId);

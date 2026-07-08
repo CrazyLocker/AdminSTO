@@ -351,74 +351,8 @@
 
 
 /* ========================================================================
-   4. COMBOBOX — БЕЛЫЙ ФОН, ЧЁРНЫЙ ТЕКСТ (ЕДИНЫЙ СТИЛЬ)
+   4. COMBOBOX — ПО УМОЛЧАНИЮ (СТИЛЬ JavaFX)
    ======================================================================== */
-
-/* Базовый ComboBox */
-.combo-box {
-    -fx-background-color: #ffffff;
-    -fx-border-color: #e0e0e0;
-    -fx-border-width: 1px;
-    -fx-border-radius: 4px;
-    -fx-background-radius: 4px;
-    -fx-padding: 4px 8px;
-    -fx-font-size: 13px;
-    -fx-pref-height: 32px;
-    -fx-min-height: 30px;
-    -fx-text-fill: #2c3e50;
-}
-
-.combo-box:focused {
-    -fx-border-color: #1976d2;
-    -fx-border-width: 2px;
-}
-
-/* Стрелка */
-.combo-box .arrow-button {
-    -fx-background-color: transparent;
-    -fx-padding: 0 4px;
-}
-
-.combo-box .arrow {
-    -fx-background-color: #666;
-}
-
-/* ====== COMBOBOX В ДИАЛОГАХ ====== */
-.dialog-combo {
-    -fx-background-color: #ffffff;
-    -fx-border-color: #e0e0e0;
-    -fx-border-width: 1px;
-    -fx-border-radius: 4px;
-    -fx-background-radius: 4px;
-    -fx-padding: 4px 10px;
-    -fx-font-size: 13px;
-    -fx-pref-height: 32px;
-    -fx-min-height: 30px;
-    -fx-text-fill: #2c3e50;
-}
-
-.dialog-combo:focused {
-    -fx-border-color: #1976d2;
-    -fx-border-width: 2px;
-}
-
-/* ====== COMBOBOX В ТАБЛИЦАХ ====== */
-.table-view .combo-box {
-    -fx-background-color: #ffffff;
-    -fx-border-color: #e0e0e0;
-    -fx-border-width: 1px;
-    -fx-border-radius: 4px;
-    -fx-background-radius: 4px;
-    -fx-padding: 0 4px;
-    -fx-pref-height: 28px;
-    -fx-min-height: 26px;
-    -fx-max-height: 30px;
-    -fx-pref-width: 110px;
-    -fx-min-width: 90px;
-    -fx-max-width: 150px;
-    -fx-font-size: 12px;
-    -fx-text-fill: #2c3e50;
-}
 
 
 /* ========================================================================

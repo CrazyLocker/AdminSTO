@@ -40,7 +40,7 @@ public class OilHelper {
      */
     public static SparePart findOil() {
         for (SparePart part : DataStore.getSpareParts()) {
-            if (part.isLiquid() && part.getName().contains("Масло")) {
+            if (part.getName().contains("Масло")) {
                 return part;
             }
         }
@@ -87,7 +87,11 @@ public class OilHelper {
         if (!service.isUsesOil()) return 0;
         SparePart oil = findOil();
         if (oil == null) return 0;
-        return oil.getCansNeeded(service.getOilVolume());
+        double neededLiters = service.getOilVolume();
+        if (oil.getUnitType().equals("л")) {
+            return (int) Math.ceil(neededLiters);
+        }
+        return (int) Math.ceil(neededLiters);
     }
 
     /**
@@ -107,7 +111,18 @@ public class OilHelper {
                 }
 
                 double neededLiters = service.getOilVolume();
-                int cansNeeded = oil.getCansNeeded(neededLiters);
+                int cansNeeded;
+                if (oil.getUnitType().equals("л")) {
+                    cansNeeded = (int) Math.ceil(neededLiters);
+                } else {
+                    double unitVolume = 1.0;
+                    if (oil.getUnitType().contains("л")) {
+                        // Try to parse unitVolume from unitType or use default
+                        cansNeeded = (int) Math.ceil(neededLiters);
+                    } else {
+                        cansNeeded = (int) Math.ceil(neededLiters);
+                    }
+                }
 
                 if (!oil.deductStock(neededLiters)) {
                     System.err.println("Недостаточно масла! Нужно: " + neededLiters + " л, Доступно: " + oil.getStock() + " л");

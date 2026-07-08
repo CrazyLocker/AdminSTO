@@ -17,7 +17,7 @@ public class WorkOrder {
     private List<String> services = new ArrayList<>();
     private List<Double> servicePrices = new ArrayList<>();
     private List<SparePart> spareParts = new ArrayList<>();
-    private List<Integer> sparePartQuantities = new ArrayList<>();
+    private List<Double> sparePartQuantities = new ArrayList<>();
     private boolean dirty = false;
 
     // ==================== КОНСТРУКТОРЫ ====================
@@ -55,7 +55,7 @@ public class WorkOrder {
     public List<String> getServices() { return services; }
     public List<Double> getServicePrices() { return servicePrices; }
     public List<SparePart> getSpareParts() { return spareParts; }
-    public List<Integer> getSparePartQuantities() { return sparePartQuantities; }
+    public List<Double> getSparePartQuantities() { return sparePartQuantities; }
     public boolean isDirty() { return dirty; }
 
     // ==================== СЕТТЕРЫ ====================
@@ -107,7 +107,7 @@ public class WorkOrder {
         }
     }
 
-    public void addSparePart(SparePart part, int quantity) {
+    public void addSparePart(SparePart part, double quantity) {
         this.spareParts.add(part);
         this.sparePartQuantities.add(quantity);
         this.dirty = true;

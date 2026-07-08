@@ -36,11 +36,6 @@ public class SettingsController {
         loadServiceSpareParts();
     }
 
-    public static void updateServiceSparePart(ServiceSparePart relation) {
-        DataStore.updateServiceSparePart(relation);
-        loadServiceSpareParts();
-    }
-
     public static void deleteServiceSparePart(ServiceSparePart relation) {
         DataStore.deleteServiceSparePart(relation);
         loadServiceSpareParts();

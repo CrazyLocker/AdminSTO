@@ -223,14 +223,14 @@ public class PrintOrderDialog {
 
             for (int i = 0; i < order.getSpareParts().size(); i++) {
                 SparePart part = order.getSpareParts().get(i);
-                int qty = order.getSparePartQuantities().get(i);
+                double qty = order.getSparePartQuantities().get(i);
                 double price = part.getRetailPrice();
                 double sum = price * qty;
 
                 table.addCell(new Cell().add(new Paragraph(String.valueOf(i + 1)).setFont(regularFont)));
                 table.addCell(new Cell().add(new Paragraph(part.getPartNumber() != null ? part.getPartNumber() : "—").setFont(regularFont)));
                 table.addCell(new Cell().add(new Paragraph(part.getName()).setFont(regularFont)));
-                table.addCell(new Cell().add(new Paragraph(qty + " шт").setFont(regularFont)).setTextAlignment(TextAlignment.CENTER));
+                table.addCell(new Cell().add(new Paragraph(((int)qty) + " шт").setFont(regularFont)).setTextAlignment(TextAlignment.CENTER));
                 table.addCell(new Cell().add(new Paragraph(String.format("%,.0f", price)).setFont(regularFont)).setTextAlignment(TextAlignment.RIGHT));
                 table.addCell(new Cell().add(new Paragraph(String.format("%,.0f", sum)).setFont(regularFont)).setTextAlignment(TextAlignment.RIGHT));
             }

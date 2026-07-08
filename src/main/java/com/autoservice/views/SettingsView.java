@@ -4,8 +4,6 @@ import com.autoservice.*;
 import com.autoservice.controllers.SettingsController;
 import com.autoservice.model.ServiceSparePart;
 import com.autoservice.model.ToPart;
-import com.autoservice.model.Setting;
-import com.autoservice.services.AutoAddSparePartService;
 import com.autoservice.services.SettingService;
 import com.autoservice.utils.IconHelper;
 import javafx.collections.FXCollections;
@@ -45,26 +43,18 @@ public class SettingsView {
         settingsPane.getStyleClass().add("settings-tabpane");
 
         Tab autoPartsTab = new Tab("Автозаполнение");
-        autoPartsTab.setGraphic(IconHelper.settings());
         autoPartsTab.setContent(createAutoPartsPanel());
         autoPartsTab.setClosable(false);
 
         Tab serviceSparePartsTab = new Tab("Связи услуг-запчастей");
-        serviceSparePartsTab.setGraphic(IconHelper.link());
         serviceSparePartsTab.setContent(createServiceSparePartsPanel());
         serviceSparePartsTab.setClosable(false);
 
         Tab toPartsTab = new Tab("Расходники ТО");
-        toPartsTab.setGraphic(IconHelper.assignment());
         toPartsTab.setContent(createToPartsPanel());
         toPartsTab.setClosable(false);
 
-        Tab appSettingsTab = new Tab("Общие настройки");
-        appSettingsTab.setGraphic(IconHelper.settings());
-        appSettingsTab.setContent(createAppSettingsPanel());
-        appSettingsTab.setClosable(false);
-
-        settingsPane.getTabs().addAll(autoPartsTab, serviceSparePartsTab, toPartsTab, appSettingsTab);
+        settingsPane.getTabs().addAll(autoPartsTab, serviceSparePartsTab, toPartsTab);
 
         VBox vbox = new VBox(10);
         vbox.setPadding(new Insets(10));
@@ -94,11 +84,12 @@ public class SettingsView {
         RadioButton autoAddYes = new RadioButton("Да");
         RadioButton autoAddNo = new RadioButton("Нет");
 
+        autoAddYes.setToggleGroup(autoAddGroup);
+        autoAddNo.setToggleGroup(autoAddGroup);
+
         if (SettingService.isAutoAddSparePartsEnabled()) {
-            autoAddYes.setToggleGroup(autoAddGroup);
             autoAddYes.setSelected(true);
         } else {
-            autoAddNo.setToggleGroup(autoAddGroup);
             autoAddNo.setSelected(true);
         }
 
@@ -115,11 +106,12 @@ public class SettingsView {
         RadioButton confirmationYes = new RadioButton("Да");
         RadioButton confirmationNo = new RadioButton("Нет");
 
+        confirmationYes.setToggleGroup(confirmationGroup);
+        confirmationNo.setToggleGroup(confirmationGroup);
+
         if (SettingService.isSparePartConfirmationRequired()) {
-            confirmationYes.setToggleGroup(confirmationGroup);
             confirmationYes.setSelected(true);
         } else {
-            confirmationNo.setToggleGroup(confirmationGroup);
             confirmationNo.setSelected(true);
         }
 
@@ -148,8 +140,24 @@ public class SettingsView {
     private static VBox createServiceSparePartsPanel() {
         VBox panel = new VBox(10);
 
+        // Верхняя часть - кнопки управления
+        HBox topButtons = new HBox(10);
+        topButtons.setAlignment(Pos.CENTER_LEFT);
+
+        Button addBtn = new Button("Добавить связь");
+        addBtn.getStyleClass().add("add-button");
+        addBtn.setOnAction(e -> showAddServiceSparePartDialog());
+
+        Button refreshBtn = new Button("Обновить список");
+        refreshBtn.getStyleClass().add("save-button");
+        refreshBtn.setOnAction(e -> SettingsController.loadServiceSpareParts());
+
+        topButtons.getChildren().addAll(addBtn, refreshBtn);
+
+        // Таблица связей на всю ширину
         TableView<ServiceSparePart> table = new TableView<>();
         table.getStyleClass().add("table-view");
+        VBox.setVgrow(table, Priority.ALWAYS);
 
         TableColumn<ServiceSparePart, String> colService = new TableColumn<>("Услуга");
         colService.setCellValueFactory(cell -> {
@@ -184,94 +192,31 @@ public class SettingsView {
 
         table.getColumns().addAll(colService, colSparePart, colQuantity, colUnitType);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        VBox.setVgrow(table, Priority.ALWAYS);
 
         SettingsController.setServiceSparePartsTable(table);
 
-        // Форма добавления связи
-        HBox formRow = new HBox(10);
-        formRow.setAlignment(Pos.CENTER_LEFT);
-        formRow.setPadding(new Insets(10, 0, 0, 0));
+        // Кнопка удаления
+        Button deleteBtn = new Button("Удалить выбранную");
+        deleteBtn.getStyleClass().add("delete-button");
+        deleteBtn.setDisable(true);
 
-        ComboBox<String> serviceCombo = new ComboBox<>();
-        serviceCombo.setPromptText("Выберите услугу");
-        serviceCombo.setPrefWidth(200);
-        serviceCombo.setItems(getServiceNamesObservable());
+        // Отслеживание выбора строки
+        table.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
+            deleteBtn.setDisable(newSelection == null);
+        });
 
-        ComboBox<String> sparePartCombo = new ComboBox<>();
-        sparePartCombo.setPromptText("Выберите запчасть");
-        sparePartCombo.setPrefWidth(200);
-        sparePartCombo.setItems(getSparePartNamesObservable());
-
-        TextField quantityField = new TextField("1");
-        quantityField.setPromptText("Кол-во");
-        quantityField.setPrefWidth(80);
-        quantityField.getStyleClass().add("form-field");
-
-        ComboBox<String> unitTypeCombo = new ComboBox<>(FXCollections.observableArrayList("шт", "л", "м", "кг"));
-        unitTypeCombo.getSelectionModel().selectFirst();
-        unitTypeCombo.setPrefWidth(80);
-
-        Button addBtn = new Button("Добавить связь");
-        addBtn.getStyleClass().add("add-button");
-
-        formRow.getChildren().addAll(serviceCombo, sparePartCombo, quantityField, unitTypeCombo, addBtn);
-
-        addBtn.setOnAction(e -> {
-            String serviceName = serviceCombo.getValue();
-            String sparePartName = sparePartCombo.getValue();
-            int quantity;
-            String unitType = unitTypeCombo.getValue();
-
-            String qtyText = quantityField.getText();
-            if (qtyText == null || qtyText.trim().isEmpty()) {
-                showAlert("Введите количество", Alert.AlertType.WARNING);
-                return;
-            }
-
-            try {
-                quantity = Integer.parseInt(qtyText);
-                if (quantity <= 0) {
-                    showAlert("Количество должно быть положительным", Alert.AlertType.WARNING);
-                    return;
+        deleteBtn.setOnAction(e -> {
+            ServiceSparePart selected = table.getSelectionModel().getSelectedItem();
+            if (selected != null) {
+                Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Удалить выбранную связь?", ButtonType.YES, ButtonType.NO);
+                alert.showAndWait();
+                if (alert.getResult() == ButtonType.YES) {
+                    SettingsController.deleteServiceSparePart(selected);
                 }
-            } catch (NumberFormatException ex) {
-                showAlert("Неверное количество", Alert.AlertType.WARNING);
-                return;
-            }
-
-            if (serviceName == null || sparePartName == null) {
-                showAlert("Выберите услугу и запчасть", Alert.AlertType.WARNING);
-                return;
-            }
-
-            Service service = DataStore.getServices().stream()
-                    .filter(s -> s.getName().equals(serviceName))
-                    .findFirst()
-                    .orElse(null);
-
-            SparePart part = DataStore.getSpareParts().stream()
-                    .filter(s -> s.getName().equals(sparePartName))
-                    .findFirst()
-                    .orElse(null);
-
-            if (service != null && part != null) {
-                ServiceSparePart relation = new ServiceSparePart();
-                relation.setServiceId(service.getId());
-                relation.setSparePartId(part.getId());
-                relation.setQuantity(quantity);
-                relation.setUnitType(unitType);
-                relation.setActive(true);
-
-                SettingsController.addServiceSparePart(relation);
-
-                serviceCombo.setValue(null);
-                sparePartCombo.setValue(null);
-                quantityField.setText("1");
             }
         });
 
-        panel.getChildren().addAll(table, formRow);
+        panel.getChildren().addAll(topButtons, table, deleteBtn);
 
         return panel;
     }
@@ -331,9 +276,7 @@ public class SettingsView {
         TextField quantityField = new TextField("1");
         quantityField.setPromptText("Кол-во");
         quantityField.setPrefWidth(80);
-        quantityField.getStyleClass().add("form-field");
-
-        ComboBox<String> unitTypeCombo = new ComboBox<>(FXCollections.observableArrayList("шт", "л", "м", "кг"));
+        ComboBox<String> unitTypeCombo = new ComboBox<>(FXCollections.observableArrayList("шт", "л", "компл"));
         unitTypeCombo.getSelectionModel().selectFirst();
         unitTypeCombo.setPrefWidth(80);
 
@@ -391,59 +334,141 @@ public class SettingsView {
         return panel;
     }
 
-    // ==================== Вкладка: Общие настройки ====================
+    // ==================== ДИАЛОГ ДОБАВЛЕНИЯ СВЯЗИ ====================
 
-    private static VBox createAppSettingsPanel() {
-        VBox panel = new VBox(15);
+    private static void showAddServiceSparePartDialog() {
+        Stage stage = new Stage();
+        stage.setTitle("Добавить связь услуги и запчастей");
+        stage.setMinWidth(700);
+        stage.setMinHeight(600);
+        stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
 
-        Label introLabel = new Label("Общие настройки приложения");
-        introLabel.getStyleClass().add("intro-label");
+        VBox root = new VBox(15);
+        root.setPadding(new Insets(20));
 
-        GridPane grid = new GridPane();
-        grid.setHgap(15);
-        grid.setVgap(12);
-        grid.setPadding(new Insets(10));
+        // Выбор услуги
+        HBox serviceRow = new HBox(10);
+        serviceRow.setAlignment(Pos.CENTER_LEFT);
 
-        // Язык интерфейса
-        ComboBox<String> languageCombo = new ComboBox<>(FXCollections.observableArrayList("ru", "en"));
-        languageCombo.setValue(SettingService.getInterfaceLanguage());
-        languageCombo.setPrefWidth(150);
+        Label serviceLabel = new Label("Услуга:");
+        serviceLabel.setPrefWidth(100);
 
-        grid.add(new Label("Язык интерфейса:"), 0, 0);
-        grid.add(languageCombo, 1, 0);
+        ComboBox<String> serviceCombo = new ComboBox<>();
+        serviceCombo.setPromptText("Выберите услугу");
+        serviceCombo.setPrefWidth(300);
+        serviceCombo.setItems(getServiceNamesObservable());
 
-        // Путь к отчетам
-        TextField reportsPathField = new TextField(SettingService.getReportsPath());
-        reportsPathField.setPrefWidth(300);
+        serviceRow.getChildren().addAll(serviceLabel, serviceCombo);
 
-        grid.add(new Label("Путь к отчетам:"), 0, 1);
-        grid.add(reportsPathField, 1, 1);
+        // Чекбоксы запчастей
+        Label partsLabel = new Label("Запчасти:");
+        partsLabel.getStyleClass().add("section-title");
 
-        // Формат даты
-        TextField dateFormatField = new TextField(SettingService.getDateFormat());
-        dateFormatField.setPrefWidth(200);
+        ScrollPane partsScroll = new ScrollPane();
+        partsScroll.setPrefHeight(250);
+        partsScroll.setFitToWidth(true);
 
-        grid.add(new Label("Формат даты:"), 0, 2);
-        grid.add(dateFormatField, 1, 2);
+        VBox partsCheckboxes = new VBox(5);
+        partsCheckboxes.setAlignment(Pos.CENTER_LEFT);
+        partsCheckboxes.setPadding(new Insets(10));
+        partsCheckboxes.setSpacing(5);
 
-        // Кнопка сохранения
-        Button saveBtn = new Button("Сохранить");
+        // Заполняем чекбоксами
+        for (SparePart part : DataStore.getSpareParts()) {
+            HBox hBox = new HBox(10);
+            hBox.setAlignment(Pos.CENTER_LEFT);
+
+            CheckBox cb = new CheckBox(part.getName() + " (в наличии: " + (int)part.getStock() + ")");
+            cb.setUserData(part);
+            cb.setSelected(true);
+
+            // Поле количества
+            TextField qtyField = new TextField("1");
+            qtyField.setPrefWidth(60);
+
+            // Ед.изм.
+            ComboBox<String> unitCombo = new ComboBox<>(FXCollections.observableArrayList("шт", "л", "компл"));
+            unitCombo.getSelectionModel().selectFirst();
+            unitCombo.setPrefWidth(80);
+
+            hBox.getChildren().addAll(cb, qtyField, unitCombo);
+            partsCheckboxes.getChildren().add(hBox);
+        }
+
+        partsScroll.setContent(partsCheckboxes);
+
+        // Кнопки
+        Button saveBtn = new Button("Сохранить связи");
         saveBtn.getStyleClass().add("save-button");
+        Button cancelBtn = new Button("Отмена");
+        cancelBtn.getStyleClass().add("cancel-button");
+
+        HBox btnBox = new HBox(15, saveBtn, cancelBtn);
+        btnBox.setAlignment(Pos.CENTER);
+
+        root.getChildren().addAll(serviceRow, partsLabel, partsScroll, btnBox);
+
+        Scene scene = new Scene(root);
+        stage.setScene(scene);
+
         saveBtn.setOnAction(e -> {
-            String language = languageCombo.getValue();
-            String reportsPath = reportsPathField.getText().trim();
-            String dateFormat = dateFormatField.getText().trim();
+            String serviceName = serviceCombo.getValue();
+            if (serviceName == null) {
+                showAlert("Выберите услугу", Alert.AlertType.WARNING);
+                return;
+            }
 
-            SettingService.setInterfaceLanguage(language);
-            SettingService.setReportsPath(reportsPath);
-            SettingService.setDateFormat(dateFormat);
+            Service service = DataStore.getServices().stream()
+                    .filter(s -> s.getName().equals(serviceName))
+                    .findFirst()
+                    .orElse(null);
 
-            showAlert("Настройки сохранены", Alert.AlertType.INFORMATION);
+            if (service == null) {
+                showAlert("Услуга не найдена", Alert.AlertType.WARNING);
+                return;
+            }
+
+            int addedCount = 0;
+            for (Object child : partsCheckboxes.getChildren()) {
+                if (child instanceof HBox) {
+                    HBox hBox = (HBox) child;
+                    CheckBox cb = (CheckBox) hBox.getChildren().get(0);
+                    if (cb.isSelected()) {
+                        SparePart part = (SparePart) cb.getUserData();
+                        if (part != null) {
+                            try {
+                                int quantity = Integer.parseInt(((TextField) hBox.getChildren().get(1)).getText());
+                                String unitType = ((ComboBox<String>) hBox.getChildren().get(2)).getValue();
+
+                                if (quantity > 0) {
+                                    ServiceSparePart relation = new ServiceSparePart();
+                                    relation.setServiceId(service.getId());
+                                    relation.setSparePartId(part.getId());
+                                    relation.setQuantity(quantity);
+                                    relation.setUnitType(unitType);
+                                    relation.setActive(true);
+                                    SettingsController.addServiceSparePart(relation);
+                                    addedCount++;
+                                }
+                            } catch (NumberFormatException ex) {
+                                showAlert("Неверное количество для запчасти: " + part.getName(), Alert.AlertType.WARNING);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (addedCount > 0) {
+                showAlert("Добавлено " + addedCount + " связей", Alert.AlertType.INFORMATION);
+                stage.close();
+            } else {
+                showAlert("Выберите хотя бы одну запчасть", Alert.AlertType.WARNING);
+            }
         });
 
-        panel.getChildren().addAll(introLabel, grid, saveBtn);
+        cancelBtn.setOnAction(e -> stage.close());
 
-        return panel;
+        stage.showAndWait();
     }
 
     // ==================== Утилиты ====================

@@ -2,14 +2,17 @@ package com.autoservice.dialogs;
 
 import com.autoservice.*;
 import com.autoservice.controllers.OrderController;
+import com.autoservice.services.AutoAddSparePartService;
 import com.autoservice.utils.OilHelper;
 import javafx.collections.FXCollections;
+import javafx.collections.ObservableMap;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.scene.control.ScrollPane;
 import javafx.stage.Stage;
 
 import java.time.LocalDate;
@@ -32,7 +35,7 @@ public class EditOrderDialog {
     private static List<String> tempServices = new ArrayList<>();
     private static List<Double> tempServicePrices = new ArrayList<>();
     private static List<SparePart> tempParts = new ArrayList<>();
-    private static List<Integer> tempPartQuantities = new ArrayList<>();
+    private static List<Double> tempPartQuantities = new ArrayList<>();
 
     // Поля для UI компонентов
     private static ListView<String> servicesListView;
@@ -164,20 +167,12 @@ public class EditOrderDialog {
         ComboBox<Service> serviceCombo = new ComboBox<>(FXCollections.observableArrayList(DataStore.getServices()));
         serviceCombo.setPromptText("Выберите услугу");
         serviceCombo.setPrefWidth(350);
-        TextField servicePriceField = new TextField();
-        servicePriceField.setEditable(false);
-        servicePriceField.setPrefWidth(100);
 
-        serviceCombo.setOnAction(e -> {
-            Service selected = serviceCombo.getValue();
-            if (selected != null) {
-                servicePriceField.setText(String.valueOf(selected.getPrice()));
-            }
-        });
-
-        Button addServiceBtn = new Button("Добавить услугу");
+        Button addServiceBtn = new Button("Добавить");
         addServiceBtn.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold;");
-        HBox serviceAddBox = new HBox(10, serviceCombo, servicePriceField, addServiceBtn);
+        Button removeServiceBtn = new Button("Удалить");
+        removeServiceBtn.setStyle("-fx-background-color: #f44336; -fx-text-fill: white; -fx-font-weight: bold;");
+        HBox serviceAddBox = new HBox(10, serviceCombo, addServiceBtn, removeServiceBtn);
 
         // ==================== ЗАПЧАСТИ ====================
         Label partsHeader = new Label("ЗАПЧАСТИ");
@@ -187,44 +182,22 @@ public class EditOrderDialog {
         partsListView.setPrefHeight(120);
 
         tempParts.addAll(order.getSpareParts());
-        tempPartQuantities.addAll(order.getSparePartQuantities());
+        tempPartQuantities.addAll(order.getSparePartQuantities().stream().map(Double::valueOf).collect(java.util.stream.Collectors.toList()));
         for (int i = 0; i < tempParts.size(); i++) {
             SparePart p = tempParts.get(i);
-            int q = tempPartQuantities.get(i);
-            partsListView.getItems().add((i+1) + ". " + p.getName() + " — " + p.getRetailPrice() + " руб. x " + q + " = " + (p.getRetailPrice() * q) + " руб.");
+            double q = tempPartQuantities.get(i);
+            partsListView.getItems().add((i+1) + ". " + p.getName() + " — " + p.getRetailPrice() + " руб. x " + (int)q + " = " + (p.getRetailPrice() * q) + " руб.");
         }
 
         partCombo = new ComboBox<>(FXCollections.observableArrayList(DataStore.getSpareParts()));
         partCombo.setPromptText("Выберите запчасть");
         partCombo.setPrefWidth(350);
-        TextField partPriceField = new TextField();
-        partPriceField.setEditable(false);
-        partPriceField.setPrefWidth(100);
-        TextField partStockField = new TextField();
-        partStockField.setEditable(false);
-        partStockField.setPrefWidth(70);
-        TextField partQtyField = new TextField();
-        partQtyField.setText("1");
-        partQtyField.setPrefWidth(70);
 
-        partCombo.setOnAction(e -> {
-            SparePart selected = partCombo.getValue();
-            if (selected != null) {
-                partPriceField.setText(String.valueOf(selected.getRetailPrice()));
-                partStockField.setText(String.valueOf(selected.getStock()));
-            }
-        });
-
-        Button addPartBtn = new Button("Добавить запчасть");
+        Button addPartBtn = new Button("Добавить");
         addPartBtn.setStyle("-fx-background-color: #2196F3; -fx-text-fill: white; -fx-font-weight: bold;");
-        HBox partAddBox = new HBox(10, partCombo, partPriceField, new Label("Остаток:"), partStockField,
-                new Label("Кол-во:"), partQtyField, addPartBtn);
-
-        // ==================== КНОПКИ УДАЛЕНИЯ ====================
-        Button removeServiceBtn = new Button("Удалить выбранную услугу");
-        removeServiceBtn.setStyle("-fx-background-color: #f44336; -fx-text-fill: white; -fx-font-weight: bold;");
-        Button removePartBtn = new Button("Удалить выбранную запчасть");
+        Button removePartBtn = new Button("Удалить");
         removePartBtn.setStyle("-fx-background-color: #f44336; -fx-text-fill: white; -fx-font-weight: bold;");
+        HBox partAddBox = new HBox(10, partCombo, addPartBtn, removePartBtn);
 
         // ==================== ИТОГО ====================
         totalLabel = new Label("ИТОГО: " + calculateTotal() + " руб.");
@@ -237,11 +210,36 @@ public class EditOrderDialog {
                 showAlert("Выберите услугу");
                 return;
             }
+
+            // ====== ВЫБОР ЗАПЧАСТЕЙ ЧЕРЕЗ ЧЕКБОКСЫ ======
+            List<AutoAddSparePartService.SparePartWithQuantity> relatedParts = AutoAddSparePartService.getSparePartsByService(selected.getName());
+            
+            if (!relatedParts.isEmpty()) {
+                // Показываем диалог выбора запчастей
+                List<AutoAddSparePartService.SparePartWithQuantity> selectedParts = showServiceSparePartsDialog(selected.getName(), relatedParts);
+                
+                if (selectedParts != null) {
+                    // Добавляем выбранные запчасти
+                    for (AutoAddSparePartService.SparePartWithQuantity partInfo : selectedParts) {
+                        SparePart part = partInfo.getSparePart();
+                        double qty = partInfo.getQuantity();
+                        
+                        if (qty > 0 && qty <= part.getStock()) {
+                            tempParts.add(part);
+                            tempPartQuantities.add(qty);
+                            part.setStock(part.getStock() - qty);
+                            partsListView.getItems().add(tempParts.size() + ". " + part.getName() + " — " + part.getRetailPrice() + " руб. x " + (int)qty + " = " + (part.getRetailPrice() * qty) + " руб.");
+                        } else {
+                            showAlert("Недостаточно запчастей на складе: " + part.getName());
+                        }
+                    }
+                }
+            }
+
             tempServices.add(selected.getName());
             tempServicePrices.add(selected.getPrice());
             servicesListView.getItems().add(tempServices.size() + ". " + selected.getName() + " — " + selected.getPrice() + " руб.");
             serviceCombo.setValue(null);
-            servicePriceField.clear();
             updateTotalLabel();
         });
 
@@ -251,29 +249,11 @@ public class EditOrderDialog {
                 showAlert("Выберите запчасть");
                 return;
             }
-            int qty;
-            try {
-                qty = Integer.parseInt(partQtyField.getText());
-                if (qty <= 0) {
-                    showAlert("Количество должно быть положительным");
-                    return;
-                }
-                if (qty > selected.getStock()) {
-                    showAlert("Недостаточно запчастей. Доступно: " + selected.getStock());
-                    return;
-                }
-            } catch (NumberFormatException ex) {
-                showAlert("Введите корректное количество");
-                return;
-            }
             tempParts.add(selected);
-            tempPartQuantities.add(qty);
-            selected.setStock(selected.getStock() - qty);
-            partsListView.getItems().add(tempParts.size() + ". " + selected.getName() + " — " + selected.getRetailPrice() + " руб. x " + qty + " = " + (selected.getRetailPrice() * qty) + " руб.");
-            partStockField.setText(String.valueOf(selected.getStock()));
+            tempPartQuantities.add(1.0);
+            selected.setStock(selected.getStock() - 1);
+            partsListView.getItems().add(tempParts.size() + ". " + selected.getName() + " — " + selected.getRetailPrice() + " руб. x 1 = " + selected.getRetailPrice() + " руб.");
             partCombo.setValue(null);
-            partPriceField.clear();
-            partQtyField.setText("1");
             updateTotalLabel();
         });
 
@@ -297,15 +277,15 @@ public class EditOrderDialog {
             int idx = partsListView.getSelectionModel().getSelectedIndex();
             if (idx >= 0 && idx < tempParts.size()) {
                 SparePart part = tempParts.get(idx);
-                int qty = tempPartQuantities.get(idx);
+                double qty = tempPartQuantities.get(idx);
                 part.setStock(part.getStock() + qty);
                 tempParts.remove(idx);
                 tempPartQuantities.remove(idx);
                 partsListView.getItems().clear();
                 for (int i = 0; i < tempParts.size(); i++) {
                     SparePart p = tempParts.get(i);
-                    int q = tempPartQuantities.get(i);
-                    partsListView.getItems().add((i+1) + ". " + p.getName() + " — " + p.getRetailPrice() + " руб. x " + q + " = " + (p.getRetailPrice() * q) + " руб.");
+                    double q = tempPartQuantities.get(i);
+                    partsListView.getItems().add((i+1) + ". " + p.getName() + " — " + p.getRetailPrice() + " руб. x " + (int)q + " = " + (p.getRetailPrice() * q) + " руб.");
                 }
                 partCombo.setItems(FXCollections.observableArrayList(DataStore.getSpareParts()));
                 updateTotalLabel();
@@ -328,11 +308,9 @@ public class EditOrderDialog {
                 new Separator(),
                 appointmentSection,
                 new Separator(),
-                servicesHeader, servicesListView,
-                serviceAddBox, removeServiceBtn,
+                servicesHeader, servicesListView, serviceAddBox,
                 new Separator(),
-                partsHeader, partsListView,
-                partAddBox, removePartBtn,
+                partsHeader, partsListView, partAddBox,
                 new Separator(),
                 totalLabel, btnBox
         );
@@ -481,7 +459,7 @@ public class EditOrderDialog {
     private static void cancelChanges() {
         for (int i = 0; i < tempParts.size(); i++) {
             SparePart part = tempParts.get(i);
-            int originalQty = tempPartQuantities.get(i);
+            double originalQty = tempPartQuantities.get(i);
             for (SparePart original : DataStore.getSpareParts()) {
                 if (original.getName().equals(part.getName())) {
                     original.setStock(original.getStock() + originalQty);
@@ -513,5 +491,177 @@ public class EditOrderDialog {
     private static void showAlert(String msg) {
         Alert alert = new Alert(Alert.AlertType.WARNING, msg, ButtonType.OK);
         alert.showAndWait();
+    }
+
+    // ==================== МЕТОД ДИАЛОГА ВЫБОРА ЗАПЧАСТЕЙ ДЛЯ УСЛУГИ ====================
+
+    /**
+     * Показывает диалог с чекбоксами для выбора запчастей, связанных с услугой.
+     * Возвращает список выбранных запчастей с количеством (или null для отмены).
+     */
+    private static List<AutoAddSparePartService.SparePartWithQuantity> showServiceSparePartsDialog(String serviceName, List<AutoAddSparePartService.SparePartWithQuantity> relatedParts) {
+        Stage stage = new Stage();
+        stage.setTitle("Выбор запчастей для услуги: " + serviceName);
+        stage.setMinWidth(600);
+        stage.setMinHeight(500);
+        stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+
+        VBox root = new VBox(15);
+        root.setPadding(new Insets(20));
+
+        Label titleLabel = new Label("Выберите запчасти, которые нужно добавить:");
+        titleLabel.getStyleClass().add("dialog-title");
+
+        // VBox для чекбоксов
+        VBox checkboxesVBox = new VBox(10);
+        checkboxesVBox.setPadding(new Insets(10));
+        checkboxesVBox.setStyle("-fx-background-color: #f5f5f5; -fx-border-color: #cccccc;");
+        checkboxesVBox.setPrefHeight(250);
+
+        // Храним состояния чекбоксов
+        ObservableMap<AutoAddSparePartService.SparePartWithQuantity, CheckBox> checkBoxMap = FXCollections.observableHashMap();
+        
+        // Создаём чекбоксы для каждой запчасти
+        for (AutoAddSparePartService.SparePartWithQuantity partInfo : relatedParts) {
+            SparePart part = partInfo.getSparePart();
+            double defaultQty = partInfo.getQuantity();
+            
+            HBox hBox = new HBox(10);
+            hBox.setAlignment(Pos.CENTER_LEFT);
+            
+            CheckBox checkBox = new CheckBox(part.getName() + " (в наличии: " + (int)part.getStock() + ")");
+            checkBox.setSelected(true); // По умолчанию выбрано
+            
+            // Поле для ввода количества
+            TextField qtyField = new TextField(String.valueOf((int)defaultQty));
+            qtyField.setPrefWidth(60);
+            qtyField.setDisable(false);
+            
+            // Кнопка +/- для изменения количества
+            HBox qtyControls = new HBox(5);
+            Button minusBtn = new Button("-");
+            minusBtn.setPrefWidth(25);
+            Button plusBtn = new Button("+");
+            plusBtn.setPrefWidth(25);
+            
+            minusBtn.setOnAction(evt -> {
+                try {
+                    int currentQty = Integer.parseInt(qtyField.getText());
+                    if (currentQty > 1) {
+                        qtyField.setText(String.valueOf(currentQty - 1));
+                    }
+                } catch (NumberFormatException ex) {}
+            });
+            
+            plusBtn.setOnAction(evt -> {
+                try {
+                    int currentQty = Integer.parseInt(qtyField.getText());
+                    if (currentQty < (int)part.getStock()) {
+                        qtyField.setText(String.valueOf(currentQty + 1));
+                    }
+                } catch (NumberFormatException ex) {}
+            });
+            
+            qtyControls.getChildren().addAll(minusBtn, plusBtn);
+            
+            hBox.getChildren().addAll(checkBox, qtyField, qtyControls);
+            checkboxesVBox.getChildren().add(hBox);
+            
+            checkBoxMap.put(partInfo, checkBox);
+        }
+
+        // ScrollPane для чекбоксов
+        ScrollPane scrollPane = new ScrollPane(checkboxesVBox);
+        scrollPane.setFitToWidth(true);
+
+        // Общая стоимость
+        Label totalLabel = new Label("Общая стоимость: 0 руб.");
+        totalLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+
+        // Кнопки
+        Button confirmBtn = new Button("Подтвердить");
+        confirmBtn.getStyleClass().add("save-button");
+
+        Button skipBtn = new Button("Пропустить");
+        skipBtn.getStyleClass().add("cancel-button");
+
+        HBox btnBox = new HBox(15, confirmBtn, skipBtn);
+        btnBox.setAlignment(Pos.CENTER);
+
+        root.getChildren().addAll(titleLabel, scrollPane, totalLabel, btnBox);
+
+        Scene scene = new Scene(root);
+        stage.setScene(scene);
+
+        // Объявляем переменную для результата
+        final List<AutoAddSparePartService.SparePartWithQuantity>[] result = new ArrayList[1];
+
+        // Обновление общей стоимости
+        Runnable updateTotal = () -> {
+            double total = 0;
+            int checkedCount = 0;
+            for (AutoAddSparePartService.SparePartWithQuantity partInfo : relatedParts) {
+                CheckBox checkBox = checkBoxMap.get(partInfo);
+                if (checkBox != null && checkBox.isSelected()) {
+                    checkedCount++;
+                    try {
+                        int qty = Integer.parseInt(((HBox)checkboxesVBox.getChildren().get(relatedParts.indexOf(partInfo))).getChildren().get(1).toString().replaceAll(".*text=", "").replaceAll(").*", ""));
+                        total += partInfo.getSparePart().getRetailPrice() * qty;
+                    } catch (Exception ex) {
+                        total += partInfo.getSparePart().getRetailPrice() * partInfo.getQuantity();
+                    }
+                }
+            }
+            totalLabel.setText("Общая стоимость: " + String.format("%.2f", total) + " руб. (выбрано: " + checkedCount + ")");
+        };
+
+        // Кнопка подтверждения
+        confirmBtn.setOnAction(evt -> {
+            List<AutoAddSparePartService.SparePartWithQuantity> selectedParts = new ArrayList<>();
+            
+            for (int i = 0; i < relatedParts.size(); i++) {
+                AutoAddSparePartService.SparePartWithQuantity partInfo = relatedParts.get(i);
+                HBox hBox = (HBox)checkboxesVBox.getChildren().get(i);
+                CheckBox checkBox = checkBoxMap.get(partInfo);
+                TextField qtyField = (TextField)hBox.getChildren().get(1);
+                
+                if (checkBox != null && checkBox.isSelected()) {
+                    try {
+                        int qty = Integer.parseInt(qtyField.getText());
+                        if (qty > 0) {
+                            AutoAddSparePartService.SparePartWithQuantity selected = partInfo.copy();
+                            selected.setQuantity(qty);
+                            selectedParts.add(selected);
+                        }
+                    } catch (NumberFormatException ex) {
+                        // Используем значение по умолчанию
+                        selectedParts.add(partInfo.copy());
+                    }
+                }
+            }
+            
+            if (selectedParts.isEmpty()) {
+                showAlert("Выберите хотя бы одну запчасть");
+                return;
+            }
+            
+            result[0] = selectedParts;
+            stage.close();
+        });
+
+        // Кнопка пропуска (добавить все с количеством по умолчанию)
+        skipBtn.setOnAction(evt -> {
+            List<AutoAddSparePartService.SparePartWithQuantity> allParts = new ArrayList<>();
+            for (AutoAddSparePartService.SparePartWithQuantity partInfo : relatedParts) {
+                allParts.add(partInfo.copy());
+            }
+            result[0] = allParts;
+            stage.close();
+        });
+
+        updateTotal.run();
+        stage.showAndWait();
+
+        return result[0]; // Возвращаем результат
     }
 }

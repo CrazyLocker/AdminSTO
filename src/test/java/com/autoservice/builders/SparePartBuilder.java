@@ -62,18 +62,8 @@ public class SparePartBuilder {
         return this;
     }
 
-    public SparePartBuilder withUnitVolume(double unitVolume) {
-        sparePart.setUnitVolume(unitVolume);
-        return this;
-    }
-
     public SparePartBuilder withUnitType(String unitType) {
         sparePart.setUnitType(unitType);
-        return this;
-    }
-
-    public SparePartBuilder withIsLiquid(boolean isLiquid) {
-        sparePart.setIsLiquid(isLiquid);
         return this;
     }
 
