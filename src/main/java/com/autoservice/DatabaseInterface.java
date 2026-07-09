@@ -97,6 +97,22 @@ public interface DatabaseInterface {
     
     void deleteServiceSparePartsByServiceId(int serviceId);
     
+    // ==================== SERVICE-SPARE PARTS LISTS (NEW STRUCTURE) ====================
+    
+    List<com.autoservice.model.ServiceSparePartsList> getServiceSparePartsListsByServiceId(int serviceId);
+    
+    List<com.autoservice.model.ServiceSparePartsListItem> getServiceSparePartsListItems(int listId);
+    
+    void addServiceSparePartsList(com.autoservice.model.ServiceSparePartsList list);
+    
+    void addServiceSparePartsListItem(com.autoservice.model.ServiceSparePartsListItem item);
+    
+    void deleteServiceSparePartsList(com.autoservice.model.ServiceSparePartsList list);
+    
+    void deleteServiceSparePartsListsByServiceId(int serviceId);
+    
+    void deleteServiceSparePartsListItemsByListId(int listId);
+    
     // ==================== TO PARTS RELATIONSHIPS ====================
     
     List<com.autoservice.model.ToPart> getToPartsByCarModel(String carModel);

@@ -31,6 +31,34 @@ public abstract class AbstractDatabase implements DatabaseInterface {
      */
     protected abstract String generateOrderId(Connection conn);
     
+    // ==================== HELPER METHODS ====================
+    
+    /**
+     * Получить сгенерированный ID после INSERT.
+     * Использует getGeneratedKeys() для обеих баз данных.
+     * @param conn соединение с базой данных
+     * @param stmt prepared statement с RETURN_GENERATED_KEYS
+     * @return сгенерированный ID
+     */
+    protected int getGeneratedKeyId(Connection conn, PreparedStatement stmt) throws SQLException {
+        try (ResultSet rs = stmt.getGeneratedKeys()) {
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        }
+        // Fallback для SQLite: last_insert_rowid()
+        String url = conn.getMetaData().getURL();
+        if (url != null && url.contains("sqlite")) {
+            try (Statement queryStmt = conn.createStatement();
+                 ResultSet rs = queryStmt.executeQuery("SELECT last_insert_rowid()")) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        }
+        return -1;
+    }
+    
     // ==================== DEFAULT IMPLEMENTATIONS ====================
     
     @Override
@@ -634,6 +662,14 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setString(4, relation.getUnitType());
             pstmt.setInt(5, relation.isActive() ? 1 : 0);
             pstmt.executeUpdate();
+            
+            // Получаем сгенерированный id через last_insert_rowid() для SQLite
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery("SELECT last_insert_rowid()")) {
+                if (rs.next()) {
+                    relation.setId(rs.getInt(1));
+                }
+            }
         } catch (SQLException e) {
             System.err.println("Add service-spare part relation error: " + e.getMessage());
         }
@@ -671,6 +707,198 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.executeUpdate();
         } catch (SQLException e) {
             System.err.println("Delete service-spare part relations by service ID error: " + e.getMessage());
+        }
+    }
+
+    // ==================== SERVICE-SPARE PARTS LISTS (NEW STRUCTURE) ====================
+
+    @Override
+    public List<com.autoservice.model.ServiceSparePartsList> getServiceSparePartsListsByServiceId(int serviceId) {
+        List<com.autoservice.model.ServiceSparePartsList> lists = new ArrayList<>();
+        String sql;
+        
+        if (serviceId == -1) {
+            // Получить все списки
+            sql = "SELECT id, service_id, created_date, active FROM service_spare_parts_lists ORDER BY created_date DESC";
+        } else {
+            // Получить списки для конкретной услуги
+            sql = "SELECT id, service_id, created_date, active FROM service_spare_parts_lists WHERE service_id = ? ORDER BY created_date DESC";
+        }
+
+        try (Connection conn = getConnection()) {
+            Statement stmt = conn.createStatement();
+            ResultSet rs;
+            
+            if (serviceId == -1) {
+                rs = stmt.executeQuery(sql);
+            } else {
+                PreparedStatement pstmt = conn.prepareStatement(sql);
+                pstmt.setInt(1, serviceId);
+                rs = pstmt.executeQuery();
+            }
+            
+            while (rs.next()) {
+                com.autoservice.model.ServiceSparePartsList list = new com.autoservice.model.ServiceSparePartsList();
+                list.setId(rs.getInt("id"));
+                list.setServiceId(rs.getInt("service_id"));
+                list.setCreatedDate(rs.getString("created_date"));
+                list.setActive(rs.getInt("active") == 1);
+                lists.add(list);
+            }
+            rs.close();
+        } catch (SQLException e) {
+            System.err.println("Load service-spare parts lists error: " + e.getMessage());
+        }
+        return lists;
+    }
+
+    @Override
+    public List<com.autoservice.model.ServiceSparePartsListItem> getServiceSparePartsListItems(int listId) {
+        List<com.autoservice.model.ServiceSparePartsListItem> items = new ArrayList<>();
+        String sql = "SELECT id, list_id, spare_part_id, quantity, unit_type FROM service_spare_parts_list_items WHERE list_id = ?";
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, listId);
+            ResultSet rs = pstmt.executeQuery();
+            
+            while (rs.next()) {
+                com.autoservice.model.ServiceSparePartsListItem item = new com.autoservice.model.ServiceSparePartsListItem();
+                item.setId(rs.getInt("id"));
+                item.setListId(rs.getInt("list_id"));
+                item.setSparePartId(rs.getInt("spare_part_id"));
+                item.setQuantity(rs.getInt("quantity"));
+                item.setUnitType(rs.getString("unit_type"));
+                items.add(item);
+            }
+            rs.close();
+        } catch (SQLException e) {
+            System.err.println("Load service-spare parts list items error: " + e.getMessage());
+        }
+        return items;
+    }
+
+    @Override
+    public void addServiceSparePartsList(com.autoservice.model.ServiceSparePartsList list) {
+        String sql = "INSERT INTO service_spare_parts_lists (service_id, created_date, active) VALUES (?, ?, ?)";
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            pstmt.setInt(1, list.getServiceId());
+            pstmt.setString(2, list.getCreatedDate());
+            pstmt.setInt(3, list.isActive() ? 1 : 0);
+            pstmt.executeUpdate();
+            
+            // Получаем сгенерированный id
+            int listId = getGeneratedKeyId(conn, pstmt);
+            if (listId > 0) {
+                list.setId(listId);
+            }
+            
+            // Сохраняем все элементы списка
+            if (list.getItems() != null && !list.getItems().isEmpty()) {
+                String itemSql = "INSERT INTO service_spare_parts_list_items (list_id, spare_part_id, quantity, unit_type) VALUES (?, ?, ?, ?)";
+                try (PreparedStatement itemPstmt = conn.prepareStatement(itemSql, Statement.RETURN_GENERATED_KEYS)) {
+                    for (com.autoservice.model.ServiceSparePartsListItem item : list.getItems()) {
+                        item.setListId(list.getId());
+                        itemPstmt.setInt(1, list.getId());
+                        itemPstmt.setInt(2, item.getSparePartId());
+                        itemPstmt.setInt(3, item.getQuantity());
+                        itemPstmt.setString(4, item.getUnitType());
+                        itemPstmt.executeUpdate();
+                        
+                        // Получаем сгенерированный id элемента
+                        int itemId = getGeneratedKeyId(conn, itemPstmt);
+                        if (itemId > 0) {
+                            item.setId(itemId);
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Add service-spare parts list error: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void addServiceSparePartsListItem(com.autoservice.model.ServiceSparePartsListItem item) {
+        String sql = "INSERT INTO service_spare_parts_list_items (list_id, spare_part_id, quantity, unit_type) VALUES (?, ?, ?, ?)";
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            pstmt.setInt(1, item.getListId());
+            pstmt.setInt(2, item.getSparePartId());
+            pstmt.setInt(3, item.getQuantity());
+            pstmt.setString(4, item.getUnitType());
+            pstmt.executeUpdate();
+            
+            // Получаем сгенерированный id
+            int itemId = getGeneratedKeyId(conn, pstmt);
+            if (itemId > 0) {
+                item.setId(itemId);
+            }
+        } catch (SQLException e) {
+            System.err.println("Add service-spare parts list item error: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void deleteServiceSparePartsList(com.autoservice.model.ServiceSparePartsList list) {
+        // Сначала удаляем все элементы списка
+        deleteServiceSparePartsListItemsByListId(list.getId());
+        
+        // Затем удаляем сам список
+        String sql = "DELETE FROM service_spare_parts_lists WHERE id = ?";
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, list.getId());
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println("Delete service-spare parts list error: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void deleteServiceSparePartsListsByServiceId(int serviceId) {
+        // Сначала получаем все списки для удаления их элементов
+        List<com.autoservice.model.ServiceSparePartsList> lists = getServiceSparePartsListsByServiceId(serviceId);
+        for (com.autoservice.model.ServiceSparePartsList list : lists) {
+            deleteServiceSparePartsListItemsByListId(list.getId());
+        }
+        
+        // Затем удаляем сами списки
+        String sql;
+        
+        if (serviceId == -1) {
+            // Удалить все списки
+            sql = "DELETE FROM service_spare_parts_lists";
+        } else {
+            sql = "DELETE FROM service_spare_parts_lists WHERE service_id = ?";
+        }
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            if (serviceId != -1) {
+                pstmt.setInt(1, serviceId);
+            }
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println("Delete service-spare parts lists by service ID error: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void deleteServiceSparePartsListItemsByListId(int listId) {
+        String sql = "DELETE FROM service_spare_parts_list_items WHERE list_id = ?";
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, listId);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println("Delete service-spare parts list items by list ID error: " + e.getMessage());
         }
     }
 
@@ -723,13 +951,19 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         String sql = "INSERT INTO to_parts (car_model, spare_part_id, quantity, unit_type, active) VALUES (?, ?, ?, ?, ?)";
 
         try (Connection conn = getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+             PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             pstmt.setString(1, part.getCarModel());
             pstmt.setInt(2, part.getSparePartId());
             pstmt.setInt(3, part.getQuantity());
             pstmt.setString(4, part.getUnitType());
             pstmt.setInt(5, part.isActive() ? 1 : 0);
             pstmt.executeUpdate();
+            
+            // Получаем сгенерированный id
+            ResultSet rs = pstmt.getGeneratedKeys();
+            if (rs.next()) {
+                part.setId(rs.getInt(1));
+            }
         } catch (SQLException e) {
             System.err.println("Add TO part error: " + e.getMessage());
         }
@@ -792,7 +1026,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     @Override
     public List<com.autoservice.model.Setting> getAllSettings() {
         List<com.autoservice.model.Setting> settings = new ArrayList<>();
-        String sql = "SELECT id, key, value, description FROM app_settings";
+        String sql = "SELECT id, setting_key, setting_value, description FROM app_settings";
 
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement();
@@ -800,8 +1034,8 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             while (rs.next()) {
                 com.autoservice.model.Setting setting = new com.autoservice.model.Setting();
                 setting.setId(rs.getInt("id"));
-                setting.setKey(rs.getString("key"));
-                setting.setValue(rs.getString("value"));
+                setting.setKey(rs.getString("setting_key"));
+                setting.setValue(rs.getString("setting_value"));
                 setting.setDescription(rs.getString("description"));
                 settings.add(setting);
             }
@@ -813,7 +1047,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
 
     @Override
     public void addSetting(com.autoservice.model.Setting setting) {
-        String sql = "INSERT INTO app_settings (key, value, description) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO app_settings (setting_key, setting_value, description) VALUES (?, ?, ?)";
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -828,7 +1062,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
 
     @Override
     public void updateSetting(com.autoservice.model.Setting setting) {
-        String sql = "UPDATE app_settings SET value = ? WHERE id = ?";
+        String sql = "UPDATE app_settings SET setting_value = ? WHERE id = ?";
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -855,7 +1089,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
 
     @Override
     public com.autoservice.model.Setting getSettingByKey(String key) {
-        String sql = "SELECT id, key, value, description FROM app_settings WHERE key = ?";
+        String sql = "SELECT id, setting_key, setting_value, description FROM app_settings WHERE setting_key = ?";
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -864,8 +1098,8 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             if (rs.next()) {
                 com.autoservice.model.Setting setting = new com.autoservice.model.Setting();
                 setting.setId(rs.getInt("id"));
-                setting.setKey(rs.getString("key"));
-                setting.setValue(rs.getString("value"));
+                setting.setKey(rs.getString("setting_key"));
+                setting.setValue(rs.getString("setting_value"));
                 setting.setDescription(rs.getString("description"));
                 return setting;
             }

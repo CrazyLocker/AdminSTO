@@ -1,6 +1,8 @@
 package com.autoservice;
 
 import com.autoservice.model.ServiceSparePart;
+import com.autoservice.model.ServiceSparePartsList;
+import com.autoservice.model.ServiceSparePartsListItem;
 import com.autoservice.model.ToPart;
 import com.autoservice.model.Setting;
 import com.autoservice.services.AutoAddSparePartService;
@@ -15,6 +17,8 @@ public class DataStore {
     private static List<SparePart> spareParts = new ArrayList<>();
     private static List<Appointment> appointments = new ArrayList<>();
     private static List<ServiceSparePart> serviceSpareParts = new ArrayList<>();
+    private static List<ServiceSparePartsList> serviceSparePartsLists = new ArrayList<>();
+    private static List<ServiceSparePartsListItem> serviceSparePartsListItems = new ArrayList<>();
     private static List<ToPart> toParts = new ArrayList<>();
     private static List<Setting> settings = new ArrayList<>();
 
@@ -27,6 +31,12 @@ public class DataStore {
         orders = DatabaseFactory.getDatabase().getAllOrders();
         appointments = DatabaseFactory.getDatabase().getAllAppointments();
         serviceSpareParts = DatabaseFactory.getDatabase().getServiceSparePartsByServiceId(-1);
+        serviceSparePartsLists = DatabaseFactory.getDatabase().getServiceSparePartsListsByServiceId(-1);
+        // Загружаем элементы для каждого списка
+        for (ServiceSparePartsList list : serviceSparePartsLists) {
+            List<ServiceSparePartsListItem> items = DatabaseFactory.getDatabase().getServiceSparePartsListItems(list.getId());
+            list.setItems(items);
+        }
         toParts = DatabaseFactory.getDatabase().getToPartsByCarModel("");
         settings = DatabaseFactory.getDatabase().getAllSettings();
         isDirty = false;
@@ -84,6 +94,15 @@ public class DataStore {
             if (ssp.isDirty()) {
                 Database.addServiceSparePart(ssp);
                 ssp.setDirty(false);
+                saved++;
+            }
+        }
+
+        for (ServiceSparePartsList sspList : serviceSparePartsLists) {
+            if (sspList.isDirty()) {
+                Database.addServiceSparePartsList(sspList);
+                // Элементы сохраняются автоматически внутри addServiceSparePartsList
+                sspList.setDirty(false);
                 saved++;
             }
         }
@@ -311,6 +330,51 @@ public class DataStore {
     public static void deleteServiceSparePartsByServiceId(int serviceId) {
         DatabaseFactory.getDatabase().deleteServiceSparePartsByServiceId(serviceId);
         serviceSpareParts.removeIf(s -> s.getServiceId() == serviceId);
+        isDirty = true;
+    }
+
+    // ==================== SERVICE-SPARE PARTS LISTS (NEW STRUCTURE) ====================
+
+    public static List<ServiceSparePartsList> getServiceSparePartsListsByServiceId(int serviceId) {
+        if (serviceId == -1) {
+            return serviceSparePartsLists;
+        }
+        return DatabaseFactory.getDatabase().getServiceSparePartsListsByServiceId(serviceId);
+    }
+
+    public static List<ServiceSparePartsListItem> getServiceSparePartsListItems(int listId) {
+        return DatabaseFactory.getDatabase().getServiceSparePartsListItems(listId);
+    }
+
+    public static void addServiceSparePartsList(ServiceSparePartsList list) {
+        DatabaseFactory.getDatabase().addServiceSparePartsList(list);
+        serviceSparePartsLists.add(list);
+        
+        // Помечаем список как dirty для сохранения
+        list.setDirty(true);
+        
+        // Загружаем элементы из БД, так как они получили ID
+        List<ServiceSparePartsListItem> items = DatabaseFactory.getDatabase().getServiceSparePartsListItems(list.getId());
+        list.setItems(items);
+        
+        isDirty = true;
+    }
+
+    public static void addServiceSparePartsListItem(ServiceSparePartsListItem item) {
+        DatabaseFactory.getDatabase().addServiceSparePartsListItem(item);
+        serviceSparePartsListItems.add(item);
+        isDirty = true;
+    }
+
+    public static void deleteServiceSparePartsList(ServiceSparePartsList list) {
+        DatabaseFactory.getDatabase().deleteServiceSparePartsList(list);
+        serviceSparePartsLists.remove(list);
+        isDirty = true;
+    }
+
+    public static void deleteServiceSparePartsListsByServiceId(int serviceId) {
+        DatabaseFactory.getDatabase().deleteServiceSparePartsListsByServiceId(serviceId);
+        serviceSparePartsLists.removeIf(s -> s.getServiceId() == serviceId);
         isDirty = true;
     }
 

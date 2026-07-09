@@ -244,10 +244,17 @@ public class CreateOrderDialog {
                 return;
             }
 
+            // ====== ВАЛИДАЦИЯ ОСТАТКА ======
+            double requestedQty = 1.0;
+            if (requestedQty > selected.getStock()) {
+                showAlert("Недостаточно запчастей на складе: " + selected.getName() + " (в наличии: " + (int)selected.getStock() + ")");
+                return;
+            }
+
             tempParts.add(selected);
-            tempPartQuantities.add(1.0);
-            selected.setStock(selected.getStock() - 1);
-            partsListView.getItems().add((tempParts.size()) + ". " + selected.getName() + " x1 = " + selected.getRetailPrice() + " руб.");
+            tempPartQuantities.add(requestedQty);
+            selected.setStock(selected.getStock() - requestedQty);
+            partsListView.getItems().add((tempParts.size()) + ". " + selected.getName() + " x" + (int)requestedQty + " = " + selected.getRetailPrice() + " руб.");
             partCombo.setValue(null);
             updateTotal.run();
         });
@@ -313,6 +320,22 @@ public class CreateOrderDialog {
             if (tempServices.isEmpty() && tempParts.isEmpty()) {
                 showAlert("Добавьте услугу или запчасть");
                 return;
+            }
+
+            // ====== ПОВТОРНАЯ ПРОВЕРКА ОСТАТКА ПЕРЕД СОХРАНЕНИЕМ ======
+            boolean hasStockIssue = false;
+            for (int i = 0; i < tempParts.size(); i++) {
+                SparePart part = tempParts.get(i);
+                double qty = tempPartQuantities.get(i);
+                int currentStock = (int)DataStore.getSparePartById(part.getId()).getStock();
+                
+                if (qty > currentStock) {
+                    hasStockIssue = true;
+                    showAlert("Недостаточно запчастей на складе: " + part.getName() + " (в наличии: " + currentStock + ")");
+                }
+            }
+            if (hasStockIssue) {
+                return; // Не сохраняем заказ, если есть проблемы с остатком
             }
 
             if (createAppointmentCheck.isSelected()) {
@@ -446,6 +469,21 @@ public class CreateOrderDialog {
             qtyField.setPrefWidth(60);
             qtyField.setDisable(false);
             
+            // Валидация ввода количества
+            qtyField.textProperty().addListener((obs, oldValue, newValue) -> {
+                try {
+                    int qty = Integer.parseInt(newValue);
+                    int maxQty = (int)part.getStock();
+                    if (qty < 1) {
+                        qtyField.setText("1");
+                    } else if (qty > maxQty) {
+                        qtyField.setText(String.valueOf(maxQty));
+                    }
+                } catch (NumberFormatException ex) {
+                    qtyField.setText(String.valueOf(defaultQty));
+                }
+            });
+            
             // Кнопка +/- для изменения количества
             HBox qtyControls = new HBox(5);
             Button minusBtn = new Button("-");
@@ -537,14 +575,23 @@ public class CreateOrderDialog {
                 if (checkBox != null && checkBox.isSelected()) {
                     try {
                         int qty = Integer.parseInt(qtyField.getText());
+                        int maxQty = (int)partInfo.getSparePart().getStock();
+                        if (qty < 1) {
+                            showAlert("Минимальное количество: 1");
+                            return;
+                        }
+                        if (qty > maxQty) {
+                            showAlert("Недостаточно запчастей на складе: " + partInfo.getSparePart().getName() + " (в наличии: " + maxQty + ")");
+                            return;
+                        }
                         if (qty > 0) {
                             AutoAddSparePartService.SparePartWithQuantity selected = partInfo.copy();
                             selected.setQuantity(qty);
                             selectedParts.add(selected);
                         }
                     } catch (NumberFormatException ex) {
-                        // Используем значение по умолчанию
-                        selectedParts.add(partInfo.copy());
+                        showAlert("Некорректное количество");
+                        return;
                     }
                 }
             }

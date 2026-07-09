@@ -141,6 +141,24 @@ public class SQLiteDatabase extends AbstractDatabase {
                 "description TEXT DEFAULT ''" +
                 ")";
 
+        String createServiceSparePartsLists = "CREATE TABLE IF NOT EXISTS service_spare_parts_lists (" +
+                "id INTEGER " + autoIncrement + ", " +
+                "service_id INTEGER NOT NULL, " +
+                "created_date TEXT NOT NULL, " +
+                "active INTEGER DEFAULT 1, " +
+                "FOREIGN KEY (service_id) REFERENCES services(id)" +
+                ")";
+
+        String createServiceSparePartsListItems = "CREATE TABLE IF NOT EXISTS service_spare_parts_list_items (" +
+                "id INTEGER " + autoIncrement + ", " +
+                "list_id INTEGER NOT NULL, " +
+                "spare_part_id INTEGER NOT NULL, " +
+                "quantity INTEGER DEFAULT 1, " +
+                "unit_type TEXT DEFAULT 'шт', " +
+                "FOREIGN KEY (list_id) REFERENCES service_spare_parts_lists(id) ON DELETE CASCADE, " +
+                "FOREIGN KEY (spare_part_id) REFERENCES spare_parts(id)" +
+                ")";
+
         try (Statement stmt = conn.createStatement()) {
             stmt.execute(createClients);
             stmt.execute(createServices);
@@ -152,6 +170,8 @@ public class SQLiteDatabase extends AbstractDatabase {
             stmt.execute(createServiceSpareParts);
             stmt.execute(createToParts);
             stmt.execute(createAppSettings);
+            stmt.execute(createServiceSparePartsLists);
+            stmt.execute(createServiceSparePartsListItems);
             createIndexes(conn);
             System.out.println("Tables and indexes created/verified");
         }
@@ -172,7 +192,10 @@ public class SQLiteDatabase extends AbstractDatabase {
                 "CREATE INDEX IF NOT EXISTS idx_service_spare_parts_service_id ON service_spare_parts(service_id)",
                 "CREATE INDEX IF NOT EXISTS idx_service_spare_parts_spare_part_id ON service_spare_parts(spare_part_id)",
                 "CREATE INDEX IF NOT EXISTS idx_to_parts_car_model ON to_parts(car_model)",
-                "CREATE INDEX IF NOT EXISTS idx_to_parts_spare_part_id ON to_parts(spare_part_id)"
+                "CREATE INDEX IF NOT EXISTS idx_to_parts_spare_part_id ON to_parts(spare_part_id)",
+                "CREATE INDEX IF NOT EXISTS idx_service_spare_parts_lists_service_id ON service_spare_parts_lists(service_id)",
+                "CREATE INDEX IF NOT EXISTS idx_service_spare_parts_list_items_list_id ON service_spare_parts_list_items(list_id)",
+                "CREATE INDEX IF NOT EXISTS idx_service_spare_parts_list_items_spare_part_id ON service_spare_parts_list_items(spare_part_id)"
         };
         
         try (Statement stmt = conn.createStatement()) {
@@ -528,6 +551,46 @@ public class SQLiteDatabase extends AbstractDatabase {
             try (Statement stmt = conn.createStatement()) {
                 stmt.execute("ALTER TABLE services ADD COLUMN spare_part_quantity INTEGER DEFAULT 0");
                 System.out.println("Added column spare_part_quantity to services");
+            }
+        }
+        
+        // Создаем таблицу service_spare_parts_lists, если её нет
+        if (!tableExists(conn, "service_spare_parts_lists")) {
+            try (Statement stmt = conn.createStatement()) {
+                stmt.execute("CREATE TABLE service_spare_parts_lists (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                        "service_id INTEGER NOT NULL, " +
+                        "created_date TEXT NOT NULL, " +
+                        "active INTEGER DEFAULT 1, " +
+                        "FOREIGN KEY (service_id) REFERENCES services(id)" +
+                        ")");
+                System.out.println("Created table service_spare_parts_lists");
+            }
+        }
+        
+        // Создаем таблицу service_spare_parts_list_items, если её нет
+        if (!tableExists(conn, "service_spare_parts_list_items")) {
+            try (Statement stmt = conn.createStatement()) {
+                stmt.execute("CREATE TABLE service_spare_parts_list_items (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                        "list_id INTEGER NOT NULL, " +
+                        "spare_part_id INTEGER NOT NULL, " +
+                        "quantity INTEGER DEFAULT 1, " +
+                        "unit_type TEXT DEFAULT 'шт', " +
+                        "FOREIGN KEY (list_id) REFERENCES service_spare_parts_lists(id) ON DELETE CASCADE, " +
+                        "FOREIGN KEY (spare_part_id) REFERENCES spare_parts(id)" +
+                        ")");
+                System.out.println("Created table service_spare_parts_list_items");
+            }
+        }
+    }
+    
+    private boolean tableExists(Connection conn, String tableName) throws SQLException {
+        String sql = "SELECT name FROM sqlite_master WHERE type='table' AND name=?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, tableName);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                return rs.next();
             }
         }
     }

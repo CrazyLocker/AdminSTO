@@ -146,6 +146,34 @@ public class Database {
         DatabaseFactory.getDatabase().deleteServiceSparePartsByServiceId(serviceId);
     }
     
+    public static List<com.autoservice.model.ServiceSparePartsList> getServiceSparePartsListsByServiceId(int serviceId) {
+        return DatabaseFactory.getDatabase().getServiceSparePartsListsByServiceId(serviceId);
+    }
+    
+    public static List<com.autoservice.model.ServiceSparePartsListItem> getServiceSparePartsListItems(int listId) {
+        return DatabaseFactory.getDatabase().getServiceSparePartsListItems(listId);
+    }
+    
+    public static void addServiceSparePartsList(com.autoservice.model.ServiceSparePartsList list) {
+        DatabaseFactory.getDatabase().addServiceSparePartsList(list);
+    }
+    
+    public static void addServiceSparePartsListItem(com.autoservice.model.ServiceSparePartsListItem item) {
+        DatabaseFactory.getDatabase().addServiceSparePartsListItem(item);
+    }
+    
+    public static void deleteServiceSparePartsList(com.autoservice.model.ServiceSparePartsList list) {
+        DatabaseFactory.getDatabase().deleteServiceSparePartsList(list);
+    }
+    
+    public static void deleteServiceSparePartsListsByServiceId(int serviceId) {
+        DatabaseFactory.getDatabase().deleteServiceSparePartsListsByServiceId(serviceId);
+    }
+    
+    public static void deleteServiceSparePartsListItemsByListId(int listId) {
+        DatabaseFactory.getDatabase().deleteServiceSparePartsListItemsByListId(listId);
+    }
+    
     // ==================== TO PARTS RELATIONSHIPS ====================
     
     public static List<com.autoservice.model.ToPart> getToPartsByCarModel(String carModel) {

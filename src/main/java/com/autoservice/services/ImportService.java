@@ -74,6 +74,7 @@ public class ImportService {
      * Определяет формат файла по расширению
      */
     public static String detectFormat(File file) {
+        if (file == null) return "unknown";
         String name = file.getName().toLowerCase();
         if (name == null || name.isEmpty()) return "unknown";
         if (name.endsWith(".csv")) return "csv";

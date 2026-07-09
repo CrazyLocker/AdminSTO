@@ -145,9 +145,27 @@ public class H2Database extends AbstractDatabase {
 
         String createAppSettings = "CREATE TABLE IF NOT EXISTS app_settings (" +
                 "id INTEGER " + autoIncrement + ", " +
-                "key TEXT NOT NULL UNIQUE, " +
-                "value TEXT NOT NULL, " +
+                "setting_key TEXT NOT NULL UNIQUE, " +
+                "setting_value TEXT NOT NULL, " +
                 "description TEXT DEFAULT ''" +
+                ")";
+
+        String createServiceSparePartsLists = "CREATE TABLE IF NOT EXISTS service_spare_parts_lists (" +
+                "id INTEGER " + autoIncrement + ", " +
+                "service_id INTEGER NOT NULL, " +
+                "created_date TEXT NOT NULL, " +
+                "active INTEGER DEFAULT 1, " +
+                "FOREIGN KEY (service_id) REFERENCES services(id)" +
+                ")";
+
+        String createServiceSparePartsListItems = "CREATE TABLE IF NOT EXISTS service_spare_parts_list_items (" +
+                "id INTEGER " + autoIncrement + ", " +
+                "list_id INTEGER NOT NULL, " +
+                "spare_part_id INTEGER NOT NULL, " +
+                "quantity INTEGER DEFAULT 1, " +
+                "unit_type TEXT DEFAULT 'шт', " +
+                "FOREIGN KEY (list_id) REFERENCES service_spare_parts_lists(id), " +
+                "FOREIGN KEY (spare_part_id) REFERENCES spare_parts(id)" +
                 ")";
 
         try (Statement stmt = conn.createStatement()) {
@@ -161,6 +179,8 @@ public class H2Database extends AbstractDatabase {
             stmt.execute(createServiceSpareParts);
             stmt.execute(createToParts);
             stmt.execute(createAppSettings);
+            stmt.execute(createServiceSparePartsLists);
+            stmt.execute(createServiceSparePartsListItems);
             createIndexes(conn);
             System.out.println("Tables and indexes created/verified");
         }
@@ -181,7 +201,11 @@ public class H2Database extends AbstractDatabase {
                 "CREATE INDEX IF NOT EXISTS idx_service_spare_parts_service_id ON service_spare_parts(service_id)",
                 "CREATE INDEX IF NOT EXISTS idx_service_spare_parts_spare_part_id ON service_spare_parts(spare_part_id)",
                 "CREATE INDEX IF NOT EXISTS idx_to_parts_car_model ON to_parts(car_model)",
-                "CREATE INDEX IF NOT EXISTS idx_to_parts_spare_part_id ON to_parts(spare_part_id)"
+                "CREATE INDEX IF NOT EXISTS idx_to_parts_spare_part_id ON to_parts(spare_part_id)",
+                "CREATE INDEX IF NOT EXISTS idx_service_spare_parts_lists_service_id ON service_spare_parts_lists(service_id)",
+                "CREATE INDEX IF NOT EXISTS idx_service_spare_parts_lists_created_date ON service_spare_parts_lists(created_date)",
+                "CREATE INDEX IF NOT EXISTS idx_service_spare_parts_list_items_list_id ON service_spare_parts_list_items(list_id)",
+                "CREATE INDEX IF NOT EXISTS idx_service_spare_parts_list_items_spare_part_id ON service_spare_parts_list_items(spare_part_id)"
         };
         
         try (Statement stmt = conn.createStatement()) {
@@ -266,7 +290,7 @@ public class H2Database extends AbstractDatabase {
         String sql = "MERGE INTO spare_parts (name, purchase_price, retail_price, stock, part_number, manufacturer, compatible_models, min_stock, location, unit_type) KEY(name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+             PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             pstmt.setString(1, part.getName());
             pstmt.setDouble(2, part.getPurchasePrice());
             pstmt.setDouble(3, part.getRetailPrice());
@@ -278,6 +302,12 @@ public class H2Database extends AbstractDatabase {
             pstmt.setString(9, part.getLocation());
             pstmt.setString(10, part.getUnitType());
             pstmt.executeUpdate();
+            
+            // Получаем сгенерированный id
+            ResultSet rs = pstmt.getGeneratedKeys();
+            if (rs.next()) {
+                part.setId(rs.getInt(1));
+            }
         } catch (SQLException e) {
             System.err.println("Add spare part error: " + e.getMessage());
         }
@@ -416,7 +446,7 @@ public class H2Database extends AbstractDatabase {
         String sql = "INSERT INTO appointments (client_id, order_id, master_name, service_name, appointment_date, appointment_time, status) VALUES (?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+             PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             int clientId = getClientId(appointment.getClient());
             pstmt.setInt(1, clientId);
             pstmt.setString(2, appointment.getOrderId());
@@ -426,6 +456,12 @@ public class H2Database extends AbstractDatabase {
             pstmt.setString(6, appointment.getTime());
             pstmt.setString(7, appointment.getStatus());
             pstmt.executeUpdate();
+            
+            // Получаем сгенерированный id
+            ResultSet rs = pstmt.getGeneratedKeys();
+            if (rs.next()) {
+                appointment.setId(rs.getInt(1));
+            }
         } catch (SQLException e) {
             System.err.println("Add appointment error: " + e.getMessage());
         }

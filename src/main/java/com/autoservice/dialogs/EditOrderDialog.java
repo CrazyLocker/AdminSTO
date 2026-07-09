@@ -249,10 +249,18 @@ public class EditOrderDialog {
                 showAlert("Выберите запчасть");
                 return;
             }
+
+            // ====== ВАЛИДАЦИЯ ОСТАТКА ======
+            double requestedQty = 1.0;
+            if (requestedQty > selected.getStock()) {
+                showAlert("Недостаточно запчастей на складе: " + selected.getName() + " (в наличии: " + (int)selected.getStock() + ")");
+                return;
+            }
+
             tempParts.add(selected);
-            tempPartQuantities.add(1.0);
-            selected.setStock(selected.getStock() - 1);
-            partsListView.getItems().add(tempParts.size() + ". " + selected.getName() + " — " + selected.getRetailPrice() + " руб. x 1 = " + selected.getRetailPrice() + " руб.");
+            tempPartQuantities.add(requestedQty);
+            selected.setStock(selected.getStock() - requestedQty);
+            partsListView.getItems().add(tempParts.size() + ". " + selected.getName() + " — " + selected.getRetailPrice() + " руб. x " + (int)requestedQty + " = " + selected.getRetailPrice() + " руб.");
             partCombo.setValue(null);
             updateTotalLabel();
         });
@@ -341,6 +349,22 @@ public class EditOrderDialog {
         if (tempServices.isEmpty() && tempParts.isEmpty()) {
             showAlert("Должна быть хотя бы одна услуга или запчасть");
             return;
+        }
+
+        // ====== ПОВТОРНАЯ ПРОВЕРКА ОСТАТКА ПЕРЕД СОХРАНЕНИЕМ ======
+        boolean hasStockIssue = false;
+        for (int i = 0; i < tempParts.size(); i++) {
+            SparePart part = tempParts.get(i);
+            double qty = tempPartQuantities.get(i);
+            int currentStock = (int)DataStore.getSparePartById(part.getId()).getStock();
+            
+            if (qty > currentStock) {
+                hasStockIssue = true;
+                showAlert("Недостаточно запчастей на складе: " + part.getName() + " (в наличии: " + currentStock + ")");
+            }
+        }
+        if (hasStockIssue) {
+            return; // Не сохраняем заказ, если есть проблемы с остатком
         }
 
         // Валидация записи в календаре
@@ -530,7 +554,7 @@ public class EditOrderDialog {
             hBox.setAlignment(Pos.CENTER_LEFT);
             
             CheckBox checkBox = new CheckBox(part.getName() + " (в наличии: " + (int)part.getStock() + ")");
-            checkBox.setSelected(true); // По умолчанию выбрано
+            checkBox.setSelected(false); // По умолчанию не выбрано
             
             // Поле для ввода количества
             TextField qtyField = new TextField(String.valueOf((int)defaultQty));
