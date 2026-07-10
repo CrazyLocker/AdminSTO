@@ -71,6 +71,7 @@ class ClientControllerTest extends BaseTest {
 
     @Test
     @Order(5)
+    @Disabled("Requires JavaFX initialization")
     void testEditClient() {
         ClientController.setTable(null);
         ClientController.editClient(testClient);
