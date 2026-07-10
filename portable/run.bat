@@ -1,9 +1,9 @@
-﻿@echo off
-chcp 65001 >nul
+@echo off
+chcp 866 >nul
 setlocal EnableDelayedExpansion
 
 echo =====================================================
-echo   AdminSTO v1.0.0 - Портативная версия (автономная)
+echo   AdminSTO v1.0.0 - Portable Version
 echo =====================================================
 echo.
 
@@ -12,11 +12,11 @@ set JRE_PATH=!SCRIPT_DIR!jre\bin\java.exe
 set LIB_PATH=!SCRIPT_DIR!lib
 set APP_PATH=!SCRIPT_DIR!autoservice-admin.jar
 
-echo Запуск AdminSTO...
+echo Launching AdminSTO...
 echo.
 
 if not exist !JRE_PATH! (
-    echo ERROR: JRE not found in !SCRIPT_DIR!jre
+    echo ERROR: JRE not found!
     pause
     exit /b 1
 )
