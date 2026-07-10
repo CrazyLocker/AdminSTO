@@ -1,5 +1,8 @@
 package com.autoservice;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 
@@ -7,6 +10,13 @@ import java.sql.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+
+import com.autoservice.utils.ExceptionHandler;
+import com.autoservice.Client;
+import com.autoservice.Service;
+import com.autoservice.SparePart;
+import com.autoservice.WorkOrder;
+import com.autoservice.Appointment;
 
 /**
  * Абстрактный базовый класс для реализаций Database.
@@ -16,7 +26,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     
     protected HikariDataSource dataSource;
     
-    // ==================== ABSTRACT METHODS FOR DB-SPECIFIC IMPLEMENTATIONS ====================
+    private static final Logger logger = LoggerFactory.getLogger(AbstractDatabase.class);
     
     /**
      * Создание таблиц базы данных.
@@ -105,7 +115,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                 ));
             }
         } catch (SQLException e) {
-            System.err.println("Load clients error: " + e.getMessage());
+            logger.error("Ошибка загрузки клиентов", e);
         }
         return clients;
     }
@@ -126,7 +136,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setString(6, client.getLastRepairDate());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Add client error: " + e.getMessage());
+            logger.error("Ошибка добавления клиента", e);
         }
     }
     
@@ -147,7 +157,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setInt(7, client.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Update client error: " + e.getMessage());
+            logger.error("Ошибка обновления клиента", e);
         }
     }
     
@@ -160,7 +170,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setInt(1, client.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Delete client error: " + e.getMessage());
+            logger.error("Ошибка удаления клиента", e);
         }
     }
     
@@ -184,7 +194,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                 );
             }
         } catch (SQLException e) {
-            System.err.println("Get client error: " + e.getMessage());
+            logger.error("Ошибка получения клиента по ID", e);
         }
         return null;
     }
@@ -203,7 +213,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                 return rs.getInt("id");
             }
         } catch (SQLException e) {
-            System.err.println("Get client ID error: " + e.getMessage());
+            logger.error("Ошибка получения ID клиента", e);
         }
         return -1;
     }
@@ -232,7 +242,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                 service.setId(rs.getInt(1));
             }
         } catch (SQLException e) {
-            System.err.println("Add service error: " + e.getMessage());
+            logger.error("Ошибка добавления услуги", e);
         }
     }
     
@@ -258,7 +268,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                 services.add(service);
             }
         } catch (SQLException e) {
-            System.err.println("Load services error: " + e.getMessage());
+            logger.error("Ошибка загрузки услуг", e);
         }
         return services;
     }
@@ -272,7 +282,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setInt(1, service.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Delete service error: " + e.getMessage());
+            logger.error("Ошибка удаления услуги", e);
         }
     }
     
@@ -293,7 +303,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setInt(9, service.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Update service error: " + e.getMessage());
+            logger.error("Ошибка обновления услуги", e);
         }
     }
     
@@ -324,7 +334,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                 ));
             }
         } catch (SQLException e) {
-            System.err.println("Load spare parts error: " + e.getMessage());
+            logger.error("Ошибка загрузки запчастей", e);
         }
         return parts;
     }
@@ -350,7 +360,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setInt(11, part.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Update spare part error: " + e.getMessage());
+            logger.error("Ошибка обновления запчасти", e);
         }
     }
     
@@ -363,7 +373,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setString(1, part.getName());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Delete spare part error: " + e.getMessage());
+            logger.error("Ошибка удаления запчасти", e);
         }
     }
     
@@ -407,8 +417,8 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                 orderMap.put(rs.getString("order_id"), order);
             }
         } catch (SQLException e) {
-            System.err.println("Load orders error: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Ошибка загрузки заказов", e);
+            logger.error("Технические детали: {}", ExceptionHandler.getTechnicalDetails(e));
             return new ArrayList<>();
         }
 
@@ -424,7 +434,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Load order services error: " + e.getMessage());
+            logger.error("Ошибка загрузки услуг заказа", e);
         }
 
         String partsSql = "SELECT order_id, part_name, price, quantity FROM order_parts";
@@ -445,7 +455,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Load order parts error: " + e.getMessage());
+            logger.error("Ошибка загрузки запчастей заказа", e);
         }
 
         return new ArrayList<>(orderMap.values());
@@ -460,7 +470,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setString(1, orderId);
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Delete order error: " + e.getMessage());
+            logger.error("Ошибка удаления заказа", e);
         }
     }
     
@@ -477,7 +487,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setString(4, order.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Update order error: " + e.getMessage());
+            logger.error("Ошибка обновления заказа", e);
         }
     }
     
@@ -521,7 +531,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                 ));
             }
         } catch (SQLException e) {
-            System.err.println("Load appointments error: " + e.getMessage());
+            logger.error("Ошибка загрузки записей", e);
         }
         return appointments;
     }
@@ -566,7 +576,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                 ));
             }
         } catch (SQLException e) {
-            System.err.println("Load appointments by date error: " + e.getMessage());
+            logger.error("Ошибка загрузки записей по дате", e);
         }
         return appointments;
     }
@@ -590,7 +600,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setInt(8, appointment.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Update appointment error: " + e.getMessage());
+            logger.error("Ошибка обновления записи", e);
         }
     }
     
@@ -602,7 +612,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setInt(1, id);
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Delete appointment error: " + e.getMessage());
+            logger.error("Ошибка удаления записи", e);
         }
     }
 
@@ -645,7 +655,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             }
             rs.close();
         } catch (SQLException e) {
-            System.err.println("Load service-spare part relations error: " + e.getMessage());
+            logger.error("Ошибка загрузки связей услуг-запчастей", e);
         }
         return relations;
     }
@@ -671,7 +681,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Add service-spare part relation error: " + e.getMessage());
+            logger.error("Ошибка добавления связи услуги-запчасти", e);
         }
     }
 
@@ -684,7 +694,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setInt(1, relation.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Delete service-spare part relation error: " + e.getMessage());
+            logger.error("Ошибка удаления связи услуги-запчасти", e);
         }
     }
 
@@ -706,7 +716,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             }
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Delete service-spare part relations by service ID error: " + e.getMessage());
+            logger.error("Ошибка удаления связей услуги-запчастей по ID услуги", e);
         }
     }
 
@@ -747,7 +757,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             }
             rs.close();
         } catch (SQLException e) {
-            System.err.println("Load service-spare parts lists error: " + e.getMessage());
+            logger.error("Ошибка загрузки списков услуг-запчастей", e);
         }
         return lists;
     }
@@ -773,7 +783,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             }
             rs.close();
         } catch (SQLException e) {
-            System.err.println("Load service-spare parts list items error: " + e.getMessage());
+            logger.error("Ошибка загрузки элементов списков услуг-запчастей", e);
         }
         return items;
     }
@@ -816,8 +826,8 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Add service-spare parts list error: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Ошибка добавления списка услуг-запчастей", e);
+            logger.error("Технические детали: {}", ExceptionHandler.getTechnicalDetails(e));
         }
     }
 
@@ -839,7 +849,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                 item.setId(itemId);
             }
         } catch (SQLException e) {
-            System.err.println("Add service-spare parts list item error: " + e.getMessage());
+            logger.error("Ошибка добавления элемента списка услуг-запчастей", e);
         }
     }
 
@@ -856,7 +866,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setInt(1, list.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Delete service-spare parts list error: " + e.getMessage());
+            logger.error("Ошибка удаления списка услуг-запчастей", e);
         }
     }
 
@@ -885,7 +895,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             }
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Delete service-spare parts lists by service ID error: " + e.getMessage());
+            logger.error("Ошибка удаления списков услуг-запчастей по ID услуги", e);
         }
     }
 
@@ -898,7 +908,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setInt(1, listId);
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Delete service-spare parts list items by list ID error: " + e.getMessage());
+            logger.error("Ошибка удаления элементов списков услуг-запчастей по ID списка", e);
         }
     }
 
@@ -941,7 +951,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             }
             rs.close();
         } catch (SQLException e) {
-            System.err.println("Load TO parts error: " + e.getMessage());
+            logger.error("Ошибка загрузки расходников TO", e);
         }
         return parts;
     }
@@ -965,7 +975,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                 part.setId(rs.getInt(1));
             }
         } catch (SQLException e) {
-            System.err.println("Add TO part error: " + e.getMessage());
+            logger.error("Ошибка добавления расходника TO", e);
         }
     }
 
@@ -982,7 +992,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setInt(5, part.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Update TO part error: " + e.getMessage());
+            logger.error("Ошибка обновления расходника TO", e);
         }
     }
 
@@ -995,7 +1005,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setInt(1, part.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Delete TO part error: " + e.getMessage());
+            logger.error("Ошибка удаления расходника TO", e);
         }
     }
 
@@ -1017,7 +1027,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             }
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Delete TO parts by car model error: " + e.getMessage());
+            logger.error("Ошибка удаления расходников TO по модели авто", e);
         }
     }
 
@@ -1040,7 +1050,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                 settings.add(setting);
             }
         } catch (SQLException e) {
-            System.err.println("Load settings error: " + e.getMessage());
+            logger.error("Ошибка загрузки настроек", e);
         }
         return settings;
     }
@@ -1056,7 +1066,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setString(3, setting.getDescription());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Add setting error: " + e.getMessage());
+            logger.error("Ошибка добавления настройки", e);
         }
     }
 
@@ -1070,7 +1080,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setInt(2, setting.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Update setting error: " + e.getMessage());
+            logger.error("Ошибка обновления настройки", e);
         }
     }
 
@@ -1083,7 +1093,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setInt(1, setting.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Delete setting error: " + e.getMessage());
+            logger.error("Ошибка удаления настройки", e);
         }
     }
 
@@ -1104,7 +1114,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                 return setting;
             }
         } catch (SQLException e) {
-            System.err.println("Get setting by key error: " + e.getMessage());
+            logger.error("Ошибка получения настройки по ключу", e);
         }
         return null;
     }

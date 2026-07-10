@@ -1,9 +1,19 @@
 package com.autoservice.dialogs;
 
-import com.autoservice.*;
+import com.autoservice.Client;
+import com.autoservice.Service;
+import com.autoservice.SparePart;
+import com.autoservice.WorkOrder;
+import com.autoservice.Appointment;
+import com.autoservice.DataStore;
 import com.autoservice.controllers.OrderController;
 import com.autoservice.services.AutoAddSparePartService;
 import com.autoservice.utils.OilHelper;
+import com.autoservice.utils.ValidationErrorIndicator;
+import com.autoservice.utils.ValidationUtils;
+import com.autoservice.utils.TooltipHelper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableMap;
 import javafx.geometry.Insets;
@@ -14,35 +24,36 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.control.ScrollPane;
 import javafx.stage.Stage;
-
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
 public class EditOrderDialog {
-
-    private static final String[] TIME_SLOTS = {
-            "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
-            "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30",
-            "16:00", "16:30", "17:00"
-    };
-
-    private static final String[] MASTERS = {"Иван", "Петр", "Сергей", "Антон"};
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy");
-
-    // Поля класса для хранения временных данных
-    private static List<String> tempServices = new ArrayList<>();
-    private static List<Double> tempServicePrices = new ArrayList<>();
-    private static List<SparePart> tempParts = new ArrayList<>();
-    private static List<Double> tempPartQuantities = new ArrayList<>();
-
-    // Поля для UI компонентов
+    
+    private static final Logger logger = LoggerFactory.getLogger(EditOrderDialog.class);
     private static ListView<String> servicesListView;
     private static ListView<String> partsListView;
     private static Label totalLabel;
     private static ComboBox<SparePart> partCombo;
     private static Stage currentStage;
+    
+    // Временные списки для редактирования
+    private static final List<String> tempServices = new ArrayList<>();
+    private static final List<Double> tempServicePrices = new ArrayList<>();
+    private static final List<SparePart> tempParts = new ArrayList<>();
+    private static final List<Double> tempPartQuantities = new ArrayList<>();
+    
+    // Константы
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+    private static final String[] TIME_SLOTS = {
+        "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
+        "12:00", "12:30", "13:00", "13:30", "14:00", "14:30",
+        "15:00", "15:30", "16:00", "16:30", "17:00", "17:30"
+    };
+    private static final String[] MASTERS = {
+        "Иванов Иван", "Петров Петр", "Сидоров Сидор", "Смирнова Анна"
+    };
 
     public static void show(WorkOrder order) {
         if (order.getStatus().equals(WorkOrder.STATUS_CLOSED)) {
@@ -120,6 +131,7 @@ public class EditOrderDialog {
             timeCombo.setPromptText("Выберите время");
             masterCombo.setPromptText("Выберите мастера");
         }
+        TooltipHelper.setToolTip(masterCombo, "Выберите мастера сервиса");
 
         datePicker.setDisable(!hasAppointmentCheck.isSelected());
         timeCombo.setDisable(!hasAppointmentCheck.isSelected());
@@ -345,10 +357,15 @@ public class EditOrderDialog {
                                   CheckBox hasAppointmentCheck, DatePicker datePicker,
                                   ComboBox<String> timeCombo, ComboBox<String> masterCombo) {
 
+        // Очистка ошибок валидации
+        ValidationErrorIndicator.clearAllErrors(currentStage.getScene().getRoot());
+        
+        boolean isValid = true;
+
         // Валидация
         if (tempServices.isEmpty() && tempParts.isEmpty()) {
             showAlert("Должна быть хотя бы одна услуга или запчасть");
-            return;
+            isValid = false;
         }
 
         // ====== ПОВТОРНАЯ ПРОВЕРКА ОСТАТКА ПЕРЕД СОХРАНЕНИЕМ ======
@@ -364,7 +381,11 @@ public class EditOrderDialog {
             }
         }
         if (hasStockIssue) {
-            return; // Не сохраняем заказ, если есть проблемы с остатком
+            isValid = false;
+        }
+        
+        if (!isValid) {
+            return;
         }
 
         // Валидация записи в календаре
@@ -374,15 +395,15 @@ public class EditOrderDialog {
             String selectedMaster = masterCombo.getValue();
 
             if (selectedDate == null) {
-                showAlert("Выберите дату записи");
+                ValidationErrorIndicator.showError(datePicker, "Выберите дату записи");
                 return;
             }
             if (selectedTime == null || selectedTime.isEmpty()) {
-                showAlert("Выберите время записи");
+                ValidationErrorIndicator.showError(timeCombo, "Выберите время записи");
                 return;
             }
             if (selectedMaster == null || selectedMaster.isEmpty()) {
-                showAlert("Выберите мастера");
+                ValidationErrorIndicator.showError(masterCombo, "Выберите мастера");
                 return;
             }
 
@@ -409,9 +430,9 @@ public class EditOrderDialog {
             }
         }
 
-        System.out.println("=== СОХРАНЕНИЕ ИЗМЕНЕНИЙ ЗАКАЗА ===");
-        System.out.println("Услуг: " + tempServices.size());
-        System.out.println("Запчастей: " + tempParts.size());
+        logger.info("=== СОХРАНЕНИЕ ИЗМЕНЕНИЙ ЗАКАЗА ===");
+        logger.info("Услуг: {}", tempServices.size());
+        logger.info("Запчастей: {}", tempParts.size());
 
         // ====== ОЧИЩАЕМ СТАРЫЕ УСЛУГИ ======
         while (order.getServices().size() > 0) {
@@ -455,7 +476,7 @@ public class EditOrderDialog {
                 existingAppointment.setMasterName(master);
                 existingAppointment.setServiceName(serviceName);
                 DataStore.updateAppointment(existingAppointment);
-                System.out.println("Запись в календаре обновлена");
+                logger.debug("Запись в календаре обновлена");
             } else {
                 // Создаём новую запись
                 Appointment newAppointment = new Appointment(
@@ -467,12 +488,12 @@ public class EditOrderDialog {
                 );
                 newAppointment.setOrderId(order.getId());
                 DataStore.addAppointment(newAppointment);
-                System.out.println("Новая запись в календаре создана");
+                logger.debug("Новая запись в календаре создана");
             }
         } else {
             if (existingAppointment != null) {
                 DataStore.deleteAppointment(existingAppointment.getId());
-                System.out.println("Запись в календаре удалена");
+                logger.debug("Запись в календаре удалена");
             }
         }
 

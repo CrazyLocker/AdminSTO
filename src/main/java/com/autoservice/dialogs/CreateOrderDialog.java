@@ -5,6 +5,9 @@ import com.autoservice.controllers.DictionaryController;
 import com.autoservice.controllers.OrderController;
 import com.autoservice.services.AutoAddSparePartService;
 import com.autoservice.utils.OilHelper;
+import com.autoservice.utils.ValidationErrorIndicator;
+import com.autoservice.utils.ValidationUtils;
+import com.autoservice.utils.TooltipHelper;
 import com.autoservice.utils.IconHelper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableMap;
@@ -86,6 +89,7 @@ public class CreateOrderDialog {
                 }
             }
         });
+        TooltipHelper.setToolTip(clientCombo, "Выберите клиента из списка");
 
         // ============================================================
         // 2. ЗАПИСЬ
@@ -103,6 +107,7 @@ public class CreateOrderDialog {
         ComboBox<String> masterCombo = new ComboBox<>(FXCollections.observableArrayList(MASTERS));
         masterCombo.setPromptText("Мастер");
         masterCombo.setPrefWidth(120);
+        TooltipHelper.setToolTip(masterCombo, "Выберите мастера сервиса");
 
         CheckBox createAppointmentCheck = new CheckBox("Создать запись в календаре");
         createAppointmentCheck.setSelected(true);
@@ -313,13 +318,20 @@ public class CreateOrderDialog {
         // 10. ДЕЙСТВИЯ
         // ============================================================
         saveBtn.setOnAction(e -> {
+            // Очистка ошибок валидации
+            ValidationErrorIndicator.clearAllErrors(root);
+            
+            boolean isValid = true;
+            
+            // Валидация обязательных полей
             if (clientCombo.getValue() == null) {
-                showAlert("Выберите клиента");
-                return;
+                ValidationErrorIndicator.showError(clientCombo, "Выберите клиента");
+                isValid = false;
             }
+            
             if (tempServices.isEmpty() && tempParts.isEmpty()) {
                 showAlert("Добавьте услугу или запчасть");
-                return;
+                isValid = false;
             }
 
             // ====== ПОВТОРНАЯ ПРОВЕРКА ОСТАТКА ПЕРЕД СОХРАНЕНИЕМ ======
@@ -335,20 +347,24 @@ public class CreateOrderDialog {
                 }
             }
             if (hasStockIssue) {
-                return; // Не сохраняем заказ, если есть проблемы с остатком
+                isValid = false;
+            }
+            
+            if (!isValid) {
+                return;
             }
 
             if (createAppointmentCheck.isSelected()) {
                 if (datePicker.getValue() == null) {
-                    showAlert("Выберите дату записи");
+                    ValidationErrorIndicator.showError(datePicker, "Выберите дату записи");
                     return;
                 }
                 if (timeCombo.getValue() == null) {
-                    showAlert("Выберите время записи");
+                    ValidationErrorIndicator.showError(timeCombo, "Выберите время записи");
                     return;
                 }
                 if (masterCombo.getValue() == null) {
-                    showAlert("Выберите мастера");
+                    ValidationErrorIndicator.showError(masterCombo, "Выберите мастера");
                     return;
                 }
             }

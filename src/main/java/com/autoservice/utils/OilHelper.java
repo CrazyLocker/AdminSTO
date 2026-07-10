@@ -4,10 +4,14 @@ import com.autoservice.SparePart;
 import com.autoservice.Service;
 import com.autoservice.WorkOrder;
 import com.autoservice.DataStore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
 public class OilHelper {
+    
+    private static final Logger logger = LoggerFactory.getLogger(OilHelper.class);
 
     /**
      * Проверяет, достаточно ли масла на складе для услуги
@@ -106,7 +110,7 @@ public class OilHelper {
             if (service.isUsesOil()) {
                 SparePart oil = findOil();
                 if (oil == null) {
-                    System.err.println("Масло не найдено для услуги: " + serviceName);
+                    logger.error("Масло не найдено для услуги: {}", serviceName);
                     continue;
                 }
 
@@ -125,7 +129,8 @@ public class OilHelper {
                 }
 
                 if (!oil.deductStock(neededLiters)) {
-                    System.err.println("Недостаточно масла! Нужно: " + neededLiters + " л, Доступно: " + oil.getStock() + " л");
+                    String errorMsg = String.format("Недостаточно масла! Нужно: %.2f л, Доступно: %.2f л", neededLiters, oil.getStock());
+                    logger.error(errorMsg);
                     continue;
                 }
 
@@ -141,7 +146,8 @@ public class OilHelper {
                     if (part.deductStock(quantity)) {
                         order.addSparePart(part, quantity);
                     } else {
-                        System.err.println("Недостаточно " + part.getName() + "! Нужно: " + quantity + ", Доступно: " + part.getStock());
+                        String errorMsg = String.format("Недостаточно %s! Нужно: %d, Доступно: %.2f", part.getName(), quantity, part.getStock());
+                        logger.error(errorMsg);
                     }
                 }
             }

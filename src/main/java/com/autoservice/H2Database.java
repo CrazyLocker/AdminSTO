@@ -3,11 +3,25 @@ package com.autoservice;
 import java.sql.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import com.zaxxer.hikari.HikariDataSource;
+import com.autoservice.utils.ExceptionHandler;
+import com.autoservice.Client;
+import com.autoservice.Service;
+import com.autoservice.SparePart;
+import com.autoservice.WorkOrder;
+import com.autoservice.Appointment;
 
 /**
  * Реализация Database для H2 (используется в тестах).
  */
 public class H2Database extends AbstractDatabase {
+    
+    private static final Logger logger = LoggerFactory.getLogger(H2Database.class);
     
     @Override
     public void initForTest() {
@@ -32,15 +46,15 @@ public class H2Database extends AbstractDatabase {
         try {
             Class.forName("org.h2.Driver");
         } catch (ClassNotFoundException e) {
-            System.err.println("Failed to load H2 driver: " + e.getMessage());
+            logger.error("Не удалось загрузить драйвер H2", e);
         }
         
         try (Connection conn = getConnection()) {
             createTables(conn);
-            System.out.println("Test database (H2) connected");
+            logger.info("Тестовая база данных (H2) подключена");
         } catch (SQLException e) {
-            System.err.println("Test DB error: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Ошибка тестовой базы данных", e);
+            logger.error("Технические детали: {}", ExceptionHandler.getTechnicalDetails(e));
         }
     }
     
@@ -50,120 +64,120 @@ public class H2Database extends AbstractDatabase {
         
         String createClients = "CREATE TABLE IF NOT EXISTS clients (" +
                 "id INTEGER " + autoIncrement + ", " +
-                "name TEXT NOT NULL, " +
+                "name TEXT NOT NULL CHECK(length(name) > 0), " +
                 "last_name TEXT DEFAULT '', " +
-                "phone TEXT NOT NULL, " +
-                "car_model TEXT NOT NULL, " +
-                "car_number TEXT NOT NULL, " +
+                "phone TEXT NOT NULL CHECK(length(phone) > 0), " +
+                "car_model TEXT NOT NULL CHECK(length(car_model) > 0), " +
+                "car_number TEXT NOT NULL CHECK(length(car_number) > 0), " +
                 "last_repair_date TEXT DEFAULT ''" +
                 ")";
 
         String createServices = "CREATE TABLE IF NOT EXISTS services (" +
                 "id INTEGER " + autoIncrement + ", " +
-                "name TEXT NOT NULL UNIQUE, " +
-                "price REAL NOT NULL, " +
-                "duration INTEGER DEFAULT 60, " +
+                "name TEXT NOT NULL UNIQUE CHECK(length(name) > 0), " +
+                "price REAL NOT NULL CHECK(price >= 0), " +
+                "duration INTEGER DEFAULT 60 CHECK(duration >= 0), " +
                 "part_number TEXT DEFAULT '', " +
-                "oil_volume REAL DEFAULT 0, " +
-                "uses_oil INTEGER DEFAULT 0, " +
+                "oil_volume REAL DEFAULT 0 CHECK(oil_volume >= 0), " +
+                "uses_oil INTEGER DEFAULT 0 CHECK(uses_oil IN (0, 1)), " +
                 "spare_part_name TEXT DEFAULT '', " +
-                "spare_part_quantity INTEGER DEFAULT 0" +
+                "spare_part_quantity INTEGER DEFAULT 0 CHECK(spare_part_quantity >= 0)" +
                 ")";
 
         String createSpareParts = "CREATE TABLE IF NOT EXISTS spare_parts (" +
                 "id INTEGER " + autoIncrement + ", " +
-                "name TEXT NOT NULL UNIQUE, " +
+                "name TEXT NOT NULL UNIQUE CHECK(length(name) > 0), " +
                 "part_number TEXT DEFAULT '', " +
                 "manufacturer TEXT DEFAULT '', " +
                 "compatible_models TEXT DEFAULT '', " +
-                "purchase_price REAL, " +
-                "retail_price REAL NOT NULL, " +
-                "stock REAL DEFAULT 0, " +
-                "min_stock REAL DEFAULT 0, " +
+                "purchase_price REAL CHECK(purchase_price >= 0), " +
+                "retail_price REAL NOT NULL CHECK(retail_price >= 0), " +
+                "stock REAL DEFAULT 0 CHECK(stock >= 0), " +
+                "min_stock REAL DEFAULT 0 CHECK(min_stock >= 0), " +
                 "location TEXT DEFAULT '', " +
                 "unit_volume REAL DEFAULT 1.0, " +
-                "unit_type TEXT DEFAULT 'шт', " +
-                "is_liquid INTEGER DEFAULT 0" +
+                "unit_type TEXT DEFAULT 'шт' CHECK(unit_type IN ('шт', 'л', 'компл')), " +
+                "is_liquid INTEGER DEFAULT 0 CHECK(is_liquid IN (0, 1))" +
                 ")";
 
         String createOrders = "CREATE TABLE IF NOT EXISTS orders (" +
-                "id TEXT PRIMARY KEY, " +
-                "client_id INTEGER NOT NULL, " +
-                "status TEXT NOT NULL, " +
-                "total REAL NOT NULL, " +
-                "created_date TEXT NOT NULL, " +
+                "id TEXT PRIMARY KEY CHECK(length(id) > 0), " +
+                "client_id INTEGER NOT NULL CHECK(client_id > 0), " +
+                "status TEXT NOT NULL CHECK(length(status) > 0), " +
+                "total REAL NOT NULL CHECK(total >= 0), " +
+                "created_date TEXT NOT NULL CHECK(length(created_date) > 0), " +
                 "FOREIGN KEY (client_id) REFERENCES clients(id)" +
                 ")";
 
         String createOrderServices = "CREATE TABLE IF NOT EXISTS order_services (" +
-                "order_id TEXT NOT NULL, " +
-                "service_name TEXT NOT NULL, " +
-                "price REAL NOT NULL, " +
+                "order_id TEXT NOT NULL CHECK(length(order_id) > 0), " +
+                "service_name TEXT NOT NULL CHECK(length(service_name) > 0), " +
+                "price REAL NOT NULL CHECK(price >= 0), " +
                 "FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE" +
                 ")";
 
         String createOrderParts = "CREATE TABLE IF NOT EXISTS order_parts (" +
-                "order_id TEXT NOT NULL, " +
-                "part_name TEXT NOT NULL, " +
-                "price REAL NOT NULL, " +
-                "quantity INTEGER NOT NULL, " +
+                "order_id TEXT NOT NULL CHECK(length(order_id) > 0), " +
+                "part_name TEXT NOT NULL CHECK(length(part_name) > 0), " +
+                "price REAL NOT NULL CHECK(price >= 0), " +
+                "quantity INTEGER NOT NULL CHECK(quantity > 0), " +
                 "FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE" +
                 ")";
 
         String createAppointments = "CREATE TABLE IF NOT EXISTS appointments (" +
                 "id INTEGER " + autoIncrement + ", " +
-                "client_id INTEGER NOT NULL, " +
+                "client_id INTEGER NOT NULL CHECK(client_id > 0), " +
                 "order_id TEXT, " +
-                "master_name TEXT NOT NULL, " +
-                "service_name TEXT NOT NULL, " +
-                "appointment_date TEXT NOT NULL, " +
-                "appointment_time TEXT NOT NULL, " +
-                "status TEXT NOT NULL, " +
+                "master_name TEXT NOT NULL CHECK(length(master_name) > 0), " +
+                "service_name TEXT NOT NULL CHECK(length(service_name) > 0), " +
+                "appointment_date TEXT NOT NULL CHECK(length(appointment_date) > 0), " +
+                "appointment_time TEXT NOT NULL CHECK(length(appointment_time) > 0), " +
+                "status TEXT NOT NULL CHECK(length(status) > 0), " +
                 "FOREIGN KEY (client_id) REFERENCES clients(id), " +
                 "FOREIGN KEY (order_id) REFERENCES orders(id)" +
                 ")";
 
         String createServiceSpareParts = "CREATE TABLE IF NOT EXISTS service_spare_parts (" +
                 "id INTEGER " + autoIncrement + ", " +
-                "service_id INTEGER NOT NULL, " +
-                "spare_part_id INTEGER NOT NULL, " +
-                "quantity INTEGER DEFAULT 1, " +
-                "unit_type TEXT DEFAULT 'шт', " +
-                "active INTEGER DEFAULT 1, " +
+                "service_id INTEGER NOT NULL CHECK(service_id > 0), " +
+                "spare_part_id INTEGER NOT NULL CHECK(spare_part_id > 0), " +
+                "quantity INTEGER DEFAULT 1 CHECK(quantity > 0), " +
+                "unit_type TEXT DEFAULT 'шт' CHECK(unit_type IN ('шт', 'л', 'компл')), " +
+                "active INTEGER DEFAULT 1 CHECK(active IN (0, 1)), " +
                 "FOREIGN KEY (service_id) REFERENCES services(id), " +
                 "FOREIGN KEY (spare_part_id) REFERENCES spare_parts(id)" +
                 ")";
 
         String createToParts = "CREATE TABLE IF NOT EXISTS to_parts (" +
                 "id INTEGER " + autoIncrement + ", " +
-                "car_model TEXT NOT NULL, " +
-                "spare_part_id INTEGER NOT NULL, " +
-                "quantity INTEGER DEFAULT 1, " +
-                "unit_type TEXT DEFAULT 'шт', " +
-                "active INTEGER DEFAULT 1" +
+                "car_model TEXT NOT NULL CHECK(length(car_model) > 0), " +
+                "spare_part_id INTEGER NOT NULL CHECK(spare_part_id > 0), " +
+                "quantity INTEGER DEFAULT 1 CHECK(quantity > 0), " +
+                "unit_type TEXT DEFAULT 'шт' CHECK(unit_type IN ('шт', 'л', 'компл')), " +
+                "active INTEGER DEFAULT 1 CHECK(active IN (0, 1))" +
                 ")";
 
         String createAppSettings = "CREATE TABLE IF NOT EXISTS app_settings (" +
                 "id INTEGER " + autoIncrement + ", " +
-                "setting_key TEXT NOT NULL UNIQUE, " +
-                "setting_value TEXT NOT NULL, " +
+                "setting_key TEXT NOT NULL UNIQUE CHECK(length(setting_key) > 0), " +
+                "setting_value TEXT NOT NULL CHECK(length(setting_value) > 0), " +
                 "description TEXT DEFAULT ''" +
                 ")";
 
         String createServiceSparePartsLists = "CREATE TABLE IF NOT EXISTS service_spare_parts_lists (" +
                 "id INTEGER " + autoIncrement + ", " +
-                "service_id INTEGER NOT NULL, " +
-                "created_date TEXT NOT NULL, " +
-                "active INTEGER DEFAULT 1, " +
+                "service_id INTEGER NOT NULL CHECK(service_id > 0), " +
+                "created_date TEXT NOT NULL CHECK(length(created_date) > 0), " +
+                "active INTEGER DEFAULT 1 CHECK(active IN (0, 1)), " +
                 "FOREIGN KEY (service_id) REFERENCES services(id)" +
                 ")";
 
         String createServiceSparePartsListItems = "CREATE TABLE IF NOT EXISTS service_spare_parts_list_items (" +
                 "id INTEGER " + autoIncrement + ", " +
-                "list_id INTEGER NOT NULL, " +
-                "spare_part_id INTEGER NOT NULL, " +
-                "quantity INTEGER DEFAULT 1, " +
-                "unit_type TEXT DEFAULT 'шт', " +
+                "list_id INTEGER NOT NULL CHECK(list_id > 0), " +
+                "spare_part_id INTEGER NOT NULL CHECK(spare_part_id > 0), " +
+                "quantity INTEGER DEFAULT 1 CHECK(quantity > 0), " +
+                "unit_type TEXT DEFAULT 'шт' CHECK(unit_type IN ('шт', 'л', 'компл')), " +
                 "FOREIGN KEY (list_id) REFERENCES service_spare_parts_lists(id), " +
                 "FOREIGN KEY (spare_part_id) REFERENCES spare_parts(id)" +
                 ")";
@@ -182,7 +196,7 @@ public class H2Database extends AbstractDatabase {
             stmt.execute(createServiceSparePartsLists);
             stmt.execute(createServiceSparePartsListItems);
             createIndexes(conn);
-            System.out.println("Tables and indexes created/verified");
+            logger.info("Таблицы и индексы созданы/проверены");
         }
     }
     
@@ -227,7 +241,7 @@ public class H2Database extends AbstractDatabase {
                 lastOrderId = rs.getString("max_id");
             }
         } catch (java.sql.SQLException e) {
-            System.err.println("Generate ID error: " + e.getMessage());
+            logger.error("Ошибка генерации ID", e);
         }
 
         int newNumber = 1;
@@ -239,7 +253,7 @@ public class H2Database extends AbstractDatabase {
                     newNumber = Integer.parseInt(parts[parts.length - 1]) + 1;
                 }
             } catch (NumberFormatException e) {
-                System.err.println("Parse ID error: " + e.getMessage());
+                logger.error("Ошибка парсинга ID", e);
             }
         }
 
@@ -279,7 +293,7 @@ public class H2Database extends AbstractDatabase {
                 service.setId(rs.getInt(1));
             }
         } catch (SQLException e) {
-            System.err.println("Add service error: " + e.getMessage());
+            logger.error("Ошибка добавления услуги", e);
         }
     }
     
@@ -309,7 +323,7 @@ public class H2Database extends AbstractDatabase {
                 part.setId(rs.getInt(1));
             }
         } catch (SQLException e) {
-            System.err.println("Add spare part error: " + e.getMessage());
+            logger.error("Ошибка добавления запчасти", e);
         }
     }
 
@@ -323,7 +337,7 @@ public class H2Database extends AbstractDatabase {
             pstmt.setString(2, part.getName());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Update spare part stock error: " + e.getMessage());
+            logger.error("Ошибка обновления остатка запчасти", e);
         }
     }
 
@@ -371,11 +385,10 @@ public class H2Database extends AbstractDatabase {
             saveOrderParts(conn, orderId, order);
 
             conn.commit();
-            System.out.println("Order saved: " + orderId);
+            logger.info("Заказ сохранен: {}", orderId);
 
         } catch (SQLException e) {
-            System.err.println("Add order error: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Ошибка добавления заказа", e);
         }
     }
     
@@ -415,11 +428,10 @@ public class H2Database extends AbstractDatabase {
             saveOrderParts(conn, order.getId(), order);
             
             conn.commit();
-            System.out.println("Order updated: " + order.getId());
+            logger.info("Заказ обновлен: {}", order.getId());
             
         } catch (SQLException e) {
-            System.err.println("Update order error: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Ошибка обновления заказа", e);
         }
     }
     
@@ -474,7 +486,7 @@ public class H2Database extends AbstractDatabase {
                 appointment.setId(rs.getInt(1));
             }
         } catch (SQLException e) {
-            System.err.println("Add appointment error: " + e.getMessage());
+            logger.error("Ошибка добавления записи", e);
         }
     }
     
@@ -495,7 +507,7 @@ public class H2Database extends AbstractDatabase {
             pstmt.setInt(8, appointment.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Update appointment error: " + e.getMessage());
+            logger.error("Ошибка обновления записи", e);
         }
     }
     

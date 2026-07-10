@@ -6,6 +6,9 @@ import com.autoservice.DataStore;
 import com.autoservice.DateUtils;
 import com.autoservice.Validators;
 import com.autoservice.controllers.ClientController;
+import com.autoservice.utils.ValidationErrorIndicator;
+import com.autoservice.utils.ValidationUtils;
+import com.autoservice.utils.TooltipHelper;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -69,7 +72,7 @@ public class EditClientDialog {
         TextField phoneField = new TextField(client.getPhone());
         phoneField.setPromptText("+7XXXXXXXXXX");
         phoneField.setPrefWidth(250);
-        Validators.setupPhoneField(phoneField);
+        TooltipHelper.setToolTip(phoneField, "Формат: +7XXXXXXXXXX (10 цифр)");
 
         // Модель авто
         Label carModelLabel = new Label("Модель авто:");
@@ -89,7 +92,7 @@ public class EditClientDialog {
         TextField carNumberField = new TextField(client.getCarNumber());
         carNumberField.setPromptText("А123ВВ777");
         carNumberField.setPrefWidth(200);
-        Validators.setupCarNumberField(carNumberField);
+        TooltipHelper.setToolTip(carNumberField, "Формат: А123ВВ777 или А123ВВ77");
 
         grid.add(lastNameLabel, 0, 0);
         grid.add(lastNameField, 1, 0);
@@ -168,16 +171,28 @@ public class EditClientDialog {
         stage.setScene(scene);
 
         saveBtn.setOnAction(e -> {
-            if (nameField.getText().trim().isEmpty()) {
-                showAlert("Введите имя клиента");
-                return;
+            // Очистка ошибок валидации
+            ValidationErrorIndicator.clearAllErrors(root);
+            
+            boolean isValid = true;
+            
+            // Валидация обязательных полей
+            if (!ValidationUtils.isNotBlank(nameField.getText(), "Имя")) {
+                ValidationErrorIndicator.showError(nameField, "Имя обязательно для заполнения");
+                isValid = false;
             }
-            if (!Validators.isValidPhone(phoneField.getText())) {
-                showAlert("Неверный формат телефона. Должно быть +7XXXXXXXXXX (10 цифр)");
-                return;
+            
+            if (!ValidationUtils.isValidPhone(phoneField.getText())) {
+                ValidationErrorIndicator.showError(phoneField, "Неверный формат телефона");
+                isValid = false;
             }
-            if (!Validators.isValidCarNumber(carNumberField.getText())) {
-                showAlert("Неверный формат госномера.\nПримеры: А123ВВ777, А123ВВ77");
+            
+            if (!ValidationUtils.isValidCarNumber(carNumberField.getText())) {
+                ValidationErrorIndicator.showError(carNumberField, "Неверный формат госномера");
+                isValid = false;
+            }
+            
+            if (!isValid) {
                 return;
             }
 

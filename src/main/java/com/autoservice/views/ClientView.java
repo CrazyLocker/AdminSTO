@@ -72,8 +72,21 @@ public class ClientView {
         deleteBtn.setOnAction(e -> {
             Client selected = clientTable.getSelectionModel().getSelectedItem();
             if (selected != null) {
-                DataStore.deleteClient(selected);
-                refreshClientList();
+                Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                        "Удалить клиента " + selected.getLastName() + " " + selected.getName() + "?\n\n" +
+                                "Будут удалены:\n" +
+                                "• Данные клиента\n" +
+                                "• Связанные заказы и записи\n\n" +
+                                "Это действие нельзя отменить.",
+                        ButtonType.YES, ButtonType.NO);
+                confirm.setTitle("Подтверждение удаления");
+
+                confirm.showAndWait().ifPresent(response -> {
+                    if (response == ButtonType.YES) {
+                        DataStore.deleteClient(selected);
+                        refreshClientList();
+                    }
+                });
             }
         });
 

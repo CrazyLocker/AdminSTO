@@ -7,10 +7,15 @@ import com.autoservice.model.ToPart;
 import com.autoservice.model.Setting;
 import com.autoservice.services.AutoAddSparePartService;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class DataStore {
+    private static final Logger logger = LoggerFactory.getLogger(DataStore.class);
+    
     private static List<Client> clients = new ArrayList<>();
     private static List<WorkOrder> orders = new ArrayList<>();
     private static List<Service> services = new ArrayList<>();
@@ -40,20 +45,18 @@ public class DataStore {
         toParts = DatabaseFactory.getDatabase().getToPartsByCarModel("");
         settings = DatabaseFactory.getDatabase().getAllSettings();
         isDirty = false;
-        System.out.println("DataStore loaded: " + clients.size() + " clients, " +
-                orders.size() + " orders, " + services.size() + " services, " +
-                spareParts.size() + " spare parts, " + appointments.size() + " appointments, " +
-                serviceSpareParts.size() + " service-spare part relations, " +
-                toParts.size() + " to parts, " + settings.size() + " settings");
+        logger.info("DataStore загружен: {} клиентов, {} заказов, {} услуг, {} запчастей, {} записей, {} связей услуги-запчасти, {} расходников TO, {} настроек", 
+                clients.size(), orders.size(), services.size(), spareParts.size(), appointments.size(), 
+                serviceSpareParts.size(), toParts.size(), settings.size());
     }
 
     public static void save() {
         if (!isDirty) {
-            System.out.println("No changes to save");
+            logger.info("Нет изменений для сохранения");
             return;
         }
 
-        System.out.println("Saving changes...");
+        logger.info("Сохранение изменений...");
         long startTime = System.currentTimeMillis();
 
         int saved = 0;
@@ -125,7 +128,7 @@ public class DataStore {
 
         isDirty = false;
         long endTime = System.currentTimeMillis();
-        System.out.println("Saved " + saved + " items to DB in " + (endTime - startTime) + " ms");
+        logger.info("Сохранено {} элементов в БД за {} мс", saved, (endTime - startTime));
     }
 
     public static void markDirty() {
@@ -180,7 +183,7 @@ public class DataStore {
         DatabaseFactory.getDatabase().addOrder(o);
         orders = DatabaseFactory.getDatabase().getAllOrders();
         isDirty = true;
-        System.out.println("Orders after add: " + orders.size());
+        logger.debug("Заказов после добавления: {}", orders.size());
     }
 
     public static void updateOrder(WorkOrder o) {
@@ -197,7 +200,7 @@ public class DataStore {
             orders.removeIf(o -> o.getId().equals(orderId));
             isDirty = true;
         } else {
-            System.err.println("Cannot delete order with ID=" + orderId);
+            logger.error("Нельзя удалить заказ с ID={}", orderId);
         }
     }
 

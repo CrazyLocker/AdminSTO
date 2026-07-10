@@ -4,6 +4,9 @@ import com.autoservice.*;
 import com.autoservice.controllers.DictionaryController;
 import com.autoservice.dialogs.ImportSparePartsDialog;
 import com.autoservice.utils.IconHelper;
+import com.autoservice.utils.ValidationErrorIndicator;
+import com.autoservice.utils.ValidationUtils;
+import com.autoservice.utils.TooltipHelper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -369,23 +372,28 @@ public class DictionaryView {
         TextField retailPriceField = new TextField();
         retailPriceField.setPromptText("Розн. цена");
         retailPriceField.setPrefWidth(120);
+        TooltipHelper.setToolTip(retailPriceField, "Обязательное поле, должно быть положительным числом");
 
         TextField purchasePriceField = new TextField();
         purchasePriceField.setPromptText("Закуп. цена");
         purchasePriceField.setPrefWidth(120);
+        TooltipHelper.setToolTip(purchasePriceField, "Обязательное поле, должно быть положительным числом");
 
         // ====== ПОЛЯ С ПОДДЕРЖКОЙ DOUBLE ======
         TextField stockField = new TextField("0");
         stockField.setPromptText("Остаток");
         stockField.setPrefWidth(100);
+        TooltipHelper.setToolTip(stockField, "Обязательное поле, должно быть неотрицательным числом");
 
         TextField minStockField = new TextField("0");
         minStockField.setPromptText("Мин. остаток");
         minStockField.setPrefWidth(100);
+        TooltipHelper.setToolTip(minStockField, "Обязательное поле, должно быть неотрицательным числом");
 
         ComboBox<String> unitTypeCombo = new ComboBox<>(FXCollections.observableArrayList("шт", "л", "компл"));
         unitTypeCombo.setValue("шт");
         unitTypeCombo.setPrefWidth(80);
+        TooltipHelper.setToolTip(unitTypeCombo, "Выберите единицу измерения");
 
         grid.add(new Label("Название:"), 0, 0);
         grid.add(nameField, 1, 0);
@@ -420,29 +428,84 @@ public class DictionaryView {
         stage.setScene(scene);
 
         saveBtn.setOnAction(e -> {
-            try {
-                String name = nameField.getText().trim();
-                if (name.isEmpty()) {
-                    showAlert("Введите название запчасти");
-                    return;
-                }
-                double retailPrice = retailPriceField.getText().isEmpty() ? 0 : Double.parseDouble(retailPriceField.getText());
-                double purchasePrice = purchasePriceField.getText().isEmpty() ? 0 : Double.parseDouble(purchasePriceField.getText());
-                double stock = stockField.getText().isEmpty() ? 0 : Double.parseDouble(stockField.getText());
-                double minStock = minStockField.getText().isEmpty() ? 0 : Double.parseDouble(minStockField.getText());
-                String unitType = unitTypeCombo.getValue();
-
-                SparePart part = new SparePart(
-                        -1, 0, name, partNumberField.getText().trim(),
-                        manufacturerField.getText().trim(), modelsField.getText().trim(),
-                        purchasePrice, retailPrice, stock, minStock,
-                        unitType, ""
-                );
-                DictionaryController.addSparePart(part);
-                stage.close();
-            } catch (NumberFormatException ex) {
-                showAlert("Проверьте числовые поля");
+            // Очистка ошибок валидации
+            ValidationErrorIndicator.clearAllErrors(grid);
+            
+            boolean isValid = true;
+            String name = nameField.getText().trim();
+            String retailPriceText = retailPriceField.getText().trim();
+            String purchasePriceText = purchasePriceField.getText().trim();
+            String stockText = stockField.getText().trim();
+            String minStockText = minStockField.getText().trim();
+            String unitType = unitTypeCombo.getValue();
+            
+            // Валидация обязательных полей
+            if (!ValidationUtils.isNotBlank(name, "Название")) {
+                ValidationErrorIndicator.showError(nameField, "Название обязательно для заполнения");
+                isValid = false;
             }
+            
+            Double retailPrice = null;
+            try {
+                retailPrice = retailPriceText.isEmpty() ? null : Double.parseDouble(retailPriceText);
+            } catch (NumberFormatException ex) {
+                retailPrice = null;
+            }
+            if (retailPrice == null || !ValidationUtils.isNonNegativeDouble(retailPrice, "Розн. цена")) {
+                ValidationErrorIndicator.showError(retailPriceField, "Розничная цена должна быть положительным числом");
+                isValid = false;
+            }
+            
+            Double purchasePrice = null;
+            try {
+                purchasePrice = purchasePriceText.isEmpty() ? null : Double.parseDouble(purchasePriceText);
+            } catch (NumberFormatException ex) {
+                purchasePrice = null;
+            }
+            if (purchasePrice == null || !ValidationUtils.isNonNegativeDouble(purchasePrice, "Закуп. цена")) {
+                ValidationErrorIndicator.showError(purchasePriceField, "Закупочная цена должна быть положительным числом");
+                isValid = false;
+            }
+            
+            Double stock = null;
+            try {
+                stock = stockText.isEmpty() ? null : Double.parseDouble(stockText);
+            } catch (NumberFormatException ex) {
+                stock = null;
+            }
+            if (stock == null || !ValidationUtils.isNonNegativeDouble(stock, "Остаток")) {
+                ValidationErrorIndicator.showError(stockField, "Остаток должен быть неотрицательным числом");
+                isValid = false;
+            }
+            
+            Double minStock = null;
+            try {
+                minStock = minStockText.isEmpty() ? null : Double.parseDouble(minStockText);
+            } catch (NumberFormatException ex) {
+                minStock = null;
+            }
+            if (minStock == null || !ValidationUtils.isNonNegativeDouble(minStock, "Мин. остаток")) {
+                ValidationErrorIndicator.showError(minStockField, "Минимальный остаток должен быть неотрицательным числом");
+                isValid = false;
+            }
+            
+            if (!ValidationUtils.isValidEnum(unitType, List.of("шт", "л", "компл"), "Ед. изм.")) {
+                ValidationErrorIndicator.showError(unitTypeCombo, "Выберите единицу измерения");
+                isValid = false;
+            }
+            
+            if (!isValid) {
+                return;
+            }
+
+            SparePart part = new SparePart(
+                    -1, 0, name, partNumberField.getText().trim(),
+                    manufacturerField.getText().trim(), modelsField.getText().trim(),
+                    purchasePrice, retailPrice, stock, minStock,
+                    unitType, ""
+            );
+            DictionaryController.addSparePart(part);
+            stage.close();
         });
         cancelBtn.setOnAction(e -> stage.close());
         stage.showAndWait();
@@ -547,20 +610,25 @@ public class DictionaryView {
 
         TextField retailPriceField = new TextField(String.valueOf(part.getRetailPrice()));
         retailPriceField.setPrefWidth(120);
+        TooltipHelper.setToolTip(retailPriceField, "Обязательное поле, должно быть положительным числом");
 
         TextField purchasePriceField = new TextField(String.valueOf(part.getPurchasePrice()));
         purchasePriceField.setPrefWidth(120);
+        TooltipHelper.setToolTip(purchasePriceField, "Обязательное поле, должно быть положительным числом");
 
         // ====== ПОЛЯ С ПОДДЕРЖКОЙ DOUBLE ======
         TextField stockField = new TextField(String.valueOf(part.getStock()));
         stockField.setPrefWidth(100);
+        TooltipHelper.setToolTip(stockField, "Обязательное поле, должно быть неотрицательным числом");
 
         TextField minStockField = new TextField(String.valueOf(part.getMinStock()));
         minStockField.setPrefWidth(100);
+        TooltipHelper.setToolTip(minStockField, "Обязательное поле, должно быть неотрицательным числом");
 
         ComboBox<String> unitTypeCombo = new ComboBox<>(FXCollections.observableArrayList("шт", "л", "компл"));
         unitTypeCombo.setValue(part.getUnitType());
         unitTypeCombo.setPrefWidth(80);
+        TooltipHelper.setToolTip(unitTypeCombo, "Выберите единицу измерения");
 
         TextField locationField = new TextField(part.getLocation());
         locationField.setPrefWidth(150);
@@ -590,22 +658,81 @@ public class DictionaryView {
         stage.setScene(scene);
 
         saveBtn.setOnAction(e -> {
+            // Очистка ошибок валидации
+            ValidationErrorIndicator.clearAllErrors(grid);
+            
+            boolean isValid = true;
+            String retailPriceText = retailPriceField.getText().trim();
+            String purchasePriceText = purchasePriceField.getText().trim();
+            String stockText = stockField.getText().trim();
+            String minStockText = minStockField.getText().trim();
+            String unitType = unitTypeCombo.getValue();
+            
+            Double retailPrice = null;
             try {
-                part.setName(nameField.getText().trim());
-                part.setPartNumber(partNumberField.getText().trim());
-                part.setManufacturer(manufacturerField.getText().trim());
-                part.setCompatibleModels(modelsField.getText().trim());
-                part.setRetailPrice(Double.parseDouble(retailPriceField.getText()));
-                part.setPurchasePrice(Double.parseDouble(purchasePriceField.getText()));
-                part.setStock(Double.parseDouble(stockField.getText()));
-                part.setMinStock(Double.parseDouble(minStockField.getText()));
-                part.setUnitType(unitTypeCombo.getValue());
-                part.setLocation(locationField.getText().trim());
-                DictionaryController.addSparePart(part);
-                stage.close();
+                retailPrice = retailPriceText.isEmpty() ? null : Double.parseDouble(retailPriceText);
             } catch (NumberFormatException ex) {
-                showAlert("Проверьте числовые поля");
+                retailPrice = null;
             }
+            if (retailPrice == null || !ValidationUtils.isNonNegativeDouble(retailPrice, "Розн. цена")) {
+                ValidationErrorIndicator.showError(retailPriceField, "Розничная цена должна быть положительным числом");
+                isValid = false;
+            }
+            
+            Double purchasePrice = null;
+            try {
+                purchasePrice = purchasePriceText.isEmpty() ? null : Double.parseDouble(purchasePriceText);
+            } catch (NumberFormatException ex) {
+                purchasePrice = null;
+            }
+            if (purchasePrice == null || !ValidationUtils.isNonNegativeDouble(purchasePrice, "Закуп. цена")) {
+                ValidationErrorIndicator.showError(purchasePriceField, "Закупочная цена должна быть положительным числом");
+                isValid = false;
+            }
+            
+            Double stock = null;
+            try {
+                stock = stockText.isEmpty() ? null : Double.parseDouble(stockText);
+            } catch (NumberFormatException ex) {
+                stock = null;
+            }
+            if (stock == null || !ValidationUtils.isNonNegativeDouble(stock, "Остаток")) {
+                ValidationErrorIndicator.showError(stockField, "Остаток должен быть неотрицательным числом");
+                isValid = false;
+            }
+            
+            Double minStock = null;
+            try {
+                minStock = minStockText.isEmpty() ? null : Double.parseDouble(minStockText);
+            } catch (NumberFormatException ex) {
+                minStock = null;
+            }
+            if (minStock == null || !ValidationUtils.isNonNegativeDouble(minStock, "Мин. остаток")) {
+                ValidationErrorIndicator.showError(minStockField, "Минимальный остаток должен быть неотрицательным числом");
+                isValid = false;
+            }
+            
+            if (!ValidationUtils.isValidEnum(unitType, List.of("шт", "л", "компл"), "Ед. изм.")) {
+                ValidationErrorIndicator.showError(unitTypeCombo, "Выберите единицу измерения");
+                isValid = false;
+            }
+            
+            if (!isValid) {
+                return;
+            }
+
+            part.setName(nameField.getText().trim());
+            part.setPartNumber(partNumberField.getText().trim());
+            part.setManufacturer(manufacturerField.getText().trim());
+            part.setCompatibleModels(modelsField.getText().trim());
+            part.setRetailPrice(retailPrice);
+            part.setPurchasePrice(purchasePrice);
+            part.setStock(stock);
+            part.setMinStock(minStock);
+            part.setUnitType(unitType);
+            part.setLocation(locationField.getText().trim());
+            DictionaryController.addSparePart(part);
+            stage.close();
         });
 
         cancelBtn.setOnAction(e -> stage.close());
@@ -637,10 +764,12 @@ public class DictionaryView {
         TextField minStockField = new TextField(String.valueOf(part.getMinStock()));
         minStockField.setPromptText("Мин. остаток");
         minStockField.setPrefWidth(150);
+        TooltipHelper.setToolTip(minStockField, "Обязательное поле, должно быть неотрицательным числом");
 
         TextField amountField = new TextField();
         amountField.setPromptText("Количество для прихода");
         amountField.setPrefWidth(150);
+        TooltipHelper.setToolTip(amountField, "Обязательное поле, должно быть неотрицательным числом");
 
         grid.add(new Label("Мин. остаток:"), 0, 0);
         grid.add(minStockField, 1, 0);
@@ -661,23 +790,49 @@ public class DictionaryView {
         stage.setScene(scene);
 
         saveBtn.setOnAction(e -> {
+            // Очистка ошибок валидации
+            ValidationErrorIndicator.clearAllErrors(grid);
+            
+            boolean isValid = true;
+            String minStockText = minStockField.getText().trim();
+            String amountText = amountField.getText().trim();
+            
+            Double minStock = null;
             try {
-                double minStock = Double.parseDouble(minStockField.getText().trim());
-                double amount = amountField.getText().trim().isEmpty() ? 0 : Double.parseDouble(amountField.getText());
-
-                part.setMinStock(minStock);
-                DataStore.addSparePart(part);
-
-                if (amount > 0) {
-                    double newStock = part.getStock() + amount;
-                    part.setStock(newStock);
-                    DataStore.addSparePart(part);
-                }
-                DictionaryController.refreshAll();
-                stage.close();
+                minStock = minStockText.isEmpty() ? null : Double.parseDouble(minStockText);
             } catch (NumberFormatException ex) {
-                showAlert("Проверьте числовые поля");
+                minStock = null;
             }
+            if (minStock == null || !ValidationUtils.isNonNegativeDouble(minStock, "Мин. остаток")) {
+                ValidationErrorIndicator.showError(minStockField, "Минимальный остаток должен быть неотрицательным числом");
+                isValid = false;
+            }
+            
+            Double amount = null;
+            try {
+                amount = amountText.isEmpty() ? null : Double.parseDouble(amountText);
+            } catch (NumberFormatException ex) {
+                amount = null;
+            }
+            if (amount == null || !ValidationUtils.isNonNegativeDouble(amount, "Приход")) {
+                ValidationErrorIndicator.showError(amountField, "Количество прихода должно быть неотрицательным числом");
+                isValid = false;
+            }
+            
+            if (!isValid) {
+                return;
+            }
+
+            part.setMinStock(minStock);
+            DataStore.addSparePart(part);
+
+            if (amount != null && amount > 0) {
+                double newStock = part.getStock() + amount;
+                part.setStock(newStock);
+                DataStore.addSparePart(part);
+            }
+            DictionaryController.refreshAll();
+            stage.close();
         });
 
         cancelBtn.setOnAction(e -> stage.close());
@@ -708,9 +863,11 @@ public class DictionaryView {
 
         TextField priceField = new TextField(String.valueOf(service.getPrice()));
         priceField.setPrefWidth(150);
+        TooltipHelper.setToolTip(priceField, "Обязательное поле, должно быть положительным числом");
 
         TextField durationField = new TextField(String.valueOf(service.getDuration()));
         durationField.setPrefWidth(150);
+        TooltipHelper.setToolTip(durationField, "Обязательное поле, должно быть положительным числом");
 
         TextField partNumberField = new TextField(service.getPartNumber());
         partNumberField.setPrefWidth(200);
@@ -742,17 +899,53 @@ public class DictionaryView {
         stage.setScene(scene);
 
         saveBtn.setOnAction(e -> {
-            try {
-                service.setName(nameField.getText().trim());
-                service.setPrice(Double.parseDouble(priceField.getText()));
-                service.setDuration(Integer.parseInt(durationField.getText()));
-                service.setPartNumber(partNumberField.getText().trim());
-                service.setSparePartName(sparePartNameField.getText().trim());
-                DictionaryController.addService(service);
-                stage.close();
-            } catch (NumberFormatException ex) {
-                showAlert("Проверьте числовые поля");
+            // Очистка ошибок валидации
+            ValidationErrorIndicator.clearAllErrors(grid);
+            
+            boolean isValid = true;
+            String name = nameField.getText().trim();
+            String priceText = priceField.getText().trim();
+            String durationText = durationField.getText().trim();
+            
+            // Валидация обязательных полей
+            if (!ValidationUtils.isNotBlank(name, "Название")) {
+                ValidationErrorIndicator.showError(nameField, "Название услуги обязательно для заполнения");
+                isValid = false;
             }
+            
+            Double price = null;
+            try {
+                price = priceText.isEmpty() ? null : Double.parseDouble(priceText);
+            } catch (NumberFormatException ex) {
+                price = null;
+            }
+            if (price == null || !ValidationUtils.isNonNegativeDouble(price, "Цена")) {
+                ValidationErrorIndicator.showError(priceField, "Цена должна быть положительным числом");
+                isValid = false;
+            }
+            
+            Integer duration = null;
+            try {
+                duration = durationText.isEmpty() ? null : Integer.parseInt(durationText);
+            } catch (NumberFormatException ex) {
+                duration = null;
+            }
+            if (duration == null || !ValidationUtils.isNonNegativeInteger(duration, "Длительность")) {
+                ValidationErrorIndicator.showError(durationField, "Длительность должна быть положительным числом");
+                isValid = false;
+            }
+            
+            if (!isValid) {
+                return;
+            }
+
+            service.setName(name);
+            service.setPrice(price);
+            service.setDuration(duration);
+            service.setPartNumber(partNumberField.getText().trim());
+            service.setSparePartName(sparePartNameField.getText().trim());
+            DictionaryController.addService(service);
+            stage.close();
         });
 
         deleteBtn.setOnAction(e -> {

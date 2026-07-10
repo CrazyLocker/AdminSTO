@@ -7,10 +7,16 @@ import com.autoservice.model.ServiceSparePart;
 import com.autoservice.model.ServiceSparePartsList;
 import com.autoservice.model.ServiceSparePartsListItem;
 import com.autoservice.model.ToPart;
+import com.autoservice.services.BackupService;
+import com.autoservice.services.ScheduleService;
 import com.autoservice.views.ServiceSparePartsRow;
 import com.autoservice.views.SettingsView;
 import javafx.scene.control.TableView;
 
+import java.io.File;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -188,5 +194,49 @@ public class SettingsController {
 
     public static void showSettings() {
         SettingsView.showSettingsWindow();
+    }
+
+    // ==================== BACKUP SETTINGS ====================
+
+    public static void loadBackupSettings() {
+        // Настройки загружаются автоматически в ScheduleService
+    }
+
+    public static void saveBackupSettings(boolean enabled, String time, int retention) {
+        ScheduleService.saveSettings(enabled, time, retention);
+    }
+
+    public static List<String> listAvailableBackups() {
+        return BackupService.getAvailableBackups();
+    }
+
+    public static boolean performManualBackup() {
+        String path = BackupService.createBackup();
+        return path != null;
+    }
+
+    public static boolean performRestoreBackup(String backupPath) {
+        return BackupService.restoreBackup(backupPath);
+    }
+
+    public static boolean deleteBackup(String backupPath) {
+        try {
+            File file = new File(backupPath);
+            if (file.exists()) {
+                return file.delete();
+            }
+            return false;
+        } catch (Exception e) {
+            com.autoservice.utils.ExceptionHandler.handleServiceError(e, "Удаление бэкапа");
+            return false;
+        }
+    }
+
+    public static String getLastBackupTime() {
+        return BackupService.getLastBackupTime();
+    }
+
+    public static int getBackupCount() {
+        return BackupService.getBackupCount();
     }
 }

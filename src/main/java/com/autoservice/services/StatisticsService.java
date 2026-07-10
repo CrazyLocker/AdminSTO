@@ -3,6 +3,8 @@ package com.autoservice.services;
 import com.autoservice.DataStore;
 import com.autoservice.WorkOrder;
 import com.autoservice.Appointment;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -10,6 +12,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class StatisticsService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(StatisticsService.class);
 
     private static final DateTimeFormatter DAY_FORMATTER = DateTimeFormatter.ofPattern("dd.MM");
     private static final DateTimeFormatter DB_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -40,7 +44,7 @@ public class StatisticsService {
                             closedOrdersRevenue.merge(key, order.getTotal(), Double::sum);
                         }
                     } catch (Exception e) {
-                        System.err.println("Error parsing: " + createdDate);
+                        logger.error("Ошибка парсинга даты: {}", createdDate, e);
                     }
                 }
             }

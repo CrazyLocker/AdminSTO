@@ -10,11 +10,21 @@ import com.autoservice.dialogs.OrderDetailsDialog;
 import com.autoservice.views.AppointmentView;
 import com.autoservice.views.DashboardView;
 import com.autoservice.views.OrderView;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.TableView;
 
+import com.autoservice.Client;
+import com.autoservice.Service;
+import com.autoservice.SparePart;
+import com.autoservice.WorkOrder;
+import com.autoservice.Appointment;
+
 public class OrderController {
+    private static final Logger logger = LoggerFactory.getLogger(OrderController.class);
+    
     private static TableView<WorkOrder> orderTable;
 
     public static void setTable(TableView<WorkOrder> table) {
@@ -106,7 +116,7 @@ public class OrderController {
             // Используем double для расчёта нового остатка
             double newStock = part.getStock() + quantity;
             DataStore.updateSparePartStock(part, newStock);
-            System.out.println("Возвращено на склад: " + part.getName() + " +" + quantity);
+            logger.debug("Возвращено на склад: {} +{}", part.getName(), quantity);
         }
     }
 
@@ -115,7 +125,7 @@ public class OrderController {
         for (Appointment a : DataStore.getAppointments()) {
             if (orderId != null && orderId.equals(a.getOrderId())) {
                 DataStore.deleteAppointment(a.getId());
-                System.out.println("Удалена запись в календаре для заказа " + orderId);
+                logger.debug("Удалена запись в календаре для заказа {}", orderId);
                 break;
             }
         }

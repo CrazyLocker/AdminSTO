@@ -7,7 +7,11 @@ import com.autoservice.model.ServiceSparePartsList;
 import com.autoservice.model.ServiceSparePartsListItem;
 import com.autoservice.model.ToPart;
 import com.autoservice.services.SettingService;
+import com.autoservice.services.BackupService;
+import com.autoservice.services.ScheduleService;
 import com.autoservice.utils.IconHelper;
+import com.autoservice.utils.ValidationErrorIndicator;
+import com.autoservice.utils.ValidationUtils;
 import javafx.beans.property.*;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -21,7 +25,11 @@ import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import javafx.application.Platform;
+import javafx.stage.FileChooser;
 
+import java.io.File;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
@@ -68,7 +76,11 @@ public class SettingsView {
         toPartsTab.setContent(createToPartsPanel());
         toPartsTab.setClosable(false);
 
-        settingsPane.getTabs().addAll(autoPartsTab, serviceSparePartsTab, toPartsTab);
+        Tab backupTab = new Tab("Резервное копирование");
+        backupTab.setContent(createBackupPanel());
+        backupTab.setClosable(false);
+
+        settingsPane.getTabs().addAll(autoPartsTab, serviceSparePartsTab, toPartsTab, backupTab);
 
         VBox vbox = new VBox(10);
         vbox.setPadding(new Insets(10));
@@ -844,5 +856,253 @@ public class SettingsView {
                 "- Всего запчастей: " + totalParts + "\n" +
                 "\nСтарые связи остались в базе. Вы можете удалить их вручную, если уверены в успехе миграции.", 
                 Alert.AlertType.INFORMATION);
+    }
+
+    // ==================== Вкладка: Резервное копирование ====================
+
+    private static VBox createBackupPanel() {
+        VBox panel = new VBox(15);
+        panel.setPadding(new Insets(20));
+
+        Label introLabel = new Label("Настройки резервного копирования");
+        introLabel.getStyleClass().add("intro-label");
+
+        // Настройка 1: Включить/выключить авто-бэкап
+        HBox autoBackupBox = new HBox(10);
+        autoBackupBox.setAlignment(Pos.CENTER_LEFT);
+
+        Label autoBackupLabel = new Label("Автоматически создавать бэкап:");
+        autoBackupLabel.setPrefWidth(250);
+
+        ToggleGroup autoBackupGroup = new ToggleGroup();
+        RadioButton autoBackupYes = new RadioButton("Да");
+        RadioButton autoBackupNo = new RadioButton("Нет");
+
+        autoBackupYes.setToggleGroup(autoBackupGroup);
+        autoBackupNo.setToggleGroup(autoBackupGroup);
+
+        // Загрузить текущие настройки
+        Object[] settings = ScheduleService.getBackupSettings();
+        boolean backupEnabled = (Boolean) settings[0];
+        if (backupEnabled) {
+            autoBackupYes.setSelected(true);
+        } else {
+            autoBackupNo.setSelected(true);
+        }
+
+        autoBackupBox.getChildren().addAll(autoBackupLabel, autoBackupYes, autoBackupNo);
+
+        // Настройка 2: Время бэкапа
+        HBox backupTimeBox = new HBox(10);
+        backupTimeBox.setAlignment(Pos.CENTER_LEFT);
+
+        Label backupTimeLabel = new Label("Время ежедневного бэкапа:");
+        backupTimeLabel.setPrefWidth(250);
+
+        ComboBox<String> backupTimeCombo = new ComboBox<>();
+        backupTimeCombo.setPromptText("Выберите время");
+        backupTimeCombo.setPrefWidth(200);
+        backupTimeCombo.setItems(FXCollections.observableArrayList(
+                "02:00", "03:00", "04:00", "05:00", "06:00", "07:00",
+                "08:00", "09:00", "10:00", "11:00", "12:00", "13:00",
+                "14:00", "15:00", "16:00", "17:00", "18:00", "19:00",
+                "20:00", "21:00", "22:00", "23:00"
+        ));
+
+        String currentBackupTime = (String) settings[1];
+        backupTimeCombo.setValue(currentBackupTime);
+
+        backupTimeBox.getChildren().addAll(backupTimeLabel, backupTimeCombo);
+
+        // Настройка 3: Количество хранимых копий
+        HBox retentionBox = new HBox(10);
+        retentionBox.setAlignment(Pos.CENTER_LEFT);
+
+        Label retentionLabel = new Label("Хранить копий (7-14):");
+        retentionLabel.setPrefWidth(250);
+
+        Spinner<Integer> retentionSpinner = new Spinner<>(7, 14, 14, 1);
+        retentionSpinner.setPrefWidth(100);
+        int backupRetention = (Integer) settings[2];
+        retentionSpinner.getValueFactory().setValue(backupRetention);
+
+        retentionBox.getChildren().addAll(retentionLabel, retentionSpinner);
+
+        // Кнопка создания бэкапа
+        Button createBackupBtn = new Button("Создать резервную копию сейчас");
+        createBackupBtn.getStyleClass().add("save-button");
+
+        // Кнопка восстановления
+        Button restoreBackupBtn = new Button("Восстановить из...");
+        restoreBackupBtn.getStyleClass().add("add-button");
+
+        // Кнопка сохранения настроек - объявляем ДО использования
+        Button saveBtn = new Button("Сохранить настройки");
+        saveBtn.getStyleClass().add("save-button");
+
+        // Статус - объявляем Label ДО использования
+        Label backupInfoLabel = new Label();
+
+        // Список доступных бэкапов
+        Label backupsLabel = new Label("Доступные резервные копии:");
+        backupsLabel.getStyleClass().add("section-title");
+
+        ListView<String> backupsListView = new ListView<>();
+        backupsListView.setPrefHeight(150);
+        VBox.setVgrow(backupsListView, Priority.ALWAYS);
+
+        // Обновить список бэкапов
+        refreshBackupsList(backupsListView);
+
+        // Кнопка удаления бэкапа
+        Button deleteBackupBtn = new Button("Удалить выбранную копию");
+        deleteBackupBtn.getStyleClass().add("delete-button");
+        deleteBackupBtn.setDisable(true);
+
+        deleteBackupBtn.setOnAction(e -> {
+            String selectedBackup = backupsListView.getSelectionModel().getSelectedItem();
+            if (selectedBackup != null) {
+                Alert confirmDialog = new Alert(Alert.AlertType.CONFIRMATION,
+                    "Вы уверены что хотите удалить бэкап:\n" + selectedBackup,
+                    ButtonType.YES, ButtonType.NO);
+                confirmDialog.showAndWait();
+                if (confirmDialog.getResult() == ButtonType.YES) {
+                    boolean success = SettingsController.deleteBackup(selectedBackup);
+                    if (success) {
+                        showAlert("Бэкап удален успешно", Alert.AlertType.INFORMATION);
+                        refreshBackupsList(backupsListView);
+                        updateBackupInfoLabel(backupInfoLabel);
+                    } else {
+                        showAlert("Ошибка удаления бэкапа", Alert.AlertType.ERROR);
+                    }
+                }
+            }
+        });
+
+        // Отслеживание выбора в списке
+        backupsListView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            deleteBackupBtn.setDisable(newVal == null);
+        });
+
+        // Кнопка обновления списка
+        Button refreshBackupsBtn = new Button("Обновить список");
+        refreshBackupsBtn.setOnAction(e -> refreshBackupsList(backupsListView));
+
+        HBox deleteButtons = new HBox(10);
+        deleteButtons.setAlignment(Pos.CENTER);
+        deleteButtons.getChildren().addAll(deleteBackupBtn);
+
+        // Обработчик кнопки создания бэкапа (после объявления saveBtn)
+        createBackupBtn.setOnAction(e -> {
+            boolean success = SettingsController.performManualBackup();
+            if (success) {
+                showAlert("Бэкап создан успешно", Alert.AlertType.INFORMATION);
+                updateBackupInfoLabel(backupInfoLabel);
+            } else {
+                showAlert("Ошибка создания бэкапа", Alert.AlertType.ERROR);
+            }
+        });
+
+        // Обработчик кнопки восстановления (после объявления saveBtn)
+        restoreBackupBtn.setOnAction(e -> {
+            // Открыть диалог выбора файла
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("Выберите файл резервной копии");
+            fileChooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("Zip files", "*.zip")
+            );
+            File selectedFile = fileChooser.showOpenDialog(panel.getScene().getWindow());
+            if (selectedFile != null) {
+                boolean success = SettingsController.performRestoreBackup(selectedFile.getAbsolutePath());
+                if (success) {
+                    showAlert("База данных восстановлена успешно", Alert.AlertType.INFORMATION);
+                    updateBackupInfoLabel(backupInfoLabel);
+                } else {
+                    showAlert("Ошибка восстановления из бэкапа", Alert.AlertType.ERROR);
+                }
+            }
+        });
+
+        panel.getChildren().addAll(
+            introLabel,
+            autoBackupBox,
+            backupTimeBox,
+            retentionBox,
+            createBackupBtn,
+            restoreBackupBtn,
+            backupsLabel,
+            backupsListView,
+            deleteButtons,
+            backupInfoLabel,
+            saveBtn
+        );
+
+        // Заполняем данные и обновляем интерфейс
+        updateBackupInfoLabel(backupInfoLabel);
+
+        saveBtn.setOnAction(e -> {
+            boolean autoBackupEnabled = autoBackupYes.isSelected();
+            String time = backupTimeCombo.getValue();
+            int backupRetentionValue = retentionSpinner.getValue();
+
+            // Валидация времени
+            ValidationErrorIndicator.clearAllErrors(panel);
+            
+            if (time == null || time.trim().isEmpty()) {
+                ValidationErrorIndicator.showError(backupTimeCombo, "Выберите время бэкапа");
+                showAlert("Выберите время бэкапа", Alert.AlertType.WARNING);
+                return;
+            }
+
+            // Валидация количества копий (7-14)
+            if (backupRetentionValue < 7 || backupRetentionValue > 14) {
+                ValidationErrorIndicator.showError(retentionSpinner, "Количество копий должно быть от 7 до 14");
+                showAlert("Количество копий должно быть от 7 до 14", Alert.AlertType.WARNING);
+                return;
+            }
+
+            SettingsController.saveBackupSettings(autoBackupEnabled, time, backupRetentionValue);
+
+            if (autoBackupEnabled) {
+                ScheduleService.scheduleDailyBackup(time);
+            } else {
+                ScheduleService.cancelScheduledBackup();
+            }
+
+            showAlert("Настройки сохранены", Alert.AlertType.INFORMATION);
+        });
+
+        return panel;
+    }
+
+    private static void refreshBackupsList(ListView<String> listView) {
+        listView.getItems().clear();
+        listView.getItems().addAll(SettingsController.listAvailableBackups());
+    }
+
+    private static void updateBackupInfoLabel(Label label) {
+        String lastBackupTime = SettingsController.getLastBackupTime();
+        int backupCount = SettingsController.getBackupCount();
+
+        String info = "";
+        if (lastBackupTime != null) {
+            // Форматировать дату: yyyyMMdd_HHmmss -> dd.MM.yyyy HH:mm
+            try {
+                DateTimeFormatter inputFormat = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
+                DateTimeFormatter outputFormat = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
+                LocalDate date = LocalDate.parse(lastBackupTime.substring(0, 8), inputFormat);
+                String timePart = lastBackupTime.substring(9);
+                info = "Последний бэкап: " + date.format(outputFormat) + " " + timePart;
+            } catch (Exception e) {
+                info = "Последний бэкап: " + lastBackupTime;
+            }
+        } else {
+            info = "Нет доступных резервных копий";
+        }
+
+        info += "\nВсего копий: " + backupCount;
+        label.setText(info);
+        label.setWrapText(true);
+        label.getStyleClass().add("label");
     }
 }

@@ -2,6 +2,9 @@ package com.autoservice.views;
 
 import com.autoservice.*;
 import com.autoservice.controllers.OrderController;
+import com.autoservice.utils.ValidationErrorIndicator;
+import com.autoservice.utils.ValidationUtils;
+import com.autoservice.utils.TooltipHelper;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -611,6 +614,7 @@ public class AppointmentView {
         timeCombo.setValue(appointment.getTime());
         timeCombo.setPrefWidth(100);
         timeCombo.getStyleClass().add("dialog-combo");
+        TooltipHelper.setToolTip(masterCombo, "Выберите мастера сервиса");
 
         grid.add(new Label("Клиент:"), 0, 0);
         grid.add(clientCombo, 1, 0);
@@ -645,13 +649,35 @@ public class AppointmentView {
         stage.setScene(scene);
 
         saveBtn.setOnAction(e -> {
-            String newDate = datePickerLocal.getValue().toString();
-            String newTime = timeCombo.getValue();
-
-            if (newTime == null) {
-                showAlert("Выберите время");
+            // Очистка ошибок валидации
+            ValidationErrorIndicator.clearAllErrors(root);
+            
+            boolean isValid = true;
+            
+            // Валидация обязательных полей
+            if (clientCombo.getValue() == null) {
+                ValidationErrorIndicator.showError(clientCombo, "Выберите клиента");
+                isValid = false;
+            }
+            if (masterCombo.getValue() == null) {
+                ValidationErrorIndicator.showError(masterCombo, "Выберите мастера");
+                isValid = false;
+            }
+            if (serviceCombo.getValue() == null) {
+                ValidationErrorIndicator.showError(serviceCombo, "Выберите услугу");
+                isValid = false;
+            }
+            if (timeCombo.getValue() == null) {
+                ValidationErrorIndicator.showError(timeCombo, "Выберите время");
+                isValid = false;
+            }
+            
+            if (!isValid) {
                 return;
             }
+
+            String newDate = datePickerLocal.getValue().toString();
+            String newTime = timeCombo.getValue();
 
             if (!newDate.equals(appointment.getDate()) || !newTime.equals(appointment.getTime())) {
                 List<Appointment> existing = DataStore.getAppointmentsByDate(newDate);
@@ -735,6 +761,7 @@ public class AppointmentView {
         timeCombo.setPromptText("Выберите время");
         timeCombo.setPrefWidth(100);
         timeCombo.getStyleClass().add("dialog-combo");
+        TooltipHelper.setToolTip(masterCombo, "Выберите мастера сервиса");
 
         CheckBox createOrderCheck = new CheckBox("Создать заказ");
         createOrderCheck.getStyleClass().add("create-order-checkbox");
@@ -771,10 +798,32 @@ public class AppointmentView {
         stage.setScene(scene);
 
         saveBtn.setOnAction(e -> {
-            if (clientCombo.getValue() == null) { showAlert("Выберите клиента"); return; }
-            if (masterCombo.getValue() == null) { showAlert("Выберите мастера"); return; }
-            if (serviceCombo.getValue() == null) { showAlert("Выберите услугу"); return; }
-            if (timeCombo.getValue() == null) { showAlert("Выберите время"); return; }
+            // Очистка ошибок валидации
+            ValidationErrorIndicator.clearAllErrors(root);
+            
+            boolean isValid = true;
+            
+            // Валидация обязательных полей
+            if (clientCombo.getValue() == null) {
+                ValidationErrorIndicator.showError(clientCombo, "Выберите клиента");
+                isValid = false;
+            }
+            if (masterCombo.getValue() == null) {
+                ValidationErrorIndicator.showError(masterCombo, "Выберите мастера");
+                isValid = false;
+            }
+            if (serviceCombo.getValue() == null) {
+                ValidationErrorIndicator.showError(serviceCombo, "Выберите услугу");
+                isValid = false;
+            }
+            if (timeCombo.getValue() == null) {
+                ValidationErrorIndicator.showError(timeCombo, "Выберите время");
+                isValid = false;
+            }
+            
+            if (!isValid) {
+                return;
+            }
 
             String dateStr = datePickerLocal.getValue().toString();
             String timeStr = timeCombo.getValue();
