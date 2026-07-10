@@ -1,36 +1,29 @@
-@echo off
-chcp 866 >nul
-setlocal EnableDelayedExpansion
+﻿﻿﻿@echo off
+setlocal
 
-echo =====================================================
-echo   AdminSTO v1.0.0 - Portable Version
-echo =====================================================
+echo Launching AdminSTO Portable v1.0.0...
 echo.
 
-set SCRIPT_DIR=%~dp0
-set JRE_PATH=!SCRIPT_DIR!jre\bin\java.exe
-set LIB_PATH=!SCRIPT_DIR!lib
-set APP_PATH=!SCRIPT_DIR!autoservice-admin.jar
+cd /d "%~dp0"
 
-echo Launching AdminSTO...
-echo.
-
-if not exist !JRE_PATH! (
-    echo ERROR: JRE not found!
+if not exist "jre\bin\java.exe" (
+    echo ERROR: Java not found!
     pause
     exit /b 1
 )
 
-!JRE_PATH! ^
-    --module-path !LIB_PATH! ^
+set APP_DIR=%CD%
+
+jre\bin\java.exe ^
+    -Djava.library.path="%APP_DIR%\lib" ^
+    -Duser.dir="%APP_DIR%" ^
+    -Dapp.home="%APP_DIR%" ^
+    --module-path "%APP_DIR%\lib" ^
     --add-modules javafx.controls,javafx.fxml ^
-    -Djava.library.path=!LIB_PATH! ^
-    -Duser.dir=!SCRIPT_DIR! ^
-    -Dapp.home=!SCRIPT_DIR! ^
-    -jar !APP_PATH!
+    -jar "%APP_DIR%\autoservice-admin.jar"
 
 if errorlevel 1 (
     echo.
-    echo ERROR: Application failed!
+    echo Application failed!
     pause
 )

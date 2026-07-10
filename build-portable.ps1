@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿# Скрипт сборки полностью автономной portable-версии
+﻿﻿﻿﻿﻿﻿﻿# Скрипт сборки полностью автономной portable-версии
 # Запуск: powershell -ExecutionPolicy Bypass -File build-portable.ps1
 
 $ErrorActionPreference = "Stop"
@@ -60,7 +60,7 @@ Write-Host "    Готово." -ForegroundColor Green
 Write-Host "[3/6] Создание встроенного JRE (jlink)..." -ForegroundColor Yellow
 & "$JDK_PATH\bin\jlink.exe" `
     --module-path "$JDK_PATH\jmods" `
-    --add-modules java.base,java.sql,jdk.unsupported,java.scripting,java.desktop,java.logging,java.instrument,java.management,jdk.zipfs `
+    --add-modules java.base,java.sql,jdk.unsupported,java.scripting,java.desktop,java.logging,java.instrument,java.management,jdk.zipfs,java.sql.rowset,java.naming,java.security.sasl,java.xml,jdk.httpserver,jdk.management `
     --strip-debug `
     --no-man-pages `
     --no-header-files `
@@ -92,43 +92,38 @@ Write-Host "    Готово." -ForegroundColor Green
 Write-Host "[6/6] Создание run.bat..." -ForegroundColor Yellow
 $runBat = @'
 @echo off
-chcp 65001 >nul
-setlocal EnableDelayedExpansion
+setlocal
 
-echo =====================================================
-echo   AdminSTO v1.0.0 - Портативная версия (автономная)
-echo =====================================================
+echo Launching AdminSTO Portable v1.0.0...
 echo.
 
-set SCRIPT_DIR=%~dp0
-set JRE_PATH=!SCRIPT_DIR!jre\bin\java.exe
-set LIB_PATH=!SCRIPT_DIR!lib
-set APP_PATH=!SCRIPT_DIR!autoservice-admin.jar
+cd /d "%~dp0"
 
-echo Запуск AdminSTO...
-echo.
-
-if not exist !JRE_PATH! (
-    echo ERROR: JRE not found in !SCRIPT_DIR!jre
+if not exist "jre\bin\java.exe" (
+    echo ERROR: Java not found!
     pause
     exit /b 1
 )
 
-!JRE_PATH! ^
-    --module-path !LIB_PATH! ^
+set APP_DIR=%CD%
+
+jre\bin\java.exe ^
+    --enable-native-access=javafx.graphics ^
+    --enable-native-access=org.xerial.sqlitejdbc ^
+    -Djava.library.path="%APP_DIR%\lib" ^
+    -Duser.dir="%APP_DIR%" ^
+    -Dapp.home="%APP_DIR%" ^
+    --module-path "%APP_DIR%\lib" ^
     --add-modules javafx.controls,javafx.fxml ^
-    -Djava.library.path=!LIB_PATH! ^
-    -Duser.dir=!SCRIPT_DIR! ^
-    -Dapp.home=!SCRIPT_DIR! ^
-    -jar !APP_PATH!
+    -jar "%APP_DIR%\autoservice-admin.jar"
 
 if errorlevel 1 (
     echo.
-    echo ERROR: Application failed!
+    echo Application failed!
     pause
 )
 '@
-[System.IO.File]::WriteAllText("$distDir\run.bat", $runBat, [System.Text.Encoding]::UTF8)
+[System.IO.File]::WriteAllText("$distDir\run.bat", $runBat, [System.Text.Encoding]::Default)
 Write-Host "    run.bat создан." -ForegroundColor Green
 
 # Итог
