@@ -20,6 +20,7 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+import javafx.application.Platform;
 
 import java.util.List;
 
@@ -31,16 +32,24 @@ public class SettingsView {
     public static void showSettingsWindow() {
         Stage stage = new Stage();
         stage.setTitle("Настройки");
-        stage.setMinWidth(1100);
+        stage.setMinWidth(900);
         stage.setMinHeight(900);
+        stage.setMaxWidth(900);
+        stage.setMaxHeight(900);
         stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
 
         VBox root = create();
         Scene scene = new Scene(root);
         scene.getStylesheets().add("com/autoservice/styles/styles.css");
         stage.setScene(scene);
-
-        stage.showAndWait();
+        
+        // Центрирование на экране
+        javafx.stage.Screen screen = javafx.stage.Screen.getPrimary();
+        javafx.geometry.Rectangle2D bounds = screen.getBounds();
+        stage.setX((bounds.getWidth() - 900) / 2);
+        stage.setY((bounds.getHeight() - 900) / 2);
+        
+        stage.show();
     }
 
     public static VBox create() {
@@ -149,7 +158,7 @@ public class SettingsView {
         HBox topButtons = new HBox(10);
         topButtons.setAlignment(Pos.CENTER_LEFT);
 
-        Button addBtn = new Button("Добавить связь");
+        Button addBtn = new Button("Добавить");
         addBtn.getStyleClass().add("add-button");
         addBtn.setOnAction(e -> showAddServiceSparePartDialog());
 
@@ -181,7 +190,9 @@ public class SettingsView {
             Service service = cell.getValue().getService();
             return service != null ? javafx.beans.binding.Bindings.createObjectBinding(() -> service.getName()) : null;
         });
-        colService.setPrefWidth(380);
+        colService.setMinWidth(280);
+        colService.setPrefWidth(280);
+        colService.setMaxWidth(280);
 
         TableColumn<ServiceSparePartsRow, String> colSpareParts = new TableColumn<>("Запчасти");
         colSpareParts.setCellValueFactory(cell -> {
@@ -190,7 +201,7 @@ public class SettingsView {
         });
         colSpareParts.setMinWidth(200);
         colSpareParts.setPrefWidth(1.7976931348623157E308); // MAX_VALUE для Double
-        // Сокращение текста при достижении конца колонки (отображаем весь текст в tooltip)
+        // Сокращение текста при достижении конца колонки
         colSpareParts.setCellFactory(column -> new javafx.scene.control.TableCell<ServiceSparePartsRow, String>() {
             @Override
             protected void updateItem(String item, boolean empty) {
@@ -198,20 +209,16 @@ public class SettingsView {
                 if (empty || item == null) {
                     setText(null);
                     setTooltip(null);
-                    setStyle("-fx-text-fill: -fx-text-background-color;");
                 } else {
-                    // Ограничиваем длину текста (например, до 50 символов)
+                    // Ограничиваем длину текста (до 70 символов)
                     String displayText = item;
-                    if (item.length() > 50) {
-                        displayText = item.substring(0, 47) + "...";
+                    if (item.length() > 70) {
+                        displayText = item.substring(0, 67) + "...";
                     }
                     setText(displayText);
                     
-                    Tooltip tooltip = new Tooltip(item);
-                    tooltip.setShowDelay(javafx.util.Duration.ZERO);
-                    setTooltip(tooltip);
-                    
-                    setStyle("-fx-text-fill: -fx-text-background-color;");
+                    // Tooltip отключён - текст сокращается, полный текст виден при выделении строки
+                    setTooltip(null);
                 }
             }
         });
@@ -383,6 +390,8 @@ public class SettingsView {
         stage.setTitle("Добавить связь услуги и запчастей");
         stage.setMinWidth(850);
         stage.setMinHeight(950);
+        stage.setMaxWidth(850);
+        stage.setMaxHeight(950);
         stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
 
         VBox root = new VBox(15);
@@ -418,25 +427,35 @@ public class SettingsView {
         TableColumn<SparePartWithQuantity, Boolean> colSelected = new TableColumn<>("Выбор");
         colSelected.setCellValueFactory(cell -> cell.getValue().selectedProperty());
         colSelected.setCellFactory(CheckBoxTableCell.forTableColumn(colSelected));
+        colSelected.setMinWidth(100);
         colSelected.setPrefWidth(100);
+        colSelected.setMaxWidth(100);
 
         TableColumn<SparePartWithQuantity, String> colName = new TableColumn<>("Название");
         colName.setCellValueFactory(cell -> cell.getValue().nameProperty());
+        colName.setMinWidth(380);
         colName.setPrefWidth(380);
+        colName.setMaxWidth(380);
 
         TableColumn<SparePartWithQuantity, String> colStock = new TableColumn<>("В наличии");
         colStock.setCellValueFactory(cell -> cell.getValue().stockProperty());
+        colStock.setMinWidth(130);
         colStock.setPrefWidth(130);
+        colStock.setMaxWidth(130);
 
         TableColumn<SparePartWithQuantity, Integer> colQuantity = new TableColumn<>("Кол-во");
         colQuantity.setCellValueFactory(cell -> cell.getValue().quantityProperty().asObject());
         colQuantity.setCellFactory(tc -> new TextFieldTableCell<>());
+        colQuantity.setMinWidth(100);
         colQuantity.setPrefWidth(100);
+        colQuantity.setMaxWidth(100);
 
         TableColumn<SparePartWithQuantity, String> colUnit = new TableColumn<>("Ед.изм");
         colUnit.setCellValueFactory(cell -> cell.getValue().unitTypeProperty());
         colUnit.setCellFactory(tc -> new TextFieldTableCell<>());
+        colUnit.setMinWidth(100);
         colUnit.setPrefWidth(100);
+        colUnit.setMaxWidth(100);
 
         partsTable.getColumns().addAll(colSelected, colName, colStock, colQuantity, colUnit);
 
@@ -591,6 +610,8 @@ public class SettingsView {
         stage.setTitle("Изменить связь услуги и запчастей");
         stage.setMinWidth(850);
         stage.setMinHeight(950);
+        stage.setMaxWidth(850);
+        stage.setMaxHeight(950);
         stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
 
         VBox root = new VBox(15);
@@ -624,25 +645,35 @@ public class SettingsView {
         TableColumn<SparePartWithQuantity, Boolean> colSelected = new TableColumn<>("Выбор");
         colSelected.setCellValueFactory(cell -> cell.getValue().selectedProperty());
         colSelected.setCellFactory(CheckBoxTableCell.forTableColumn(colSelected));
+        colSelected.setMinWidth(100);
         colSelected.setPrefWidth(100);
+        colSelected.setMaxWidth(100);
 
         TableColumn<SparePartWithQuantity, String> colName = new TableColumn<>("Название");
         colName.setCellValueFactory(cell -> cell.getValue().nameProperty());
+        colName.setMinWidth(380);
         colName.setPrefWidth(380);
+        colName.setMaxWidth(380);
 
         TableColumn<SparePartWithQuantity, String> colStock = new TableColumn<>("В наличии");
         colStock.setCellValueFactory(cell -> cell.getValue().stockProperty());
+        colStock.setMinWidth(130);
         colStock.setPrefWidth(130);
+        colStock.setMaxWidth(130);
 
         TableColumn<SparePartWithQuantity, Integer> colQuantity = new TableColumn<>("Кол-во");
         colQuantity.setCellValueFactory(cell -> cell.getValue().quantityProperty().asObject());
         colQuantity.setCellFactory(tc -> new TextFieldTableCell<>());
+        colQuantity.setMinWidth(100);
         colQuantity.setPrefWidth(100);
+        colQuantity.setMaxWidth(100);
 
         TableColumn<SparePartWithQuantity, String> colUnit = new TableColumn<>("Ед.изм");
         colUnit.setCellValueFactory(cell -> cell.getValue().unitTypeProperty());
         colUnit.setCellFactory(tc -> new TextFieldTableCell<>());
+        colUnit.setMinWidth(100);
         colUnit.setPrefWidth(100);
+        colUnit.setMaxWidth(100);
 
         partsTable.getColumns().addAll(colSelected, colName, colStock, colQuantity, colUnit);
 
