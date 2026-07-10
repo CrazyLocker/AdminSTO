@@ -341,8 +341,10 @@ public class H2Database extends AbstractDatabase {
             String orderId = generateOrderId(conn);
             order.setId(orderId);
 
-            // Получаем текущую дату в нужном формате
-            String currentDate = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yy"));
+            // Используем дату из order, если она установлена и не пустая, иначе пустую строку
+            String currentDate = (order.getCreatedDate() != null && !order.getCreatedDate().isEmpty()) 
+                    ? order.getCreatedDate().substring(0, Math.min(10, order.getCreatedDate().length()))
+                    : "";
 
             conn.setAutoCommit(false);
 

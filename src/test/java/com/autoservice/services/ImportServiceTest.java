@@ -104,7 +104,7 @@ class ImportServiceTest extends BaseTest {
     @Test
     @Order(9)
     void testImportFromCsvWithUnicode() throws IOException {
-        File file = createTempFile("unicode.csv", "name,price\nМасло,1500\nФильтр,500\n");
+        File file = createTempFile("unicode.csv", "name;partNumber;manufacturer;retailPrice;purchasePrice;stock;location;compatibleModels\nМасло моторное;MO-123;Shell;1500;1200;20;Склад 1;Haval\nФильтр масляный;FL-456;Bosch;500;300;15;Склад 2;Haval\n");
         try (InputStream is = new java.io.FileInputStream(file)) {
             var result = ImportService.importFromCsv(is);
             assertThat(result.getImportedCount()).isEqualTo(2);

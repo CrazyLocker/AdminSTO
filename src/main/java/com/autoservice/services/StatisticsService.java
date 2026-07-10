@@ -18,52 +18,31 @@ public class StatisticsService {
         LocalDate endDate = LocalDate.now();
         LocalDate startDate = endDate.minusDays(days - 1);
 
-        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
-            revenue.put(date.format(DAY_FORMATTER), 0.0);
-        }
-
-        System.out.println("=== DEBUG: All orders in DataStore ===");
-        System.out.println("Total orders: " + DataStore.getOrders().size());
-        for (WorkOrder order : DataStore.getOrders()) {
-            System.out.println("Order ID: " + order.getId() +
-                    ", Status: " + order.getStatus() +
-                    ", CreatedDate: " + order.getCreatedDate() +
-                    ", Total: " + order.getTotal());
-        }
-
-        System.out.println("=== DEBUG: Filtering closed orders ===");
-        int closedCount = 0;
+        // Сначала собираем все закрытые заказы
+        Map<String, Double> closedOrdersRevenue = new HashMap<>();
         for (WorkOrder order : DataStore.getOrders()) {
             if (order.getStatus().equals(WorkOrder.STATUS_CLOSED)) {
-                closedCount++;
                 String createdDate = order.getCreatedDate();
-                System.out.println("Closed order: " + order.getId() + ", date: " + createdDate);
-
                 if (createdDate != null && !createdDate.isEmpty()) {
                     try {
                         String dateStr = createdDate.length() >= 10 ? createdDate.substring(0, 10) : createdDate;
                         LocalDate orderDate = LocalDate.parse(dateStr);
                         String key = orderDate.format(DAY_FORMATTER);
-                        if (revenue.containsKey(key)) {
-                            revenue.put(key, revenue.get(key) + order.getTotal());
-                            System.out.println("  -> Added to " + key + ": +" + order.getTotal());
-                        } else {
-                            System.out.println("  -> Key " + key + " not in range");
+                        if (orderDate.isEqual(startDate) || (!orderDate.isBefore(startDate) && !orderDate.isAfter(endDate))) {
+                            closedOrdersRevenue.merge(key, order.getTotal(), Double::sum);
                         }
                     } catch (Exception e) {
                         System.err.println("Error parsing: " + createdDate);
                     }
-                } else {
-                    System.out.println("  -> createdDate is null or empty!");
                 }
             }
         }
-        System.out.println("Total closed orders: " + closedCount);
 
-        System.out.println("=== DEBUG: Final revenue ===");
-        for (var entry : revenue.entrySet()) {
-            if (entry.getValue() > 0) {
-                System.out.println(entry.getKey() + ": " + entry.getValue());
+        // Возвращаем только дни с ненулевой выручкой
+        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+            String key = date.format(DAY_FORMATTER);
+            if (closedOrdersRevenue.containsKey(key) && closedOrdersRevenue.get(key) > 0) {
+                revenue.put(key, closedOrdersRevenue.get(key));
             }
         }
 
