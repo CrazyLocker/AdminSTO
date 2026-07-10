@@ -217,16 +217,16 @@ public class H2Database extends AbstractDatabase {
     
     @Override
     protected String generateOrderId(Connection conn) {
-        String date = LocalDate.now().format(DateTimeFormatter.ofPattern("dd-MM-yy"));
+        String date = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd-MM-yy"));
         String sql = "SELECT MAX(id) as max_id FROM orders WHERE id LIKE 'ZAK-%'";
         String lastOrderId = null;
 
-        try (Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+        try (java.sql.Statement stmt = conn.createStatement();
+             java.sql.ResultSet rs = stmt.executeQuery(sql)) {
             if (rs.next()) {
                 lastOrderId = rs.getString("max_id");
             }
-        } catch (SQLException e) {
+        } catch (java.sql.SQLException e) {
             System.err.println("Generate ID error: " + e.getMessage());
         }
 
@@ -342,9 +342,18 @@ public class H2Database extends AbstractDatabase {
             order.setId(orderId);
 
             // Используем дату из order, если она установлена и не пустая, иначе пустую строку
-            String currentDate = (order.getCreatedDate() != null && !order.getCreatedDate().isEmpty()) 
-                    ? order.getCreatedDate().substring(0, Math.min(10, order.getCreatedDate().length()))
-                    : "";
+            String currentDate;
+            if (order.getCreatedDate() != null && !order.getCreatedDate().isEmpty()) {
+                String rawDate = order.getCreatedDate().substring(0, Math.min(10, order.getCreatedDate().length()));
+                try {
+                    LocalDate date = LocalDate.parse(rawDate);
+                    currentDate = date.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+                } catch (Exception e) {
+                    currentDate = rawDate;
+                }
+            } else {
+                currentDate = "";
+            }
 
             conn.setAutoCommit(false);
 

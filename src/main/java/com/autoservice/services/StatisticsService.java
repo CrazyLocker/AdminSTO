@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 public class StatisticsService {
 
     private static final DateTimeFormatter DAY_FORMATTER = DateTimeFormatter.ofPattern("dd.MM");
+    private static final DateTimeFormatter DB_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     public static Map<String, Double> getDailyRevenue(int days) {
         Map<String, Double> revenue = new LinkedHashMap<>();
@@ -26,7 +27,14 @@ public class StatisticsService {
                 if (createdDate != null && !createdDate.isEmpty()) {
                     try {
                         String dateStr = createdDate.length() >= 10 ? createdDate.substring(0, 10) : createdDate;
-                        LocalDate orderDate = LocalDate.parse(dateStr);
+                        LocalDate orderDate;
+                        try {
+                            // Пытаемся распарсить как dd/MM/yyyy
+                            orderDate = LocalDate.parse(dateStr, DB_DATE_FORMATTER);
+                        } catch (Exception e) {
+                            // Если не удалось, пробуем ISO-8601 (yyyy-MM-dd)
+                            orderDate = LocalDate.parse(dateStr);
+                        }
                         String key = orderDate.format(DAY_FORMATTER);
                         if (orderDate.isEqual(startDate) || (!orderDate.isBefore(startDate) && !orderDate.isAfter(endDate))) {
                             closedOrdersRevenue.merge(key, order.getTotal(), Double::sum);

@@ -366,8 +366,8 @@ public class SQLiteDatabase extends AbstractDatabase {
             String orderId = generateOrderId(conn);
             order.setId(orderId);
 
-            // Получаем текущую дату в нужном формате
-            String currentDate = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yy"));
+            // Получаем текущую дату в формате dd/MM/yyyy
+            String currentDate = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
 
             conn.setAutoCommit(false);
 
