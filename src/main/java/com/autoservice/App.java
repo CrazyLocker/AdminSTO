@@ -50,16 +50,14 @@ public class App extends Application {
         Tab orderTab = createTab("Заказы", IconHelper.assignment());
         Tab dictTab = createTab("Справочники", IconHelper.book());
         Tab appointmentTab = createTab("Запись", IconHelper.event());
-        Tab newTab = createTab("Новая вкладка", IconHelper.report());
 
         dashTab.setContent(DashboardView.create());
         clientTab.setContent(ClientView.create());
         orderTab.setContent(OrderView.create());
         dictTab.setContent(DictionaryView.create());
         appointmentTab.setContent(AppointmentView.create());
-        newTab.setContent(NewView.create());
 
-        tabPane.getTabs().addAll(dashTab, clientTab, orderTab, dictTab, appointmentTab, newTab);
+        tabPane.getTabs().addAll(dashTab, clientTab, orderTab, dictTab, appointmentTab);
 
         tabPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, tab) -> {
             if (tab == dashTab) {
