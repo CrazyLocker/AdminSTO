@@ -4,7 +4,6 @@ import com.autoservice.Client;
 import com.autoservice.DataStore;
 import com.autoservice.dialogs.EditClientDialog;
 import com.autoservice.views.ClientView;
-import javafx.collections.FXCollections;
 import javafx.scene.control.TableView;
 
 public class ClientController {
@@ -15,9 +14,8 @@ public class ClientController {
     }
 
     public static void refreshTable() {
-        if (clientTable != null) {
-            clientTable.setItems(FXCollections.observableArrayList(DataStore.getClients()));
-        }
+        // Не вызываем setItems напрямую — это ломает SortedList
+        // ClientView.refreshClientList() правильно пересоздаёт SortedList
         ClientView.refreshClientList();
     }
 

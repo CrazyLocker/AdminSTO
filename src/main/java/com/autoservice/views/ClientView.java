@@ -6,10 +6,13 @@ import com.autoservice.DateUtils;
 import com.autoservice.Validators;
 import com.autoservice.controllers.ClientController;
 import com.autoservice.dialogs.EditClientDialog;
+import com.autoservice.services.TableStateManager;
+import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
+import javafx.collections.transformation.SortedList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
@@ -26,8 +29,14 @@ public class ClientView {
 
     private static TableView<Client> clientTable;
     private static FilteredList<Client> filteredClients;
+    private static SortedList<Client> sortedClients;
     private static TextField searchField;
     private static ObservableList<Client> masterData;
+
+    // Getter для получения таблицы извне
+    public static TableView<Client> getTable() {
+        return clientTable;
+    }
 
     private static Button addBtn;
     private static Button editBtn;
@@ -104,6 +113,14 @@ public class ClientView {
 
         refreshClientList();
 
+        // Загружаем состояние таблицы ПОСЛЕ отрисовки — иначе setAll() и setPrefWidth()
+        // сбрасываются при первом layout pass
+        Platform.runLater(() -> {
+            if (clientTable != null) {
+                TableStateManager.loadTableState(clientTable, "clientTable");
+            }
+        });
+
         return mainContainer;
     }
 
@@ -118,7 +135,7 @@ public class ClientView {
 
         searchField.textProperty().addListener((observable, oldValue, newValue) -> filterClients(newValue));
 
-        Button clearBtn = new Button("✕");
+        Button clearBtn = new Button("✖");
         clearBtn.setStyle(
                 "-fx-background-color: #dc3545;" +
                         "-fx-text-fill: white;" +
@@ -140,20 +157,28 @@ public class ClientView {
     private static TableView<Client> createClientTable() {
         TableView<Client> table = new TableView<>();
         table.getStyleClass().add("table-view");
+        table.setId("clientTable");
 
         TableColumn<Client, String> colLastName = new TableColumn<>("Фамилия");
+        colLastName.setId("colLastName");
         colLastName.setCellValueFactory(new PropertyValueFactory<>("lastName"));
         colLastName.setPrefWidth(130);
+        colLastName.setSortable(true);
 
         TableColumn<Client, String> colName = new TableColumn<>("Имя");
+        colName.setId("colName");
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
         colName.setPrefWidth(130);
+        colName.setSortable(true);
 
         TableColumn<Client, String> colPhone = new TableColumn<>("Телефон");
+        colPhone.setId("colPhone");
         colPhone.setCellValueFactory(new PropertyValueFactory<>("phone"));
         colPhone.setPrefWidth(140);
+        colPhone.setSortable(true);
 
         TableColumn<Client, String> colCar = new TableColumn<>("Автомобиль");
+        colCar.setId("colCar");
         colCar.setCellValueFactory(cellData -> {
             Client client = cellData.getValue();
             String model = client.getCarModel() != null ? client.getCarModel() : "—";
@@ -161,16 +186,22 @@ public class ClientView {
             return new SimpleStringProperty(model + " (" + number + ")");
         });
         colCar.setPrefWidth(260);
+        colCar.setSortable(true);
 
         TableColumn<Client, String> colLastRepair = new TableColumn<>("Последний ремонт");
+        colLastRepair.setId("colLastRepair");
         colLastRepair.setCellValueFactory(cellData -> {
             String date = cellData.getValue().getLastRepairDate();
             return new SimpleStringProperty(date != null && !date.isEmpty() ? DateUtils.formatDate(date) : "—");
         });
         colLastRepair.setPrefWidth(140);
+        colLastRepair.setSortable(true);
 
         table.getColumns().addAll(colLastName, colName, colPhone, colCar, colLastRepair);
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        // Отключаем CONSTRAINED_RESIZE_POLICY — он сбрасывает prefWidth при layout,
+        // что мешает сохранению пользовательских настроек ширины колонок.
+        // UNCONSTRAINED_RESIZE_POLICY позволяет колонкам сохранять заданную ширину.
+        table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
 
         table.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             editBtn.setDisable(newVal == null);
@@ -187,8 +218,15 @@ public class ClientView {
         });
 
         filteredClients = new FilteredList<>(FXCollections.observableArrayList(DataStore.getClients()), p -> true);
-        table.setItems(filteredClients);
+        
+        // Создаём SortedList для поддержки сортировки TableView
+        sortedClients = new SortedList<>(filteredClients);
+        sortedClients.comparatorProperty().bind(table.comparatorProperty());
+        table.setItems(sortedClients);
         ClientController.setTable(table);
+
+        // Загрузка сохраненного состояния таблицы отложена до после отрисовки
+        // (вызывается из create() через Platform.runLater)
 
         return table;
     }
@@ -222,9 +260,14 @@ public class ClientView {
     public static void refreshClientList() {
         masterData = FXCollections.observableArrayList(DataStore.getClients());
         filteredClients = new FilteredList<>(masterData, p -> true);
+        
+        // Пересоздаём SortedList с новыми данными
         if (clientTable != null) {
-            clientTable.setItems(filteredClients);
+            sortedClients = new SortedList<>(filteredClients);
+            sortedClients.comparatorProperty().bind(clientTable.comparatorProperty());
+            clientTable.setItems(sortedClients);
         }
+        
         if (searchField != null && searchField.getText() != null && !searchField.getText().isEmpty()) {
             filterClients(searchField.getText());
         }

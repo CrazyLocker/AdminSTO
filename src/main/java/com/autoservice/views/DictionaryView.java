@@ -28,6 +28,11 @@ public class DictionaryView {
     private static TextField searchField;
     private static Button stockIncomeBtn;
 
+    // Getter для получения таблицы извне
+    public static TableView<SparePart> getTable() {
+        return sparePartsTable;
+    }
+
     public static VBox create() {
         TabPane dictPane = new TabPane();
         dictPane.getStyleClass().add("dictionary-tabpane");
@@ -60,6 +65,7 @@ public class DictionaryView {
     private static VBox createServicesPanel() {
         TableView<Service> table = new TableView<>();
         table.getStyleClass().add("table-view");
+        table.setId("servicesTable");
 
         TableColumn<Service, String> colName = new TableColumn<>("Название услуги");
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
@@ -101,7 +107,8 @@ public class DictionaryView {
         colPrice.setStyle("-fx-alignment: CENTER-LEFT;");
 
         table.getColumns().addAll(colName, colSparePart, colDuration, colPartNumber, colPrice);
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        // Отключаем CONSTRAINED_RESIZE_POLICY — позволяет сохранять ширину колонок
+        table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(table, Priority.ALWAYS);
 
         table.setOnMouseClicked(event -> {
@@ -222,6 +229,7 @@ public class DictionaryView {
         TableView<SparePart> table = new TableView<>();
         table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         table.getStyleClass().add("table-view");
+        table.setId("sparePartsTable");
 
         TableColumn<SparePart, String> colName = new TableColumn<>("Название");
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
@@ -263,7 +271,8 @@ public class DictionaryView {
 
         table.getColumns().addAll(colName, colPartNumber, colManufacturer, colCompatibleModels,
                 colRetailPrice, colStock, colUnitType);
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        // Отключаем CONSTRAINED_RESIZE_POLICY — позволяет сохранять ширину колонок
+        table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(table, Priority.ALWAYS);
 
         table.setOnMouseClicked(event -> {
@@ -515,6 +524,7 @@ public class DictionaryView {
         TableView<SparePart> table = new TableView<>();
         table.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
         table.getStyleClass().add("table-view");
+        table.setId("stockTable");
 
         TableColumn<SparePart, String> colName = new TableColumn<>("Название запчасти");
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
@@ -544,7 +554,8 @@ public class DictionaryView {
         colUnitType.setStyle("-fx-alignment: CENTER-LEFT;");
 
         table.getColumns().addAll(colName, colPartNumber, colStock, colMinStock, colUnitType);
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        // Отключаем CONSTRAINED_RESIZE_POLICY — позволяет сохранять ширину колонок
+        table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(table, Priority.ALWAYS);
 
         table.setItems(FXCollections.observableArrayList(DataStore.getSpareParts()));

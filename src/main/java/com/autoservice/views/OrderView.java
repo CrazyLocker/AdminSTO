@@ -27,6 +27,11 @@ public class OrderView {
     private static TextField searchField;
     private static Label resultLabel;
 
+    // Getter для получения таблицы извне
+    public static TableView<WorkOrder> getTable() {
+        return orderTable;
+    }
+
     // Поля фильтров
     private static ComboBox<String> statusFilterCombo;
     private static DatePicker dateFromPicker;
@@ -96,6 +101,7 @@ public class OrderView {
         // ========== ТАБЛИЦА ==========
         orderTable = new TableView<>();
         orderTable.getStyleClass().add("table-view");
+        orderTable.setId("orderTable");
         setupTableColumns();
 
         sortedData = new SortedList<>(masterData);
@@ -204,11 +210,13 @@ public class OrderView {
 
     private static void setupTableColumns() {
         TableColumn<WorkOrder, String> colId = new TableColumn<>("№ заказа");
+        colId.setId("colOrderId");
         colId.setCellValueFactory(new PropertyValueFactory<>("id"));
         colId.setPrefWidth(160);
         colId.setSortable(true);
 
         TableColumn<WorkOrder, String> colClient = new TableColumn<>("Клиент");
+        colClient.setId("colClient");
         colClient.setCellValueFactory(cellData -> {
             WorkOrder order = cellData.getValue();
             String lastName = order.getClient().getLastName();
@@ -219,6 +227,7 @@ public class OrderView {
         colClient.setSortable(true);
 
         TableColumn<WorkOrder, String> colCar = new TableColumn<>("Автомобиль");
+        colCar.setId("colCar");
         colCar.setCellValueFactory(cellData -> {
             String model = cellData.getValue().getClient().getCarModel();
             String number = cellData.getValue().getClient().getCarNumber();
@@ -228,6 +237,7 @@ public class OrderView {
         colCar.setSortable(true);
 
         TableColumn<WorkOrder, String> colServices = new TableColumn<>("Услуги");
+        colServices.setId("colServices");
         colServices.setCellValueFactory(cellData -> {
             WorkOrder order = cellData.getValue();
             return new SimpleStringProperty(String.join(", ", order.getServices()));
@@ -236,6 +246,7 @@ public class OrderView {
         colServices.setSortable(true);
 
         TableColumn<WorkOrder, Double> colTotal = new TableColumn<>("Сумма");
+        colTotal.setId("colTotal");
         colTotal.setCellValueFactory(new PropertyValueFactory<>("total"));
         colTotal.setPrefWidth(120);
         colTotal.setSortable(true);
@@ -249,6 +260,7 @@ public class OrderView {
         });
 
         TableColumn<WorkOrder, String> colStatus = new TableColumn<>("Статус");
+        colStatus.setId("colStatus");
         colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
         colStatus.setPrefWidth(120);
         colStatus.setSortable(true);
@@ -272,7 +284,8 @@ public class OrderView {
         });
 
         orderTable.getColumns().addAll(colId, colClient, colCar, colServices, colTotal, colStatus);
-        orderTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        // Отключаем CONSTRAINED_RESIZE_POLICY — позволяет сохранять ширину колонок
+        orderTable.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
 
         orderTable.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2 && event.getButton() == MouseButton.PRIMARY) {

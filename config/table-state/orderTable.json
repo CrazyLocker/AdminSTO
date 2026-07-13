@@ -1,0 +1,44 @@
+{
+  "tableId": "orderTable",
+  "version": "1.0",
+  "timestamp": "2026-07-13T08:26:59.539729500Z",
+  "columns": [
+    {
+      "id": "colOrderId",
+      "width": 160.0,
+      "visible": true,
+      "index": 0
+    },
+    {
+      "id": "colClient",
+      "width": 180.0,
+      "visible": true,
+      "index": 1
+    },
+    {
+      "id": "colCar",
+      "width": 200.0,
+      "visible": true,
+      "index": 2
+    },
+    {
+      "id": "colServices",
+      "width": 250.0,
+      "visible": true,
+      "index": 3
+    },
+    {
+      "id": "colTotal",
+      "width": 120.0,
+      "visible": true,
+      "index": 4
+    },
+    {
+      "id": "colStatus",
+      "width": 120.0,
+      "visible": true,
+      "index": 5
+    }
+  ],
+  "sortOrder": []
+}

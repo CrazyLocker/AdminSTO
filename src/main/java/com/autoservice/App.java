@@ -3,6 +3,7 @@ package com.autoservice;
 import com.autoservice.utils.ExceptionHandler;
 import com.autoservice.utils.LoggerManager;
 import com.autoservice.services.ScheduleService;
+import com.autoservice.services.TableStateManager;
 import com.autoservice.views.DashboardView;
 import com.autoservice.controllers.DictionaryController;
 import com.autoservice.views.*;
@@ -75,6 +76,12 @@ public class App extends Application {
 
         primaryStage.setOnCloseRequest(e -> {
             logger.info("Закрытие приложения");
+            
+            // Сохранение состояний всех таблиц
+            TableStateManager.saveTableState(ClientView.getTable(), "clientTable");
+            TableStateManager.saveTableState(OrderView.getTable(), "orderTable");
+            TableStateManager.saveTableState(DictionaryView.getTable(), "sparePartsTable");
+            
             DataStore.save();
             Database.close();
             ScheduleService.shutdown();
