@@ -211,7 +211,10 @@ class StatisticsServiceTest extends BaseTest {
         DataStore.addOrder(order);
         DataStore.load();
 
+        // При null createdDate БД подставляет текущую дату (как SQLiteDatabase),
+        // поэтому заказ появляется в выручке за сегодня
         Map<String, Double> revenue = StatisticsService.getDailyRevenue(7);
-        assertThat(revenue).isEmpty();
+        assertThat(revenue).isNotEmpty();
+        assertThat(revenue.values().stream().mapToDouble(Double::doubleValue).sum()).isEqualTo(1500.0);
     }
 }

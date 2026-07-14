@@ -429,7 +429,7 @@ class DataStoreTest extends BaseTest {
 
         Service updatedService = DataStore.getServices().get(0);
         updatedService.setPrice(2000);
-        DataStore.addService(updatedService);
+        DataStore.updateService(updatedService);
         DataStore.load();
 
         assertThat(DataStore.getServices().get(0).getPrice()).isEqualTo(2000);
@@ -447,7 +447,7 @@ class DataStoreTest extends BaseTest {
 
         SparePart updatedPart = DataStore.getSpareParts().get(0);
         updatedPart.setStock(20);
-        DataStore.addSparePart(updatedPart);
+        DataStore.updateSparePart(updatedPart);
         DataStore.load();
 
         assertThat(DataStore.getSpareParts().get(0).getStock()).isEqualTo(20);

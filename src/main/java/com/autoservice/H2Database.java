@@ -355,7 +355,8 @@ public class H2Database extends AbstractDatabase {
             String orderId = generateOrderId(conn);
             order.setId(orderId);
 
-            // Используем дату из order, если она установлена и не пустая, иначе пустую строку
+            // Используем дату из order, если она установлена и не пустая,
+            // иначе текущую дату (как в SQLiteDatabase) — иначе нарушается CHECK(length(created_date) > 0)
             String currentDate;
             if (order.getCreatedDate() != null && !order.getCreatedDate().isEmpty()) {
                 String rawDate = order.getCreatedDate().substring(0, Math.min(10, order.getCreatedDate().length()));
@@ -366,7 +367,7 @@ public class H2Database extends AbstractDatabase {
                     currentDate = rawDate;
                 }
             } else {
-                currentDate = "";
+                currentDate = LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
             }
 
             conn.setAutoCommit(false);
