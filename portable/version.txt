@@ -1,4 +1,0 @@
-﻿AdminSTO Portable
-Дата сборки: 14 июля 2026
-Java: встроенная (jlink)
-JavaFX: 17.0.6
