@@ -1,7 +1,7 @@
-﻿﻿﻿@echo off
+@echo off
 setlocal
 
-echo Launching AdminSTO Portable v1.0.0...
+echo Launching AdminSTO Portable...
 echo.
 
 cd /d "%~dp0"
@@ -15,6 +15,8 @@ if not exist "jre\bin\java.exe" (
 set APP_DIR=%CD%
 
 jre\bin\java.exe ^
+    --enable-native-access=javafx.graphics ^
+    --enable-native-access=org.xerial.sqlitejdbc ^
     -Djava.library.path="%APP_DIR%\lib" ^
     -Duser.dir="%APP_DIR%" ^
     -Dapp.home="%APP_DIR%" ^

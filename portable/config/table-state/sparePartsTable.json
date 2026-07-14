@@ -1,0 +1,55 @@
+{
+  "tableId": "sparePartsTable",
+  "version": "1.0",
+  "timestamp": "2026-07-14T07:50:13.328736500Z",
+  "columns": [
+    {
+      "id": "colSparePartName",
+      "width": 278.40000000000003,
+      "visible": true,
+      "index": 0
+    },
+    {
+      "id": "colSparePartNumber",
+      "width": 144.0,
+      "visible": true,
+      "index": 1
+    },
+    {
+      "id": "colManufacturer",
+      "width": 136.79999999999995,
+      "visible": true,
+      "index": 2
+    },
+    {
+      "id": "colCompatibleModels",
+      "width": 368.0000000000002,
+      "visible": true,
+      "index": 3
+    },
+    {
+      "id": "colRetailPrice",
+      "width": 173.20000000000002,
+      "visible": true,
+      "index": 4
+    },
+    {
+      "id": "colStock",
+      "width": 100.0,
+      "visible": true,
+      "index": 5
+    },
+    {
+      "id": "colUnitType",
+      "width": 105.07109374999982,
+      "visible": true,
+      "index": 6
+    }
+  ],
+  "sortOrder": [
+    {
+      "columnId": "colSparePartName",
+      "order": "ASC"
+    }
+  ]
+}
