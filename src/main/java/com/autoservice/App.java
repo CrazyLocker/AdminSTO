@@ -4,9 +4,10 @@ import com.autoservice.utils.ExceptionHandler;
 import com.autoservice.utils.LoggerManager;
 import com.autoservice.services.ScheduleService;
 import com.autoservice.services.TableStateManager;
-import com.autoservice.views.DashboardView;
-import com.autoservice.controllers.DictionaryController;
 import com.autoservice.views.*;
+import com.autoservice.controllers.ServicePanelController;
+import com.autoservice.controllers.SparePartPanelController;
+import com.autoservice.controllers.StockPanelController;
 import com.autoservice.utils.IconHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +42,6 @@ public class App extends Application {
             logger.error("Ошибка при инициализации", e);
             String friendlyMessage = ExceptionHandler.getFriendlyMessage(e);
             logger.error("Пользовательское сообщение: {}", friendlyMessage);
-            // Здесь можно добавить показ диалога пользователю
         }
 
         TabPane tabPane = new TabPane();
@@ -49,16 +49,22 @@ public class App extends Application {
         Tab dashTab = createTab("Дашборд", IconHelper.dashboard());
         Tab clientTab = createTab("Клиенты", IconHelper.people());
         Tab orderTab = createTab("Заказы", IconHelper.assignment());
-        Tab dictTab = createTab("Справочники", IconHelper.book());
+        Tab servicesTab = createTab("Услуги", IconHelper.settings());
+        Tab sparePartsTab = createTab("Запчасти", IconHelper.inventory());
+        Tab stockTab = createTab("Склад", IconHelper.box());
+        Tab settingsTab = createTab("Настройки", IconHelper.settings());
         Tab appointmentTab = createTab("Запись", IconHelper.event());
 
         dashTab.setContent(DashboardView.create());
         clientTab.setContent(ClientView.create());
         orderTab.setContent(OrderView.create());
-        dictTab.setContent(DictionaryView.create());
+        servicesTab.setContent(ServicePanel.create());
+        sparePartsTab.setContent(SparePartPanel.create());
+        stockTab.setContent(StockPanel.create());
+        settingsTab.setContent(SettingsView.create());
         appointmentTab.setContent(AppointmentView.create());
 
-        tabPane.getTabs().addAll(dashTab, clientTab, orderTab, dictTab, appointmentTab);
+        tabPane.getTabs().addAll(dashTab, clientTab, orderTab, servicesTab, sparePartsTab, stockTab, settingsTab, appointmentTab);
 
         tabPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, tab) -> {
             if (tab == dashTab) {
@@ -77,10 +83,12 @@ public class App extends Application {
         primaryStage.setOnCloseRequest(e -> {
             logger.info("Закрытие приложения");
             
-            // Сохранение состояний всех таблиц
+            // Сохранение состояний всех таблиц (синхронно, до System.exit)
             TableStateManager.saveTableState(ClientView.getTable(), "clientTable");
             TableStateManager.saveTableState(OrderView.getTable(), "orderTable");
-            TableStateManager.saveTableState(DictionaryView.getTable(), "sparePartsTable");
+            TableStateManager.saveTableState(ServicePanel.getTable(), "servicesTable");
+            TableStateManager.saveTableState(SparePartPanel.getTable(), "sparePartsTable");
+            TableStateManager.saveTableState(StockPanel.getTable(), "stockTable");
             TableStateManager.saveTableState(SettingsView.getSettingsTable(), "settingsTable");
             TableStateManager.saveTableState(SettingsView.getServiceSparePartsTable(), "serviceSparePartsTable");
             TableStateManager.saveTableState(SettingsView.getToPartsTable(), "toPartsTable");
@@ -99,7 +107,9 @@ public class App extends Application {
         
         com.autoservice.controllers.ClientController.refreshTable();
         com.autoservice.controllers.OrderController.refreshTable();
-        DictionaryController.refreshAll();
+        ServicePanelController.refreshTable();
+        SparePartPanelController.refreshTable();
+        StockPanelController.refreshTable();
     }
 
     private static Tab createTab(String title, SVGPath icon) {

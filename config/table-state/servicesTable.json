@@ -1,29 +1,29 @@
 {
   "tableId": "servicesTable",
   "version": "1.0",
-  "timestamp": "2026-07-14T03:42:25.739610600Z",
+  "timestamp": "2026-07-14T05:46:29.702709800Z",
   "columns": [
     {
-      "id": "colName",
-      "width": 305.6,
+      "id": "colServiceName",
+      "width": 312.8,
       "visible": true,
       "index": 0
+    },
+    {
+      "id": "colDuration",
+      "width": 152.0,
+      "visible": true,
+      "index": 1
     },
     {
       "id": "colPrice",
       "width": 120.0,
       "visible": true,
-      "index": 1
+      "index": 2
     },
     {
       "id": "colSparePart",
       "width": 459.20000000000005,
-      "visible": true,
-      "index": 2
-    },
-    {
-      "id": "colDuration",
-      "width": 120.0,
       "visible": true,
       "index": 3
     },

@@ -1,7 +1,9 @@
 package com.autoservice.dialogs;
 
 import com.autoservice.*;
-import com.autoservice.controllers.DictionaryController;
+import com.autoservice.controllers.ServicePanelController;
+import com.autoservice.controllers.SparePartPanelController;
+import com.autoservice.controllers.StockPanelController;
 import com.autoservice.controllers.OrderController;
 import com.autoservice.services.AutoAddSparePartService;
 import com.autoservice.utils.OilHelper;
@@ -423,7 +425,9 @@ public class CreateOrderDialog {
             }
 
             OrderController.refreshTable();
-            DictionaryController.refreshAll();
+            ServicePanelController.refreshTable();
+            SparePartPanelController.refreshTable();
+            StockPanelController.refreshTable();
             stage.close();
         });
 

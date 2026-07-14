@@ -1,23 +1,23 @@
 {
   "tableId": "stockTable",
   "version": "1.0",
-  "timestamp": "2026-07-14T03:42:25.741620Z",
+  "timestamp": "2026-07-14T05:46:29.706696600Z",
   "columns": [
     {
-      "id": "colName",
-      "width": 266.4,
+      "id": "colStockName",
+      "width": 304.0,
       "visible": true,
       "index": 0
     },
     {
-      "id": "colPartNumber",
-      "width": 152.0,
+      "id": "colStockPartNumber",
+      "width": 178.39999999999998,
       "visible": true,
       "index": 1
     },
     {
-      "id": "colStock",
-      "width": 136.79999999999995,
+      "id": "colCurrentStock",
+      "width": 195.20000000000005,
       "visible": true,
       "index": 2
     },
@@ -28,15 +28,15 @@
       "index": 3
     },
     {
-      "id": "colUnitType",
-      "width": 109.07109375000005,
+      "id": "colStockUnitType",
+      "width": 100.0,
       "visible": true,
       "index": 4
     }
   ],
   "sortOrder": [
     {
-      "columnId": "colName",
+      "columnId": "colStockName",
       "order": "ASC"
     }
   ]

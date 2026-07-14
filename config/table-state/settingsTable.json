@@ -1,11 +1,11 @@
 {
   "tableId": "settingsTable",
   "version": "1.0",
-  "timestamp": "2026-07-14T04:24:58.793074600Z",
+  "timestamp": "2026-07-14T05:46:29.707695500Z",
   "columns": [
     {
       "id": "colKey",
-      "width": 200.0,
+      "width": 263.2,
       "visible": true,
       "index": 0
     },

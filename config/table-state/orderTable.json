@@ -1,11 +1,11 @@
 {
   "tableId": "orderTable",
   "version": "1.0",
-  "timestamp": "2026-07-14T04:24:58.790075800Z",
+  "timestamp": "2026-07-14T05:46:29.700717400Z",
   "columns": [
     {
       "id": "colOrderId",
-      "width": 160.0,
+      "width": 168.0,
       "visible": true,
       "index": 0
     },
@@ -23,13 +23,13 @@
     },
     {
       "id": "colServices",
-      "width": 250.0,
+      "width": 369.19999999999993,
       "visible": true,
       "index": 3
     },
     {
       "id": "colTotal",
-      "width": 120.0,
+      "width": 144.79999999999995,
       "visible": true,
       "index": 4
     },
@@ -40,5 +40,10 @@
       "index": 5
     }
   ],
-  "sortOrder": []
+  "sortOrder": [
+    {
+      "columnId": "colTotal",
+      "order": "DESC"
+    }
+  ]
 }

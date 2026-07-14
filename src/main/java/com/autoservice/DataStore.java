@@ -224,6 +224,12 @@ public class DataStore {
         isDirty = true;
     }
 
+    public static void updateService(Service s) {
+        DatabaseFactory.getDatabase().updateService(s);
+        services = DatabaseFactory.getDatabase().getAllServices();
+        isDirty = true;
+    }
+
     public static void removeService(Service s) {
         DatabaseFactory.getDatabase().deleteService(s);
         services = DatabaseFactory.getDatabase().getAllServices();
@@ -250,6 +256,13 @@ public class DataStore {
 
     public static void addSparePart(SparePart sp) {
         DatabaseFactory.getDatabase().addSparePart(sp);
+        spareParts = DatabaseFactory.getDatabase().getAllSpareParts();
+        isDirty = true;
+    }
+
+    public static void updateSparePart(SparePart sp) {
+        sp.setDirty(true);
+        DatabaseFactory.getDatabase().updateSparePart(sp);
         spareParts = DatabaseFactory.getDatabase().getAllSpareParts();
         isDirty = true;
     }

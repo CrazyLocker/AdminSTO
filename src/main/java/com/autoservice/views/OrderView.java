@@ -4,6 +4,8 @@ import com.autoservice.DataStore;
 import com.autoservice.WorkOrder;
 import com.autoservice.controllers.OrderController;
 import com.autoservice.dialogs.PrintOrderDialog;
+import com.autoservice.services.TableStateManager;
+import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -118,6 +120,13 @@ public class OrderView {
 
         root.getChildren().addAll(topPanel, advancedToggleBtn, advancedFilterPanel, orderTable);
         VBox.setVgrow(orderTable, Priority.ALWAYS);
+
+        // Загружаем состояние таблицы ПОСЛЕ отрисовки
+        Platform.runLater(() -> {
+            if (orderTable != null) {
+                TableStateManager.loadTableState(orderTable, "orderTable");
+            }
+        });
 
         return root;
     }
