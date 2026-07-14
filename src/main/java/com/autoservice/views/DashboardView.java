@@ -292,7 +292,8 @@ public class DashboardView extends ScrollPane {
         try {
             SettingsController.showSettings();
         } catch (Exception ex) {
-            showErrorAlert("Ошибка", "Не удалось открыть настройки");
+            ex.printStackTrace();
+            showErrorAlert("Ошибка", "Не удалось открыть настройки: " + ex.getMessage());
         }
     }
 

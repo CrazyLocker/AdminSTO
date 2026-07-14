@@ -81,6 +81,9 @@ public class App extends Application {
             TableStateManager.saveTableState(ClientView.getTable(), "clientTable");
             TableStateManager.saveTableState(OrderView.getTable(), "orderTable");
             TableStateManager.saveTableState(DictionaryView.getTable(), "sparePartsTable");
+            TableStateManager.saveTableState(SettingsView.getSettingsTable(), "settingsTable");
+            TableStateManager.saveTableState(SettingsView.getServiceSparePartsTable(), "serviceSparePartsTable");
+            TableStateManager.saveTableState(SettingsView.getToPartsTable(), "toPartsTable");
             
             DataStore.save();
             Database.close();

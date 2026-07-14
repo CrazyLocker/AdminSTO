@@ -36,7 +36,7 @@ public class BackupService {
      */
     public static String createBackup() {
         try {
-            String backupFileName = BACKUP_PREFIX + LocalDate.now().format(DATE_FORMATTER) + BACKUP_EXTENSION;
+            String backupFileName = BACKUP_PREFIX + java.time.LocalDateTime.now().format(DATE_FORMATTER) + BACKUP_EXTENSION;
             String backupPath = BACKUP_DIR + File.separator + backupFileName;
             
             // Создать директорию backups если её нет

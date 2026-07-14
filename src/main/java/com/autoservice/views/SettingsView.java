@@ -5,16 +5,21 @@ import com.autoservice.controllers.SettingsController;
 import com.autoservice.model.ServiceSparePart;
 import com.autoservice.model.ServiceSparePartsList;
 import com.autoservice.model.ServiceSparePartsListItem;
+import com.autoservice.model.Setting;
 import com.autoservice.model.ToPart;
 import com.autoservice.services.SettingService;
 import com.autoservice.services.BackupService;
 import com.autoservice.services.ScheduleService;
+import com.autoservice.services.TableStateManager;
 import com.autoservice.utils.IconHelper;
 import com.autoservice.utils.ValidationErrorIndicator;
 import com.autoservice.utils.ValidationUtils;
+import javafx.beans.binding.Bindings;
 import javafx.beans.property.*;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.FilteredList;
+import javafx.collections.transformation.SortedList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -37,13 +42,49 @@ import java.util.List;
  */
 public class SettingsView {
 
+    // ==================== НАСТРОЙКИ ПРИЛОЖЕНИЯ ====================
+
+    private static TableView<Setting> settingsTable;
+    private static FilteredList<Setting> filteredSettings;
+    private static SortedList<Setting> sortedSettings;
+    private static TextField searchField;
+    private static ObservableList<Setting> masterDataSettings;
+
+    private static Button addBtn, editBtn, deleteBtn;
+
+    // ==================== СВЯЗИ УСЛУГ-ЗАПЧАСТЕЙ ====================
+
+    private static TableView<ServiceSparePartsRow> serviceSparePartsTable;
+    private static ObservableList<ServiceSparePartsRow> masterDataServiceSpareParts;
+    private static FilteredList<ServiceSparePartsRow> filteredServiceSparePartsRows;
+    private static SortedList<ServiceSparePartsRow> sortedServiceSparePartsRows;
+
+    // ==================== РАСХОДНИКИ ТО ====================
+
+    private static TableView<ToPart> toPartsTable;
+    private static ObservableList<ToPart> masterDataToParts;
+    private static FilteredList<ToPart> filteredToParts;
+    private static SortedList<ToPart> sortedToParts;
+
+    public static TableView<Setting> getSettingsTable() {
+        return settingsTable;
+    }
+
+    public static TableView<ServiceSparePartsRow> getServiceSparePartsTable() {
+        return serviceSparePartsTable;
+    }
+
+    public static TableView<ToPart> getToPartsTable() {
+        return toPartsTable;
+    }
+
     public static void showSettingsWindow() {
         Stage stage = new Stage();
         stage.setTitle("Настройки");
         stage.setMinWidth(900);
-        stage.setMinHeight(900);
-        stage.setMaxWidth(900);
-        stage.setMaxHeight(900);
+        stage.setMinHeight(600);
+        stage.setWidth(1100);
+        stage.setHeight(750);
         stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
 
         VBox root = create();
@@ -54,8 +95,8 @@ public class SettingsView {
         // Центрирование на экране
         javafx.stage.Screen screen = javafx.stage.Screen.getPrimary();
         javafx.geometry.Rectangle2D bounds = screen.getBounds();
-        stage.setX((bounds.getWidth() - 900) / 2);
-        stage.setY((bounds.getHeight() - 900) / 2);
+        stage.setX((bounds.getWidth() - 1100) / 2);
+        stage.setY((bounds.getHeight() - 750) / 2);
         
         stage.show();
     }
@@ -63,6 +104,11 @@ public class SettingsView {
     public static VBox create() {
         TabPane settingsPane = new TabPane();
         settingsPane.getStyleClass().add("settings-tabpane");
+
+        // Вкладка "Настройки приложения" (новая)
+        Tab settingsAppTab = new Tab("Настройки приложения");
+        settingsAppTab.setClosable(false);
+        settingsAppTab.setContent(createSettingsAppPanel());
 
         Tab autoPartsTab = new Tab("Автозаполнение");
         autoPartsTab.setContent(createAutoPartsPanel());
@@ -80,7 +126,7 @@ public class SettingsView {
         backupTab.setContent(createBackupPanel());
         backupTab.setClosable(false);
 
-        settingsPane.getTabs().addAll(autoPartsTab, serviceSparePartsTab, toPartsTab, backupTab);
+        settingsPane.getTabs().addAll(settingsAppTab, autoPartsTab, serviceSparePartsTab, toPartsTab, backupTab);
 
         VBox vbox = new VBox(10);
         vbox.setPadding(new Insets(10));
@@ -89,6 +135,278 @@ public class SettingsView {
         VBox.setVgrow(settingsPane, Priority.ALWAYS);
 
         return vbox;
+    }
+
+    // ==================== Вкладка: Настройки приложения ====================
+
+    private static VBox createSettingsAppPanel() {
+        VBox mainContainer = new VBox(15);
+        mainContainer.setPadding(new Insets(20));
+        mainContainer.setStyle("-fx-background-color: #f5f7fa;");
+
+        Label titleLabel = new Label("Настройки приложения");
+        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
+
+        HBox topPanel = new HBox(15);
+        topPanel.setAlignment(Pos.CENTER_LEFT);
+        topPanel.setPadding(new Insets(0, 0, 10, 0));
+
+        // ====== КНОПКИ ======
+        addBtn = new Button("Добавить");
+        addBtn.getStyleClass().add("add-button");
+        addBtn.setOnAction(e -> addSetting());
+
+        editBtn = new Button("Изменить");
+        editBtn.getStyleClass().add("edit-button");
+        editBtn.setDisable(true);
+        editBtn.setOnAction(e -> editSetting());
+
+        deleteBtn = new Button("Удалить");
+        deleteBtn.getStyleClass().add("delete-button");
+        deleteBtn.setDisable(true);
+        deleteBtn.setOnAction(e -> deleteSetting());
+
+        HBox searchBox = createSearchPanel();
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        topPanel.getChildren().addAll(searchBox, spacer, addBtn, editBtn, deleteBtn);
+
+        // ====== ТАБЛИЦА ======
+        settingsTable = createSettingsTable();
+        VBox.setVgrow(settingsTable, Priority.ALWAYS);
+
+        mainContainer.getChildren().addAll(titleLabel, topPanel, settingsTable);
+
+        refreshSettingsTable();
+
+        // Загружаем состояние таблицы ПОСЛЕ отрисовки
+        Platform.runLater(() -> {
+            if (settingsTable != null) {
+                TableStateManager.loadTableState(settingsTable, "settingsTable");
+            }
+        });
+
+        return mainContainer;
+    }
+
+    private static HBox createSearchPanel() {
+        Label searchLabel = new Label("Поиск:");
+        searchLabel.setStyle("-fx-font-weight: bold;");
+
+        searchField = new TextField();
+        searchField.setPromptText("Поиск по ключу, значению...");
+        searchField.setPrefWidth(350);
+        searchField.getStyleClass().add("search-field");
+
+        searchField.textProperty().addListener((observable, oldValue, newValue) -> filterSettings(newValue));
+
+        Button clearBtn = new Button("✖");
+        clearBtn.setStyle(
+                "-fx-background-color: #dc3545;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-padding: 4 8 4 8;" +
+                        "-fx-background-radius: 4;"
+        );
+        clearBtn.getStyleClass().add("clear-button");
+        clearBtn.setOnAction(e -> {
+            searchField.clear();
+            filterSettings("");
+        });
+
+        HBox searchBox = new HBox(10, searchLabel, searchField, clearBtn);
+        searchBox.setAlignment(Pos.CENTER_LEFT);
+        return searchBox;
+    }
+
+    private static TableView<Setting> createSettingsTable() {
+        TableView<Setting> table = new TableView<>();
+        table.getStyleClass().add("table-view");
+        table.setId("settingsTable");
+
+        TableColumn<Setting, String> colKey = new TableColumn<>("Ключ");
+        colKey.setId("colKey");
+        colKey.setCellValueFactory(new PropertyValueFactory<>("key"));
+        colKey.setPrefWidth(200);
+        colKey.setSortable(true);
+
+        TableColumn<Setting, String> colValue = new TableColumn<>("Значение");
+        colValue.setId("colValue");
+        colValue.setCellValueFactory(new PropertyValueFactory<>("value"));
+        colValue.setPrefWidth(200);
+        colValue.setSortable(true);
+
+        TableColumn<Setting, String> colDesc = new TableColumn<>("Описание");
+        colDesc.setId("colDesc");
+        colDesc.setCellValueFactory(new PropertyValueFactory<>("description"));
+        colDesc.setPrefWidth(500);
+        colDesc.setSortable(true);
+
+        table.getColumns().addAll(colKey, colValue, colDesc);
+
+        // Отключаем CONSTRAINED_RESIZE_POLICY — позволяет сохранять ширину колонок
+        table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
+
+        table.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            editBtn.setDisable(newVal == null);
+            deleteBtn.setDisable(newVal == null);
+        });
+
+        table.setOnMouseClicked(event -> {
+            if (event.getClickCount() == 2) {
+                Setting selected = table.getSelectionModel().getSelectedItem();
+                if (selected != null) {
+                    editSetting(selected);
+                }
+            }
+        });
+
+        // FilteredList → SortedList → TableView
+        filteredSettings = new FilteredList<>(FXCollections.observableArrayList(DataStore.getAllSettings()), p -> true);
+
+        sortedSettings = new SortedList<>(filteredSettings);
+        sortedSettings.comparatorProperty().bind(table.comparatorProperty());
+        table.setItems(sortedSettings);
+
+        return table;
+    }
+
+    private static void filterSettings(String filterText) {
+        if (filterText == null || filterText.trim().isEmpty()) {
+            filteredSettings.setPredicate(s -> true);
+        } else {
+            String lowerFilter = filterText.toLowerCase().trim();
+            filteredSettings.setPredicate(setting -> {
+                if (setting.getKey() != null && setting.getKey().toLowerCase().contains(lowerFilter)) return true;
+                if (setting.getValue() != null && setting.getValue().toLowerCase().contains(lowerFilter)) return true;
+                if (setting.getDescription() != null && setting.getDescription().toLowerCase().contains(lowerFilter)) return true;
+                return false;
+            });
+        }
+    }
+
+    private static void addSetting() {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Добавить настройку");
+
+        Label keyLabel = new Label("Ключ:");
+        TextField keyField = new TextField();
+        keyField.setPromptText("Например: app.name");
+
+        Label valueLabel = new Label("Значение:");
+        TextField valueField = new TextField();
+        valueField.setPromptText("Например: AdminSTO");
+
+        Label descLabel = new Label("Описание:");
+        TextField descField = new TextField();
+        descField.setPromptText("Например: Название приложения");
+
+        VBox dialogContent = new VBox(10,
+                keyLabel, keyField,
+                valueLabel, valueField,
+                descLabel, descField
+        );
+        dialogContent.setPadding(new Insets(15));
+
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        dialog.getDialogPane().setContent(dialogContent);
+
+        dialog.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.OK) {
+                String key = keyField.getText().trim();
+                String value = valueField.getText().trim();
+                String desc = descField.getText().trim();
+
+                if (!key.isEmpty()) {
+                    Setting setting = new Setting(key, value, desc);
+                    DataStore.addSetting(setting);
+                    refreshSettingsTable();
+                } else {
+                    showAlert("Ключ не может быть пустым");
+                }
+            }
+        });
+    }
+
+    private static void editSetting() {
+        Setting selected = settingsTable.getSelectionModel().getSelectedItem();
+        if (selected != null) {
+            editSetting(selected);
+        }
+    }
+
+    private static void editSetting(Setting setting) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Изменить настройку");
+
+        Label keyLabel = new Label("Ключ:");
+        TextField keyField = new TextField(setting.getKey());
+        keyField.setPromptText("Например: app.name");
+        keyField.setEditable(false); // Ключ нельзя менять
+
+        Label valueLabel = new Label("Значение:");
+        TextField valueField = new TextField(setting.getValue());
+        valueField.setPromptText("Например: AdminSTO");
+
+        Label descLabel = new Label("Описание:");
+        TextField descField = new TextField(setting.getDescription());
+        descField.setPromptText("Например: Название приложения");
+
+        VBox dialogContent = new VBox(10,
+                keyLabel, keyField,
+                valueLabel, valueField,
+                descLabel, descField
+        );
+        dialogContent.setPadding(new Insets(15));
+
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        dialog.getDialogPane().setContent(dialogContent);
+
+        dialog.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.OK) {
+                String value = valueField.getText().trim();
+                String desc = descField.getText().trim();
+
+                setting.setValue(value);
+                setting.setDescription(desc);
+                DataStore.updateSetting(setting);
+                refreshSettingsTable();
+            }
+        });
+    }
+
+    private static void deleteSetting() {
+        Setting selected = settingsTable.getSelectionModel().getSelectedItem();
+        if (selected != null) {
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                    "Удалить настройку '" + selected.getKey() + "'?",
+                    ButtonType.YES, ButtonType.NO);
+            confirm.setTitle("Подтверждение удаления");
+
+            confirm.showAndWait().ifPresent(response -> {
+                if (response == ButtonType.YES) {
+                    DataStore.deleteSetting(selected);
+                    refreshSettingsTable();
+                }
+            });
+        }
+    }
+
+    public static void refreshSettingsTable() {
+        masterDataSettings = FXCollections.observableArrayList(DataStore.getAllSettings());
+        filteredSettings = new FilteredList<>(masterDataSettings, p -> true);
+
+        if (settingsTable != null) {
+            sortedSettings = new SortedList<>(filteredSettings);
+            sortedSettings.comparatorProperty().bind(settingsTable.comparatorProperty());
+            settingsTable.setItems(sortedSettings);
+        }
+
+        if (searchField != null && searchField.getText() != null && !searchField.getText().isEmpty()) {
+            filterSettings(searchField.getText());
+        }
     }
 
     // ==================== Вкладка: Автозаполнение ====================
@@ -184,20 +502,19 @@ public class SettingsView {
 
         Button refreshBtn = new Button("Обновить список");
         refreshBtn.getStyleClass().add("save-button");
-        refreshBtn.setOnAction(e -> SettingsController.loadServiceSparePartsRows());
+        refreshBtn.setOnAction(e -> refreshServiceSparePartsRows());
 
         topButtons.getChildren().addAll(addBtn, editBtn, deleteBtn, refreshBtn);
 
         // Таблица связей на всю ширину
-        TableView<ServiceSparePartsRow> table = new TableView<>();
-        table.getStyleClass().add("table-view");
-        table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
-        VBox.setVgrow(table, Priority.ALWAYS);
-
-        // Загружаем данные в таблицу при инициализации
-        SettingsController.loadServiceSparePartsRows();
+        serviceSparePartsTable = new TableView<>();
+        serviceSparePartsTable.getStyleClass().add("table-view");
+        serviceSparePartsTable.setId("serviceSparePartsTable");
+        serviceSparePartsTable.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
+        VBox.setVgrow(serviceSparePartsTable, Priority.ALWAYS);
 
         TableColumn<ServiceSparePartsRow, String> colService = new TableColumn<>("Услуга");
+        colService.setId("colService");
         colService.setCellValueFactory(cell -> {
             Service service = cell.getValue().getService();
             return service != null ? javafx.beans.binding.Bindings.createObjectBinding(() -> service.getName()) : null;
@@ -205,14 +522,17 @@ public class SettingsView {
         colService.setMinWidth(280);
         colService.setPrefWidth(280);
         colService.setMaxWidth(280);
+        colService.setSortable(true);
 
         TableColumn<ServiceSparePartsRow, String> colSpareParts = new TableColumn<>("Запчасти");
+        colSpareParts.setId("colSpareParts");
         colSpareParts.setCellValueFactory(cell -> {
             String partsList = cell.getValue().getSparePartsList();
             return javafx.beans.binding.Bindings.createObjectBinding(() -> partsList != null ? partsList : "");
         });
         colSpareParts.setMinWidth(200);
         colSpareParts.setPrefWidth(1.7976931348623157E308); // MAX_VALUE для Double
+        colSpareParts.setSortable(true);
         // Сокращение текста при достижении конца колонки
         colSpareParts.setCellFactory(column -> new javafx.scene.control.TableCell<ServiceSparePartsRow, String>() {
             @Override
@@ -235,22 +555,27 @@ public class SettingsView {
             }
         });
 
-        SettingsController.setServiceSparePartsRowTable(table);
-
         // Добавляем колонки в таблицу
-        table.getColumns().addAll(colService, colSpareParts);
+        serviceSparePartsTable.getColumns().addAll(colService, colSpareParts);
+
+        // ObservableList → FilteredList → SortedList → TableView
+        masterDataServiceSpareParts = FXCollections.observableArrayList();
+        filteredServiceSparePartsRows = new FilteredList<>(masterDataServiceSpareParts, p -> true);
+        sortedServiceSparePartsRows = new SortedList<>(filteredServiceSparePartsRows);
+        sortedServiceSparePartsRows.comparatorProperty().bind(serviceSparePartsTable.comparatorProperty());
+        serviceSparePartsTable.setItems(sortedServiceSparePartsRows);
 
         // Отслеживание выбора строки
-        table.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
+        serviceSparePartsTable.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
             deleteBtn.setDisable(newSelection == null);
             editBtn.setDisable(newSelection == null);
         });
 
         // Двойной клик для редактирования
-        table.setMouseTransparent(false);
-        table.setOnMouseClicked(event -> {
+        serviceSparePartsTable.setMouseTransparent(false);
+        serviceSparePartsTable.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
-                ServiceSparePartsRow selected = table.getSelectionModel().getSelectedItem();
+                ServiceSparePartsRow selected = serviceSparePartsTable.getSelectionModel().getSelectedItem();
                 if (selected != null) {
                     showEditServiceSparePartDialog(selected);
                 }
@@ -258,28 +583,98 @@ public class SettingsView {
         });
 
         deleteBtn.setOnAction(e -> {
-            ServiceSparePartsRow selected = table.getSelectionModel().getSelectedItem();
+            ServiceSparePartsRow selected = serviceSparePartsTable.getSelectionModel().getSelectedItem();
             if (selected != null) {
                 Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Удалить все связи для услуги: " + selected.getService().getName() + "?\n\nВсе запчасти этой услуги будут удалены из настроек.", ButtonType.YES, ButtonType.NO);
                 alert.showAndWait();
                 if (alert.getResult() == ButtonType.YES) {
                     // Удаляем все связи для этой услуги
                     DataStore.deleteServiceSparePartsByServiceId(selected.getService().getId());
-                    SettingsController.loadServiceSparePartsRows();
+                    refreshServiceSparePartsRows();
                 }
             }
         });
 
         editBtn.setOnAction(e -> {
-            ServiceSparePartsRow selected = table.getSelectionModel().getSelectedItem();
+            ServiceSparePartsRow selected = serviceSparePartsTable.getSelectionModel().getSelectedItem();
             if (selected != null) {
                 showEditServiceSparePartDialog(selected);
             }
         });
 
-        panel.getChildren().addAll(topButtons, table);
+        panel.getChildren().addAll(topButtons, serviceSparePartsTable);
+
+        // Инициализация данных
+        refreshServiceSparePartsRows();
+
+        // Загружаем состояние таблицы ПОСЛЕ отрисовки
+        Platform.runLater(() -> {
+            if (serviceSparePartsTable != null) {
+                TableStateManager.loadTableState(serviceSparePartsTable, "serviceSparePartsTable");
+            }
+        });
 
         return panel;
+    }
+
+    public static void refreshServiceSparePartsRows() {
+        if (serviceSparePartsTable == null) return;
+        
+        // Получаем все связи
+        List<ServiceSparePart> relations = DataStore.getServiceSparePartsByServiceId(-1);
+
+        // Группируем связи по услугам
+        java.util.Map<Service, List<ServiceSparePart>> relationsByService = new java.util.HashMap<>();
+        for (ServiceSparePart relation : relations) {
+            Service service = DataStore.getServices().stream()
+                    .filter(s -> s.getId() == relation.getServiceId())
+                    .findFirst()
+                    .orElse(null);
+            if (service != null) {
+                relationsByService.computeIfAbsent(service, k -> new java.util.ArrayList<>()).add(relation);
+            }
+        }
+
+        // Создаем строки для таблицы
+        List<ServiceSparePartsRow> rows = new java.util.ArrayList<>();
+        for (java.util.Map.Entry<Service, List<ServiceSparePart>> entry : relationsByService.entrySet()) {
+            Service service = entry.getKey();
+            List<ServiceSparePart> serviceRelations = entry.getValue();
+
+            // Формируем список запчастей через запятую
+            StringBuilder sparePartsBuilder = new StringBuilder();
+            StringBuilder quantityBuilder = new StringBuilder();
+
+            for (int i = 0; i < serviceRelations.size(); i++) {
+                ServiceSparePart relation = serviceRelations.get(i);
+                SparePart part = DataStore.getSpareParts().stream()
+                        .filter(s -> s.getId() == relation.getSparePartId())
+                        .findFirst()
+                        .orElse(null);
+
+                if (part != null) {
+                    if (i > 0) {
+                        sparePartsBuilder.append(", ");
+                        quantityBuilder.append(", ");
+                    }
+                    sparePartsBuilder.append(part.getName());
+                    quantityBuilder.append(relation.getQuantity()).append(" ").append(relation.getUnitType());
+                }
+            }
+
+            ServiceSparePartsRow row = new ServiceSparePartsRow(
+                    service,
+                    sparePartsBuilder.toString(),
+                    quantityBuilder.toString()
+            );
+            rows.add(row);
+        }
+
+        // Обновляем ObservableList - FilteredList и SortedList обновятся автоматически
+        if (masterDataServiceSpareParts != null) {
+            masterDataServiceSpareParts.clear();
+            masterDataServiceSpareParts.addAll(rows);
+        }
     }
 
     // ==================== Вкладка: Расходники ТО ====================
@@ -287,14 +682,18 @@ public class SettingsView {
     private static VBox createToPartsPanel() {
         VBox panel = new VBox(10);
 
-        TableView<ToPart> table = new TableView<>();
-        table.getStyleClass().add("table-view");
+        toPartsTable = new TableView<>();
+        toPartsTable.getStyleClass().add("table-view");
+        toPartsTable.setId("toPartsTable");
 
         TableColumn<ToPart, String> colCarModel = new TableColumn<>("Модель авто");
+        colCarModel.setId("colCarModel");
         colCarModel.setCellValueFactory(new PropertyValueFactory<>("carModel"));
         colCarModel.setPrefWidth(200);
+        colCarModel.setSortable(true);
 
         TableColumn<ToPart, String> colSparePart = new TableColumn<>("Запчасть");
+        colSparePart.setId("colSparePart");
         colSparePart.setCellValueFactory(cell -> {
             int sparePartId = cell.getValue().getSparePartId();
             SparePart part = DataStore.getSpareParts().stream()
@@ -304,21 +703,31 @@ public class SettingsView {
             return part != null ? javafx.beans.binding.Bindings.createObjectBinding(() -> part.getName()) : null;
         });
         colSparePart.setPrefWidth(200);
+        colSparePart.setSortable(true);
 
         TableColumn<ToPart, Integer> colQuantity = new TableColumn<>("Кол-во");
+        colQuantity.setId("colQuantity");
         colQuantity.setCellValueFactory(new PropertyValueFactory<>("quantity"));
         colQuantity.setPrefWidth(80);
         colQuantity.getStyleClass().add("center-column");
+        colQuantity.setSortable(true);
 
         TableColumn<ToPart, String> colUnitType = new TableColumn<>("Ед. изм.");
+        colUnitType.setId("colUnitType");
         colUnitType.setCellValueFactory(new PropertyValueFactory<>("unitType"));
         colUnitType.setPrefWidth(80);
+        colUnitType.setSortable(true);
 
-        table.getColumns().addAll(colCarModel, colSparePart, colQuantity, colUnitType);
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        VBox.setVgrow(table, Priority.ALWAYS);
+        toPartsTable.getColumns().addAll(colCarModel, colSparePart, colQuantity, colUnitType);
+        toPartsTable.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
+        VBox.setVgrow(toPartsTable, Priority.ALWAYS);
 
-        SettingsController.setToPartsTable(table);
+        // ObservableList → FilteredList → SortedList → TableView
+        masterDataToParts = FXCollections.observableArrayList();
+        filteredToParts = new FilteredList<>(masterDataToParts, p -> true);
+        sortedToParts = new SortedList<>(filteredToParts);
+        sortedToParts.comparatorProperty().bind(toPartsTable.comparatorProperty());
+        toPartsTable.setItems(sortedToParts);
 
         // Форма добавления
         HBox formRow = new HBox(10);
@@ -390,9 +799,32 @@ public class SettingsView {
             }
         });
 
-        panel.getChildren().addAll(table, formRow);
+        panel.getChildren().addAll(toPartsTable, formRow);
+
+        // Инициализация данных
+        refreshToParts();
+
+        // Загружаем состояние таблицы ПОСЛЕ отрисовки
+        Platform.runLater(() -> {
+            if (toPartsTable != null) {
+                TableStateManager.loadTableState(toPartsTable, "toPartsTable");
+            }
+        });
 
         return panel;
+    }
+
+    public static void refreshToParts() {
+        if (toPartsTable == null) return;
+        
+        // Получаем все расходники ТО
+        List<ToPart> parts = DataStore.getToPartsByCarModel("");
+
+        // Обновляем ObservableList - FilteredList и SortedList обновятся автоматически
+        if (masterDataToParts != null) {
+            masterDataToParts.clear();
+            masterDataToParts.addAll(parts);
+        }
     }
 
     // ==================== ДИАЛОГ ДОБАВЛЕНИЯ СВЯЗИ ====================
@@ -576,6 +1008,10 @@ public class SettingsView {
             list.add(part.getName());
         }
         return list;
+    }
+
+    private static void showAlert(String message) {
+        showAlert(message, Alert.AlertType.WARNING);
     }
 
     private static void showAlert(String message, Alert.AlertType type) {

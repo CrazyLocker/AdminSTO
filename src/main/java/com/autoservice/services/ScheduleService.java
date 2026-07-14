@@ -213,7 +213,7 @@ public class ScheduleService {
         
         // Парсить дату из времени бэкапа (yyyyMMdd_HHmmss)
         try {
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
             LocalDate lastBackupDate = LocalDate.parse(lastBackupTime.substring(0, 8), formatter);
             LocalDate today = LocalDate.now();
             

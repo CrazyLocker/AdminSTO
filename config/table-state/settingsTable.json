@@ -1,0 +1,26 @@
+{
+  "tableId": "settingsTable",
+  "version": "1.0",
+  "timestamp": "2026-07-14T04:24:58.793074600Z",
+  "columns": [
+    {
+      "id": "colKey",
+      "width": 200.0,
+      "visible": true,
+      "index": 0
+    },
+    {
+      "id": "colValue",
+      "width": 200.0,
+      "visible": true,
+      "index": 1
+    },
+    {
+      "id": "colDesc",
+      "width": 500.0,
+      "visible": true,
+      "index": 2
+    }
+  ],
+  "sortOrder": []
+}

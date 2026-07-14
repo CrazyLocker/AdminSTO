@@ -1,0 +1,25 @@
+{
+  "tableId": "serviceSparePartsTable",
+  "version": "1.0",
+  "timestamp": "2026-07-14T04:24:58.794070700Z",
+  "columns": [
+    {
+      "id": "colService",
+      "width": 394.40000000000003,
+      "visible": true,
+      "index": 0
+    },
+    {
+      "id": "colSpareParts",
+      "width": 5000.0,
+      "visible": true,
+      "index": 1
+    }
+  ],
+  "sortOrder": [
+    {
+      "columnId": "colService",
+      "order": "DESC"
+    }
+  ]
+}
