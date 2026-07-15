@@ -1,5 +1,7 @@
 package com.autoservice;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -15,6 +17,8 @@ import java.sql.SQLException;
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class BaseTest {
+
+    private static final Logger logger = LoggerFactory.getLogger(BaseTest.class);
 
     @BeforeAll
     void setupDatabase() {
@@ -40,7 +44,7 @@ public abstract class BaseTest {
             stmt.close();
             DataStore.load(); // Сброс кэша
         } catch (Exception e) {
-            System.err.println("Ошибка очистки БД: " + e.getMessage());
+            logger.error("Ошибка очистки БД: {}", e.getMessage());
         }
     }
 

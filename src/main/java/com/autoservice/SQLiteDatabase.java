@@ -404,7 +404,7 @@ public class SQLiteDatabase extends AbstractDatabase {
         try (Connection conn = getConnection()) {
             int clientId = getClientId(order.getClient());
             if (clientId == -1) {
-                System.err.println("Client not found, order not saved");
+                logger.error("Клиент не найден, заказ не сохранен");
                 return;
             }
 

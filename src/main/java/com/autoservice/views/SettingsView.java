@@ -27,6 +27,7 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.CheckBoxTableCell;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.control.cell.TextFieldTableCell;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import javafx.application.Platform;
@@ -66,6 +67,14 @@ public class SettingsView {
     private static ObservableList<ToPartsRow> masterDataToParts;
     private static FilteredList<ToPartsRow> filteredToParts;
     private static SortedList<ToPartsRow> sortedToParts;
+
+    // ==================== ПАНЕЛЬ НАСТРОЕК (для индикаторов загрузки) ====================
+
+    private static TabPane settingsPane;
+
+    public static TabPane getSettingsPane() {
+        return settingsPane;
+    }
 
     public static TableView<Setting> getSettingsTable() {
         return settingsTable;
@@ -109,8 +118,9 @@ public class SettingsView {
     }
 
     public static VBox create() {
-        TabPane settingsPane = new TabPane();
-        settingsPane.getStyleClass().add("settings-tabpane");
+        TabPane settingsPaneLocal = new TabPane();
+        settingsPaneLocal.getStyleClass().add("settings-tabpane");
+        settingsPane = settingsPaneLocal;
 
         // Вкладка "Настройки приложения" (новая)
         Tab settingsAppTab = new Tab("Настройки приложения");
@@ -259,6 +269,23 @@ public class SettingsView {
         table.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             editBtn.setDisable(newVal == null);
             deleteBtn.setDisable(newVal == null);
+        });
+
+        // ========== ГОЯЧИЕ КЛАВИШИ ==========
+        table.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> {
+            if (e.isControlDown() && e.getCode() == KeyCode.N) {
+                e.consume();
+                addSetting();
+            } else if (e.isControlDown() && e.getCode() == KeyCode.S) {
+                e.consume();
+                editSetting();
+            } else if (e.getCode() == javafx.scene.input.KeyCode.DELETE) {
+                e.consume();
+                deleteBtn.fire();
+            } else if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
+                e.consume();
+                searchField.clear();
+            }
         });
 
         table.setOnMouseClicked(event -> {

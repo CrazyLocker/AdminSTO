@@ -2,6 +2,8 @@ package com.autoservice;
 
 import com.autoservice.model.ServiceSparePartsList;
 import com.autoservice.model.ServiceSparePartsListItem;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,6 +18,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * Тесты для новой структуры service_spare_parts_lists.
  */
 public class ServiceSparePartsListTest extends BaseTest {
+
+    private static final Logger logger = LoggerFactory.getLogger(ServiceSparePartsListTest.class);
 
     @BeforeAll
     static void setUpClass() {
@@ -33,7 +37,7 @@ public class ServiceSparePartsListTest extends BaseTest {
             stmt.close();
             DataStore.load(); // Сброс кэша
         } catch (Exception e) {
-            System.err.println("Ошибка очистки БД: " + e.getMessage());
+            logger.error("Ошибка очистки БД: {}", e.getMessage());
         }
     }
 

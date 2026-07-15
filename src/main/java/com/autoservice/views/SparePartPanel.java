@@ -18,6 +18,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -37,6 +38,7 @@ public class SparePartPanel {
     private static ObservableList<SparePart> masterData;
     private static FilteredList<SparePart> filteredData;
     private static SortedList<SparePart> sortedData;
+    private static Button deleteBtn;
 
     public static TableView<SparePart> getTable() {
         return table;
@@ -115,6 +117,24 @@ public class SparePartPanel {
             }
         });
 
+        // ========== ГОЯЧИЕ КЛАВИШИ ==========
+        table.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> {
+            if (e.isControlDown() && e.getCode() == KeyCode.N) {
+                e.consume();
+                showAddSparePartDialog();
+            } else if (e.isControlDown() && e.getCode() == KeyCode.S) {
+                e.consume();
+                SparePart selected = table.getSelectionModel().getSelectedItem();
+                if (selected != null) editSparePartDialog(selected);
+            } else if (e.getCode() == javafx.scene.input.KeyCode.DELETE) {
+                e.consume();
+                deleteBtn.fire();
+            } else if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
+                e.consume();
+                searchField.clear();
+            }
+        });
+
         // FilteredList → SortedList → TableView
         masterData = FXCollections.observableArrayList(DataStore.getSpareParts());
         filteredData = new FilteredList<>(masterData, p -> true);
@@ -133,7 +153,7 @@ public class SparePartPanel {
         addBtn.getStyleClass().add("add-button");
         addBtn.setOnAction(e -> showAddSparePartDialog());
 
-        Button deleteBtn = new Button("Удалить выбранные");
+        deleteBtn = new Button("Удалить выбранные");
         deleteBtn.getStyleClass().add("delete-button");
         deleteBtn.setOnAction(e -> {
             List<SparePart> selectedItems = table.getSelectionModel().getSelectedItems();

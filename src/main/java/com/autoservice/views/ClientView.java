@@ -17,6 +17,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -206,6 +207,27 @@ public class ClientView {
         table.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             editBtn.setDisable(newVal == null);
             deleteBtn.setDisable(newVal == null);
+        });
+
+        // ========== ГОЯЧИЕ КЛАВИШИ ==========
+        table.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> {
+            if (e.isControlDown() && e.getCode() == KeyCode.N) {
+                e.consume();
+                showAddClientDialog();
+            } else if (e.isControlDown() && e.getCode() == KeyCode.S) {
+                e.consume();
+                Client selected = table.getSelectionModel().getSelectedItem();
+                if (selected != null) showEditClientDialog(selected);
+            } else if (e.getCode() == javafx.scene.input.KeyCode.DELETE) {
+                e.consume();
+                Client selected = table.getSelectionModel().getSelectedItem();
+                if (selected != null) {
+                    deleteBtn.fire();
+                }
+            } else if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
+                e.consume();
+                searchField.clear();
+            }
         });
 
         table.setOnMouseClicked(event -> {

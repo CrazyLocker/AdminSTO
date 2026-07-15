@@ -15,6 +15,7 @@ import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.MouseButton;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
@@ -116,6 +117,23 @@ public class OrderView {
             editBtn.setDisable(newVal == null);
             deleteBtn.setDisable(newVal == null);
             printBtn.setDisable(newVal == null);
+        });
+
+        // ========== ГОЯЧИЕ КЛАВИШИ ==========
+        orderTable.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> {
+            if (e.isControlDown() && e.getCode() == javafx.scene.input.KeyCode.S) {
+                e.consume();
+                onEdit();
+            } else if (e.isControlDown() && e.getCode() == KeyCode.N) {
+                e.consume();
+                OrderController.createOrder();
+            } else if (e.getCode() == javafx.scene.input.KeyCode.DELETE) {
+                e.consume();
+                onDelete();
+            } else if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
+                e.consume();
+                searchField.clear();
+            }
         });
 
         root.getChildren().addAll(topPanel, advancedToggleBtn, advancedFilterPanel, orderTable);

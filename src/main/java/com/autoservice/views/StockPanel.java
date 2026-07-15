@@ -17,6 +17,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -99,6 +100,17 @@ public class StockPanel {
 
         table.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (stockIncomeBtn != null) stockIncomeBtn.setDisable(newVal == null);
+        });
+
+        // ========== ГОЯЧИЕ КЛАВИШИ ==========
+        table.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> {
+            if (e.isControlDown() && e.getCode() == KeyCode.S) {
+                e.consume();
+                SparePart selected = table.getSelectionModel().getSelectedItem();
+                if (selected != null) editStockDialog(selected);
+            } else if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
+                e.consume();
+            }
         });
 
         table.setOnMouseClicked(event -> {
