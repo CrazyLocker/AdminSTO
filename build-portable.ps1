@@ -124,6 +124,8 @@ set APP_DIR=%CD%
 jre\bin\java.exe ^
     --enable-native-access=javafx.graphics ^
     --enable-native-access=org.xerial.sqlitejdbc ^
+    -Duser.language=ru ^
+    -Duser.country=RU ^
     -Djava.library.path="%APP_DIR%\lib" ^
     -Duser.dir="%APP_DIR%" ^
     -Dapp.home="%APP_DIR%" ^
