@@ -61,7 +61,8 @@ Write-Host "    Готово." -ForegroundColor Green
 Write-Host "[3/7] Создание встроенного JRE (jlink)..." -ForegroundColor Yellow
 & "$JDK_PATH/bin/jlink.exe" `
     --module-path "$JDK_PATH/jmods" `
-    --add-modules java.base,java.sql,jdk.unsupported,java.scripting,java.desktop,java.logging,java.instrument,java.management,jdk.zipfs,java.sql.rowset,java.naming,java.security.sasl,java.xml,jdk.httpserver,jdk.management `
+    --add-modules java.base,java.sql,jdk.unsupported,java.scripting,java.desktop,java.logging,java.instrument,java.management,jdk.zipfs,java.sql.rowset,java.naming,java.security.sasl,java.xml,jdk.httpserver,jdk.management,jdk.localedata `
+    --include-locales ru `
     --strip-debug `
     --no-man-pages `
     --no-header-files `
