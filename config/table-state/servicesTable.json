@@ -1,7 +1,7 @@
 {
   "tableId": "servicesTable",
   "version": "1.0",
-  "timestamp": "2026-07-15T04:51:24.523944100Z",
+  "timestamp": "2026-07-15T05:00:09.042608300Z",
   "columns": [
     {
       "id": "colServiceName",
@@ -10,8 +10,8 @@
       "index": 0
     },
     {
-      "id": "colDuration",
-      "width": 152.0,
+      "id": "colPartNumber",
+      "width": 150.0,
       "visible": true,
       "index": 1
     },
@@ -22,22 +22,16 @@
       "index": 2
     },
     {
-      "id": "colSparePart",
-      "width": 459.20000000000005,
+      "id": "colDuration",
+      "width": 152.0,
       "visible": true,
       "index": 3
-    },
-    {
-      "id": "colPartNumber",
-      "width": 150.0,
-      "visible": true,
-      "index": 4
     }
   ],
   "sortOrder": [
     {
-      "columnId": "colPrice",
-      "order": "DESC"
+      "columnId": "colServiceName",
+      "order": "ASC"
     }
   ]
 }

@@ -55,14 +55,40 @@ public class EditServiceDialog {
 
         TextField priceField = new TextField(isAdd ? "" : String.valueOf(service.getPrice()));
         priceField.setPrefWidth(150);
-        TooltipHelper.setToolTip(priceField, "Обязательное поле, должно быть положительным числом");
+        TooltipHelper.setToolTip(priceField, "Обязательное поле, только цифры и десятичная точка");
+        
+        // Валидация для поля Цена: только цифры и точка
+        priceField.textProperty().addListener((obs, oldVal, newVal) -> {
+            if (!newVal.isEmpty() && !newVal.matches("[0-9.]*")) {
+                priceField.setText(newVal.replaceAll("[^0-9.]", ""));
+            }
+        });
 
         TextField durationField = new TextField(isAdd ? "" : String.valueOf(service.getDuration()));
         durationField.setPrefWidth(150);
-        TooltipHelper.setToolTip(durationField, "Обязательное поле, должно быть положительным числом");
+        TooltipHelper.setToolTip(durationField, "Обязательное поле, только цифры");
+        
+        // Валидация для поля Длительность: только цифры
+        durationField.textProperty().addListener((obs, oldVal, newVal) -> {
+            if (!newVal.isEmpty() && !newVal.matches("[0-9]*")) {
+                durationField.setText(newVal.replaceAll("[^0-9]", ""));
+            }
+        });
 
         TextField partNumberField = new TextField(isAdd ? "" : service.getPartNumber());
         partNumberField.setPrefWidth(200);
+        TooltipHelper.setToolTip(partNumberField, "Только латиница (CAPS), цифры и дефис. Пробелы заменяются на дефисы");
+        
+        // Валидация для поля Артикул: латиница (CAPS), цифры, дефис
+        partNumberField.textProperty().addListener((obs, oldVal, newVal) -> {
+            // Заменяем пробелы на дефисы
+            String result = newVal.replace(" ", "-");
+            // Оставляем только латинские буквы (верхний регистр), цифры и дефисы
+            result = result.replaceAll("[^A-Z0-9-]", "");
+            // Конвертируем в верхний регистр
+            result = result.toUpperCase();
+            partNumberField.setText(result);
+        });
 
         grid.add(new Label("Название:"), 0, 0);
         grid.add(nameField, 1, 0);
@@ -93,6 +119,7 @@ public class EditServiceDialog {
             String name = nameField.getText().trim();
             String priceText = priceField.getText().trim();
             String durationText = durationField.getText().trim();
+            String partNumber = partNumberField.getText().trim();
             
             if (!ValidationUtils.isNotBlank(name, "Название")) {
                 ValidationErrorIndicator.showError(nameField, "Название услуги обязательно для заполнения");
@@ -121,6 +148,14 @@ public class EditServiceDialog {
                 isValid = false;
             }
             
+            if (!partNumber.isEmpty()) {
+                // Проверяем, что артикул соответствует формату (латиница, цифры, дефис)
+                if (!partNumber.matches("[A-Z0-9-]+")) {
+                    ValidationErrorIndicator.showError(partNumberField, "Артикул должен содержать только латинские буквы (CAPS), цифры и дефис");
+                    isValid = false;
+                }
+            }
+            
             if (!isValid) {
                 return;
             }
@@ -128,7 +163,7 @@ public class EditServiceDialog {
             service.setName(name);
             service.setPrice(price);
             service.setDuration(duration);
-            service.setPartNumber(partNumberField.getText().trim());
+            service.setPartNumber(partNumber);
             
             if (isAdd) {
                 ServicePanelController.addService(service);
