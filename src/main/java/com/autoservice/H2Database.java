@@ -90,6 +90,7 @@ public class H2Database extends AbstractDatabase {
                 "part_number TEXT DEFAULT '', " +
                 "manufacturer TEXT DEFAULT '', " +
                 "compatible_models TEXT DEFAULT '', " +
+                "note TEXT DEFAULT '', " +
                 "purchase_price REAL CHECK(purchase_price >= 0), " +
                 "retail_price REAL NOT NULL CHECK(retail_price >= 0), " +
                 "stock REAL DEFAULT 0 CHECK(stock >= 0), " +
@@ -154,6 +155,7 @@ public class H2Database extends AbstractDatabase {
                 "spare_part_id INTEGER NOT NULL CHECK(spare_part_id > 0), " +
                 "quantity INTEGER DEFAULT 1 CHECK(quantity > 0), " +
                 "unit_type TEXT DEFAULT 'шт' CHECK(unit_type IN ('шт', 'л', 'компл')), " +
+                "note TEXT DEFAULT '', " +
                 "active INTEGER DEFAULT 1 CHECK(active IN (0, 1))" +
                 ")";
 
@@ -301,7 +303,7 @@ public class H2Database extends AbstractDatabase {
     
     @Override
     public void addSparePart(SparePart part) {
-        String sql = "MERGE INTO spare_parts (name, purchase_price, retail_price, stock, part_number, manufacturer, compatible_models, min_stock, location, unit_type) KEY(name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "MERGE INTO spare_parts (name, purchase_price, retail_price, stock, part_number, manufacturer, compatible_models, note, min_stock, location, unit_type) KEY(name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -312,9 +314,10 @@ public class H2Database extends AbstractDatabase {
             pstmt.setString(5, part.getPartNumber());
             pstmt.setString(6, part.getManufacturer());
             pstmt.setString(7, part.getCompatibleModels());
-            pstmt.setDouble(8, part.getMinStock());
-            pstmt.setString(9, part.getLocation());
-            pstmt.setString(10, part.getUnitType());
+            pstmt.setString(8, part.getNote());
+            pstmt.setDouble(9, part.getMinStock());
+            pstmt.setString(10, part.getLocation());
+            pstmt.setString(11, part.getUnitType());
             pstmt.executeUpdate();
             
             // Получаем сгенерированный id
@@ -348,7 +351,7 @@ public class H2Database extends AbstractDatabase {
         try (Connection conn = getConnection()) {
             int clientId = getClientId(order.getClient());
             if (clientId == -1) {
-                System.err.println("Client not found, order not saved");
+                logger.error("Client not found, order not saved");
                 return;
             }
 
@@ -520,7 +523,7 @@ public class H2Database extends AbstractDatabase {
             pstmt.setInt(1, id);
             pstmt.executeUpdate();
         } catch (SQLException e) {
-            System.err.println("Delete appointment error: " + e.getMessage());
+            logger.error("Delete appointment error: {}", e.getMessage());
         }
     }
 }

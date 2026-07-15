@@ -9,7 +9,9 @@ import com.autoservice.model.ServiceSparePartsListItem;
 import com.autoservice.model.ToPart;
 import com.autoservice.services.BackupService;
 import com.autoservice.services.ScheduleService;
+import com.autoservice.services.SettingService;
 import com.autoservice.views.ServiceSparePartsRow;
+import com.autoservice.views.ToPartsRow;
 import com.autoservice.views.SettingsView;
 import javafx.scene.control.TableView;
 
@@ -31,6 +33,7 @@ public class SettingsController {
     private static TableView<ServiceSparePartsList> serviceSparePartsListsTable;
     private static TableView<ToPart> toPartsTable;
     private static TableView<ServiceSparePartsRow> serviceSparePartsRowTable;
+    private static TableView<ToPartsRow> toPartsRowTable;
 
     // ==================== SERVICE-SPARE PART RELATIONSHIPS ====================
 
@@ -167,6 +170,11 @@ public class SettingsController {
         loadToRemoveParts();
     }
 
+    public static void setToPartsRowTable(TableView<ToPartsRow> table) {
+        toPartsRowTable = table;
+        loadToRemovePartsRows();
+    }
+
     private static void loadToRemoveParts() {
         if (toPartsTable == null) return;
 
@@ -175,19 +183,83 @@ public class SettingsController {
         toPartsTable.setItems(javafx.collections.FXCollections.observableArrayList(parts));
     }
 
+    /**
+     * Загружает расходники ТО в таблицу с одной строкой на модель авто.
+     * Запчасти объединяются в одну строку через запятую.
+     */
+    private static void loadToRemovePartsRows() {
+        if (toPartsRowTable == null) return;
+
+        // Получаем все расходники
+        List<ToPart> parts = DataStore.getToPartsByCarModel("");
+
+        // Группируем расходники по моделям авто
+        java.util.Map<String, List<ToPart>> partsByModel = new java.util.HashMap<>();
+        for (ToPart part : parts) {
+            String carModel = part.getCarModel();
+            partsByModel.computeIfAbsent(carModel, k -> new java.util.ArrayList<>()).add(part);
+        }
+
+        // Создаем строки для таблицы
+        java.util.List<ToPartsRow> rows = new java.util.ArrayList<>();
+        for (java.util.Map.Entry<String, List<ToPart>> entry : partsByModel.entrySet()) {
+            String carModel = entry.getKey();
+            List<ToPart> modelParts = entry.getValue();
+
+            // Формируем список запчастей через запятую
+            StringBuilder sparePartsBuilder = new StringBuilder();
+            StringBuilder quantitiesBuilder = new StringBuilder();
+            StringBuilder notesBuilder = new StringBuilder();
+            ToPart firstPart = modelParts.get(0); // Используем первую запись как основную
+
+            for (int i = 0; i < modelParts.size(); i++) {
+                ToPart part = modelParts.get(i);
+                SparePart sparePart = DataStore.getSpareParts().stream()
+                        .filter(s -> s.getId() == part.getSparePartId())
+                        .findFirst()
+                        .orElse(null);
+
+                if (sparePart != null) {
+                    if (i > 0) {
+                        sparePartsBuilder.append(", ");
+                        quantitiesBuilder.append(", ");
+                    }
+                    sparePartsBuilder.append(sparePart.getName());
+                    quantitiesBuilder.append(part.getQuantity()).append(" ").append(part.getUnitType());
+                }
+            }
+
+            ToPartsRow row = new ToPartsRow(
+                    firstPart,
+                    carModel,
+                    sparePartsBuilder.toString(),
+                    firstPart.getQuantity(),
+                    firstPart.getUnitType(),
+                    firstPart.getNote() != null ? firstPart.getNote() : ""
+            );
+            rows.add(row);
+        }
+
+        // Обновляем таблицу
+        toPartsRowTable.setItems(javafx.collections.FXCollections.observableArrayList(rows));
+    }
+
     public static void addToPart(ToPart part) {
         DataStore.addToPart(part);
         loadToRemoveParts();
+        loadToRemovePartsRows();
     }
 
     public static void updateToPart(ToPart part) {
         DataStore.updateToPart(part);
         loadToRemoveParts();
+        loadToRemovePartsRows();
     }
 
     public static void deleteToPart(ToPart part) {
         DataStore.deleteToPart(part);
         loadToRemoveParts();
+        loadToRemovePartsRows();
     }
 
     // ==================== SETTINGS ====================
@@ -203,6 +275,13 @@ public class SettingsController {
     }
 
     public static void saveBackupSettings(boolean enabled, String time, int retention) {
+        // Сохраняем настройки в базу данных
+        SettingService.setAutoAddSparePartsEnabled(enabled);
+        SettingService.setSparePartConfirmationRequired(false); // для совместимости
+        
+        // Сохраняем время и количество копий в настройки
+        SettingService.saveBackupSettings(enabled, time, retention);
+        
         ScheduleService.saveSettings(enabled, time, retention);
     }
 

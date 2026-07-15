@@ -403,6 +403,10 @@ public class DataStore {
         return DatabaseFactory.getDatabase().getToPartsByCarModel(carModel);
     }
 
+    public static List<String> getAllCarModels() {
+        return DatabaseFactory.getDatabase().getAllCarModels();
+    }
+
     public static void addToPart(ToPart part) {
         DatabaseFactory.getDatabase().addToPart(part);
         toParts.add(part);

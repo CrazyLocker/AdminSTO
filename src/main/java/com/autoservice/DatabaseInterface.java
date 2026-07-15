@@ -117,6 +117,8 @@ public interface DatabaseInterface {
     
     List<com.autoservice.model.ToPart> getToPartsByCarModel(String carModel);
     
+    List<String> getAllCarModels();
+    
     void addToPart(com.autoservice.model.ToPart part);
     
     void updateToPart(com.autoservice.model.ToPart part);

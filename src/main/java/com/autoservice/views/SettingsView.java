@@ -35,6 +35,7 @@ import javafx.stage.FileChooser;
 import java.io.File;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -61,10 +62,10 @@ public class SettingsView {
 
     // ==================== РАСХОДНИКИ ТО ====================
 
-    private static TableView<ToPart> toPartsTable;
-    private static ObservableList<ToPart> masterDataToParts;
-    private static FilteredList<ToPart> filteredToParts;
-    private static SortedList<ToPart> sortedToParts;
+    private static TableView<ToPartsRow> toPartsTable;
+    private static ObservableList<ToPartsRow> masterDataToParts;
+    private static FilteredList<ToPartsRow> filteredToParts;
+    private static SortedList<ToPartsRow> sortedToParts;
 
     public static TableView<Setting> getSettingsTable() {
         return settingsTable;
@@ -74,9 +75,15 @@ public class SettingsView {
         return serviceSparePartsTable;
     }
 
-    public static TableView<ToPart> getToPartsTable() {
+    public static TableView<ToPartsRow> getToPartsTable() {
         return toPartsTable;
     }
+
+    private static final List<String> GWM_MODELS = Arrays.asList(
+            "Haval Jolion", "Haval F7", "Haval F7x", "Haval Dargo", "Haval Big Dog",
+            "Haval H6", "Haval H9", "GWM Poer", "GWM Tank 300", "GWM Tank 500",
+            "GWM Wingle 7", "GWM Cannon", "Great Wall Poer"
+    );
 
     public static void showSettingsWindow() {
         Stage stage = new Stage();
@@ -686,39 +693,88 @@ public class SettingsView {
         toPartsTable.getStyleClass().add("table-view");
         toPartsTable.setId("toPartsTable");
 
-        TableColumn<ToPart, String> colCarModel = new TableColumn<>("Модель авто");
+        TableColumn<ToPartsRow, String> colCarModel = new TableColumn<>("Модель авто");
         colCarModel.setId("colCarModel");
-        colCarModel.setCellValueFactory(new PropertyValueFactory<>("carModel"));
+        colCarModel.setCellValueFactory(cell -> {
+            String carModel = cell.getValue().getCarModel();
+            return javafx.beans.binding.Bindings.createObjectBinding(() -> carModel != null ? carModel : "");
+        });
         colCarModel.setPrefWidth(200);
         colCarModel.setSortable(true);
 
-        TableColumn<ToPart, String> colSparePart = new TableColumn<>("Запчасть");
-        colSparePart.setId("colSparePart");
-        colSparePart.setCellValueFactory(cell -> {
-            int sparePartId = cell.getValue().getSparePartId();
-            SparePart part = DataStore.getSpareParts().stream()
-                    .filter(s -> s.getId() == sparePartId)
-                    .findFirst()
-                    .orElse(null);
-            return part != null ? javafx.beans.binding.Bindings.createObjectBinding(() -> part.getName()) : null;
+        TableColumn<ToPartsRow, String> colSpareParts = new TableColumn<>("Запчасти");
+        colSpareParts.setId("colSpareParts");
+        colSpareParts.setCellValueFactory(cell -> {
+            String sparePartsList = cell.getValue().getSparePartName();
+            return javafx.beans.binding.Bindings.createObjectBinding(() -> sparePartsList != null ? sparePartsList : "");
         });
-        colSparePart.setPrefWidth(200);
-        colSparePart.setSortable(true);
+        colSpareParts.setPrefWidth(250);
+        colSpareParts.setSortable(true);
+        // Сокращение текста при достижении конца колонки
+        colSpareParts.setCellFactory(column -> new javafx.scene.control.TableCell<ToPartsRow, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setTooltip(null);
+                } else {
+                    // Ограничиваем длину текста (до 70 символов)
+                    String displayText = item;
+                    if (item.length() > 70) {
+                        displayText = item.substring(0, 67) + "...";
+                    }
+                    setText(displayText);
+                    // Tooltip отключён - текст сокращается, полный текст виден при выделении строки
+                    setTooltip(null);
+                }
+            }
+        });
 
-        TableColumn<ToPart, Integer> colQuantity = new TableColumn<>("Кол-во");
+        TableColumn<ToPartsRow, Integer> colQuantity = new TableColumn<>("Кол-во");
         colQuantity.setId("colQuantity");
-        colQuantity.setCellValueFactory(new PropertyValueFactory<>("quantity"));
+        colQuantity.setCellValueFactory(cell -> {
+            Integer quantity = cell.getValue().getQuantity();
+            return javafx.beans.binding.Bindings.createObjectBinding(() -> quantity);
+        });
         colQuantity.setPrefWidth(80);
         colQuantity.getStyleClass().add("center-column");
         colQuantity.setSortable(true);
 
-        TableColumn<ToPart, String> colUnitType = new TableColumn<>("Ед. изм.");
+        TableColumn<ToPartsRow, String> colUnitType = new TableColumn<>("Ед. изм.");
         colUnitType.setId("colUnitType");
-        colUnitType.setCellValueFactory(new PropertyValueFactory<>("unitType"));
+        colUnitType.setCellValueFactory(cell -> {
+            String unitType = cell.getValue().getUnitType();
+            return javafx.beans.binding.Bindings.createObjectBinding(() -> unitType != null ? unitType : "");
+        });
         colUnitType.setPrefWidth(80);
         colUnitType.setSortable(true);
 
-        toPartsTable.getColumns().addAll(colCarModel, colSparePart, colQuantity, colUnitType);
+        TableColumn<ToPartsRow, String> colNote = new TableColumn<>("Примечание");
+        colNote.setId("colNote");
+        colNote.setCellValueFactory(cell -> {
+            String note = cell.getValue().getNote();
+            return javafx.beans.binding.Bindings.createObjectBinding(() -> note != null ? note : "");
+        });
+        colNote.setPrefWidth(200);
+        colNote.setSortable(true);
+        colNote.setCellFactory(column -> new javafx.scene.control.TableCell<ToPartsRow, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    String displayText = item;
+                    if (item.length() > 50) {
+                        displayText = item.substring(0, 47) + "...";
+                    }
+                    setText(displayText);
+                }
+            }
+        });
+
+        toPartsTable.getColumns().addAll(colCarModel, colSpareParts, colQuantity, colUnitType, colNote);
         toPartsTable.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(toPartsTable, Priority.ALWAYS);
 
@@ -729,77 +785,49 @@ public class SettingsView {
         sortedToParts.comparatorProperty().bind(toPartsTable.comparatorProperty());
         toPartsTable.setItems(sortedToParts);
 
-        // Форма добавления
-        HBox formRow = new HBox(10);
-        formRow.setAlignment(Pos.CENTER_LEFT);
-        formRow.setPadding(new Insets(10, 0, 0, 0));
+        // Отслеживание выбора строки
+        toPartsTable.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
+            deleteBtn.setDisable(newSelection == null);
+        });
 
-        TextField carModelField = new TextField();
-        carModelField.setPromptText("Модель авто (например, VAZ 2114)");
-        carModelField.setPrefWidth(200);
-
-        ComboBox<String> sparePartCombo = new ComboBox<>();
-        sparePartCombo.setPromptText("Выберите запчасть");
-        sparePartCombo.setPrefWidth(200);
-        sparePartCombo.setItems(getSparePartNamesObservable());
-
-        TextField quantityField = new TextField("1");
-        quantityField.setPromptText("Кол-во");
-        quantityField.setPrefWidth(80);
-        ComboBox<String> unitTypeCombo = new ComboBox<>(FXCollections.observableArrayList("шт", "л", "компл"));
-        unitTypeCombo.getSelectionModel().selectFirst();
-        unitTypeCombo.setPrefWidth(80);
-
-        Button addBtn = new Button("Добавить связь");
-        addBtn.getStyleClass().add("add-button");
-
-        formRow.getChildren().addAll(carModelField, sparePartCombo, quantityField, unitTypeCombo, addBtn);
-
-        addBtn.setOnAction(e -> {
-            String carModel = carModelField.getText().trim();
-            String sparePartName = sparePartCombo.getValue();
-            int quantity;
-            String unitType = unitTypeCombo.getValue();
-
-            try {
-                quantity = Integer.parseInt(quantityField.getText());
-            } catch (NumberFormatException ex) {
-                showAlert("Неверное количество", Alert.AlertType.WARNING);
-                return;
-            }
-
-            if (carModel.isEmpty()) {
-                showAlert("Введите модель авто", Alert.AlertType.WARNING);
-                return;
-            }
-
-            if (sparePartName == null) {
-                showAlert("Выберите запчасть", Alert.AlertType.WARNING);
-                return;
-            }
-
-            SparePart part = DataStore.getSpareParts().stream()
-                    .filter(s -> s.getName().equals(sparePartName))
-                    .findFirst()
-                    .orElse(null);
-
-            if (part != null) {
-                ToPart toPart = new ToPart();
-                toPart.setCarModel(carModel);
-                toPart.setSparePartId(part.getId());
-                toPart.setQuantity(quantity);
-                toPart.setUnitType(unitType);
-                toPart.setActive(true);
-
-                SettingsController.addToPart(toPart);
-
-                carModelField.clear();
-                sparePartCombo.setValue(null);
-                quantityField.setText("1");
+        // Двойной клик для редактирования
+        toPartsTable.setMouseTransparent(false);
+        toPartsTable.setOnMouseClicked(event -> {
+            if (event.getClickCount() == 2) {
+                ToPartsRow selected = toPartsTable.getSelectionModel().getSelectedItem();
+                if (selected != null) {
+                    showEditToPartDialog(selected);
+                }
             }
         });
 
-        panel.getChildren().addAll(toPartsTable, formRow);
+        // Верхняя панель с кнопками
+        HBox topButtons = new HBox(10);
+        topButtons.setAlignment(Pos.CENTER_LEFT);
+
+        Button addBtn = new Button("Добавить");
+        addBtn.getStyleClass().add("add-button");
+        addBtn.setOnAction(e -> showAddToPartDialog());
+
+        deleteBtn = new Button("Удалить");
+        deleteBtn.getStyleClass().add("delete-button");
+        deleteBtn.setDisable(true);
+        deleteBtn.setOnAction(e -> {
+            ToPartsRow selected = toPartsTable.getSelectionModel().getSelectedItem();
+            if (selected != null) {
+                // Удаляем все расходники для этой модели авто
+                DataStore.deleteToPartsByCarModel(selected.getCarModel());
+                refreshToParts();
+            }
+        });
+
+        Button refreshBtn = new Button("Обновить список");
+        refreshBtn.getStyleClass().add("save-button");
+        refreshBtn.setOnAction(e -> refreshToParts());
+
+        topButtons.getChildren().addAll(addBtn, deleteBtn, refreshBtn);
+
+        panel.getChildren().addAll(topButtons, toPartsTable);
 
         // Инициализация данных
         refreshToParts();
@@ -820,10 +848,53 @@ public class SettingsView {
         // Получаем все расходники ТО
         List<ToPart> parts = DataStore.getToPartsByCarModel("");
 
+        // Группируем расходники по моделям авто
+        java.util.Map<String, List<ToPart>> partsByModel = new java.util.HashMap<>();
+        for (ToPart part : parts) {
+            String carModel = part.getCarModel();
+            partsByModel.computeIfAbsent(carModel, k -> new java.util.ArrayList<>()).add(part);
+        }
+
+        // Создаем строки для таблицы
+        java.util.List<ToPartsRow> rows = new java.util.ArrayList<>();
+        for (java.util.Map.Entry<String, List<ToPart>> entry : partsByModel.entrySet()) {
+            String carModel = entry.getKey();
+            List<ToPart> modelParts = entry.getValue();
+
+            // Формируем список запчастей через запятую
+            StringBuilder sparePartsBuilder = new StringBuilder();
+            ToPart firstPart = modelParts.get(0); // Используем первую запись как основную
+
+            for (int i = 0; i < modelParts.size(); i++) {
+                ToPart part = modelParts.get(i);
+                SparePart sparePart = DataStore.getSpareParts().stream()
+                        .filter(s -> s.getId() == part.getSparePartId())
+                        .findFirst()
+                        .orElse(null);
+
+                if (sparePart != null) {
+                    if (i > 0) {
+                        sparePartsBuilder.append(", ");
+                    }
+                    sparePartsBuilder.append(sparePart.getName());
+                }
+            }
+
+            ToPartsRow row = new ToPartsRow(
+                    firstPart,
+                    carModel,
+                    sparePartsBuilder.toString(),
+                    firstPart.getQuantity(),
+                    firstPart.getUnitType(),
+                    firstPart.getNote() != null ? firstPart.getNote() : ""
+            );
+            rows.add(row);
+        }
+
         // Обновляем ObservableList - FilteredList и SortedList обновятся автоматически
         if (masterDataToParts != null) {
             masterDataToParts.clear();
-            masterDataToParts.addAll(parts);
+            masterDataToParts.addAll(rows);
         }
     }
 
@@ -998,6 +1069,22 @@ public class SettingsView {
         ObservableList<String> list = FXCollections.observableArrayList();
         for (Service service : DataStore.getServices()) {
             list.add(service.getName());
+        }
+        return list;
+    }
+
+    private static ObservableList<String> getCarModelsObservable() {
+        ObservableList<String> list = FXCollections.observableArrayList();
+        // Добавляем стандартные модели GWM
+        for (String model : GWM_MODELS) {
+            list.add(model);
+        }
+        // Получаем все уникальные модели авто из базы данных
+        List<String> carModels = DataStore.getAllCarModels();
+        for (String model : carModels) {
+            if (model != null && !model.trim().isEmpty() && !list.contains(model)) {
+                list.add(model);
+            }
         }
         return list;
     }
@@ -1232,6 +1319,370 @@ public class SettingsView {
         stage.showAndWait();
     }
 
+    // ==================== ДИАЛОГИ РАСХОДНИКОВ ТО ====================
+
+    /**
+     * Диалог добавления расходников ТО.
+     * Позволяет выбрать модель авто и несколько запчастей с количеством.
+     * Примечание вводится отдельным полем для всех выбранных запчастей.
+     */
+    private static void showAddToPartDialog() {
+        Stage stage = new Stage();
+        stage.setTitle("Добавить расходники ТО");
+        stage.setMinWidth(850);
+        stage.setMinHeight(850);
+        stage.setMaxWidth(850);
+        stage.setMaxHeight(850);
+        stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+
+        VBox root = new VBox(15);
+        root.setPadding(new Insets(20));
+        root.getStyleClass().add("dialog-root");
+
+        Label titleLabel = new Label("Добавить расходники ТО");
+        titleLabel.getStyleClass().add("dialog-title");
+
+        // Выбор модели авто
+        HBox modelRow = new HBox(10);
+        modelRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label modelLabel = new Label("Модель авто:");
+        modelLabel.getStyleClass().add("label");
+
+        ComboBox<String> modelCombo = new ComboBox<>();
+        modelCombo.setPromptText("Выберите или введите модель авто");
+        modelCombo.setPrefWidth(300);
+        // Обновляем список моделей при каждом открытии диалога
+        modelCombo.setItems(getCarModelsObservable());
+        // Разрешаем ввод пользовательских значений
+        modelCombo.setEditable(true);
+
+        modelRow.getChildren().addAll(modelLabel, modelCombo);
+
+        // Примечание (отдельное поле)
+        HBox noteRow = new HBox(10);
+        noteRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label noteLabel = new Label("Примечание:");
+        noteLabel.getStyleClass().add("label");
+
+        TextField noteField = new TextField();
+        noteField.setPromptText("Введите примечание (до 1000 символов)");
+        noteField.setPrefWidth(500);
+
+        noteRow.getChildren().addAll(noteLabel, noteField);
+
+        // Таблица запчастей
+        Label partsLabel = new Label("Запчасти:");
+        partsLabel.getStyleClass().add("section-title");
+
+        TableView<SparePartWithQuantity> partsTable = new TableView<>();
+        partsTable.getStyleClass().add("table-view");
+        partsTable.setEditable(true);
+        VBox.setVgrow(partsTable, Priority.ALWAYS);
+
+        TableColumn<SparePartWithQuantity, Boolean> colSelected = new TableColumn<>("Выбор");
+        colSelected.setCellValueFactory(cell -> cell.getValue().selectedProperty());
+        colSelected.setCellFactory(CheckBoxTableCell.forTableColumn(colSelected));
+        colSelected.setMinWidth(100);
+        colSelected.setPrefWidth(100);
+        colSelected.setMaxWidth(100);
+
+        TableColumn<SparePartWithQuantity, String> colName = new TableColumn<>("Название");
+        colName.setCellValueFactory(cell -> cell.getValue().nameProperty());
+        colName.setMinWidth(250);
+        colName.setPrefWidth(250);
+        colName.setMaxWidth(250);
+
+        TableColumn<SparePartWithQuantity, String> colStock = new TableColumn<>("В наличии");
+        colStock.setCellValueFactory(cell -> cell.getValue().stockProperty());
+        colStock.setMinWidth(100);
+        colStock.setPrefWidth(100);
+        colStock.setMaxWidth(100);
+
+        TableColumn<SparePartWithQuantity, Integer> colQuantity = new TableColumn<>("Кол-во");
+        colQuantity.setCellValueFactory(cell -> cell.getValue().quantityProperty().asObject());
+        colQuantity.setCellFactory(tc -> new TextFieldTableCell<>());
+        colQuantity.setMinWidth(80);
+        colQuantity.setPrefWidth(80);
+        colQuantity.setMaxWidth(80);
+
+        TableColumn<SparePartWithQuantity, String> colUnit = new TableColumn<>("Ед.изм");
+        colUnit.setCellValueFactory(cell -> cell.getValue().unitTypeProperty());
+        colUnit.setCellFactory(tc -> new TextFieldTableCell<>());
+        colUnit.setMinWidth(80);
+        colUnit.setPrefWidth(80);
+        colUnit.setMaxWidth(80);
+
+        partsTable.getColumns().addAll(colSelected, colName, colStock, colQuantity, colUnit);
+
+        // Загружаем запчасти
+        ObservableList<SparePartWithQuantity> partsData = FXCollections.observableArrayList();
+        for (SparePart part : DataStore.getSpareParts()) {
+            SparePartWithQuantity item = new SparePartWithQuantity(part);
+            item.setSelected(false);
+            partsData.add(item);
+        }
+        partsTable.setItems(partsData);
+
+        // Кнопки
+        Button saveBtn = new Button("Добавить");
+        saveBtn.getStyleClass().add("save-button");
+        Button cancelBtn = new Button("Отмена");
+        cancelBtn.getStyleClass().add("cancel-button");
+
+        HBox btnBox = new HBox(15, saveBtn, cancelBtn);
+        btnBox.setAlignment(Pos.CENTER);
+        btnBox.setPadding(new Insets(20, 0, 0, 0));
+
+        root.getChildren().addAll(titleLabel, modelRow, noteRow, partsLabel, partsTable, btnBox);
+
+        Scene scene = new Scene(root);
+        scene.getStylesheets().add("com/autoservice/styles/styles.css");
+        stage.setScene(scene);
+
+        saveBtn.setOnAction(e -> {
+            // Получаем выбранную модель авто
+            String carModel = modelCombo.getValue() != null ? modelCombo.getValue() : modelCombo.getEditor().getText();
+            if (carModel == null || carModel.trim().isEmpty()) {
+                showAlert("Выберите или введите модель авто", Alert.AlertType.WARNING);
+                return;
+            }
+
+            // Получаем примечание
+            String note = noteField.getText() != null ? noteField.getText() : "";
+
+            // Создаем новые связи
+            int addedCount = 0;
+
+            for (SparePartWithQuantity item : partsData) {
+                if (item.isSelected()) {
+                    SparePart part = item.getPart();
+                    if (part != null) {
+                        try {
+                            int quantity = item.getQuantity();
+                            String unitType = item.getUnitType();
+
+                            if (quantity > 0) {
+                                ToPart toPart = new ToPart();
+                                toPart.setCarModel(carModel);
+                                toPart.setSparePartId(part.getId());
+                                toPart.setQuantity(quantity);
+                                toPart.setUnitType(unitType);
+                                toPart.setNote(note);
+                                toPart.setActive(true);
+                                SettingsController.addToPart(toPart);
+                                addedCount++;
+                            }
+                        } catch (NumberFormatException ex) {
+                            showAlert("Неверное количество для запчасти: " + part.getName(), Alert.AlertType.WARNING);
+                        }
+                    }
+                }
+            }
+
+            if (addedCount > 0) {
+                showAlert("Расходники добавлены:\n" +
+                        "- Модель авто: " + carModel + "\n" +
+                        "- Добавлено запчастей: " + addedCount, 
+                        Alert.AlertType.INFORMATION);
+                stage.close();
+            } else {
+                showAlert("Выберите хотя бы одну запчасть", Alert.AlertType.WARNING);
+            }
+        });
+
+        cancelBtn.setOnAction(e -> stage.close());
+
+        stage.showAndWait();
+    }
+
+    /**
+     * Диалог редактирования расходников ТО.
+     */
+    private static void showEditToPartDialog(ToPartsRow row) {
+        Stage stage = new Stage();
+        stage.setTitle("Изменить расходники ТО");
+        stage.setMinWidth(850);
+        stage.setMinHeight(850);
+        stage.setMaxWidth(850);
+        stage.setMaxHeight(850);
+        stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+
+        VBox root = new VBox(15);
+        root.setPadding(new Insets(20));
+        root.getStyleClass().add("dialog-root");
+
+        Label titleLabel = new Label("Изменить расходники ТО");
+        titleLabel.getStyleClass().add("dialog-title");
+
+        // Выбор модели авто (только для отображения)
+        HBox modelRow = new HBox(10);
+        modelRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label modelLabel = new Label("Модель авто:");
+        modelLabel.getStyleClass().add("label");
+
+        Label modelNameLabel = new Label(row.getCarModel());
+        modelNameLabel.getStyleClass().add("highlight-label");
+
+        modelRow.getChildren().addAll(modelLabel, modelNameLabel);
+
+        // Таблица запчастей
+        Label partsLabel = new Label("Запчасти:");
+        partsLabel.getStyleClass().add("section-title");
+
+        TableView<SparePartWithQuantity> partsTable = new TableView<>();
+        partsTable.getStyleClass().add("table-view");
+        partsTable.setEditable(true);
+        VBox.setVgrow(partsTable, Priority.ALWAYS);
+
+        TableColumn<SparePartWithQuantity, Boolean> colSelected = new TableColumn<>("Выбор");
+        colSelected.setCellValueFactory(cell -> cell.getValue().selectedProperty());
+        colSelected.setCellFactory(CheckBoxTableCell.forTableColumn(colSelected));
+        colSelected.setMinWidth(100);
+        colSelected.setPrefWidth(100);
+        colSelected.setMaxWidth(100);
+
+        TableColumn<SparePartWithQuantity, String> colName = new TableColumn<>("Название");
+        colName.setCellValueFactory(cell -> cell.getValue().nameProperty());
+        colName.setMinWidth(250);
+        colName.setPrefWidth(250);
+        colName.setMaxWidth(250);
+
+        TableColumn<SparePartWithQuantity, String> colStock = new TableColumn<>("В наличии");
+        colStock.setCellValueFactory(cell -> cell.getValue().stockProperty());
+        colStock.setMinWidth(100);
+        colStock.setPrefWidth(100);
+        colStock.setMaxWidth(100);
+
+        TableColumn<SparePartWithQuantity, Integer> colQuantity = new TableColumn<>("Кол-во");
+        colQuantity.setCellValueFactory(cell -> cell.getValue().quantityProperty().asObject());
+        colQuantity.setCellFactory(tc -> new TextFieldTableCell<>());
+        colQuantity.setMinWidth(80);
+        colQuantity.setPrefWidth(80);
+        colQuantity.setMaxWidth(80);
+
+        TableColumn<SparePartWithQuantity, String> colUnit = new TableColumn<>("Ед.изм");
+        colUnit.setCellValueFactory(cell -> cell.getValue().unitTypeProperty());
+        colUnit.setCellFactory(tc -> new TextFieldTableCell<>());
+        colUnit.setMinWidth(80);
+        colUnit.setPrefWidth(80);
+        colUnit.setMaxWidth(80);
+
+        partsTable.getColumns().addAll(colSelected, colName, colStock, colQuantity, colUnit);
+
+        // Получаем текущие расходники для этой модели
+        List<ToPart> currentParts = DataStore.getToPartsByCarModel(row.getCarModel());
+        java.util.Map<Integer, ToPart> currentPartsMap = new java.util.HashMap<>();
+        for (ToPart part : currentParts) {
+            currentPartsMap.put(part.getSparePartId(), part);
+        }
+
+        // Загружаем запчасти
+        ObservableList<SparePartWithQuantity> partsData = FXCollections.observableArrayList();
+        for (SparePart part : DataStore.getSpareParts()) {
+            SparePartWithQuantity item = new SparePartWithQuantity(part);
+            // Проверяем, отмечена ли запчасть в текущих расходниках
+            ToPart existingPart = currentPartsMap.get(part.getId());
+            item.setSelected(existingPart != null);
+            if (existingPart != null) {
+                item.setQuantity(existingPart.getQuantity());
+                item.setUnitType(existingPart.getUnitType());
+            } else {
+                item.setQuantity(1);
+                item.setUnitType("шт");
+            }
+            partsData.add(item);
+        }
+        partsTable.setItems(partsData);
+
+        // Кнопки
+        Button saveBtn = new Button("Сохранить изменения");
+        saveBtn.getStyleClass().add("save-button");
+        Button cancelBtn = new Button("Отмена");
+        cancelBtn.getStyleClass().add("cancel-button");
+
+        HBox btnBox = new HBox(15, saveBtn, cancelBtn);
+        btnBox.setAlignment(Pos.CENTER);
+        btnBox.setPadding(new Insets(20, 0, 0, 0));
+
+        root.getChildren().addAll(titleLabel, modelRow, partsLabel, partsTable, btnBox);
+
+        Scene scene = new Scene(root);
+        scene.getStylesheets().add("com/autoservice/styles/styles.css");
+        stage.setScene(scene);
+
+        saveBtn.setOnAction(e -> {
+            // Обновляем существующие связи и создаем новые
+            int addedCount = 0;
+            int updatedCount = 0;
+            java.util.List<Integer> checkedPartIds = new java.util.ArrayList<>();
+
+            for (SparePartWithQuantity item : partsData) {
+                if (item.isSelected()) {
+                    SparePart part = item.getPart();
+                    if (part != null) {
+                        try {
+                            int quantity = item.getQuantity();
+                            String unitType = item.getUnitType();
+                            String note = "";
+
+                            if (quantity > 0) {
+                                checkedPartIds.add(part.getId());
+                                
+                                ToPart existingPart = currentPartsMap.get(part.getId());
+                                if (existingPart != null) {
+                                    // Обновляем существующую связь
+                                    existingPart.setQuantity(quantity);
+                                    existingPart.setUnitType(unitType);
+                                    existingPart.setNote(note);
+                                    SettingsController.updateToPart(existingPart);
+                                    updatedCount++;
+                                } else {
+                                    // Создаем новую связь
+                                    ToPart toPart = new ToPart();
+                                    toPart.setCarModel(row.getCarModel());
+                                    toPart.setSparePartId(part.getId());
+                                    toPart.setQuantity(quantity);
+                                    toPart.setUnitType(unitType);
+                                    toPart.setNote(note);
+                                    toPart.setActive(true);
+                                    SettingsController.addToPart(toPart);
+                                    addedCount++;
+                                }
+                            }
+                        } catch (NumberFormatException ex) {
+                            showAlert("Неверное количество для запчасти: " + part.getName(), Alert.AlertType.WARNING);
+                        }
+                    }
+                }
+            }
+
+            // Удаляем неотмеченные связи
+            for (ToPart part : currentParts) {
+                if (!checkedPartIds.contains(part.getSparePartId())) {
+                    SettingsController.deleteToPart(part);
+                }
+            }
+
+            if (addedCount > 0 || updatedCount > 0) {
+                showAlert("Изменения сохранены:\n" +
+                        "- Модель авто: " + row.getCarModel() + "\n" +
+                        "- Добавлено новых: " + addedCount + "\n" +
+                        "- Обновлено существующих: " + updatedCount, 
+                        Alert.AlertType.INFORMATION);
+                stage.close();
+            } else {
+                showAlert("Выберите хотя бы одну запчасть", Alert.AlertType.WARNING);
+            }
+        });
+
+        cancelBtn.setOnAction(e -> stage.close());
+
+        stage.showAndWait();
+    }
+
     // ==================== МИГРАЦИЯ ДАННЫХ ИЗ СТАРОЙ СТРУКТУРЫ ====================
 
     /**
@@ -1317,9 +1768,10 @@ public class SettingsView {
         autoBackupYes.setToggleGroup(autoBackupGroup);
         autoBackupNo.setToggleGroup(autoBackupGroup);
 
-        // Загрузить текущие настройки
-        Object[] settings = ScheduleService.getBackupSettings();
-        boolean backupEnabled = (Boolean) settings[0];
+        // Загрузить текущие настройки из SettingService
+        boolean backupEnabled = SettingService.isAutoBackupEnabled();
+        String currentBackupTime = SettingService.getBackupTime();
+        int backupRetention = SettingService.getBackupRetention();
         if (backupEnabled) {
             autoBackupYes.setSelected(true);
         } else {
@@ -1345,7 +1797,6 @@ public class SettingsView {
                 "20:00", "21:00", "22:00", "23:00"
         ));
 
-        String currentBackupTime = (String) settings[1];
         backupTimeCombo.setValue(currentBackupTime);
 
         backupTimeBox.getChildren().addAll(backupTimeLabel, backupTimeCombo);
@@ -1359,7 +1810,6 @@ public class SettingsView {
 
         Spinner<Integer> retentionSpinner = new Spinner<>(7, 14, 14, 1);
         retentionSpinner.setPrefWidth(100);
-        int backupRetention = (Integer) settings[2];
         retentionSpinner.getValueFactory().setValue(backupRetention);
 
         retentionBox.getChildren().addAll(retentionLabel, retentionSpinner);

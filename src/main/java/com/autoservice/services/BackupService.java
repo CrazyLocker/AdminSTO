@@ -56,12 +56,31 @@ public class BackupService {
             
             // Создать zip архив с базой данных
             try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(backupZip))) {
-                ZipEntry entry = new ZipEntry(sourceDb.getFileName().toString());
-                zos.putNextEntry(entry);
-                
+                // Добавить базу данных
+                ZipEntry dbEntry = new ZipEntry(sourceDb.getFileName().toString());
+                zos.putNextEntry(dbEntry);
                 byte[] bytes = Files.readAllBytes(sourceDb);
                 zos.write(bytes);
                 zos.closeEntry();
+                
+                // Добавить файлы настроек таблиц
+                String tableStateDir = "config" + File.separator + "table-state";
+                Path tableStatePath = Paths.get(tableStateDir);
+                if (Files.exists(tableStatePath)) {
+                    Files.walk(tableStatePath)
+                        .filter(p -> Files.isRegularFile(p) && p.toString().endsWith(".json"))
+                        .forEach(p -> {
+                            try {
+                                String entryName = tableStateDir + File.separator + tableStatePath.relativize(p);
+                                ZipEntry tableEntry = new ZipEntry(entryName.replace(File.separator, "/"));
+                                zos.putNextEntry(tableEntry);
+                                zos.write(Files.readAllBytes(p));
+                                zos.closeEntry();
+                            } catch (IOException e) {
+                                logger.warn("Не удалось добавить в бэкап: {}", p, e);
+                            }
+                        });
+                }
             }
             
             logger.info("Резервная копия создана: {}", backupPath);

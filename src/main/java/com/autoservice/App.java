@@ -49,11 +49,11 @@ public class App extends Application {
         Tab dashTab = createTab("Дашборд", IconHelper.dashboard());
         Tab clientTab = createTab("Клиенты", IconHelper.people());
         Tab orderTab = createTab("Заказы", IconHelper.assignment());
-        Tab servicesTab = createTab("Услуги", IconHelper.settings());
+        Tab servicesTab = createTab("Услуги", IconHelper.book());
         Tab sparePartsTab = createTab("Запчасти", IconHelper.inventory());
         Tab stockTab = createTab("Склад", IconHelper.box());
-        Tab settingsTab = createTab("Настройки", IconHelper.settings());
         Tab appointmentTab = createTab("Запись", IconHelper.event());
+        Tab settingsTab = createTab("Настройки", IconHelper.settings());
 
         dashTab.setContent(DashboardView.create());
         clientTab.setContent(ClientView.create());
@@ -64,7 +64,7 @@ public class App extends Application {
         settingsTab.setContent(SettingsView.create());
         appointmentTab.setContent(AppointmentView.create());
 
-        tabPane.getTabs().addAll(dashTab, clientTab, orderTab, servicesTab, sparePartsTab, stockTab, settingsTab, appointmentTab);
+        tabPane.getTabs().addAll(dashTab, clientTab, orderTab, servicesTab, sparePartsTab, stockTab, appointmentTab, settingsTab);
 
         tabPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, tab) -> {
             if (tab == dashTab) {

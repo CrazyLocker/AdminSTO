@@ -7,6 +7,7 @@ public class SparePart {
     private String partNumber;
     private String manufacturer;
     private String compatibleModels;
+    private String note;
     private double purchasePrice;
     private double retailPrice;
 
@@ -27,6 +28,7 @@ public class SparePart {
         this.partNumber = "";
         this.manufacturer = "";
         this.compatibleModels = "";
+        this.note = "";
         this.purchasePrice = 0;
         this.retailPrice = 0;
         this.stock = 0;
@@ -38,7 +40,7 @@ public class SparePart {
 
     // Полный конструктор
     public SparePart(int id, int orderId, String name, String partNumber, String manufacturer,
-                     String compatibleModels, double purchasePrice, double retailPrice,
+                     String compatibleModels, String note, double purchasePrice, double retailPrice,
                      double stock, double minStock, String unitType, String location) {
         this.id = id;
         this.orderId = orderId;
@@ -46,6 +48,7 @@ public class SparePart {
         this.partNumber = partNumber;
         this.manufacturer = manufacturer;
         this.compatibleModels = compatibleModels;
+        this.note = note;
         this.purchasePrice = purchasePrice;
         this.retailPrice = retailPrice;
         this.stock = stock;
@@ -59,14 +62,14 @@ public class SparePart {
     public SparePart(int id, int orderId, String name, String partNumber, String manufacturer,
                      String compatibleModels, double purchasePrice, double retailPrice,
                      int stock, int minStock, String location) {
-        this(id, orderId, name, partNumber, manufacturer, compatibleModels,
+        this(id, orderId, name, partNumber, manufacturer, compatibleModels, "",
                 purchasePrice, retailPrice, (double) stock, (double) minStock,
                 "шт", location);
     }
 
     // Конструктор для быстрого создания (запчасть в заказе)
     public SparePart(String name, double purchasePrice, double retailPrice, int stock) {
-        this(-1, 0, name, "", "", "", purchasePrice, retailPrice,
+        this(-1, 0, name, "", "", "", "", purchasePrice, retailPrice,
                 (double) stock, 0, "шт", "");
     }
 
@@ -78,6 +81,7 @@ public class SparePart {
     public String getPartNumber() { return partNumber; }
     public String getManufacturer() { return manufacturer; }
     public String getCompatibleModels() { return compatibleModels; }
+    public String getNote() { return note; }
     public double getPurchasePrice() { return purchasePrice; }
     public double getRetailPrice() { return retailPrice; }
     public double getStock() { return stock; }
@@ -94,6 +98,7 @@ public class SparePart {
     public void setPartNumber(String partNumber) { this.partNumber = partNumber; this.dirty = true; }
     public void setManufacturer(String manufacturer) { this.manufacturer = manufacturer; this.dirty = true; }
     public void setCompatibleModels(String compatibleModels) { this.compatibleModels = compatibleModels; this.dirty = true; }
+    public void setNote(String note) { this.note = note; this.dirty = true; }
     public void setPurchasePrice(double purchasePrice) { this.purchasePrice = purchasePrice; this.dirty = true; }
     public void setRetailPrice(double retailPrice) { this.retailPrice = retailPrice; this.dirty = true; }
 
@@ -137,6 +142,6 @@ public class SparePart {
 
     @Override
     public String toString() {
-        return name + " — " + String.format("%.0f", stock) + " " + unitType;
+        return name + " — " + String.format("%.0f", stock) + " " + unitType + (note != null && !note.isEmpty() ? " (" + note + ")" : "");
     }
 }

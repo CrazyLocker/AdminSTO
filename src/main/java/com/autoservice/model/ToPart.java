@@ -10,6 +10,7 @@ public class ToPart {
     private int sparePartId;
     private int quantity;
     private String unitType;
+    private String note;
     private boolean active;
 
     public ToPart() {
@@ -18,6 +19,7 @@ public class ToPart {
         this.sparePartId = 0;
         this.quantity = 1;
         this.unitType = "шт";
+        this.note = "";
         this.active = true;
     }
 
@@ -27,6 +29,7 @@ public class ToPart {
         this.sparePartId = sparePartId;
         this.quantity = quantity;
         this.unitType = unitType;
+        this.note = "";
         this.active = true;
     }
 
@@ -70,6 +73,14 @@ public class ToPart {
         this.unitType = unitType;
     }
 
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
+    }
+
     public boolean isActive() {
         return active;
     }
@@ -96,6 +107,7 @@ public class ToPart {
                 ", sparePartId=" + sparePartId +
                 ", quantity=" + quantity +
                 ", unitType='" + unitType + '\'' +
+                ", note='" + note + '\'' +
                 ", active=" + active +
                 '}';
     }

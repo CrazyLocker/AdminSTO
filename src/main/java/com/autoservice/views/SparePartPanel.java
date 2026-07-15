@@ -262,6 +262,11 @@ public class SparePartPanel {
         minStockField.setPrefWidth(100);
         TooltipHelper.setToolTip(minStockField, "Обязательное поле, должно быть неотрицательным числом");
 
+        TextField noteField = new TextField();
+        noteField.setPromptText("Примечание");
+        noteField.setPrefWidth(250);
+        TooltipHelper.setToolTip(noteField, "Общее примечание для запчасти");
+
         ComboBox<String> unitTypeCombo = new ComboBox<>(FXCollections.observableArrayList("шт", "л", "компл"));
         unitTypeCombo.setValue("шт");
         unitTypeCombo.setPrefWidth(80);
@@ -283,8 +288,10 @@ public class SparePartPanel {
         grid.add(stockField, 1, 6);
         grid.add(new Label("Мин. остаток:"), 0, 7);
         grid.add(minStockField, 1, 7);
-        grid.add(new Label("Ед. изм.:"), 0, 8);
-        grid.add(unitTypeCombo, 1, 8);
+        grid.add(new Label("Примечание:"), 0, 8);
+        grid.add(noteField, 1, 8);
+        grid.add(new Label("Ед. изм.:"), 0, 9);
+        grid.add(unitTypeCombo, 1, 9);
 
         Button saveBtn = new Button("Сохранить");
         saveBtn.getStyleClass().add("save-button");
@@ -308,6 +315,7 @@ public class SparePartPanel {
             String purchasePriceText = purchasePriceField.getText().trim();
             String stockText = stockField.getText().trim();
             String minStockText = minStockField.getText().trim();
+            String note = noteField.getText().trim();
             String unitType = unitTypeCombo.getValue();
             
             if (!ValidationUtils.isNotBlank(name, "Название")) {
@@ -370,7 +378,7 @@ public class SparePartPanel {
 
             SparePart part = new SparePart(
                     -1, 0, name, partNumberField.getText().trim(),
-                    manufacturerField.getText().trim(), modelsField.getText().trim(),
+                    manufacturerField.getText().trim(), modelsField.getText().trim(), note,
                     purchasePrice, retailPrice, stock, minStock,
                     unitType, ""
             );
@@ -428,6 +436,10 @@ public class SparePartPanel {
         minStockField.setPrefWidth(100);
         TooltipHelper.setToolTip(minStockField, "Обязательное поле, должно быть неотрицательным числом");
 
+        TextField noteField = new TextField(part.getNote());
+        noteField.setPrefWidth(250);
+        TooltipHelper.setToolTip(noteField, "Общее примечание для запчасти");
+
         ComboBox<String> unitTypeCombo = new ComboBox<>(FXCollections.observableArrayList("шт", "л", "компл"));
         unitTypeCombo.setValue(part.getUnitType());
         unitTypeCombo.setPrefWidth(80);
@@ -444,8 +456,9 @@ public class SparePartPanel {
         grid.add(new Label("Закуп. цена:"), 0, 5); grid.add(purchasePriceField, 1, 5);
         grid.add(new Label("Остаток:"), 0, 6); grid.add(stockField, 1, 6);
         grid.add(new Label("Мин. остаток:"), 0, 7); grid.add(minStockField, 1, 7);
-        grid.add(new Label("Ед. изм.:"), 0, 8); grid.add(unitTypeCombo, 1, 8);
-        grid.add(new Label("Место:"), 0, 9); grid.add(locationField, 1, 9);
+        grid.add(new Label("Примечание:"), 0, 8); grid.add(noteField, 1, 8);
+        grid.add(new Label("Ед. изм.:"), 0, 9); grid.add(unitTypeCombo, 1, 9);
+        grid.add(new Label("Место:"), 0, 10); grid.add(locationField, 1, 10);
 
         Button saveBtn = new Button("Сохранить");
         saveBtn.getStyleClass().add("save-button");
@@ -468,6 +481,7 @@ public class SparePartPanel {
             String purchasePriceText = purchasePriceField.getText().trim();
             String stockText = stockField.getText().trim();
             String minStockText = minStockField.getText().trim();
+            String note = noteField.getText().trim();
             String unitType = unitTypeCombo.getValue();
             
             Double retailPrice = null;
@@ -527,6 +541,7 @@ public class SparePartPanel {
             part.setPartNumber(partNumberField.getText().trim());
             part.setManufacturer(manufacturerField.getText().trim());
             part.setCompatibleModels(modelsField.getText().trim());
+            part.setNote(note);
             part.setRetailPrice(retailPrice);
             part.setPurchasePrice(purchasePrice);
             part.setStock(stock);

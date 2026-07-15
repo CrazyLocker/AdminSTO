@@ -3,7 +3,6 @@ package com.autoservice.views;
 import com.autoservice.*;
 import com.autoservice.controllers.ClientController;
 import com.autoservice.controllers.OrderController;
-import com.autoservice.controllers.SettingsController;
 import com.autoservice.dialogs.CreateOrderDialog;
 import com.autoservice.dialogs.EditClientDialog;
 import com.autoservice.dialogs.OrderDetailsDialog;
@@ -90,7 +89,7 @@ public class DashboardView extends ScrollPane {
                         String.valueOf(DataStore.getOrders().size()), "#3498db"),
                 createStatCard(IconHelper.people(32, "#2ecc71"), "Клиентов",
                         String.valueOf(DataStore.getClients().size()), "#2ecc71"),
-                createStatCard(IconHelper.warning(32, "#e74c3c"), "Остатки",
+                createStatCard(IconHelper.warning(32, "#e74c3c"), "Низкие остатки запчастей",
                         getLowStockCount(), "#e74c3c"),
                 createStatCard(IconHelper.report(32, "#f39c12"), "Выручка",
                         getTotalRevenue(), "#f39c12")
@@ -125,8 +124,7 @@ public class DashboardView extends ScrollPane {
                 createActionButton("Новый заказ", "#3498db"),
                 createActionButton("Новый клиент", "#2ecc71"),
                 createActionButton("Запись", "#9b59b6"),
-                createActionButton("Отчёт", "#f39c12"),
-                createActionButton("Настройки", "#95a5a6")
+                createActionButton("Отчёт", "#f39c12")
         );
 
         gridPane.add(actionsRow, 0, row);
@@ -214,8 +212,6 @@ public class DashboardView extends ScrollPane {
                 openAppointmentView();
             } else if (btnText.contains("Отчёт")) {
                 generateReport();
-            } else if (btnText.contains("Настройки")) {
-                openSettings();
             }
         });
 
@@ -288,15 +284,6 @@ public class DashboardView extends ScrollPane {
         }
     }
 
-    private void openSettings() {
-        try {
-            SettingsController.showSettings();
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            showErrorAlert("Ошибка", "Не удалось открыть настройки: " + ex.getMessage());
-        }
-    }
-
     private void showInfoAlert(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);
@@ -329,7 +316,7 @@ public class DashboardView extends ScrollPane {
         double total = 0;
         for (WorkOrder order : DataStore.getOrders()) {
             String status = order.getStatus();
-            if (!"Отменён".equals(status)) {
+            if ("Закрыт".equals(status)) {
                 total += order.getTotal();
             }
         }

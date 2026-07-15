@@ -1,7 +1,7 @@
 {
   "tableId": "toPartsTable",
   "version": "1.0",
-  "timestamp": "2026-07-14T07:50:13.333737500Z",
+  "timestamp": "2026-07-15T04:12:06.406850600Z",
   "columns": [
     {
       "id": "colCarModel",
@@ -22,10 +22,16 @@
       "index": 2
     },
     {
-      "id": "colSparePart",
-      "width": 294.4,
+      "id": "colSpareParts",
+      "width": 624.0000000000001,
       "visible": true,
       "index": 3
+    },
+    {
+      "id": "colNote",
+      "width": 188.79999999999995,
+      "visible": true,
+      "index": 4
     }
   ],
   "sortOrder": [

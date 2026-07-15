@@ -162,13 +162,14 @@ class SparePartTest {
     @Test
     @Order(15)
     void testPartWithAllFields() {
-        SparePart part = new SparePart(1, 0, "Масло", "OF-001", "Shell", "Haval F7", 800, 1200, 20, 5, "шт", "Склад А");
+        SparePart part = new SparePart(1, 0, "Масло", "OF-001", "Shell", "Haval F7", "Общее примечание", 800, 1200, 20, 5, "шт", "Склад А");
         
         assertThat(part.getId()).isEqualTo(1);
         assertThat(part.getName()).isEqualTo("Масло");
         assertThat(part.getPartNumber()).isEqualTo("OF-001");
         assertThat(part.getManufacturer()).isEqualTo("Shell");
         assertThat(part.getCompatibleModels()).isEqualTo("Haval F7");
+        assertThat(part.getNote()).isEqualTo("Общее примечание");
         assertThat(part.getPurchasePrice()).isEqualTo(800);
         assertThat(part.getRetailPrice()).isEqualTo(1200);
         assertThat(part.getStock()).isEqualTo(20);

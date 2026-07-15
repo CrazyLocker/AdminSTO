@@ -175,4 +175,72 @@ public class SettingService {
     public static void setDateFormat(String format) {
         setSettingValue("date_format", format);
     }
+
+    // ==================== НАСТРОЙКИ РЕЗЕРВНОГО КОПИРОВАНИЯ ====================
+
+    /**
+     * Получить настройку: включен ли авто-бэкап.
+     * @return true, если авто-бэкап включен
+     */
+    public static boolean isAutoBackupEnabled() {
+        String value = getSettingValue("backup_enabled");
+        return value != null && value.equalsIgnoreCase("true");
+    }
+
+    /**
+     * Включить/выключить авто-бэкап.
+     * @param enabled true для включения
+     */
+    public static void setAutoBackupEnabled(boolean enabled) {
+        setSettingValue("backup_enabled", Boolean.toString(enabled));
+    }
+
+    /**
+     * Получить время ежедневного бэкапа.
+     * @return время в формате "HH:mm" (например, "02:00")
+     */
+    public static String getBackupTime() {
+        return getSettingValue("backup_time");
+    }
+
+    /**
+     * Установить время ежедневного бэкапа.
+     * @param time время в формате "HH:mm"
+     */
+    public static void setBackupTime(String time) {
+        setSettingValue("backup_time", time);
+    }
+
+    /**
+     * Получить количество хранимых бэкапов.
+     * @return количество копий (по умолчанию 14)
+     */
+    public static int getBackupRetention() {
+        String value = getSettingValue("backup_retention");
+        try {
+            return value != null ? Integer.parseInt(value) : 14;
+        } catch (NumberFormatException e) {
+            return 14;
+        }
+    }
+
+    /**
+     * Установить количество хранимых бэкапов.
+     * @param retention количество копий (7-14)
+     */
+    public static void setBackupRetention(int retention) {
+        setSettingValue("backup_retention", Integer.toString(retention));
+    }
+
+    /**
+     * Сохранить все настройки бэкапа.
+     * @param enabled включен ли авто-бэкап
+     * @param time время бэкапа
+     * @param retention количество хранимых копий
+     */
+    public static void saveBackupSettings(boolean enabled, String time, int retention) {
+        setAutoBackupEnabled(enabled);
+        setBackupTime(time);
+        setBackupRetention(retention);
+    }
 }

@@ -84,6 +84,7 @@ public class SQLiteDatabase extends AbstractDatabase {
                 "part_number TEXT DEFAULT '', " +
                 "manufacturer TEXT DEFAULT '', " +
                 "compatible_models TEXT DEFAULT '', " +
+                "note TEXT DEFAULT '', " +
                 "purchase_price REAL CHECK(purchase_price >= 0), " +
                 "retail_price REAL NOT NULL CHECK(retail_price >= 0), " +
                 "stock REAL DEFAULT 0 CHECK(stock >= 0), " +
@@ -146,6 +147,7 @@ public class SQLiteDatabase extends AbstractDatabase {
                 "spare_part_id INTEGER NOT NULL CHECK(spare_part_id > 0), " +
                 "quantity INTEGER DEFAULT 1 CHECK(quantity > 0), " +
                 "unit_type TEXT DEFAULT 'шт' CHECK(unit_type IN ('шт', 'л', 'компл')), " +
+                "note TEXT DEFAULT '', " +
                 "active INTEGER DEFAULT 1 CHECK(active IN (0, 1))" +
                 ")";
 
@@ -188,7 +190,7 @@ public class SQLiteDatabase extends AbstractDatabase {
             stmt.execute(createServiceSparePartsLists);
             stmt.execute(createServiceSparePartsListItems);
             createIndexes(conn);
-            System.out.println("Tables and indexes created/verified");
+            logger.info("Tables and indexes created/verified");
         }
     }
     
@@ -294,8 +296,8 @@ public class SQLiteDatabase extends AbstractDatabase {
     public void addSparePart(SparePart part) {
         // Сначала проверяем, существует ли запчасть с таким именем
         String sqlCheck = "SELECT id FROM spare_parts WHERE name = ?";
-        String sqlInsert = "INSERT INTO spare_parts (name, purchase_price, retail_price, stock, part_number, manufacturer, compatible_models, min_stock, location, unit_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        String sqlUpdate = "UPDATE spare_parts SET purchase_price = ?, retail_price = ?, stock = ?, part_number = ?, manufacturer = ?, compatible_models = ?, min_stock = ?, location = ?, unit_type = ? WHERE name = ?";
+        String sqlInsert = "INSERT INTO spare_parts (name, purchase_price, retail_price, stock, part_number, manufacturer, compatible_models, note, min_stock, location, unit_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sqlUpdate = "UPDATE spare_parts SET purchase_price = ?, retail_price = ?, stock = ?, part_number = ?, manufacturer = ?, compatible_models = ?, note = ?, min_stock = ?, location = ?, unit_type = ? WHERE name = ?";
 
         try (Connection conn = getConnection()) {
             // Проверяем существование
@@ -318,10 +320,11 @@ public class SQLiteDatabase extends AbstractDatabase {
                     pstmt.setString(4, part.getPartNumber());
                     pstmt.setString(5, part.getManufacturer());
                     pstmt.setString(6, part.getCompatibleModels());
-                    pstmt.setDouble(7, part.getMinStock());
-                    pstmt.setString(8, part.getLocation());
-                    pstmt.setString(9, part.getUnitType());
-                    pstmt.setString(10, part.getName());
+                    pstmt.setString(7, part.getNote());
+                    pstmt.setDouble(8, part.getMinStock());
+                    pstmt.setString(9, part.getLocation());
+                    pstmt.setString(10, part.getUnitType());
+                    pstmt.setString(11, part.getName());
                     pstmt.executeUpdate();
                     // Обновляем id запчасти
                     part.setId(existingId);
@@ -336,9 +339,10 @@ public class SQLiteDatabase extends AbstractDatabase {
                     pstmt.setString(5, part.getPartNumber());
                     pstmt.setString(6, part.getManufacturer());
                     pstmt.setString(7, part.getCompatibleModels());
-                    pstmt.setDouble(8, part.getMinStock());
-                    pstmt.setString(9, part.getLocation());
-                    pstmt.setString(10, part.getUnitType());
+                    pstmt.setString(8, part.getNote());
+                    pstmt.setDouble(9, part.getMinStock());
+                    pstmt.setString(10, part.getLocation());
+                    pstmt.setString(11, part.getUnitType());
                     pstmt.executeUpdate();
                     
                     // Получаем сгенерированный id
@@ -355,15 +359,41 @@ public class SQLiteDatabase extends AbstractDatabase {
 
     @Override
     public void updateSparePartStock(SparePart part, double newStock) {
-        String sql = "UPDATE spare_parts SET stock = ? WHERE name = ?";
+        String sql = "UPDATE spare_parts SET stock = ? WHERE id = ?";
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setDouble(1, newStock);
-            pstmt.setString(2, part.getName());
+            pstmt.setInt(2, part.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
             logger.error("Ошибка обновления остатка запчасти", e);
+        }
+    }
+
+    @Override
+    public void updateSparePart(SparePart part) {
+        String sql = "UPDATE spare_parts SET name = ?, purchase_price = ?, retail_price = ?, stock = ?, " +
+                "part_number = ?, manufacturer = ?, compatible_models = ?, note = ?, min_stock = ?, location = ?, " +
+                "unit_type = ? WHERE id = ?";
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, part.getName());
+            pstmt.setDouble(2, part.getPurchasePrice());
+            pstmt.setDouble(3, part.getRetailPrice());
+            pstmt.setDouble(4, part.getStock());
+            pstmt.setString(5, part.getPartNumber());
+            pstmt.setString(6, part.getManufacturer());
+            pstmt.setString(7, part.getCompatibleModels());
+            pstmt.setString(8, part.getNote());
+            pstmt.setDouble(9, part.getMinStock());
+            pstmt.setString(10, part.getLocation());
+            pstmt.setString(11, part.getUnitType());
+            pstmt.setInt(12, part.getId());
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            logger.error("Ошибка обновления запчасти", e);
         }
     }
 
@@ -549,6 +579,14 @@ public class SQLiteDatabase extends AbstractDatabase {
             }
         }
         
+        // Добавляем колонку note в таблицу spare_parts, если её нет
+        if (!columnExists(conn, "spare_parts", "note")) {
+            try (Statement stmt = conn.createStatement()) {
+                stmt.execute("ALTER TABLE spare_parts ADD COLUMN note TEXT DEFAULT ''");
+                logger.info("Добавлена колонка note в spare_parts");
+            }
+        }
+        
         // Проверяем и обновляем таблицу services
         if (!columnExists(conn, "services", "uses_oil")) {
             try (Statement stmt = conn.createStatement()) {
@@ -591,6 +629,14 @@ public class SQLiteDatabase extends AbstractDatabase {
             try (Statement stmt = conn.createStatement()) {
                 stmt.execute("ALTER TABLE services ADD COLUMN spare_part_quantity INTEGER DEFAULT 0");
                 logger.info("Добавлена колонка spare_part_quantity в services");
+            }
+        }
+        
+        // Добавляем колонку note в таблицу to_parts, если её нет
+        if (!columnExists(conn, "to_parts", "note")) {
+            try (Statement stmt = conn.createStatement()) {
+                stmt.execute("ALTER TABLE to_parts ADD COLUMN note TEXT DEFAULT ''");
+                logger.info("Добавлена колонка note в to_parts");
             }
         }
         

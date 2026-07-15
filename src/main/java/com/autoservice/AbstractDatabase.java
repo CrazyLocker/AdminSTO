@@ -312,7 +312,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     @Override
     public List<SparePart> getAllSpareParts() {
         List<SparePart> parts = new ArrayList<>();
-        String sql = "SELECT id, name, part_number, manufacturer, compatible_models, purchase_price, retail_price, stock, min_stock, location, unit_type FROM spare_parts ORDER BY name";
+        String sql = "SELECT id, name, part_number, manufacturer, compatible_models, note, purchase_price, retail_price, stock, min_stock, location, unit_type FROM spare_parts ORDER BY name";
 
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement();
@@ -325,6 +325,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                         rs.getString("part_number"),
                         rs.getString("manufacturer"),
                         rs.getString("compatible_models"),
+                        rs.getString("note"),
                         rs.getDouble("purchase_price"),
                         rs.getDouble("retail_price"),
                         rs.getDouble("stock"),
@@ -342,7 +343,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     @Override
     public void updateSparePart(SparePart part) {
         String sql = "UPDATE spare_parts SET name = ?, purchase_price = ?, retail_price = ?, stock = ?, " +
-                "part_number = ?, manufacturer = ?, compatible_models = ?, min_stock = ?, location = ?, " +
+                "part_number = ?, manufacturer = ?, compatible_models = ?, note = ?, min_stock = ?, location = ?, " +
                 "unit_type = ? WHERE id = ?";
 
         try (Connection conn = getConnection();
@@ -354,10 +355,11 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setString(5, part.getPartNumber());
             pstmt.setString(6, part.getManufacturer());
             pstmt.setString(7, part.getCompatibleModels());
-            pstmt.setDouble(8, part.getMinStock());
-            pstmt.setString(9, part.getLocation());
-            pstmt.setString(10, part.getUnitType());
-            pstmt.setInt(11, part.getId());
+            pstmt.setString(8, part.getNote());
+            pstmt.setDouble(9, part.getMinStock());
+            pstmt.setString(10, part.getLocation());
+            pstmt.setString(11, part.getUnitType());
+            pstmt.setInt(12, part.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
             logger.error("Ошибка обновления запчасти", e);
@@ -366,11 +368,11 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     
     @Override
     public void deleteSparePart(SparePart part) {
-        String sql = "DELETE FROM spare_parts WHERE name = ?";
+        String sql = "DELETE FROM spare_parts WHERE id = ?";
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, part.getName());
+            pstmt.setInt(1, part.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
             logger.error("Ошибка удаления запчасти", e);
@@ -581,7 +583,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         return appointments;
     }
     
-    // ==================== APPOINTMENTS ====================
+    // ==================== APPOINTMENT MODIFICATION METHODS ====================
     
     @Override
     public void updateAppointment(Appointment appointment) {
@@ -921,10 +923,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         
         if (carModel == null || carModel.isEmpty()) {
             // Получить все расходники
-            sql = "SELECT id, car_model, spare_part_id, quantity, unit_type, active FROM to_parts";
+            sql = "SELECT id, car_model, spare_part_id, quantity, unit_type, note, active FROM to_parts";
         } else {
             // Получить расходники для конкретной модели
-            sql = "SELECT id, car_model, spare_part_id, quantity, unit_type, active FROM to_parts WHERE car_model = ?";
+            sql = "SELECT id, car_model, spare_part_id, quantity, unit_type, note, active FROM to_parts WHERE car_model = ?";
         }
 
         try (Connection conn = getConnection()) {
@@ -946,6 +948,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                 part.setSparePartId(rs.getInt("spare_part_id"));
                 part.setQuantity(rs.getInt("quantity"));
                 part.setUnitType(rs.getString("unit_type"));
+                part.setNote(rs.getString("note"));
                 part.setActive(rs.getInt("active") == 1);
                 parts.add(part);
             }
@@ -957,8 +960,28 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     }
 
     @Override
+    public List<String> getAllCarModels() {
+        List<String> carModels = new ArrayList<>();
+        String sql = "SELECT DISTINCT car_model FROM to_parts WHERE car_model IS NOT NULL AND car_model != '' ORDER BY car_model";
+
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                String model = rs.getString("car_model");
+                if (model != null && !model.trim().isEmpty()) {
+                    carModels.add(model);
+                }
+            }
+        } catch (SQLException e) {
+            logger.error("Ошибка загрузки моделей авто", e);
+        }
+        return carModels;
+    }
+
+    @Override
     public void addToPart(com.autoservice.model.ToPart part) {
-        String sql = "INSERT INTO to_parts (car_model, spare_part_id, quantity, unit_type, active) VALUES (?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO to_parts (car_model, spare_part_id, quantity, unit_type, note, active) VALUES (?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -966,7 +989,8 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setInt(2, part.getSparePartId());
             pstmt.setInt(3, part.getQuantity());
             pstmt.setString(4, part.getUnitType());
-            pstmt.setInt(5, part.isActive() ? 1 : 0);
+            pstmt.setString(5, part.getNote() != null ? part.getNote() : "");
+            pstmt.setInt(6, part.isActive() ? 1 : 0);
             pstmt.executeUpdate();
             
             // Получаем сгенерированный id
@@ -981,15 +1005,16 @@ public abstract class AbstractDatabase implements DatabaseInterface {
 
     @Override
     public void updateToPart(com.autoservice.model.ToPart part) {
-        String sql = "UPDATE to_parts SET spare_part_id = ?, quantity = ?, unit_type = ?, active = ? WHERE id = ?";
+        String sql = "UPDATE to_parts SET spare_part_id = ?, quantity = ?, unit_type = ?, note = ?, active = ? WHERE id = ?";
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, part.getSparePartId());
             pstmt.setInt(2, part.getQuantity());
             pstmt.setString(3, part.getUnitType());
-            pstmt.setInt(4, part.isActive() ? 1 : 0);
-            pstmt.setInt(5, part.getId());
+            pstmt.setString(4, part.getNote() != null ? part.getNote() : "");
+            pstmt.setInt(5, part.isActive() ? 1 : 0);
+            pstmt.setInt(6, part.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
             logger.error("Ошибка обновления расходника TO", e);

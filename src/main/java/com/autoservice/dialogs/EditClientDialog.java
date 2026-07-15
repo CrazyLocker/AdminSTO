@@ -73,6 +73,8 @@ public class EditClientDialog {
         phoneField.setPromptText("+7XXXXXXXXXX");
         phoneField.setPrefWidth(250);
         TooltipHelper.setToolTip(phoneField, "Формат: +7XXXXXXXXXX (10 цифр)");
+        // Настройка поля телефона с автоматической фильтрацией
+        Validators.setupPhoneField(phoneField);
 
         // Модель авто
         Label carModelLabel = new Label("Модель авто:");
@@ -93,6 +95,8 @@ public class EditClientDialog {
         carNumberField.setPromptText("А123ВВ777");
         carNumberField.setPrefWidth(200);
         TooltipHelper.setToolTip(carNumberField, "Формат: А123ВВ777 или А123ВВ77");
+        // Настройка поля госномера с автоматической фильтрацией
+        Validators.setupCarNumberField(carNumberField);
 
         grid.add(lastNameLabel, 0, 0);
         grid.add(lastNameField, 1, 0);

@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
 public class ValidationUtils {
     
     // Паттерны для валидации
-    private static final Pattern PHONE_PATTERN = Pattern.compile("^\\+?\\d{10,15}$");
+    private static final Pattern PHONE_PATTERN = Pattern.compile("^\\+7\\d{10}$");
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@(.+)$");
     private static final Pattern PLATE_PATTERN = Pattern.compile("^[АВЕКМНОРСТУХ]\\d{3}[АВЕКМНОРСТУХ]{2}\\d{2,3}$");
     
@@ -95,13 +95,13 @@ public class ValidationUtils {
     /**
      * Проверить номер телефона.
      * @param phone номер телефона
-     * @return true если валиден
+     * @return true если валиден (формат: +7XXXXXXXXXX)
      */
     public static boolean isValidPhone(String phone) {
         if (phone == null || phone.trim().isEmpty()) {
             return false;
         }
-        return PHONE_PATTERN.matcher(phone.trim()).matches();
+        return phone.trim().matches("^\\+7\\d{10}$");
     }
     
     /**
@@ -119,13 +119,13 @@ public class ValidationUtils {
     /**
      * Проверить номер автомобиля (формат для РФ).
      * @param number номер автомобиля
-     * @return true если валиден
+     * @return true если валиден (формат: А123ВС777 или А123ВС163)
      */
     public static boolean isValidCarNumber(String number) {
         if (number == null || number.trim().isEmpty()) {
             return false;
         }
-        return PLATE_PATTERN.matcher(number.trim()).matches();
+        return number.trim().matches("^[АВЕКМНОРСТУХ]\\d{3}[АВЕКМНОРСТУХ]{2}\\d{2,3}$");
     }
     
     /**
