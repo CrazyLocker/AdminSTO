@@ -153,12 +153,14 @@ public class ImportService {
                     int stock = fields.length > 5 ? parseInt(fields[5]) : 0;
                     String location = fields.length > 6 ? fields[6].trim() : "";
                     String compatibleModels = fields.length > 7 ? fields[7].trim() : "";
+                    String unitType = fields.length > 8 ? fields[8].trim() : "шт";
 
                     SparePart part = new SparePart(name, purchasePrice, retailPrice, stock);
                     part.setPartNumber(partNumber);
                     part.setManufacturer(manufacturer);
                     part.setLocation(location);
                     part.setCompatibleModels(compatibleModels);
+                    part.setUnitType(unitType);
 
                     boolean isNew = addOrUpdateSparePart(part);
                     if (isNew) { imported++; } else { skipped++; }
@@ -217,12 +219,14 @@ public class ImportService {
                     int stock = parseIntSafe(getTagValue(partEl, "stock"));
                     String location = getTagValue(partEl, "location");
                     String compatibleModels = getTagValue(partEl, "compatibleModels");
+                    String unitType = getTagValue(partEl, "unitType");
 
                     SparePart part = new SparePart(name.trim(), purchasePrice, retailPrice, stock);
                     part.setPartNumber(partNumber != null ? partNumber.trim() : "");
                     part.setManufacturer(manufacturer != null ? manufacturer.trim() : "");
                     part.setLocation(location != null ? location.trim() : "");
                     part.setCompatibleModels(compatibleModels != null ? compatibleModels.trim() : "");
+                    part.setUnitType(unitType != null ? unitType.trim() : "шт");
 
                     boolean isNew = addOrUpdateSparePart(part);
                     if (isNew) { imported++; } else { skipped++; }
@@ -331,12 +335,14 @@ public class ImportService {
                     int stock = getJsonInt(obj, "stock", 0);
                     String location = getJsonString(obj, "location");
                     String compatibleModels = getJsonString(obj, "compatibleModels");
+                    String unitType = getJsonString(obj, "unitType");
 
                     SparePart part = new SparePart(name.trim(), purchasePrice, retailPrice, stock);
                     part.setPartNumber(partNumber != null ? partNumber.trim() : "");
                     part.setManufacturer(manufacturer != null ? manufacturer.trim() : "");
                     part.setLocation(location != null ? location.trim() : "");
                     part.setCompatibleModels(compatibleModels != null ? compatibleModels.trim() : "");
+                    part.setUnitType(unitType != null ? unitType.trim() : "шт");
 
                     boolean isNew = addOrUpdateSparePart(part);
                     if (isNew) { imported++; } else { skipped++; }

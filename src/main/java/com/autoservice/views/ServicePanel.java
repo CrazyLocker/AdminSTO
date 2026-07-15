@@ -25,6 +25,7 @@ public class ServicePanel {
     private static ObservableList<Service> masterData;
     private static FilteredList<Service> filteredData;
     private static SortedList<Service> sortedData;
+    private static TextField searchField;
 
     public static TableView<Service> getTable() {
         return table;
@@ -74,6 +75,34 @@ public class ServicePanel {
         table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(table, Priority.ALWAYS);
 
+        // ====== ПОЛЕ ПОИСКА ======
+        searchField = new TextField();
+        searchField.setPromptText("Поиск по названию, артикулу, цене, длительности...");
+        searchField.setPrefWidth(400);
+        searchField.getStyleClass().add("search-field");
+
+        // Кнопка очистки поиска (красный крестик, как в Клиентах)
+        Button clearSearchBtn = new Button("✕");
+        clearSearchBtn.setStyle(
+                "-fx-background-color: #dc3545;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-padding: 4 8 4 8;" +
+                        "-fx-background-radius: 4;"
+        );
+        clearSearchBtn.setOnAction(e -> {
+            searchField.clear();
+            filterServices("");
+        });
+
+        HBox searchContainer = new HBox(5, searchField, clearSearchBtn);
+        searchContainer.setAlignment(Pos.CENTER_LEFT);
+
+        // Поиск при вводе текста
+        searchField.textProperty().addListener((observable, oldValue, newValue) -> {
+            filterServices(newValue);
+        });
+
         // ====== КНОПКИ В ХЕДЕРЕ ======
         Button addBtn = new Button("Добавить услугу");
         addBtn.getStyleClass().add("add-button");
@@ -83,7 +112,7 @@ public class ServicePanel {
         deleteBtn.getStyleClass().add("delete-button");
         deleteBtn.setOnAction(e -> deleteSelectedService());
 
-        HBox headerPanel = new HBox(10, addBtn, deleteBtn);
+        HBox headerPanel = new HBox(10, searchContainer, addBtn, deleteBtn);
         headerPanel.setAlignment(Pos.CENTER_LEFT);
         headerPanel.setPadding(new Insets(10, 0, 0, 0));
 
@@ -113,6 +142,44 @@ public class ServicePanel {
         });
 
         return panel;
+    }
+
+    private static void filterServices(String searchTerm) {
+        if (filteredData == null) return;
+
+        String lowerSearch = searchTerm.toLowerCase().trim();
+
+        filteredData.setPredicate(service -> {
+            if (lowerSearch.isEmpty()) {
+                return true;
+            }
+
+            // Поиск по названию (lowercase)
+            String name = service.getName() != null ? service.getName().toLowerCase() : "";
+            if (name.contains(lowerSearch)) {
+                return true;
+            }
+
+            // Поиск по длительности
+            String duration = String.valueOf(service.getDuration());
+            if (duration.contains(lowerSearch)) {
+                return true;
+            }
+
+            // Поиск по артикулу (uppercase для поиска)
+            String partNumber = service.getPartNumber() != null ? service.getPartNumber().toUpperCase() : "";
+            if (partNumber.contains(lowerSearch.toUpperCase())) {
+                return true;
+            }
+
+            // Поиск по цене
+            String price = String.valueOf(service.getPrice());
+            if (price.contains(lowerSearch)) {
+                return true;
+            }
+
+            return false;
+        });
     }
 
     /**

@@ -83,8 +83,8 @@ public class EditServiceDialog {
         partNumberField.textProperty().addListener((obs, oldVal, newVal) -> {
             // Заменяем пробелы на дефисы
             String result = newVal.replace(" ", "-");
-            // Оставляем только латинские буквы (верхний регистр), цифры и дефисы
-            result = result.replaceAll("[^A-Z0-9-]", "");
+            // Удаляем все символы, кроме латинских букв, цифр и дефисов
+            result = result.replaceAll("[^a-zA-Z0-9-]", "");
             // Конвертируем в верхний регистр
             result = result.toUpperCase();
             partNumberField.setText(result);

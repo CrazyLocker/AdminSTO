@@ -3,6 +3,7 @@ package com.autoservice.views;
 import com.autoservice.DataStore;
 import com.autoservice.SparePart;
 import com.autoservice.controllers.SparePartPanelController;
+import com.autoservice.dialogs.ExportSparePartsDialog;
 import com.autoservice.dialogs.ImportSparePartsDialog;
 import com.autoservice.services.TableStateManager;
 import com.autoservice.utils.TooltipHelper;
@@ -142,10 +143,29 @@ public class SparePartPanel {
         sortedData.comparatorProperty().bind(table.comparatorProperty());
         table.setItems(sortedData);
 
+        // ====== ПОЛЕ ПОИСКА И КНОПКИ В ХЕДЕРЕ ======
         searchField = new TextField();
-        searchField.setPromptText("Поиск по названию, артикулу...");
-        searchField.setPrefWidth(300);
-        searchField.getStyleClass().add("form-field");
+        searchField.setPromptText("Поиск по названию, артикулу, производителю...");
+        searchField.setPrefWidth(400);
+        searchField.getStyleClass().add("search-field");
+
+        // Кнопка очистки поиска (красный крестик)
+        Button clearSearchBtn = new Button("✕");
+        clearSearchBtn.setStyle(
+                "-fx-background-color: #dc3545;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-padding: 4 8 4 8;" +
+                        "-fx-background-radius: 4;"
+        );
+        clearSearchBtn.setOnAction(e -> {
+            searchField.clear();
+            filterSpareParts("");
+        });
+
+        HBox searchContainer = new HBox(5, searchField, clearSearchBtn);
+        searchContainer.setAlignment(Pos.CENTER_LEFT);
+
         searchField.textProperty().addListener((obs, oldVal, newValue) ->
             filterSpareParts(newValue));
 
@@ -175,11 +195,15 @@ public class SparePartPanel {
         importBtn.getStyleClass().add("income-button");
         importBtn.setOnAction(e -> ImportSparePartsDialog.show());
 
-        HBox btnRow = new HBox(10, searchField, addBtn, deleteBtn, importBtn);
-        btnRow.setAlignment(Pos.CENTER_LEFT);
-        btnRow.setPadding(new Insets(10, 0, 0, 0));
+        Button exportBtn = new Button("Экспорт в файл");
+        exportBtn.getStyleClass().add("export-button");
+        exportBtn.setOnAction(e -> ExportSparePartsDialog.show());
 
-        VBox panel = new VBox(10, table, btnRow);
+        HBox headerPanel = new HBox(10, searchContainer, addBtn, deleteBtn, importBtn, exportBtn);
+        headerPanel.setAlignment(Pos.CENTER_LEFT);
+        headerPanel.setPadding(new Insets(10, 0, 0, 0));
+
+        VBox panel = new VBox(10, headerPanel, table);
 
         // Загружаем состояние таблицы ПОСЛЕ отрисовки
         Platform.runLater(() -> {
