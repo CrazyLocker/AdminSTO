@@ -55,6 +55,7 @@ New-Item -ItemType Directory -Path "$distDir/lib" -Force | Out-Null
 New-Item -ItemType Directory -Path "$distDir/logs" -Force | Out-Null
 New-Item -ItemType Directory -Path "$distDir/backups" -Force | Out-Null
 New-Item -ItemType Directory -Path "$distDir/config/table-state" -Force | Out-Null
+New-Item -ItemType Directory -Path "$distDir/config/window-state" -Force | Out-Null
 Write-Host "    Готово." -ForegroundColor Green
 
 # 3. Создание минимального JRE через jlink
@@ -99,6 +100,12 @@ if (Test-Path $logbackSrc) {
 $configStateDir = Join-Path $projectDir "config/table-state"
 if (Test-Path $configStateDir) {
     Copy-Item "$configStateDir/*.json" "$distDir/config/table-state/" -Force
+}
+
+# Копируем config/window-state если есть сохранённые настройки окон
+$configWindowDir = Join-Path $projectDir "config/window-state"
+if (Test-Path $configWindowDir) {
+    Copy-Item "$configWindowDir/*.json" "$distDir/config/window-state/" -Force
 }
 
 Write-Host "    Готово." -ForegroundColor Green
@@ -180,7 +187,9 @@ portable/
   |-- jre/                 Встроенная Java Runtime
   |-- logs/                Логи приложения
   |-- backups/             Резервные копии БД
-  |-- config/table-state/  Настройки таблиц (ширина, порядок)
+  |-- config/              Конфигурация:
+  |   |-- table-state/      Настройки таблиц (ширина, порядок, сортировка)
+  |   '-- window-state/     Настройки окон (позиция, размеры)
   '-- autoservice.db       База данных (создаётся при первом запуске)
 
 =====================================================
