@@ -483,6 +483,7 @@ public class EditOrderDialog {
                 existingAppointment.setTime(timeStr);
                 existingAppointment.setMasterName(master);
                 existingAppointment.setServiceName(serviceName);
+                existingAppointment.setOrderId(order.getId());
                 DataStore.updateAppointment(existingAppointment);
                 logger.debug("Запись в календаре обновлена");
             } else {
