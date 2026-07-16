@@ -381,7 +381,19 @@ public class EditOrderDialog {
         for (int i = 0; i < tempParts.size(); i++) {
             SparePart part = tempParts.get(i);
             double qty = tempPartQuantities.get(i);
-            int currentStock = (int)DataStore.getSparePartById(part.getId()).getStock();
+            SparePart currentPart = DataStore.getSparePartById(part.getId());
+            if (currentPart == null) {
+                currentPart = DataStore.getSpareParts().stream()
+                    .filter(p -> p.getName().equals(part.getName()))
+                    .findFirst()
+                    .orElse(null);
+            }
+            if (currentPart == null) {
+                hasStockIssue = true;
+                showAlert("Запчасть не найдена в базе: " + part.getName());
+                continue;
+            }
+            int currentStock = (int)currentPart.getStock();
             
             if (qty > currentStock) {
                 hasStockIssue = true;
