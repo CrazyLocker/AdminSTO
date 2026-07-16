@@ -4,6 +4,7 @@ import com.autoservice.utils.ExceptionHandler;
 import com.autoservice.utils.LoggerManager;
 import com.autoservice.services.ScheduleService;
 import com.autoservice.services.TableStateManager;
+import com.autoservice.services.WindowStateManager;
 import com.autoservice.views.*;
 import com.autoservice.controllers.ServicePanelController;
 import com.autoservice.controllers.SparePartPanelController;
@@ -79,9 +80,15 @@ public class App extends Application {
 
         primaryStage.setTitle("Администратор СТО");
         primaryStage.setScene(scene);
+        
+        // Восстановление состояния главного окна
+        WindowStateManager.getInstance().restoreWindowState("mainWindow", primaryStage);
 
         primaryStage.setOnCloseRequest(e -> {
             logger.info("Закрытие приложения");
+            
+            // Сохранение состояния главного окна
+            WindowStateManager.getInstance().saveWindowState("mainWindow", primaryStage);
             
             // Сохранение состояний всех таблиц (синхронно, до System.exit)
             TableStateManager.saveTableState(ClientView.getTable(), "clientTable");

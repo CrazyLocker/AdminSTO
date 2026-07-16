@@ -1,7 +1,9 @@
 package com.autoservice.dialogs;
 
 import com.autoservice.DataStore;
+import com.autoservice.SparePart;
 import com.autoservice.services.ExportService;
+import com.autoservice.services.WindowStateManager;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -25,6 +27,9 @@ public class ExportSparePartsDialog {
         stage.setMinWidth(550);
         stage.setMinHeight(350);
         stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
+
+        // Восстановление состояния диалога
+        WindowStateManager.getInstance().restoreWindowState("exportSparePartsDialog", stage);
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
@@ -139,6 +144,11 @@ public class ExportSparePartsDialog {
         });
 
         cancelBtn.setOnAction(e -> stage.close());
+        
+        stage.setOnHiding(e -> {
+            // Сохранение состояния диалога при закрытии
+            WindowStateManager.getInstance().saveWindowState("exportSparePartsDialog", stage);
+        });
 
         VBox centerBox = new VBox(10, formatLabel, formatCombo, fileBox, statusLabel, buttonBox);
         centerBox.setPadding(new Insets(10, 0, 0, 0));

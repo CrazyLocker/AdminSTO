@@ -24,7 +24,7 @@ public class ExportService {
     /**
      * Экспортирует запчасти в файл выбранного формата
      */
-    public static void exportToFile(List<SparePart> parts, File file, String format) throws IOException {
+    public static void exportToFile(List<SparePart> parts, File file, String format) throws Exception {
         try (OutputStream os = new FileOutputStream(file)) {
             switch (format.toLowerCase()) {
                 case "csv": exportToCsv(parts, os); break;
@@ -49,11 +49,11 @@ public class ExportService {
                 String manufacturer = escapeCsv(part.getManufacturer());
                 double retailPrice = part.getRetailPrice();
                 double purchasePrice = part.getPurchasePrice();
-                int stock = part.getStock();
+                double stock = part.getStock();
                 String location = escapeCsv(part.getLocation());
                 String compatibleModels = escapeCsv(part.getCompatibleModels());
 
-                writer.printf("%s;%s;%s;%.2f;%.2f;%d;%s;%s%n",
+                writer.printf("%s;%s;%s;%.2f;%.2f;%.0f;%s;%s%n",
                         name, partNumber, manufacturer, retailPrice, purchasePrice, stock, location, compatibleModels);
             }
         }
@@ -136,7 +136,7 @@ public class ExportService {
             partsArray.add(partObj);
         }
 
-        root.add("spareParts", partsArray);
+        root.addProperty("spareParts", partsArray.toString());
 
         try (PrintWriter writer = new PrintWriter(new OutputStreamWriter(os, StandardCharsets.UTF_8))) {
             writer.println(gson.toJson(root));
@@ -162,6 +162,12 @@ public class ExportService {
         public void addProperty(String key, int value) {
             if (!first) sb.append(",\n");
             sb.append("    \"").append(key).append("\": ").append(value);
+            first = false;
+        }
+
+        public void add(String key, String value) {
+            if (!first) sb.append(",\n");
+            sb.append("    \"").append(key).append("\": ").append(value).append("\"");
             first = false;
         }
 
