@@ -199,6 +199,19 @@ public class EditOrderDialog {
 
         tempParts.addAll(order.getSpareParts());
         tempPartQuantities.addAll(order.getSparePartQuantities().stream().map(Double::valueOf).collect(java.util.stream.Collectors.toList()));
+        // Обновляем ID запчастей, найдя их в DataStore по имени (важно для правильной работы getSparePartById)
+        for (int i = 0; i < tempParts.size(); i++) {
+            SparePart tempPart = tempParts.get(i);
+            if (tempPart.getId() == -1) {
+                SparePart storedPart = DataStore.getSpareParts().stream()
+                    .filter(p -> p.getName().equals(tempPart.getName()))
+                    .findFirst()
+                    .orElse(null);
+                if (storedPart != null) {
+                    tempPart.setId(storedPart.getId());
+                }
+            }
+        }
         for (int i = 0; i < tempParts.size(); i++) {
             SparePart p = tempParts.get(i);
             double q = tempPartQuantities.get(i);
@@ -382,12 +395,6 @@ public class EditOrderDialog {
             SparePart part = tempParts.get(i);
             double qty = tempPartQuantities.get(i);
             SparePart currentPart = DataStore.getSparePartById(part.getId());
-            if (currentPart == null) {
-                currentPart = DataStore.getSpareParts().stream()
-                    .filter(p -> p.getName().equals(part.getName()))
-                    .findFirst()
-                    .orElse(null);
-            }
             if (currentPart == null) {
                 hasStockIssue = true;
                 showAlert("Запчасть не найдена в базе: " + part.getName());
