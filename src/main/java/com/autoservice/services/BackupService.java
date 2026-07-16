@@ -81,6 +81,25 @@ public class BackupService {
                             }
                         });
                 }
+                
+                // Добавить файлы настроек окон
+                String windowStateDir = "config" + File.separator + "window-state";
+                Path windowStatePath = Paths.get(windowStateDir);
+                if (Files.exists(windowStatePath)) {
+                    Files.walk(windowStatePath)
+                        .filter(p -> Files.isRegularFile(p) && p.toString().endsWith(".json"))
+                        .forEach(p -> {
+                            try {
+                                String entryName = windowStateDir + File.separator + windowStatePath.relativize(p);
+                                ZipEntry windowEntry = new ZipEntry(entryName.replace(File.separator, "/"));
+                                zos.putNextEntry(windowEntry);
+                                zos.write(Files.readAllBytes(p));
+                                zos.closeEntry();
+                            } catch (IOException e) {
+                                logger.warn("Не удалось добавить в бэкап: {}", p, e);
+                            }
+                        });
+                }
             }
             
             logger.info("Резервная копия создана: {}", backupPath);
@@ -128,7 +147,14 @@ public class BackupService {
                 ZipEntry entry;
                 while ((entry = zis.getNextEntry()) != null) {
                     Path newPath = Paths.get(entry.getName());
-                    Files.copy(zis, newPath, StandardCopyOption.REPLACE_EXISTING);
+                    // Проверить, что путь безопасен (не выходит за пределы текущей директории)
+                    Path basePath = Paths.get(".").toAbsolutePath().normalize();
+                    Path resolvedPath = basePath.resolve(newPath).normalize();
+                    if (resolvedPath.startsWith(basePath.toString()) || resolvedPath.toString().startsWith(".\\") || resolvedPath.toString().startsWith("./")) {
+                        Files.copy(zis, newPath, StandardCopyOption.REPLACE_EXISTING);
+                    } else {
+                        logger.warn("Пропущен потенциально опасный путь: {}", entry.getName());
+                    }
                 }
             }
             
