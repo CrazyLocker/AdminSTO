@@ -8,6 +8,7 @@ import com.autoservice.Appointment;
 import com.autoservice.DataStore;
 import com.autoservice.controllers.OrderController;
 import com.autoservice.services.AutoAddSparePartService;
+import com.autoservice.services.WindowStateManager;
 import com.autoservice.utils.OilHelper;
 import com.autoservice.utils.ValidationErrorIndicator;
 import com.autoservice.utils.ValidationUtils;
@@ -72,6 +73,9 @@ public class EditOrderDialog {
         currentStage.setMinWidth(750);
         currentStage.setMinHeight(750);
         currentStage.initModality(javafx.stage.Modality.WINDOW_MODAL);
+        
+        // Восстановление состояния диалога
+        WindowStateManager.getInstance().restoreWindowState("editOrderDialog", currentStage);
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
@@ -348,6 +352,10 @@ public class EditOrderDialog {
         cancelBtn.setOnAction(e -> {
             cancelChanges();
             currentStage.close();
+        });
+        
+        currentStage.setOnHiding(e -> {
+            WindowStateManager.getInstance().saveWindowState("editOrderDialog", currentStage);
         });
 
         currentStage.showAndWait();

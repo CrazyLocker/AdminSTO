@@ -11,6 +11,7 @@ import com.autoservice.utils.ValidationErrorIndicator;
 import com.autoservice.utils.ValidationUtils;
 import com.autoservice.utils.TooltipHelper;
 import com.autoservice.utils.IconHelper;
+import com.autoservice.services.WindowStateManager;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableMap;
 import javafx.geometry.Insets;
@@ -43,6 +44,9 @@ public class CreateOrderDialog {
         stage.setMinWidth(650);
         stage.setMinHeight(650);
         stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
+        
+        // Восстановление состояния диалога
+        WindowStateManager.getInstance().restoreWindowState("createOrderDialog", stage);
 
         VBox root = new VBox(12);
         root.setPadding(new Insets(20));
@@ -436,6 +440,11 @@ public class CreateOrderDialog {
                 tempParts.get(i).setStock(tempParts.get(i).getStock() + tempPartQuantities.get(i));
             }
             stage.close();
+        });
+        
+        stage.setOnHiding(e -> {
+            // Сохранение состояния диалога при закрытии
+            WindowStateManager.getInstance().saveWindowState("createOrderDialog", stage);
         });
 
         stage.showAndWait();

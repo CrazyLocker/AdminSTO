@@ -3,6 +3,7 @@ package com.autoservice.views;
 import com.autoservice.DataStore;
 import com.autoservice.WorkOrder;
 import com.autoservice.SparePart;
+import com.autoservice.services.WindowStateManager;
 import com.autoservice.utils.IconHelper;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
@@ -51,6 +52,9 @@ public class ReportView {
         stage.setMinHeight(600);
         stage.setMaximized(true);
         stage.setResizable(true);
+        
+        // Восстановление состояния диалога
+        WindowStateManager.getInstance().restoreWindowState("reportDialog", stage);
 
         ScrollPane scrollPane = new ScrollPane();
         scrollPane.setFitToWidth(true);
@@ -174,6 +178,10 @@ public class ReportView {
 
         stage.setScene(scene);
         stage.showAndWait();
+        
+        stage.setOnHiding(e -> {
+            WindowStateManager.getInstance().saveWindowState("reportDialog", stage);
+        });
     }
 
     // ==================== АДАПТИВНЫЙ ШРИФТ ====================

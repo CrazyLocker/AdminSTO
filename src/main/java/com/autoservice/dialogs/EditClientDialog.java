@@ -6,6 +6,7 @@ import com.autoservice.DataStore;
 import com.autoservice.DateUtils;
 import com.autoservice.Validators;
 import com.autoservice.controllers.ClientController;
+import com.autoservice.services.WindowStateManager;
 import com.autoservice.utils.ValidationErrorIndicator;
 import com.autoservice.utils.ValidationUtils;
 import com.autoservice.utils.TooltipHelper;
@@ -38,6 +39,9 @@ public class EditClientDialog {
         stage.setMinWidth(550);
         stage.setMinHeight(550);
         stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
+        
+        // Восстановление состояния диалога
+        WindowStateManager.getInstance().restoreWindowState("editClientDialog", stage);
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
@@ -217,6 +221,10 @@ public class EditClientDialog {
         });
 
         cancelBtn.setOnAction(e -> stage.close());
+        
+        stage.setOnHiding(e -> {
+            WindowStateManager.getInstance().saveWindowState("editClientDialog", stage);
+        });
 
         stage.showAndWait();
     }

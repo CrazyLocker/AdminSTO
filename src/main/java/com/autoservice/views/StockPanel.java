@@ -4,6 +4,7 @@ import com.autoservice.DataStore;
 import com.autoservice.SparePart;
 import com.autoservice.controllers.StockPanelController;
 import com.autoservice.services.TableStateManager;
+import com.autoservice.services.WindowStateManager;
 import com.autoservice.utils.TooltipHelper;
 import com.autoservice.utils.ValidationErrorIndicator;
 import com.autoservice.utils.ValidationUtils;
@@ -163,6 +164,8 @@ public class StockPanel {
         stage.setMinHeight(250);
         stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
 
+        WindowStateManager.getInstance().restoreWindowState("editStockDialog", stage);
+
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
         root.getStyleClass().add("dialog-root");
@@ -251,6 +254,7 @@ public class StockPanel {
         });
 
         cancelBtn.setOnAction(e -> stage.close());
+        stage.setOnHiding(e -> WindowStateManager.getInstance().saveWindowState("editStockDialog", stage));
         stage.showAndWait();
     }
 

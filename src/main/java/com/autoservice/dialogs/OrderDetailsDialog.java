@@ -3,6 +3,7 @@ package com.autoservice.dialogs;
 import com.autoservice.DateUtils;
 import com.autoservice.SparePart;
 import com.autoservice.WorkOrder;
+import com.autoservice.services.WindowStateManager;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -19,6 +20,9 @@ public class OrderDetailsDialog {
         stage.setMinWidth(500);
         stage.setMinHeight(500);
         stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
+        
+        // Восстановление состояния диалога
+        WindowStateManager.getInstance().restoreWindowState("orderDetailsDialog", stage);
 
         VBox content = new VBox(15);
         content.setPadding(new Insets(20));
@@ -55,6 +59,12 @@ public class OrderDetailsDialog {
         Button closeBtn = new Button("Закрыть");
         HBox btnBox = new HBox(15, closeBtn);
         btnBox.setAlignment(Pos.CENTER);
+        
+        closeBtn.setOnAction(e -> stage.close());
+        
+        stage.setOnHiding(e -> {
+            WindowStateManager.getInstance().saveWindowState("orderDetailsDialog", stage);
+        });
 
         content.getChildren().addAll(headerLabel, statusLabel, carLabel,
                 servicesLabel, servicesList,

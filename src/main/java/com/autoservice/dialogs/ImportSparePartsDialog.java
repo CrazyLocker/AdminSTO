@@ -5,6 +5,7 @@ import com.autoservice.controllers.ServicePanelController;
 import com.autoservice.controllers.SparePartPanelController;
 import com.autoservice.controllers.StockPanelController;
 import com.autoservice.services.ImportService;
+import com.autoservice.services.WindowStateManager;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -33,6 +34,9 @@ public class ImportSparePartsDialog {
         stage.setMinWidth(650);
         stage.setMinHeight(500);
         stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
+        
+        // Восстановление состояния диалога
+        WindowStateManager.getInstance().restoreWindowState("importSparePartsDialog", stage);
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
@@ -168,6 +172,10 @@ public class ImportSparePartsDialog {
         Button closeBtn = new Button("Закрыть");
         closeBtn.getStyleClass().add("cancel-button");
         closeBtn.setOnAction(e -> stage.close());
+        
+        stage.setOnHiding(e -> {
+            WindowStateManager.getInstance().saveWindowState("importSparePartsDialog", stage);
+        });
 
         VBox centerBox = new VBox(10, fileBox, formatLabel, formatInfo, separator1,
                 importStatusLabel, importBtn);

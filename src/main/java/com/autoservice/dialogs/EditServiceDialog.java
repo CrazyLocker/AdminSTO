@@ -3,6 +3,7 @@ package com.autoservice.dialogs;
 import com.autoservice.DataStore;
 import com.autoservice.Service;
 import com.autoservice.controllers.ServicePanelController;
+import com.autoservice.services.WindowStateManager;
 import com.autoservice.utils.TooltipHelper;
 import com.autoservice.utils.ValidationErrorIndicator;
 import com.autoservice.utils.ValidationUtils;
@@ -37,6 +38,9 @@ public class EditServiceDialog {
         stage.setMinWidth(500);
         stage.setMinHeight(350);
         stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
+        
+        // Восстановление состояния диалога
+        WindowStateManager.getInstance().restoreWindowState("editServiceDialog", stage);
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
@@ -175,6 +179,10 @@ public class EditServiceDialog {
         });
 
         cancelBtn.setOnAction(e -> stage.close());
+        
+        stage.setOnHiding(e -> {
+            WindowStateManager.getInstance().saveWindowState("editServiceDialog", stage);
+        });
         stage.showAndWait();
     }
 }

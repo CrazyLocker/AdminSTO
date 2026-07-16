@@ -6,6 +6,7 @@ import com.autoservice.controllers.SparePartPanelController;
 import com.autoservice.dialogs.ExportSparePartsDialog;
 import com.autoservice.dialogs.ImportSparePartsDialog;
 import com.autoservice.services.TableStateManager;
+import com.autoservice.services.WindowStateManager;
 import com.autoservice.utils.TooltipHelper;
 import com.autoservice.utils.ValidationErrorIndicator;
 import com.autoservice.utils.ValidationUtils;
@@ -257,6 +258,9 @@ public class SparePartPanel {
         stage.setMinWidth(500);
         stage.setMinHeight(450);
         stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
+        
+        // Восстановление состояния диалога
+        WindowStateManager.getInstance().restoreWindowState("addSparePartDialog", stage);
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
@@ -430,6 +434,11 @@ public class SparePartPanel {
             stage.close();
         });
         cancelBtn.setOnAction(e -> stage.close());
+        
+        stage.setOnHiding(e -> {
+            WindowStateManager.getInstance().saveWindowState("addSparePartDialog", stage);
+        });
+
         stage.showAndWait();
     }
 
@@ -439,6 +448,9 @@ public class SparePartPanel {
         stage.setMinWidth(500);
         stage.setMinHeight(500);
         stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
+        
+        // Восстановление состояния диалога
+        WindowStateManager.getInstance().restoreWindowState("editSparePartDialog", stage);
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
@@ -597,6 +609,11 @@ public class SparePartPanel {
         });
 
         cancelBtn.setOnAction(e -> stage.close());
+        
+        stage.setOnHiding(e -> {
+            WindowStateManager.getInstance().saveWindowState("editSparePartDialog", stage);
+        });
+
         stage.showAndWait();
     }
 

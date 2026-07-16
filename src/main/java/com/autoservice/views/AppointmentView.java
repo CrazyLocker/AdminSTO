@@ -2,6 +2,7 @@ package com.autoservice.views;
 
 import com.autoservice.*;
 import com.autoservice.controllers.OrderController;
+import com.autoservice.services.WindowStateManager;
 import com.autoservice.utils.ValidationErrorIndicator;
 import com.autoservice.utils.ValidationUtils;
 import com.autoservice.utils.TooltipHelper;
@@ -325,6 +326,8 @@ public class AppointmentView {
         stage.setMinHeight(500);
         stage.initModality(Modality.WINDOW_MODAL);
 
+        WindowStateManager.getInstance().restoreWindowState("appointmentDetails", stage);
+
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
         root.getStyleClass().add("dialog-root");
@@ -442,6 +445,7 @@ public class AppointmentView {
         Scene scene = new Scene(root);
         scene.getStylesheets().add(AppointmentView.class.getResource("/styles.css").toExternalForm());
         stage.setScene(scene);
+        stage.setOnHiding(e -> WindowStateManager.getInstance().saveWindowState("appointmentDetails", stage));
         stage.showAndWait();
     }
 
@@ -452,6 +456,8 @@ public class AppointmentView {
         stage.setMinHeight(500);
         stage.initModality(Modality.WINDOW_MODAL);
 
+        WindowStateManager.getInstance().restoreWindowState("appointmentInfoOnly", stage);
+
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
         root.getStyleClass().add("dialog-root");
@@ -569,6 +575,7 @@ public class AppointmentView {
         Scene scene = new Scene(root);
         scene.getStylesheets().add(AppointmentView.class.getResource("/styles.css").toExternalForm());
         stage.setScene(scene);
+        stage.setOnHiding(e -> WindowStateManager.getInstance().saveWindowState("appointmentInfoOnly", stage));
         stage.showAndWait();
     }
 
@@ -578,6 +585,8 @@ public class AppointmentView {
         stage.setMinWidth(500);
         stage.setMinHeight(550);
         stage.initModality(Modality.WINDOW_MODAL);
+
+        WindowStateManager.getInstance().restoreWindowState("editAppointmentDialog", stage);
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
@@ -713,6 +722,7 @@ public class AppointmentView {
 
         cancelBtn.setOnAction(e -> stage.close());
 
+        stage.setOnHiding(e -> WindowStateManager.getInstance().saveWindowState("editAppointmentDialog", stage));
         stage.showAndWait();
     }
 
@@ -722,6 +732,8 @@ public class AppointmentView {
         stage.setMinWidth(500);
         stage.setMinHeight(600);
         stage.initModality(Modality.WINDOW_MODAL);
+
+        WindowStateManager.getInstance().restoreWindowState("addAppointmentDialog", stage);
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
@@ -872,6 +884,7 @@ public class AppointmentView {
 
         cancelBtn.setOnAction(e -> stage.close());
 
+        stage.setOnHiding(e -> WindowStateManager.getInstance().saveWindowState("addAppointmentDialog", stage));
         stage.showAndWait();
     }
 

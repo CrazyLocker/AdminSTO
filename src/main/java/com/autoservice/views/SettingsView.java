@@ -11,6 +11,7 @@ import com.autoservice.services.SettingService;
 import com.autoservice.services.BackupService;
 import com.autoservice.services.ScheduleService;
 import com.autoservice.services.TableStateManager;
+import com.autoservice.services.WindowStateManager;
 import com.autoservice.utils.IconHelper;
 import com.autoservice.utils.ValidationErrorIndicator;
 import com.autoservice.utils.ValidationUtils;
@@ -102,6 +103,9 @@ public class SettingsView {
         stage.setWidth(1100);
         stage.setHeight(750);
         stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+        
+        // Восстановление состояния диалога
+        WindowStateManager.getInstance().restoreWindowState("settingsDialog", stage);
 
         VBox root = create();
         Scene scene = new Scene(root);
@@ -113,6 +117,10 @@ public class SettingsView {
         javafx.geometry.Rectangle2D bounds = screen.getBounds();
         stage.setX((bounds.getWidth() - 1100) / 2);
         stage.setY((bounds.getHeight() - 750) / 2);
+        
+        stage.setOnHiding(e -> {
+            WindowStateManager.getInstance().saveWindowState("settingsDialog", stage);
+        });
         
         stage.show();
     }
