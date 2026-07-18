@@ -501,7 +501,7 @@ public class AppointmentView {
         btnBox.setAlignment(Pos.CENTER);
 
         Button closeBtn = new Button("Закрыть");
-        closeBtn.getStyleClass().add("cancel-button");
+        closeBtn.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold;");
         closeBtn.setOnAction(e -> stage.close());
 
         btnBox.getChildren().add(closeBtn);
@@ -670,7 +670,7 @@ public class AppointmentView {
         btnBox.setAlignment(Pos.CENTER);
 
         Button closeBtn = new Button("Закрыть");
-        closeBtn.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 4px 14px; -fx-pref-height: 30px; -fx-background-radius: 4;");
+        closeBtn.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold;");
         closeBtn.setOnAction(e -> stage.close());
 
         btnBox.getChildren().add(closeBtn);
@@ -828,9 +828,26 @@ public class AppointmentView {
                 showAlert("Выберите время");
                 isValid = false;
             }
+            if (datePickerLocal.getValue() == null) {
+                showAlert("Выберите дату");
+                isValid = false;
+            }
             
             if (!isValid) {
                 return;
+            }
+
+            // ====== ПРОВЕРКА ВЫХОДНЫХ ДНЕЙ ======
+            if (DateUtils.isWeekend(datePickerLocal.getValue())) {
+                Alert weekendAlert = new Alert(Alert.AlertType.CONFIRMATION);
+                weekendAlert.setTitle("Подтверждение записи");
+                weekendAlert.setHeaderText("Выбран выходной день!");
+                weekendAlert.setContentText("Запись в выходной день (" + datePickerLocal.getValue().format(java.time.format.DateTimeFormatter.ofPattern("EEEE", new java.util.Locale("ru"))) + ") может быть ограничена.\n\nПродолжить?");
+                weekendAlert.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
+                
+                if (weekendAlert.showAndWait().orElse(ButtonType.NO) == ButtonType.NO) {
+                    return; // Отмена при нажатии "Нет"
+                }
             }
 
             WorkOrder selectedOrder = orderCombo.getValue();

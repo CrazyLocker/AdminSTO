@@ -50,9 +50,8 @@ public class EditOrderDialog {
     // Константы
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy");
     private static final String[] TIME_SLOTS = {
-        "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
-        "12:00", "12:30", "13:00", "13:30", "14:00", "14:30",
-        "15:00", "15:30", "16:00", "16:30", "17:00", "17:30"
+        "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00",
+        "16:00", "17:00", "18:00", "19:00", "20:00"
     };
     private static final String[] MASTERS = {
         "Саныч", "Малой"
@@ -452,6 +451,19 @@ public class EditOrderDialog {
             if (!isFree) {
                 showAlert("Выбранное время уже занято другим клиентом!");
                 return;
+            }
+
+            // ====== ПРОВЕРКА ВЫХОДНЫХ ДНЕЙ ======
+            if (DateUtils.isWeekend(selectedDate)) {
+                Alert weekendAlert = new Alert(Alert.AlertType.CONFIRMATION);
+                weekendAlert.setTitle("Подтверждение записи");
+                weekendAlert.setHeaderText("Выбран выходной день!");
+                weekendAlert.setContentText("Запись в выходной день (" + selectedDate.format(DateTimeFormatter.ofPattern("EEEE", new java.util.Locale("ru"))) + ") может быть ограничена.\n\nПродолжить?");
+                weekendAlert.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
+                
+                if (weekendAlert.showAndWait().orElse(ButtonType.NO) == ButtonType.NO) {
+                    return; // Отмена при нажатии "Нет"
+                }
             }
         }
 

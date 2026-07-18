@@ -1,5 +1,6 @@
 package com.autoservice;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
@@ -12,6 +13,17 @@ public class DateUtils {
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("d MMMM yyyy 'г.'", new Locale("ru"));
     private static final DateTimeFormatter DB_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+    /**
+     * Проверяет, является ли дата выходным днём (суббота или воскресенье).
+     * @param date дата для проверки
+     * @return true если это выходной день
+     */
+    public static boolean isWeekend(LocalDate date) {
+        if (date == null) return false;
+        DayOfWeek dayOfWeek = date.getDayOfWeek();
+        return dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY;
+    }
 
     /**
      * Форматирует дату в русский формат (например, "15 июля 2026 г.").
