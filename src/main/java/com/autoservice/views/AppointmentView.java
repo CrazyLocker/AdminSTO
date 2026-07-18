@@ -23,9 +23,8 @@ import java.util.Locale;
 public class AppointmentView {
 
     private static final String[] TIME_SLOTS = {
-            "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
-            "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30",
-            "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00"
+            "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00",
+            "16:00", "17:00", "18:00", "19:00", "20:00"
     };
 
     private static final String[] MASTERS = {"Саныч", "Малой"};
@@ -530,7 +529,6 @@ public class AppointmentView {
         root.getChildren().addAll(titleLabel, grid, btnBox);
 
         Scene scene = new Scene(root);
-        scene.getStylesheets().add(AppointmentView.class.getResource("/styles.css").toExternalForm());
         stage.setScene(scene);
         stage.setOnHiding(e -> WindowStateManager.getInstance().saveWindowState("appointmentDetails", stage));
         stage.showAndWait();
@@ -672,7 +670,7 @@ public class AppointmentView {
         btnBox.setAlignment(Pos.CENTER);
 
         Button closeBtn = new Button("Закрыть");
-        closeBtn.getStyleClass().add("cancel-button");
+        closeBtn.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 4px 14px; -fx-pref-height: 30px; -fx-background-radius: 4;");
         closeBtn.setOnAction(e -> stage.close());
 
         btnBox.getChildren().add(closeBtn);
