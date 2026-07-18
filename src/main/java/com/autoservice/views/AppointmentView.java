@@ -10,6 +10,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.scene.shape.Circle;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
@@ -211,7 +212,10 @@ public class AppointmentView {
                     serviceLabel.setWrapText(true);
                     serviceLabel.getStyleClass().add("week-service");
                     cell.getChildren().addAll(nameLabel, carLabel, serviceLabel);
-                    cell.getStyleClass().add("week-cell-booked");
+
+                    // Цветовая индикация по статусу заказа
+                    String statusColor = getOrderStatusColor(appointment);
+                    cell.setStyle("-fx-background-color: " + statusColor + "; -fx-background-radius: 6;");
 
                     cell.setOnMouseClicked(event -> {
                         if (event.getClickCount() == 2) {
@@ -295,6 +299,14 @@ public class AppointmentView {
                         appLabel.setWrapText(true);
                         appLabel.setStyle("-fx-cursor: hand;");
 
+                        // Цветной индикатор статуса
+                        String statusColor = getOrderStatusColor(a);
+                        Circle statusDot = new Circle(3);
+                        statusDot.setFill(javafx.scene.paint.Color.web(statusColor));
+
+                        HBox appBox = new HBox(4, statusDot, appLabel);
+                        appBox.setAlignment(Pos.CENTER_LEFT);
+
                         final Appointment currentAppointment = a;
                         appLabel.setOnMouseClicked(event -> {
                             if (event.getClickCount() == 2) {
@@ -302,7 +314,7 @@ public class AppointmentView {
                             }
                         });
 
-                        cell.getChildren().add(appLabel);
+                        cell.getChildren().add(appBox);
                         count++;
                     }
                 } else if (isCurrentMonth) {
@@ -331,6 +343,27 @@ public class AppointmentView {
             }
         }
         return null;
+    }
+
+    private static String getOrderStatusColor(Appointment appointment) {
+        String orderId = appointment.getOrderId();
+        if (orderId == null || orderId.isEmpty()) {
+            return "#95a5a6"; // серый - нет заказа
+        }
+        
+        for (WorkOrder order : DataStore.getOrders()) {
+            if (order.getId().equals(orderId)) {
+                String status = order.getStatus();
+                if (WorkOrder.STATUS_CLOSED.equals(status)) {
+                    return "#27ae60"; // зелёный - сделано
+                } else if (WorkOrder.STATUS_IN_PROGRESS.equals(status)) {
+                    return "#f39c12"; // оранжевый - в работе
+                } else {
+                    return "#3498db"; // синий - запланировано
+                }
+            }
+        }
+        return "#95a5a6"; // серый - заказ не найден
     }
 
     private static void showAppointmentDetails(Appointment appointment) {
