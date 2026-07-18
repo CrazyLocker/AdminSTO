@@ -137,7 +137,7 @@ public class EditClientDialog {
             Appointment currentAppointment = null;
             for (Appointment a : DataStore.getAppointments()) {
                 if (a.getClient().getId() == client.getId() &&
-                        a.getStatus().equals(Appointment.STATUS_SCHEDULED)) {
+                        a.getStatus().equals(Appointment.STATUS_NEW)) {
                     currentAppointment = a;
                     break;
                 }

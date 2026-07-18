@@ -17,7 +17,7 @@ public class ServiceSparePartsList {
     public ServiceSparePartsList() {
         this.id = -1;
         this.serviceId = 0;
-        this.createdDate = java.time.LocalDate.now().toString();
+        this.createdDate = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
         this.active = true;
         this.items = new ArrayList<>();
     }

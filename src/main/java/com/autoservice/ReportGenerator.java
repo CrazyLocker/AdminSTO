@@ -31,7 +31,6 @@ public class ReportGenerator {
         public int newOrders;
         public int inProgressOrders;
         public int closedOrders;
-        public int cancelledOrders;
         public Map<String, Integer> topServices = new LinkedHashMap<>();
         public Map<String, Integer> topParts = new LinkedHashMap<>();
         public String generatedDate;
@@ -67,7 +66,7 @@ public class ReportGenerator {
         data.totalOrders = orders.size();
 
         double totalRevenue = 0;
-        int newOrders = 0, inProgress = 0, closed = 0, cancelled = 0;
+        int newOrders = 0, inProgress = 0, closed = 0;
 
         // Сбор статистики по услугам и запчастям
         Map<String, Integer> serviceCount = new HashMap<>();
@@ -76,16 +75,15 @@ public class ReportGenerator {
         for (WorkOrder order : orders) {
             // Статусы
             String status = order.getStatus();
-            if (status == null) status = "Новый";
+            if (status == null) status = WorkOrder.STATUS_NEW;
 
             switch (status) {
-                case "Новый" -> newOrders++;
-                case "В работе" -> inProgress++;
-                case "Закрыт" -> {
+                case WorkOrder.STATUS_NEW -> newOrders++;
+                case WorkOrder.STATUS_IN_PROGRESS -> inProgress++;
+                case WorkOrder.STATUS_CLOSED -> {
                     closed++;
                     totalRevenue += order.getTotal();
                 }
-                default -> cancelled++;
             }
 
             // Услуги
@@ -103,7 +101,6 @@ public class ReportGenerator {
         data.newOrders = newOrders;
         data.inProgressOrders = inProgress;
         data.closedOrders = closed;
-        data.cancelledOrders = cancelled;
         data.averageOrderValue = closed > 0 ? totalRevenue / closed : 0;
 
         // Топ-5 услуг
@@ -177,7 +174,6 @@ public class ReportGenerator {
             addStatRow(statusTable, "Новые", String.valueOf(data.newOrders));
             addStatRow(statusTable, "В работе", String.valueOf(data.inProgressOrders));
             addStatRow(statusTable, "Закрытые", String.valueOf(data.closedOrders));
-            addStatRow(statusTable, "Отменённые", String.valueOf(data.cancelledOrders));
 
             document.add(statusTable);
             document.add(new Paragraph("\n"));

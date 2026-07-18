@@ -316,7 +316,7 @@ public class DashboardView extends ScrollPane {
         double total = 0;
         for (WorkOrder order : DataStore.getOrders()) {
             String status = order.getStatus();
-            if ("Закрыт".equals(status)) {
+            if (WorkOrder.STATUS_CLOSED.equals(status)) {
                 total += order.getTotal();
             }
         }
@@ -326,7 +326,7 @@ public class DashboardView extends ScrollPane {
     private int getActiveOrdersCount() {
         int count = 0;
         for (WorkOrder order : DataStore.getOrders()) {
-            if ("В работе".equals(order.getStatus())) {
+            if (WorkOrder.STATUS_IN_PROGRESS.equals(order.getStatus())) {
                 count++;
             }
         }
@@ -336,7 +336,7 @@ public class DashboardView extends ScrollPane {
     private int getCompletedOrdersCount() {
         int count = 0;
         for (WorkOrder order : DataStore.getOrders()) {
-            if ("Выполнен".equals(order.getStatus())) {
+            if (WorkOrder.STATUS_CLOSED.equals(order.getStatus())) {
                 count++;
             }
         }
@@ -478,11 +478,9 @@ public class DashboardView extends ScrollPane {
         // Воскресенье
         LocalDate sunday = monday.plusDays(6);
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-
         for (Appointment a : DataStore.getAppointments()) {
             try {
-                LocalDate appointmentDate = LocalDate.parse(a.getDate(), formatter);
+                LocalDate appointmentDate = DateUtils.parseDate(a.getDate());
 
                 // Проверяем, что запись в пределах недели
                 if (appointmentDate.isBefore(monday) || appointmentDate.isAfter(sunday)) {

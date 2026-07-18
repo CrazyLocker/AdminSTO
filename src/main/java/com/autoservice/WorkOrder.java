@@ -4,10 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class WorkOrder {
-    public static final String STATUS_DRAFT = "Черновик";
+    public static final String STATUS_NEW = "Новый";
     public static final String STATUS_IN_PROGRESS = "В работе";
     public static final String STATUS_CLOSED = "Закрыт";
-    public static final String STATUS_CANCELLED = "Отменён";
 
     private String id;
     private Client client;
@@ -18,6 +17,9 @@ public class WorkOrder {
     private List<Double> servicePrices = new ArrayList<>();
     private List<SparePart> spareParts = new ArrayList<>();
     private List<Double> sparePartQuantities = new ArrayList<>();
+    private List<Integer> serviceIds = new ArrayList<>();
+    private String closedDate = "";
+    private String notes = "";
     private boolean dirty = false;
 
     // ==================== КОНСТРУКТОРЫ ====================
@@ -25,7 +27,7 @@ public class WorkOrder {
     public WorkOrder() {
         this.id = "";
         this.client = null;
-        this.status = STATUS_DRAFT;
+        this.status = STATUS_NEW;
         this.total = 0;
         this.createdDate = "";
         this.dirty = true;
@@ -52,6 +54,9 @@ public class WorkOrder {
     public String getStatus() { return status; }
     public double getTotal() { return total; }
     public String getCreatedDate() { return createdDate; }
+    public List<Integer> getServiceIds() { return serviceIds; }
+    public String getClosedDate() { return closedDate; }
+    public String getNotes() { return notes; }
     public List<String> getServices() { return services; }
     public List<Double> getServicePrices() { return servicePrices; }
     public List<SparePart> getSpareParts() { return spareParts; }
@@ -85,6 +90,16 @@ public class WorkOrder {
         this.dirty = true;
     }
 
+    public void setClosedDate(String closedDate) {
+        this.closedDate = closedDate;
+        this.dirty = true;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
+        this.dirty = true;
+    }
+
     public void setDirty(boolean dirty) {
         this.dirty = dirty;
     }
@@ -94,6 +109,15 @@ public class WorkOrder {
     public void addService(String name, double price) {
         this.services.add(name);
         this.servicePrices.add(price);
+        this.serviceIds.add(0);
+        this.dirty = true;
+        recalculateTotal();
+    }
+
+    public void addService(int serviceId, String name, double price) {
+        this.services.add(name);
+        this.servicePrices.add(price);
+        this.serviceIds.add(serviceId);
         this.dirty = true;
         recalculateTotal();
     }
@@ -102,6 +126,7 @@ public class WorkOrder {
         if (index >= 0 && index < services.size()) {
             services.remove(index);
             servicePrices.remove(index);
+            serviceIds.remove(index);
             this.dirty = true;
             recalculateTotal();
         }

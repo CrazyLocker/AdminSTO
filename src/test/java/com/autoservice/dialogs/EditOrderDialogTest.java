@@ -23,7 +23,7 @@ class EditOrderDialogTest {
         
         testOrder = new WorkOrder(testClient);
         testOrder.setId("ZAK-01/01/24-0001");
-        testOrder.setStatus(WorkOrder.STATUS_DRAFT);
+        testOrder.setStatus(WorkOrder.STATUS_NEW);
         testOrder.addService("Замена масла", 1500);
     }
 
@@ -31,7 +31,7 @@ class EditOrderDialogTest {
     @Order(1)
     void testConstructorWithOpenOrder() {
         assertThat(EditOrderDialog.class).isNotNull();
-        assertThat(testOrder.getStatus()).isEqualTo(WorkOrder.STATUS_DRAFT);
+        assertThat(testOrder.getStatus()).isEqualTo(WorkOrder.STATUS_NEW);
     }
 
     @Test
@@ -101,7 +101,7 @@ class EditOrderDialogTest {
     @Order(8)
     void testOrderWithNoServicesAndParts() {
         WorkOrder order = new WorkOrder(testClient);
-        order.setStatus(WorkOrder.STATUS_DRAFT);
+        order.setStatus(WorkOrder.STATUS_NEW);
 
         assertThat(order.getServices()).isEmpty();
         assertThat(order.getSpareParts()).isEmpty();
@@ -194,6 +194,6 @@ class EditOrderDialogTest {
         String result = order.toString();
 
         assertThat(result).contains("ZAK-01/01/24-0001");
-        assertThat(result).contains("Черновик");
+        assertThat(result).contains("Новый");
     }
 }

@@ -107,6 +107,8 @@ public class H2Database extends AbstractDatabase {
                 "status TEXT NOT NULL CHECK(length(status) > 0), " +
                 "total REAL NOT NULL CHECK(total >= 0), " +
                 "created_date TEXT NOT NULL CHECK(length(created_date) > 0), " +
+                "closed_date TEXT DEFAULT '', " +
+                "notes TEXT DEFAULT '', " +
                 "FOREIGN KEY (client_id) REFERENCES clients(id)" +
                 ")";
 
@@ -114,6 +116,7 @@ public class H2Database extends AbstractDatabase {
                 "order_id TEXT NOT NULL CHECK(length(order_id) > 0), " +
                 "service_name TEXT NOT NULL CHECK(length(service_name) > 0), " +
                 "price REAL NOT NULL CHECK(price >= 0), " +
+                "service_id INTEGER DEFAULT 0, " +
                 "FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE" +
                 ")";
 
@@ -122,6 +125,9 @@ public class H2Database extends AbstractDatabase {
                 "part_name TEXT NOT NULL CHECK(length(part_name) > 0), " +
                 "price REAL NOT NULL CHECK(price >= 0), " +
                 "quantity INTEGER NOT NULL CHECK(quantity > 0), " +
+                "spare_part_id INTEGER DEFAULT 0, " +
+                "unit_type TEXT DEFAULT 'шт', " +
+                "purchase_price REAL DEFAULT 0, " +
                 "FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE" +
                 ")";
 
@@ -131,6 +137,7 @@ public class H2Database extends AbstractDatabase {
                 "order_id TEXT, " +
                 "master_name TEXT NOT NULL CHECK(length(master_name) > 0), " +
                 "service_name TEXT NOT NULL CHECK(length(service_name) > 0), " +
+                "service_id INTEGER DEFAULT 0, " +
                 "appointment_date TEXT NOT NULL CHECK(length(appointment_date) > 0), " +
                 "appointment_time TEXT NOT NULL CHECK(length(appointment_time) > 0), " +
                 "status TEXT NOT NULL CHECK(length(status) > 0), " +
@@ -212,6 +219,9 @@ public class H2Database extends AbstractDatabase {
                 "CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments(status)",
                 "CREATE INDEX IF NOT EXISTS idx_order_services_order_id ON order_services(order_id)",
                 "CREATE INDEX IF NOT EXISTS idx_order_parts_order_id ON order_parts(order_id)",
+                "CREATE INDEX IF NOT EXISTS idx_order_parts_spare_part_id ON order_parts(spare_part_id)",
+                "CREATE INDEX IF NOT EXISTS idx_order_services_service_id ON order_services(service_id)",
+                "CREATE INDEX IF NOT EXISTS idx_appointments_service_id ON appointments(service_id)",
                 "CREATE INDEX IF NOT EXISTS idx_spare_parts_name ON spare_parts(name)",
                 "CREATE INDEX IF NOT EXISTS idx_clients_name_lastname_phone ON clients(name, last_name, phone)",
                 "CREATE INDEX IF NOT EXISTS idx_service_spare_parts_service_id ON service_spare_parts(service_id)",
@@ -375,13 +385,15 @@ public class H2Database extends AbstractDatabase {
 
             conn.setAutoCommit(false);
 
-            String sql = "INSERT INTO orders (id, client_id, status, total, created_date) VALUES (?, ?, ?, ?, ?)";
+            String sql = "INSERT INTO orders (id, client_id, status, total, created_date, closed_date, notes) VALUES (?, ?, ?, ?, ?, ?, ?)";
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 pstmt.setString(1, orderId);
                 pstmt.setInt(2, clientId);
                 pstmt.setString(3, order.getStatus());
                 pstmt.setDouble(4, order.getTotal());
                 pstmt.setString(5, currentDate);
+                pstmt.setString(6, order.getClosedDate() != null ? order.getClosedDate() : "");
+                pstmt.setString(7, order.getNotes() != null ? order.getNotes() : "");
                 pstmt.executeUpdate();
             }
 
@@ -402,13 +414,15 @@ public class H2Database extends AbstractDatabase {
             conn.setAutoCommit(false);
             
             // Update order header
-            String orderSql = "UPDATE orders SET client_id = ?, status = ?, total = ? WHERE id = ?";
+            String orderSql = "UPDATE orders SET client_id = ?, status = ?, total = ?, closed_date = ?, notes = ? WHERE id = ?";
             try (PreparedStatement pstmt = conn.prepareStatement(orderSql)) {
                 int clientId = getClientId(order.getClient());
                 pstmt.setInt(1, clientId);
                 pstmt.setString(2, order.getStatus());
                 pstmt.setDouble(3, order.getTotal());
-                pstmt.setString(4, order.getId());
+                pstmt.setString(4, order.getClosedDate() != null ? order.getClosedDate() : "");
+                pstmt.setString(5, order.getNotes() != null ? order.getNotes() : "");
+                pstmt.setString(6, order.getId());
                 pstmt.executeUpdate();
             }
             
@@ -440,12 +454,13 @@ public class H2Database extends AbstractDatabase {
     }
     
     private void saveOrderServices(Connection conn, String orderId, WorkOrder order) throws SQLException {
-        String sql = "INSERT INTO order_services (order_id, service_name, price) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO order_services (order_id, service_name, price, service_id) VALUES (?, ?, ?, ?)";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             for (int i = 0; i < order.getServices().size(); i++) {
                 pstmt.setString(1, orderId);
                 pstmt.setString(2, order.getServices().get(i));
                 pstmt.setDouble(3, order.getServicePrices().get(i));
+                pstmt.setInt(4, i < order.getServiceIds().size() ? order.getServiceIds().get(i) : 0);
                 pstmt.addBatch();
             }
             pstmt.executeBatch();
@@ -453,13 +468,17 @@ public class H2Database extends AbstractDatabase {
     }
     
     private void saveOrderParts(Connection conn, String orderId, WorkOrder order) throws SQLException {
-        String sql = "INSERT INTO order_parts (order_id, part_name, price, quantity) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO order_parts (order_id, part_name, price, quantity, spare_part_id, unit_type, purchase_price) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             for (int i = 0; i < order.getSpareParts().size(); i++) {
+                SparePart part = order.getSpareParts().get(i);
                 pstmt.setString(1, orderId);
-                pstmt.setString(2, order.getSpareParts().get(i).getName());
-                pstmt.setDouble(3, order.getSpareParts().get(i).getRetailPrice());
+                pstmt.setString(2, part.getName());
+                pstmt.setDouble(3, part.getRetailPrice());
                 pstmt.setDouble(4, order.getSparePartQuantities().get(i));
+                pstmt.setInt(5, part.getId());
+                pstmt.setString(6, part.getUnitType() != null ? part.getUnitType() : "шт");
+                pstmt.setDouble(7, part.getPurchasePrice());
                 pstmt.addBatch();
             }
             pstmt.executeBatch();
@@ -470,7 +489,7 @@ public class H2Database extends AbstractDatabase {
     
     @Override
     public void addAppointment(Appointment appointment) {
-        String sql = "INSERT INTO appointments (client_id, order_id, master_name, service_name, appointment_date, appointment_time, status) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO appointments (client_id, order_id, master_name, service_name, service_id, appointment_date, appointment_time, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -479,9 +498,10 @@ public class H2Database extends AbstractDatabase {
             pstmt.setString(2, appointment.getOrderId());
             pstmt.setString(3, appointment.getMasterName());
             pstmt.setString(4, appointment.getServiceName());
-            pstmt.setString(5, appointment.getDate());
-            pstmt.setString(6, appointment.getTime());
-            pstmt.setString(7, appointment.getStatus());
+            pstmt.setInt(5, appointment.getServiceId());
+            pstmt.setString(6, appointment.getDate());
+            pstmt.setString(7, appointment.getTime());
+            pstmt.setString(8, appointment.getStatus());
             pstmt.executeUpdate();
             
             // Получаем сгенерированный id
@@ -496,7 +516,7 @@ public class H2Database extends AbstractDatabase {
     
     @Override
     public void updateAppointment(Appointment appointment) {
-        String sql = "UPDATE appointments SET client_id = ?, master_name = ?, service_name = ?, appointment_date = ?, appointment_time = ?, status = ?, order_id = ? WHERE id = ?";
+        String sql = "UPDATE appointments SET client_id = ?, master_name = ?, service_name = ?, service_id = ?, appointment_date = ?, appointment_time = ?, status = ?, order_id = ? WHERE id = ?";
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -504,11 +524,12 @@ public class H2Database extends AbstractDatabase {
             pstmt.setInt(1, clientId);
             pstmt.setString(2, appointment.getMasterName());
             pstmt.setString(3, appointment.getServiceName());
-            pstmt.setString(4, appointment.getDate());
-            pstmt.setString(5, appointment.getTime());
-            pstmt.setString(6, appointment.getStatus());
-            pstmt.setString(7, appointment.getOrderId());
-            pstmt.setInt(8, appointment.getId());
+            pstmt.setInt(4, appointment.getServiceId());
+            pstmt.setString(5, appointment.getDate());
+            pstmt.setString(6, appointment.getTime());
+            pstmt.setString(7, appointment.getStatus());
+            pstmt.setString(8, appointment.getOrderId());
+            pstmt.setInt(9, appointment.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
             logger.error("Ошибка обновления записи", e);

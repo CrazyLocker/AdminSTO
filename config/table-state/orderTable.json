@@ -1,7 +1,7 @@
 {
   "tableId": "orderTable",
   "version": "1.0",
-  "timestamp": "2026-07-16T02:49:06.385977800Z",
+  "timestamp": "2026-07-18T09:09:14.498693500Z",
   "columns": [
     {
       "id": "colOrderId",
@@ -35,15 +35,21 @@
     },
     {
       "id": "colStatus",
-      "width": 120.0,
+      "width": 171.20000000000005,
       "visible": true,
       "index": 5
+    },
+    {
+      "id": "colAppointment",
+      "width": 185.60000000000014,
+      "visible": true,
+      "index": 6
     }
   ],
   "sortOrder": [
     {
-      "columnId": "colOrderId",
-      "order": "DESC"
+      "columnId": "colAppointment",
+      "order": "ASC"
     }
   ]
 }

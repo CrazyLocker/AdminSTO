@@ -314,7 +314,7 @@ class IntegrationTest extends BaseTest {
 
         WorkOrder saved = DataStore.getOrders().get(0);
 
-        assertThat(saved.getStatus()).isEqualTo(WorkOrder.STATUS_DRAFT);
+        assertThat(saved.getStatus()).isEqualTo(WorkOrder.STATUS_NEW);
 
         saved.setStatus(WorkOrder.STATUS_IN_PROGRESS);
         DataStore.updateOrder(saved);

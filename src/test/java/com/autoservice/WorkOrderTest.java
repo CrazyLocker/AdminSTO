@@ -96,27 +96,24 @@ class WorkOrderTest extends BaseTest {
     @Test
     @Order(7)
     void testWorkOrderStatuses() {
-        assertThat(WorkOrder.STATUS_DRAFT).isEqualTo("Черновик");
+        assertThat(WorkOrder.STATUS_NEW).isEqualTo("Новый");
         assertThat(WorkOrder.STATUS_IN_PROGRESS).isEqualTo("В работе");
         assertThat(WorkOrder.STATUS_CLOSED).isEqualTo("Закрыт");
-        assertThat(WorkOrder.STATUS_CANCELLED).isEqualTo("Отменён");
     }
 
     @Test
     @Order(8)
     void testWorkOrderGetAllStatuses() {
         List<String> statuses = List.of(
-            WorkOrder.STATUS_DRAFT,
+            WorkOrder.STATUS_NEW,
             WorkOrder.STATUS_IN_PROGRESS,
-            WorkOrder.STATUS_CLOSED,
-            WorkOrder.STATUS_CANCELLED
+            WorkOrder.STATUS_CLOSED
         );
-        assertThat(statuses).hasSize(4);
+        assertThat(statuses).hasSize(3);
         assertThat(statuses).contains(
-            WorkOrder.STATUS_DRAFT,
+            WorkOrder.STATUS_NEW,
             WorkOrder.STATUS_IN_PROGRESS,
-            WorkOrder.STATUS_CLOSED,
-            WorkOrder.STATUS_CANCELLED
+            WorkOrder.STATUS_CLOSED
         );
     }
 
@@ -126,8 +123,8 @@ class WorkOrderTest extends BaseTest {
         WorkOrder order = new WorkOrder(testClient);
         order.addService("Диагностика", 1000);
 
-        order.setStatus(WorkOrder.STATUS_DRAFT);
-        assertThat(order.getStatus()).isEqualTo(WorkOrder.STATUS_DRAFT);
+        order.setStatus(WorkOrder.STATUS_NEW);
+        assertThat(order.getStatus()).isEqualTo(WorkOrder.STATUS_NEW);
 
         order.setStatus(WorkOrder.STATUS_IN_PROGRESS);
         assertThat(order.getStatus()).isEqualTo(WorkOrder.STATUS_IN_PROGRESS);
@@ -199,7 +196,7 @@ class WorkOrderTest extends BaseTest {
         WorkOrder order = new WorkOrder(testClient);
         order.addService("Диагностика", 1000);
 
-        assertThat(order.getStatus()).isEqualTo(WorkOrder.STATUS_DRAFT);
+        assertThat(order.getStatus()).isEqualTo(WorkOrder.STATUS_NEW);
 
         order.setStatus(WorkOrder.STATUS_IN_PROGRESS);
         assertThat(order.getStatus()).isEqualTo(WorkOrder.STATUS_IN_PROGRESS);

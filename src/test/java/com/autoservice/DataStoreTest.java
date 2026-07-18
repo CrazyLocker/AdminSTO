@@ -258,7 +258,7 @@ class DataStoreTest extends BaseTest {
         DataStore.load();
 
         WorkOrder order = new WorkOrder(client);
-        order.setStatus(WorkOrder.STATUS_DRAFT);
+        order.setStatus(WorkOrder.STATUS_NEW);
         DataStore.addOrder(order);
 
         order.setStatus(WorkOrder.STATUS_IN_PROGRESS);
@@ -352,7 +352,7 @@ class DataStoreTest extends BaseTest {
 
         WorkOrder activeOrder = new WorkOrder(client);
         activeOrder.addService("Диагностика Тест16", 500);
-        activeOrder.setStatus(WorkOrder.STATUS_DRAFT);
+        activeOrder.setStatus(WorkOrder.STATUS_NEW);
         DataStore.addOrder(activeOrder);
 
         WorkOrder closedOrder = new WorkOrder(client);

@@ -65,7 +65,7 @@ class OrderControllerTest extends BaseTest {
     @Order(5)
     void testEditOrderValid() {
         OrderController.setTable(null);
-        assertThat(testOrder.getStatus()).isEqualTo(WorkOrder.STATUS_DRAFT);
+        assertThat(testOrder.getStatus()).isEqualTo(WorkOrder.STATUS_NEW);
     }
 
     @Test

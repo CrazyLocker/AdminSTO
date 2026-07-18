@@ -1,10 +1,8 @@
 package com.autoservice;
 
 public class Appointment {
-    public static final String STATUS_SCHEDULED = "Запланировано";
-    public static final String STATUS_IN_PROGRESS = "В работе";
+    public static final String STATUS_NEW = "Новая";
     public static final String STATUS_COMPLETED = "Выполнено";
-    public static final String STATUS_CANCELLED = "Отменено";
 
     private int id;
     private Client client;
@@ -14,6 +12,7 @@ public class Appointment {
     private String date;
     private String time;
     private String status;
+    private int serviceId = 0;
     private boolean dirty = false;
 
     // ==================== КОНСТРУКТОРЫ ====================
@@ -26,7 +25,7 @@ public class Appointment {
         this.serviceName = "";
         this.date = "";
         this.time = "";
-        this.status = STATUS_SCHEDULED;
+        this.status = STATUS_NEW;
         this.dirty = true;
     }
 
@@ -44,7 +43,7 @@ public class Appointment {
     }
 
     public Appointment(Client client, String masterName, String serviceName, String date, String time) {
-        this(-1, client, null, masterName, serviceName, date, time, STATUS_SCHEDULED);
+        this(-1, client, null, masterName, serviceName, date, time, STATUS_NEW);
     }
 
     // ==================== ГЕТТЕРЫ ====================
@@ -57,6 +56,7 @@ public class Appointment {
     public String getDate() { return date; }
     public String getTime() { return time; }
     public String getStatus() { return status; }
+    public int getServiceId() { return serviceId; }
     public boolean isDirty() { return dirty; }
 
     // ==================== СЕТТЕРЫ ====================
@@ -98,6 +98,11 @@ public class Appointment {
 
     public void setStatus(String status) {
         this.status = status;
+        this.dirty = true;
+    }
+
+    public void setServiceId(int serviceId) {
+        this.serviceId = serviceId;
         this.dirty = true;
     }
 

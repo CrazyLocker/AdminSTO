@@ -178,7 +178,7 @@ class CreateOrderDialogTest {
     void testOrderStatus() {
         WorkOrder order = new WorkOrder(testClient);
 
-        assertThat(order.getStatus()).isEqualTo(WorkOrder.STATUS_DRAFT);
+        assertThat(order.getStatus()).isEqualTo(WorkOrder.STATUS_NEW);
 
         order.setStatus(WorkOrder.STATUS_IN_PROGRESS);
         assertThat(order.getStatus()).isEqualTo(WorkOrder.STATUS_IN_PROGRESS);

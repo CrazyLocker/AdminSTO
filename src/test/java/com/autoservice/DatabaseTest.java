@@ -344,18 +344,16 @@ class DatabaseTest extends BaseTest {
     @Test
     @Order(22)
     void testOrderStatusConstants() {
-        assertThat(WorkOrder.STATUS_DRAFT).isEqualTo("Черновик");
+        assertThat(WorkOrder.STATUS_NEW).isEqualTo("Новый");
         assertThat(WorkOrder.STATUS_IN_PROGRESS).isEqualTo("В работе");
         assertThat(WorkOrder.STATUS_CLOSED).isEqualTo("Закрыт");
-        assertThat(WorkOrder.STATUS_CANCELLED).isEqualTo("Отменён");
     }
 
     @Test
     @Order(23)
     void testAppointmentStatusConstants() {
-        assertThat(Appointment.STATUS_SCHEDULED).isEqualTo("Запланировано");
+        assertThat(Appointment.STATUS_NEW).isEqualTo("Новая");
         assertThat(Appointment.STATUS_COMPLETED).isEqualTo("Выполнено");
-        assertThat(Appointment.STATUS_CANCELLED).isEqualTo("Отменено");
     }
 
     @Test

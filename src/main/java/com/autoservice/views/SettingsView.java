@@ -1750,7 +1750,7 @@ public class SettingsView {
             // Создаем новый список для этой услуги
             com.autoservice.model.ServiceSparePartsList list = new com.autoservice.model.ServiceSparePartsList();
             list.setServiceId(serviceId);
-            list.setCreatedDate(java.time.LocalDate.now().toString());
+            list.setCreatedDate(java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")));
             list.setActive(true);
 
             // Переносим все связи в элементы списка
