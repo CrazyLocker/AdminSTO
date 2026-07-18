@@ -13,6 +13,9 @@ import javafx.scene.layout.*;
 import javafx.scene.shape.Circle;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.scene.input.Dragboard;
+import javafx.scene.input.TransferMode;
+import javafx.scene.input.ClipboardContent;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -216,6 +219,23 @@ public class AppointmentView {
                     String statusColor = getOrderStatusColor(appointment);
                     cell.setStyle("-fx-background-color: " + statusColor + "; -fx-background-radius: 6;");
 
+                    // ====== DRAG AND DROP ДЛЯ СУЩЕСТВУЮЩЕЙ ЗАПИСИ ======
+                    cell.setOnDragDetected(e -> {
+                        if (appointment != null) {
+                            // Создаём Dragboard с ID записи
+                            Dragboard db = cell.startDragAndDrop(TransferMode.MOVE);
+                            ClipboardContent content = new ClipboardContent();
+                            String contentStr = "appointment_id:" + appointment.getId() + "|" +
+                                            "original_date:" + appointment.getDate() + "|" +
+                                            "original_time:" + appointment.getTime() + "|" +
+                                            "original_master:" + appointment.getMasterName();
+                            content.putString(contentStr);
+                            db.setContent(content);
+                            e.consume();
+                        }
+                    });
+                    cell.setStyle(cell.getStyle() + "; -fx-cursor: move;");
+
                     cell.setOnMouseClicked(event -> {
                         if (event.getClickCount() == 2) {
                             showAppointmentDetails(appointment);
@@ -226,6 +246,7 @@ public class AppointmentView {
                     freeLabel.getStyleClass().add("week-cell-free-label");
                     cell.getChildren().add(freeLabel);
                     cell.getStyleClass().add("week-cell-free");
+                    cell.setStyle(cell.getStyle() + "; -fx-cursor: pointer;");
 
                     final LocalDate finalDay = day;
                     final String finalTime = time;
@@ -236,6 +257,54 @@ public class AppointmentView {
                         }
                     });
                 }
+
+                // ====== ОБРАБОТКА DRAG AND DROP ДЛЯ ВСЕХ ЯЧЕЕК ======
+                final LocalDate cellDate = day;
+                final String cellTime = time;
+                
+                cell.setOnDragOver(e -> {
+                    if (e.getDragboard().hasContent(javafx.scene.input.DataFormat.PLAIN_TEXT)) {
+                        e.acceptTransferModes(TransferMode.MOVE);
+                        e.consume();
+                    }
+                });
+                
+                cell.setOnDragDropped(e -> {
+                    Dragboard db = e.getDragboard();
+                    if (db.hasContent(javafx.scene.input.DataFormat.PLAIN_TEXT)) {
+                        String content = db.getString();
+                        
+                        // Извлекаем данные из Dragboard
+                        String appointmentId = null;
+                        String originalDate = null;
+                        String originalTime = null;
+                        String originalMaster = null;
+                        
+                        String[] parts = content.split("\\|");
+                        for (String part : parts) {
+                            if (part.startsWith("appointment_id:")) {
+                                appointmentId = part.substring("appointment_id:".length());
+                            } else if (part.startsWith("original_date:")) {
+                                originalDate = part.substring("original_date:".length());
+                            } else if (part.startsWith("original_time:")) {
+                                originalTime = part.substring("original_time:".length());
+                            } else if (part.startsWith("original_master:")) {
+                                originalMaster = part.substring("original_master:".length());
+                            }
+                        }
+                        
+                        if (appointmentId != null && originalDate != null && originalTime != null && originalMaster != null) {
+                            // Показываем диалог редактирования с новой датой и временем
+                            showEditAppointmentDialog(appointmentId, originalDate, originalTime, originalMaster, cellDate, cellTime);
+                        }
+                        
+                        e.setDropCompleted(true);
+                    } else {
+                        e.setDropCompleted(false);
+                    }
+                    e.consume();
+                });
+                
                 scheduleGrid.add(cell, j + 1, row);
             }
         }
@@ -881,6 +950,159 @@ public class AppointmentView {
             appointment.setOrderId(selectedOrder.getId());
 
             DataStore.addAppointment(appointment);
+
+            refresh();
+            stage.close();
+        });
+
+        cancelBtn.setOnAction(e -> stage.close());
+
+        stage.setOnHiding(e -> WindowStateManager.getInstance().saveWindowState("editAppointmentDialog", stage));
+        stage.showAndWait();
+    }
+
+    // ====== МЕТОД РЕДАКТИРОВАНИЯ ЗАПИСИ ПОСЛЕ DRAG AND DROP ======
+    private static void showEditAppointmentDialog(String appointmentId, String originalDate, String originalTime, 
+                                                    String originalMaster, LocalDate newDate, String newTime) {
+        Stage stage = new Stage();
+        stage.setTitle("Переместить запись");
+        stage.setMinWidth(500);
+        stage.setMinHeight(400);
+        stage.initModality(Modality.WINDOW_MODAL);
+
+        WindowStateManager.getInstance().restoreWindowState("editAppointmentDialog", stage);
+
+        VBox root = new VBox(15);
+        root.setPadding(new Insets(20));
+        root.getStyleClass().add("dialog-root");
+
+        Label titleLabel = new Label("Переместить запись");
+        titleLabel.getStyleClass().add("dialog-title");
+
+        // Информация о текущей записи
+        GridPane infoGrid = new GridPane();
+        infoGrid.setHgap(15);
+        infoGrid.setVgap(8);
+        infoGrid.getStyleClass().add("dialog-grid");
+        
+        Appointment existingAppointment = DataStore.getAppointmentById(Integer.parseInt(appointmentId));
+        
+        if (existingAppointment != null) {
+            Client client = existingAppointment.getClient();
+            String fullName = (client.getLastName() != null && !client.getLastName().isEmpty())
+                    ? client.getLastName() + " " + client.getName()
+                    : client.getName();
+
+            infoGrid.add(new Label("Клиент:"), 0, 0);
+            infoGrid.add(new Label(fullName), 1, 0);
+
+            infoGrid.add(new Label("Текущая дата:"), 0, 1);
+            Label oldDateLabel = new Label(DateUtils.formatDate(originalDate));
+            oldDateLabel.getStyleClass().add("warning-text");
+            infoGrid.add(oldDateLabel, 1, 1);
+
+            infoGrid.add(new Label("Текущее время:"), 0, 2);
+            Label oldTimeLabel = new Label(originalTime);
+            oldTimeLabel.getStyleClass().add("warning-text");
+            infoGrid.add(oldTimeLabel, 1, 2);
+
+            infoGrid.add(new Label("Мастер:"), 0, 3);
+            infoGrid.add(new Label(existingAppointment.getMasterName()), 1, 3);
+
+            infoGrid.add(new Label("Услуга:"), 0, 4);
+            infoGrid.add(new Label(existingAppointment.getServiceName()), 1, 4);
+        }
+
+        // Поля для новой даты и времени
+        GridPane grid = new GridPane();
+        grid.setHgap(15);
+        grid.setVgap(12);
+        grid.getStyleClass().add("dialog-grid");
+
+        ComboBox<String> masterCombo = new ComboBox<>(FXCollections.observableArrayList(MASTERS));
+        masterCombo.setValue(originalMaster);
+        masterCombo.setPromptText("Выберите мастера");
+        masterCombo.setPrefWidth(200);
+
+        DatePicker datePickerLocal = new DatePicker(newDate);
+        datePickerLocal.setPrefWidth(200);
+
+        ComboBox<String> timeCombo = new ComboBox<>(FXCollections.observableArrayList(TIME_SLOTS));
+        timeCombo.setValue(newTime);
+        timeCombo.setPromptText("Выберите время");
+        timeCombo.setPrefWidth(100);
+        TooltipHelper.setToolTip(masterCombo, "Выберите мастера сервиса");
+
+        grid.add(new Label("Мастер:"), 0, 0);
+        grid.add(masterCombo, 1, 0);
+        grid.add(new Label("Дата:"), 0, 1);
+        grid.add(datePickerLocal, 1, 1);
+        grid.add(new Label("Время:"), 0, 2);
+        grid.add(timeCombo, 1, 2);
+
+        HBox btnBox = new HBox(15);
+        btnBox.setAlignment(Pos.CENTER);
+
+        Button saveBtn = new Button("Сохранить изменения");
+        saveBtn.getStyleClass().add("save-button");
+
+        Button cancelBtn = new Button("Отмена");
+        cancelBtn.getStyleClass().add("cancel-button");
+
+        btnBox.getChildren().addAll(saveBtn, cancelBtn);
+
+        root.getChildren().addAll(titleLabel, infoGrid, grid, btnBox);
+
+        Scene scene = new Scene(root);
+        stage.setScene(scene);
+
+        saveBtn.setOnAction(e -> {
+            if (masterCombo.getValue() == null) {
+                showAlert("Выберите мастера");
+                return;
+            }
+            if (timeCombo.getValue() == null) {
+                showAlert("Выберите время");
+                return;
+            }
+            if (datePickerLocal.getValue() == null) {
+                showAlert("Выберите дату");
+                return;
+            }
+
+            // ====== ПРОВЕРКА ВЫХОДНЫХ ДНЕЙ ======
+            if (DateUtils.isWeekend(datePickerLocal.getValue())) {
+                Alert weekendAlert = new Alert(Alert.AlertType.CONFIRMATION);
+                weekendAlert.setTitle("Подтверждение");
+                weekendAlert.setHeaderText("Выбран выходной день!");
+                weekendAlert.setContentText("Запись в выходной день (" + datePickerLocal.getValue().format(java.time.format.DateTimeFormatter.ofPattern("EEEE", new java.util.Locale("ru"))) + ") может быть ограничена.\n\nПродолжить?");
+                weekendAlert.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
+                
+                if (weekendAlert.showAndWait().orElse(ButtonType.NO) == ButtonType.NO) {
+                    return;
+                }
+            }
+
+            String newDateStr = DateUtils.formatDateForDB(datePickerLocal.getValue());
+            String newTimeStr = timeCombo.getValue();
+            String newMaster = masterCombo.getValue();
+
+            // ====== ПРОВЕРКА КОНФЛИКТА ВРЕМЕНИ ======
+            List<Appointment> existing = DataStore.getAppointmentsByDate(newDateStr);
+            for (Appointment a : existing) {
+                if (a.getTime().equals(newTimeStr) && a.getMasterName().equals(newMaster)) {
+                    if (a.getId() != existingAppointment.getId()) {
+                        showAlert("Это время уже занято другим клиентом!");
+                        return;
+                    }
+                }
+            }
+
+            // ====== ОБНОВЛЕНИЕ ЗАПИСИ ======
+            existingAppointment.setDate(newDateStr);
+            existingAppointment.setTime(newTimeStr);
+            existingAppointment.setMasterName(newMaster);
+            DataStore.updateAppointment(existingAppointment);
 
             refresh();
             stage.close();

@@ -85,6 +85,8 @@ public interface DatabaseInterface {
     
     void deleteAppointment(int id);
     
+    Appointment getAppointmentById(int id);
+    
     List<Appointment> getAppointmentsByDate(String date);
     
     // ==================== SERVICE-SPARE PART RELATIONSHIPS ====================

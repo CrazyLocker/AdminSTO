@@ -303,6 +303,16 @@ public class DataStore {
         return Database.getAppointmentsByDate(date);
     }
 
+    public static Appointment getAppointmentByOrderId(String orderId) {
+        if (orderId == null || orderId.isEmpty()) return null;
+        for (Appointment a : appointments) {
+            if (orderId.equals(a.getOrderId())) {
+                return a;
+            }
+        }
+        return null;
+    }
+
     public static void addAppointment(Appointment a) {
         DatabaseFactory.getDatabase().addAppointment(a);
         appointments = DatabaseFactory.getDatabase().getAllAppointments();
@@ -320,6 +330,13 @@ public class DataStore {
         DatabaseFactory.getDatabase().deleteAppointment(id);
         appointments.removeIf(a -> a.getId() == id);
         isDirty = true;
+    }
+
+    public static Appointment getAppointmentById(int id) {
+        return appointments.stream()
+                .filter(a -> a.getId() == id)
+                .findFirst()
+                .orElse(null);
     }
 
     // ==================== SERVICE-SPARE PART RELATIONSHIPS ====================

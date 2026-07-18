@@ -387,6 +387,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
 
         String ordersSql = """
             SELECT o.id as order_id, o.status, o.total, o.created_date,
+                   o.closed_date, o.notes,
                    c.id as client_id, c.name, c.last_name, c.phone, 
                    c.car_model, c.car_number, c.last_repair_date
             FROM orders o
@@ -416,6 +417,8 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                         rs.getDouble("total"),
                         rs.getString("created_date")
                 );
+                order.setClosedDate(rs.getString("closed_date") != null ? rs.getString("closed_date") : "");
+                order.setNotes(rs.getString("notes") != null ? rs.getString("notes") : "");
                 orderMap.put(rs.getString("order_id"), order);
             }
         } catch (SQLException e) {
@@ -424,7 +427,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             return new ArrayList<>();
         }
 
-        String servicesSql = "SELECT order_id, service_name, price FROM order_services";
+        String servicesSql = "SELECT order_id, service_name, price, service_id FROM order_services";
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(servicesSql)) {
@@ -432,14 +435,14 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                 String orderId = rs.getString("order_id");
                 WorkOrder order = orderMap.get(orderId);
                 if (order != null) {
-                    order.addService(rs.getString("service_name"), rs.getDouble("price"));
+                    order.addService(rs.getInt("service_id"), rs.getString("service_name"), rs.getDouble("price"));
                 }
             }
         } catch (SQLException e) {
             logger.error("Ошибка загрузки услуг заказа", e);
         }
 
-        String partsSql = "SELECT order_id, part_name, price, quantity FROM order_parts";
+        String partsSql = "SELECT order_id, part_name, price, quantity, spare_part_id, unit_type, purchase_price FROM order_parts";
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(partsSql)) {
@@ -449,10 +452,12 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                 if (order != null) {
                     SparePart part = new SparePart(
                             rs.getString("part_name"),
-                            0,
+                            rs.getDouble("purchase_price"),
                             rs.getDouble("price"),
                             rs.getInt("quantity")
                     );
+                    part.setId(rs.getInt("spare_part_id"));
+                    part.setUnitType(rs.getString("unit_type") != null ? rs.getString("unit_type") : "шт");
                     order.addSparePart(part, rs.getInt("quantity"));
                 }
             }
@@ -478,7 +483,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     
     @Override
     public void updateOrder(WorkOrder order) {
-        String sql = "UPDATE orders SET client_id = ?, status = ?, total = ? WHERE id = ?";
+        String sql = "UPDATE orders SET client_id = ?, status = ?, total = ?, closed_date = ?, notes = ? WHERE id = ?";
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -486,7 +491,9 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setInt(1, clientId);
             pstmt.setString(2, order.getStatus());
             pstmt.setDouble(3, order.getTotal());
-            pstmt.setString(4, order.getId());
+            pstmt.setString(4, order.getClosedDate() != null ? order.getClosedDate() : "");
+            pstmt.setString(5, order.getNotes() != null ? order.getNotes() : "");
+            pstmt.setString(6, order.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
             logger.error("Ошибка обновления заказа", e);
@@ -500,7 +507,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         List<Appointment> appointments = new ArrayList<>();
         String sql = """
             SELECT a.id, a.client_id, a.order_id, a.master_name, 
-                   a.service_name, a.appointment_date, a.appointment_time, a.status,
+                   a.service_name, a.service_id, a.appointment_date, a.appointment_time, a.status,
                    c.name, c.last_name, c.phone, c.car_model, c.car_number, c.last_repair_date
             FROM appointments a
             LEFT JOIN clients c ON a.client_id = c.id
@@ -521,7 +528,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                         rs.getString("last_repair_date") != null ? rs.getString("last_repair_date") : ""
                 );
 
-                appointments.add(new Appointment(
+                Appointment appt = new Appointment(
                         rs.getInt("id"),
                         client,
                         rs.getString("order_id"),
@@ -530,7 +537,9 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                         rs.getString("appointment_date"),
                         rs.getString("appointment_time"),
                         rs.getString("status")
-                ));
+                );
+                appt.setServiceId(rs.getInt("service_id"));
+                appointments.add(appt);
             }
         } catch (SQLException e) {
             logger.error("Ошибка загрузки записей", e);
@@ -543,7 +552,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         List<Appointment> appointments = new ArrayList<>();
         String sql = """
             SELECT a.id, a.client_id, a.order_id, a.master_name, 
-                   a.service_name, a.appointment_date, a.appointment_time, a.status,
+                   a.service_name, a.service_id, a.appointment_date, a.appointment_time, a.status,
                    c.name, c.last_name, c.phone, c.car_model, c.car_number, c.last_repair_date
             FROM appointments a
             LEFT JOIN clients c ON a.client_id = c.id
@@ -566,7 +575,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                         rs.getString("last_repair_date") != null ? rs.getString("last_repair_date") : ""
                 );
 
-                appointments.add(new Appointment(
+                Appointment appt = new Appointment(
                         rs.getInt("id"),
                         client,
                         rs.getString("order_id"),
@@ -575,7 +584,9 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                         rs.getString("appointment_date"),
                         rs.getString("appointment_time"),
                         rs.getString("status")
-                ));
+                );
+                appt.setServiceId(rs.getInt("service_id"));
+                appointments.add(appt);
             }
         } catch (SQLException e) {
             logger.error("Ошибка загрузки записей по дате", e);
@@ -587,7 +598,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     
     @Override
     public void updateAppointment(Appointment appointment) {
-        String sql = "UPDATE appointments SET client_id = ?, master_name = ?, service_name = ?, appointment_date = ?, appointment_time = ?, status = ?, order_id = ? WHERE id = ?";
+        String sql = "UPDATE appointments SET client_id = ?, master_name = ?, service_name = ?, service_id = ?, appointment_date = ?, appointment_time = ?, status = ?, order_id = ? WHERE id = ?";
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -595,11 +606,12 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setInt(1, clientId);
             pstmt.setString(2, appointment.getMasterName());
             pstmt.setString(3, appointment.getServiceName());
-            pstmt.setString(4, appointment.getDate());
-            pstmt.setString(5, appointment.getTime());
-            pstmt.setString(6, appointment.getStatus());
-            pstmt.setString(7, appointment.getOrderId());
-            pstmt.setInt(8, appointment.getId());
+            pstmt.setInt(4, appointment.getServiceId());
+            pstmt.setString(5, appointment.getDate());
+            pstmt.setString(6, appointment.getTime());
+            pstmt.setString(7, appointment.getStatus());
+            pstmt.setString(8, appointment.getOrderId());
+            pstmt.setInt(9, appointment.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
             logger.error("Ошибка обновления записи", e);
@@ -616,6 +628,52 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         } catch (SQLException e) {
             logger.error("Ошибка удаления записи", e);
         }
+    }
+
+    @Override
+    public Appointment getAppointmentById(int id) {
+        String sql = """
+            SELECT a.id, a.client_id, a.order_id, a.master_name, 
+                   a.service_name, a.service_id, a.appointment_date, a.appointment_time, a.status,
+                   c.name, c.last_name, c.phone, c.car_model, c.car_number, c.last_repair_date
+            FROM appointments a
+            LEFT JOIN clients c ON a.client_id = c.id
+            WHERE a.id = ?
+        """;
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, id);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    Client client = new Client(
+                            rs.getInt("client_id"),
+                            rs.getString("name") != null ? rs.getString("name") : "",
+                            rs.getString("last_name") != null ? rs.getString("last_name") : "",
+                            rs.getString("phone") != null ? rs.getString("phone") : "",
+                            rs.getString("car_model") != null ? rs.getString("car_model") : "",
+                            rs.getString("car_number") != null ? rs.getString("car_number") : "",
+                            rs.getString("last_repair_date") != null ? rs.getString("last_repair_date") : ""
+                    );
+
+                    Appointment appt = new Appointment(
+                            rs.getInt("id"),
+                            client,
+                            rs.getString("order_id"),
+                            rs.getString("master_name"),
+                            rs.getString("service_name"),
+                            rs.getString("appointment_date"),
+                            rs.getString("appointment_time"),
+                            rs.getString("status")
+                    );
+                    appt.setServiceId(rs.getInt("service_id"));
+                    return appt;
+                }
+            }
+        } catch (SQLException e) {
+            logger.error("Ошибка загрузки записи по ID", e);
+        }
+        return null;
     }
 
     // ==================== SERVICE-SPARE PART RELATIONSHIPS ====================
