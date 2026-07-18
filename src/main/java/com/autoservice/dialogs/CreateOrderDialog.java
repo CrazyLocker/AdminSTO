@@ -377,11 +377,14 @@ public class CreateOrderDialog {
 
             // ====== СОЗДАЁМ ЗАКАЗ ======
             WorkOrder order = new WorkOrder(clientCombo.getValue());
-            order.setStatus("Новый");
+            order.setStatus(WorkOrder.STATUS_NEW);
 
             // ====== ДОБАВЛЯЕМ УСЛУГИ ======
             for (int i = 0; i < tempServices.size(); i++) {
-                order.addService(tempServices.get(i), tempServicePrices.get(i));
+                String svcName = tempServices.get(i);
+                Service svc = DataStore.getServiceByName(svcName);
+                int svcId = (svc != null) ? svc.getId() : 0;
+                order.addService(svcId, svcName, tempServicePrices.get(i));
             }
 
             // ====== ДОБАВЛЯЕМ РУЧНЫЕ ЗАПЧАСТИ ======
@@ -399,7 +402,7 @@ public class CreateOrderDialog {
 
             // ====== ЗАПИСЬ В КАЛЕНДАРЬ ======
             if (createAppointmentCheck.isSelected()) {
-                String dateStr = datePicker.getValue().toString();
+                String dateStr = DateUtils.formatDateForDB(datePicker.getValue());
                 String timeStr = timeCombo.getValue();
                 String master = masterCombo.getValue();
                 String serviceName = tempServices.isEmpty() ? "Консультация" : tempServices.get(0);
@@ -414,6 +417,9 @@ public class CreateOrderDialog {
                 }
 
                 if (isFree) {
+                    Service apptService = DataStore.getServiceByName(serviceName);
+                    int apptServiceId = (apptService != null) ? apptService.getId() : 0;
+
                     Appointment appointment = new Appointment(
                             clientCombo.getValue(),
                             master,
@@ -421,6 +427,7 @@ public class CreateOrderDialog {
                             dateStr,
                             timeStr
                     );
+                    appointment.setServiceId(apptServiceId);
                     appointment.setOrderId(order.getId());
                     DataStore.addAppointment(appointment);
                 } else {

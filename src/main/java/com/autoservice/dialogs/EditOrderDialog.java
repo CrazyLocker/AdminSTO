@@ -27,6 +27,8 @@ import javafx.scene.control.ScrollPane;
 import javafx.stage.Stage;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+
+import com.autoservice.DateUtils;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -53,7 +55,7 @@ public class EditOrderDialog {
         "15:00", "15:30", "16:00", "16:30", "17:00", "17:30"
     };
     private static final String[] MASTERS = {
-        "Иванов Иван", "Петров Петр", "Сидоров Сидор", "Смирнова Анна"
+        "Саныч", "Малой"
     };
 
     public static void show(WorkOrder order) {
@@ -111,7 +113,10 @@ public class EditOrderDialog {
 
             String formattedDate = dateStr;
             try {
-                formattedDate = LocalDate.parse(dateStr).format(DATE_FORMATTER);
+                LocalDate date = DateUtils.parseDate(dateStr);
+                if (date != null) {
+                    formattedDate = date.format(DATE_FORMATTER);
+                }
             } catch (Exception e) {}
 
             currentAppointmentInfo.setText("Текущая запись: " + formattedDate + " " + timeStr + ", мастер: " + master + ", услуга: " + service);
@@ -127,7 +132,12 @@ public class EditOrderDialog {
         ComboBox<String> masterCombo = new ComboBox<>(FXCollections.observableArrayList(MASTERS));
 
         if (existingAppointment != null) {
-            datePicker.setValue(LocalDate.parse(existingAppointment.getDate()));
+            LocalDate apptDate = DateUtils.parseDate(existingAppointment.getDate());
+            if (apptDate != null) {
+                datePicker.setValue(apptDate);
+            } else {
+                datePicker.setValue(LocalDate.now());
+            }
             timeCombo.setValue(existingAppointment.getTime());
             masterCombo.setValue(existingAppointment.getMasterName());
         } else {
@@ -199,19 +209,7 @@ public class EditOrderDialog {
 
         tempParts.addAll(order.getSpareParts());
         tempPartQuantities.addAll(order.getSparePartQuantities().stream().map(Double::valueOf).collect(java.util.stream.Collectors.toList()));
-        // Обновляем ID запчастей, найдя их в DataStore по имени (важно для правильной работы getSparePartById)
-        for (int i = 0; i < tempParts.size(); i++) {
-            SparePart tempPart = tempParts.get(i);
-            if (tempPart.getId() == -1) {
-                SparePart storedPart = DataStore.getSpareParts().stream()
-                    .filter(p -> p.getName().equals(tempPart.getName()))
-                    .findFirst()
-                    .orElse(null);
-                if (storedPart != null) {
-                    tempPart.setId(storedPart.getId());
-                }
-            }
-        }
+        // ID запчастей теперь сохраняется в БД (spare_part_id в order_parts) — костыль поиска по имени не нужен
         for (int i = 0; i < tempParts.size(); i++) {
             SparePart p = tempParts.get(i);
             double q = tempPartQuantities.get(i);
@@ -434,7 +432,7 @@ public class EditOrderDialog {
                 return;
             }
 
-            String dateStr = selectedDate.toString();
+            String dateStr = DateUtils.formatDateForDB(selectedDate);
             String timeStr = selectedTime;
             String master = selectedMaster;
 
@@ -466,7 +464,10 @@ public class EditOrderDialog {
             order.removeService(0);
         }
         for (int i = 0; i < tempServices.size(); i++) {
-            order.addService(tempServices.get(i), tempServicePrices.get(i));
+            String serviceName = tempServices.get(i);
+            Service service = DataStore.getServiceByName(serviceName);
+            int serviceId = (service != null) ? service.getId() : 0;
+            order.addService(serviceId, serviceName, tempServicePrices.get(i));
         }
 
         // ====== ОЧИЩАЕМ СТАРЫЕ ЗАПЧАСТИ ======
@@ -492,9 +493,13 @@ public class EditOrderDialog {
             String selectedTime = timeCombo.getValue();
             String selectedMaster = masterCombo.getValue();
             String serviceName = tempServices.isEmpty() ? "Консультация" : tempServices.get(0);
-            String dateStr = selectedDate.toString();
+            String dateStr = DateUtils.formatDateForDB(selectedDate);
             String timeStr = selectedTime;
             String master = selectedMaster;
+
+            // Находим ID услуги для записи в календарь
+            Service appointmentService = DataStore.getServiceByName(serviceName);
+            int appointmentServiceId = (appointmentService != null) ? appointmentService.getId() : 0;
 
             if (existingAppointment != null) {
                 // Обновляем существующую запись
@@ -502,6 +507,7 @@ public class EditOrderDialog {
                 existingAppointment.setTime(timeStr);
                 existingAppointment.setMasterName(master);
                 existingAppointment.setServiceName(serviceName);
+                existingAppointment.setServiceId(appointmentServiceId);
                 existingAppointment.setOrderId(order.getId());
                 DataStore.updateAppointment(existingAppointment);
                 logger.debug("Запись в календаре обновлена");
@@ -514,6 +520,7 @@ public class EditOrderDialog {
                         dateStr,
                         timeStr
                 );
+                newAppointment.setServiceId(appointmentServiceId);
                 newAppointment.setOrderId(order.getId());
                 DataStore.addAppointment(newAppointment);
                 logger.debug("Новая запись в календаре создана");

@@ -64,7 +64,7 @@ public class StatisticsService {
     public static Map<String, Integer> getMastersLoad() {
         Map<String, Integer> mastersLoad = new LinkedHashMap<>();
 
-        String[] masters = {"Иван", "Петр", "Сергей", "Антон"};
+        String[] masters = {"Саныч", "Малой"};
         Set<String> knownMasters = new HashSet<>(Arrays.asList(masters));
         for (String master : masters) {
             mastersLoad.put(master, 0);

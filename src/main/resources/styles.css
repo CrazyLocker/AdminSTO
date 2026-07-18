@@ -454,6 +454,21 @@
     -fx-text-fill: #ffffff;
 }
 
+.dialog-combo:focused {
+}
+
+.dialog-combo .list-view {
+}
+
+.dialog-combo .list-cell {
+}
+
+.dialog-combo .list-cell:hover {
+}
+
+.dialog-combo .list-cell:selected {
+}
+
 /* ====== COMBOBOX В ТАБЛИЦАХ ====== */
 .table-view .combo-box {
     -fx-background-color: #ffffff;
