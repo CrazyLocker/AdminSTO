@@ -63,10 +63,12 @@ public class ClientView {
 
         // ====== КНОПКИ БЕЗ ИКОНОК ======
         addBtn = new Button("Новый клиент");
+        addBtn.setId("addClientBtn");
         addBtn.getStyleClass().add("add-button");
         addBtn.setOnAction(e -> showAddClientDialog());
 
         editBtn = new Button("Изменить");
+        editBtn.setId("editClientBtn");
         editBtn.getStyleClass().add("edit-button");
         editBtn.setDisable(true);
         editBtn.setOnAction(e -> {
@@ -77,6 +79,7 @@ public class ClientView {
         });
 
         deleteBtn = new Button("Удалить");
+        deleteBtn.setId("deleteClientBtn");
         deleteBtn.getStyleClass().add("delete-button");
         deleteBtn.setDisable(true);
         deleteBtn.setOnAction(e -> {
@@ -130,6 +133,7 @@ public class ClientView {
         searchLabel.setStyle("-fx-font-weight: bold;");
 
         searchField = new TextField();
+        searchField.setId("clientSearchField");
         searchField.setPromptText("Поиск по имени, фамилии, телефону...");
         searchField.setPrefWidth(350);
         searchField.getStyleClass().add("search-field");

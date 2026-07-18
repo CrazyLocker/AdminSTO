@@ -60,6 +60,7 @@ public class EditClientDialog {
         Label lastNameLabel = new Label("Фамилия:");
         lastNameLabel.getStyleClass().add("label");
         TextField lastNameField = new TextField(client.getLastName());
+        lastNameField.setId("lastNameField");
         lastNameField.setPromptText("Фамилия");
         lastNameField.setPrefWidth(250);
 
@@ -67,6 +68,7 @@ public class EditClientDialog {
         Label nameLabel = new Label("Имя:");
         nameLabel.getStyleClass().add("label");
         TextField nameField = new TextField(client.getName());
+        nameField.setId("nameField");
         nameField.setPromptText("Имя");
         nameField.setPrefWidth(250);
 
@@ -74,6 +76,7 @@ public class EditClientDialog {
         Label phoneLabel = new Label("Телефон:");
         phoneLabel.getStyleClass().add("label");
         TextField phoneField = new TextField(client.getPhone());
+        phoneField.setId("phoneField");
         phoneField.setPromptText("+7XXXXXXXXXX");
         phoneField.setPrefWidth(250);
         TooltipHelper.setToolTip(phoneField, "Формат: +7XXXXXXXXXX (10 цифр)");
@@ -84,6 +87,7 @@ public class EditClientDialog {
         Label carModelLabel = new Label("Модель авто:");
         carModelLabel.getStyleClass().add("label");
         ComboBox<String> carModelComboBox = new ComboBox<>();
+        carModelComboBox.setId("carModelComboBox");
         carModelComboBox.setPromptText("Выберите или введите модель");
         carModelComboBox.setPrefWidth(300);
         carModelComboBox.setItems(FXCollections.observableArrayList(GWM_MODELS));
@@ -96,6 +100,7 @@ public class EditClientDialog {
         Label carNumberLabel = new Label("Госномер:");
         carNumberLabel.getStyleClass().add("label");
         TextField carNumberField = new TextField(client.getCarNumber());
+        carNumberField.setId("carNumberField");
         carNumberField.setPromptText("А123ВВ777");
         carNumberField.setPrefWidth(200);
         TooltipHelper.setToolTip(carNumberField, "Формат: А123ВВ777 или А123ВВ77");
@@ -161,9 +166,11 @@ public class EditClientDialog {
 
         // ====== КНОПКИ БЕЗ ИКОНОК ======
         Button saveBtn = new Button(isNew ? "Создать" : "Сохранить");
+        saveBtn.setId("saveClientBtn");
         saveBtn.getStyleClass().add("save-button");
 
         Button cancelBtn = new Button("Отмена");
+        cancelBtn.setId("cancelClientBtn");
         cancelBtn.getStyleClass().add("cancel-button");
 
         HBox btnBox = new HBox(15, saveBtn, cancelBtn);
