@@ -60,7 +60,7 @@ class StatisticsServiceTest extends BaseTest {
 
         WorkOrder order = new WorkOrder(client);
         order.addService("Замена масла", 1500);
-        order.setStatus(WorkOrder.STATUS_DRAFT);
+        order.setStatus(WorkOrder.STATUS_NEW);
         order.setCreatedDate(LocalDate.now().toString());
         DataStore.addOrder(order);
         DataStore.load();
@@ -74,7 +74,7 @@ class StatisticsServiceTest extends BaseTest {
     void testGetMastersLoadEmpty() {
         DataStore.load();
         Map<String, Integer> load = StatisticsService.getMastersLoad();
-        assertThat(load).hasSize(4);
+        assertThat(load).hasSize(2);
         assertThat(load.values()).allMatch(v -> v == 0);
     }
 
@@ -86,9 +86,9 @@ class StatisticsServiceTest extends BaseTest {
         DataStore.addClient(client);
         DataStore.load();
 
-        Appointment app1 = new Appointment(client, "Иван", "Замена масла", "2024-06-01", "10:00");
-        Appointment app2 = new Appointment(client, "Иван", "Диагностика", "2024-06-02", "14:00");
-        Appointment app3 = new Appointment(client, "Петр", "Замена фильтров", "2024-06-03", "09:00");
+        Appointment app1 = new Appointment(client, "Саныч", "Замена масла", "2024-06-01", "10:00");
+        Appointment app2 = new Appointment(client, "Саныч", "Диагностика", "2024-06-02", "14:00");
+        Appointment app3 = new Appointment(client, "Малой", "Замена фильтров", "2024-06-03", "09:00");
 
         DataStore.addAppointment(app1);
         DataStore.addAppointment(app2);
@@ -96,10 +96,8 @@ class StatisticsServiceTest extends BaseTest {
         DataStore.load();
 
         Map<String, Integer> load = StatisticsService.getMastersLoad();
-        assertThat(load.get("Иван")).isEqualTo(2);
-        assertThat(load.get("Петр")).isEqualTo(1);
-        assertThat(load.get("Сергей")).isEqualTo(0);
-        assertThat(load.get("Антон")).isEqualTo(0);
+        assertThat(load.get("Саныч")).isEqualTo(2);
+        assertThat(load.get("Малой")).isEqualTo(1);
     }
 
     @Test
@@ -176,7 +174,7 @@ class StatisticsServiceTest extends BaseTest {
         DataStore.load();
 
         WorkOrder order1 = new WorkOrder(client);
-        order1.setStatus(WorkOrder.STATUS_DRAFT);
+        order1.setStatus(WorkOrder.STATUS_NEW);
         DataStore.addOrder(order1);
         DataStore.load();
 
@@ -191,7 +189,7 @@ class StatisticsServiceTest extends BaseTest {
         DataStore.load();
 
         Map<String, Integer> stats = StatisticsService.getStatusStats();
-        assertThat(stats.get(WorkOrder.STATUS_DRAFT)).isEqualTo(1);
+        assertThat(stats.get(WorkOrder.STATUS_NEW)).isEqualTo(1);
         assertThat(stats.get(WorkOrder.STATUS_IN_PROGRESS)).isEqualTo(1);
         assertThat(stats.get(WorkOrder.STATUS_CLOSED)).isEqualTo(1);
     }
