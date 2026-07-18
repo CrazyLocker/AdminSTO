@@ -114,6 +114,7 @@ Write-Host "    Готово." -ForegroundColor Green
 Write-Host "[6/7] Создание run.bat..." -ForegroundColor Yellow
 $runBat = @'
 @echo off
+chcp 65001 >nul
 setlocal
 
 echo Launching AdminSTO Portable...
@@ -147,7 +148,7 @@ if errorlevel 1 (
     pause
 )
 '@
-[System.IO.File]::WriteAllText("$distDir/run.bat", $runBat, [System.Text.Encoding]::Default)
+[System.IO.File]::WriteAllText("$distDir/run.bat", $runBat, [System.Text.Encoding]::UTF8)
 Write-Host "    run.bat создан." -ForegroundColor Green
 
 # 7. Создание README.txt и version.txt
