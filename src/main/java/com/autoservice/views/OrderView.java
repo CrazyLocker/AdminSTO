@@ -1,7 +1,9 @@
 package com.autoservice.views;
 
 import com.autoservice.DataStore;
+import com.autoservice.DateUtils;
 import com.autoservice.WorkOrder;
+import com.autoservice.Appointment;
 import com.autoservice.controllers.OrderController;
 import com.autoservice.dialogs.PrintOrderDialog;
 import com.autoservice.services.TableStateManager;
@@ -23,6 +25,8 @@ import javafx.scene.layout.VBox;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class OrderView {
 
@@ -50,6 +54,8 @@ public class OrderView {
     // Единый источник данных
     private static ObservableList<WorkOrder> masterData = FXCollections.observableArrayList();
     private static SortedList<WorkOrder> sortedData;
+
+    private static final Logger logger = LoggerFactory.getLogger(OrderView.class);
 
     public static VBox create() {
         VBox root = new VBox(10);
@@ -171,7 +177,7 @@ public class OrderView {
         Label statusLabel = new Label("Статус:");
         statusLabel.getStyleClass().add("filter-label");
         statusFilterCombo = new ComboBox<>();
-        statusFilterCombo.getItems().addAll("Все", "Новый", "В работе", "Закрыт");
+        statusFilterCombo.getItems().addAll("Все", WorkOrder.STATUS_NEW, WorkOrder.STATUS_IN_PROGRESS, WorkOrder.STATUS_CLOSED);
         statusFilterCombo.setValue("Все");
         statusFilterCombo.setPrefWidth(120);
         statusFilterCombo.setOnAction(e -> applyFilters());
@@ -241,6 +247,36 @@ public class OrderView {
         colId.setCellValueFactory(new PropertyValueFactory<>("id"));
         colId.setPrefWidth(160);
         colId.setSortable(true);
+        
+        // Пользовательский компаратор для сортировки по порядковому номеру (4 последних цифры)
+        colId.setComparator((id1, id2) -> {
+            // Если один из ID пустой, он будет в конце
+            if (id1 == null && id2 == null) return 0;
+            if (id1 == null) return 1;
+            if (id2 == null) return -1;
+            
+            if (id1.isEmpty() && id2.isEmpty()) return 0;
+            if (id1.isEmpty()) return 1;
+            if (id2.isEmpty()) return -1;
+            
+            // Извлекаем порядковый номер (4 последних цифры)
+            try {
+                String[] parts1 = id1.split("-");
+                String[] parts2 = id2.split("-");
+                
+                if (parts1.length >= 2 && parts2.length >= 2) {
+                    // Берём последнюю часть как порядковый номер
+                    int num1 = Integer.parseInt(parts1[parts1.length - 1]);
+                    int num2 = Integer.parseInt(parts2[parts2.length - 1]);
+                    return Integer.compare(num1, num2);
+                }
+            } catch (Exception e) {
+                logger.error("Ошибка парсинга ID для сортировки", e);
+            }
+            
+            // Fallback: лексикографическая сортировка
+            return id1.compareTo(id2);
+        });
 
         TableColumn<WorkOrder, String> colClient = new TableColumn<>("Клиент");
         colClient.setId("colClient");
@@ -271,6 +307,38 @@ public class OrderView {
         });
         colServices.setPrefWidth(250);
         colServices.setSortable(true);
+
+        TableColumn<WorkOrder, String> colAppointment = new TableColumn<>("Запись");
+        colAppointment.setId("colAppointment");
+        colAppointment.setCellValueFactory(cellData -> {
+            WorkOrder order = cellData.getValue();
+            String orderId = order.getId();
+            Appointment appointment = DataStore.getAppointmentByOrderId(orderId);
+            if (appointment != null && appointment.getDate() != null && !appointment.getDate().isEmpty()) {
+                // Выводим данные из БД в исходном формате: "dd/MM/yyyy HH:mm"
+                return new SimpleStringProperty(appointment.getDate() + " " + appointment.getTime());
+            }
+            return new SimpleStringProperty("");
+        });
+        colAppointment.setPrefWidth(160);
+        colAppointment.setSortable(true);
+        // Сортировка по дате и времени (формат из БД: dd/MM/yyyy HH:mm)
+        colAppointment.setComparator((s1, s2) -> {
+            // Пустые значения в конец
+            if (s1 == null || s1.isEmpty()) return s2 == null || s2.isEmpty() ? 0 : 1;
+            if (s2 == null || s2.isEmpty()) return -1;
+            
+            // Извлекаем LocalDateTime из строки "dd/MM/yyyy HH:mm"
+            java.time.LocalDateTime dt1 = parseAppointmentDateTime(s1);
+            java.time.LocalDateTime dt2 = parseAppointmentDateTime(s2);
+            
+            if (dt1 != null && dt2 != null) {
+                return dt1.compareTo(dt2);
+            }
+            
+            // Fallback: строковое сравнение
+            return s1.compareTo(s2);
+        });
 
         TableColumn<WorkOrder, Double> colTotal = new TableColumn<>("Сумма");
         colTotal.setId("colTotal");
@@ -310,7 +378,7 @@ public class OrderView {
             }
         });
 
-        orderTable.getColumns().addAll(colId, colClient, colCar, colServices, colTotal, colStatus);
+        orderTable.getColumns().addAll(colId, colClient, colCar, colServices, colAppointment, colTotal, colStatus);
         // Отключаем CONSTRAINED_RESIZE_POLICY — позволяет сохранять ширину колонок
         orderTable.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
 
@@ -364,6 +432,31 @@ public class OrderView {
         if (status.equalsIgnoreCase("В работе") || status.contains("работе")) return "В работе";
         if (status.equalsIgnoreCase("Закрыт") || status.equals("Завершён") || status.contains("Закр") || status.contains("Завер")) return "Закрыт";
         return status;
+    }
+    
+    /**
+     * Извлекает дату из номера заказа и преобразует её в формат для сортировки.
+     * Формат заказа: ZAK-dd-MM-yy-0001
+     * Выход: dd-MM-yyyy (подходит для строковой сортировки)
+     */
+    private static String extractSortDate(String[] parts) {
+        if (parts.length < 5) return "";
+        
+        String day = parts[1]; // dd
+        String month = parts[2]; // MM
+        String yearSuffix = parts[3]; // yy
+        
+        // Преобразуем год в 4-значный формат
+        int year;
+        if (yearSuffix.length() == 2) {
+            year = 2000 + Integer.parseInt(yearSuffix);
+        } else if (yearSuffix.length() == 4) {
+            year = Integer.parseInt(yearSuffix);
+        } else {
+            return "";
+        }
+        
+        return String.format("%s-%s-%04d", day, month, year);
     }
 
     private static void applyFilters() {
@@ -427,12 +520,154 @@ public class OrderView {
     }
 
     private static LocalDate parseDate(String dateStr) {
+        return DateUtils.parseDate(dateStr);
+    }
+
+    /**
+     * Парсит строку формата "18 июля 2026" в LocalDate для сортировки
+     */
+    private static java.time.LocalDate parseDateString(String dateStr) {
         if (dateStr == null || dateStr.isEmpty()) return null;
         try {
-            return LocalDate.parse(dateStr.split(" ")[0]);
+            // Формат: "18 июля 2026"
+            java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("d MMMM yyyy", new java.util.Locale("ru"));
+            return java.time.LocalDate.parse(dateStr, formatter);
         } catch (Exception e) {
             return null;
         }
+    }
+
+    /**
+     * Извлекает LocalDateTime из строки с датой и временем.
+     * Поддерживает несколько форматов:
+     * 1. "18 июля 2026 г. в 12-00" (русский формат)
+     * 2. "2026-07-18 12-00" (ISO формат даты)
+     * 3. "18/07/2026 12-00" (dd/MM/yyyy формат даты)
+     * Время может быть с дефисом (-) или двоеточием (:)
+     */
+    private static java.time.LocalDateTime extractLocalDateTime(String s) {
+        if (s == null || s.isEmpty()) return null;
+        
+        try {
+            java.time.LocalDate date;
+            String timeStr;
+            
+            // Проверяем русский формат: "18 июля 2026 г. в 12-00"
+            int idx = s.indexOf(" г. в ");
+            if (idx > 0) {
+                String dateStr = s.substring(0, idx).trim();
+                timeStr = s.substring(idx + 5).trim();
+                java.time.format.DateTimeFormatter dateFormatter = java.time.format.DateTimeFormatter.ofPattern("d MMMM yyyy", new java.util.Locale("ru"));
+                date = java.time.LocalDate.parse(dateStr, dateFormatter);
+            } else {
+                // Формат БД: "2026-07-18 12-00" или "18/07/2026 12-00"
+                // Ищем пробел, разделяющий дату и время
+                int spaceIdx = s.lastIndexOf(" ");
+                if (spaceIdx > 0) {
+                    String dateStr = s.substring(0, spaceIdx).trim();
+                    timeStr = s.substring(spaceIdx + 1).trim();
+                    
+                    // Парсим дату в разных форматах
+                    if (dateStr.contains("-") && !dateStr.contains("/")) {
+                        // ISO формат: yyyy-MM-dd
+                        date = java.time.LocalDate.parse(dateStr);
+                    } else if (dateStr.contains("/")) {
+                        // dd/MM/yyyy формат
+                        java.time.format.DateTimeFormatter dateFormatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                        date = java.time.LocalDate.parse(dateStr, dateFormatter);
+                    } else {
+                        return null;
+                    }
+                } else {
+                    return null;
+                }
+            }
+            
+            // Парсим время - поддерживаем как дефис (-), так и двоеточие (:)
+            String[] timeParts;
+            if (timeStr.contains("-")) {
+                timeParts = timeStr.split("-");
+            } else {
+                timeParts = timeStr.split(":");
+            }
+            
+            if (timeParts.length >= 2) {
+                return date.atTime(Integer.parseInt(timeParts[0]), Integer.parseInt(timeParts[1]));
+            }
+            
+        } catch (Exception e) {
+            // Логируем ошибку для отладки
+            logger.debug("Ошибка парсинга даты-времени из строки '{}': {}", s, e.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * Парсит дату и время из строки формата "dd/MM/yyyy HH:mm" (из БД).
+     * Поддерживает как дефис (-), так и двоеточие (:) в формате времени.
+     * Использует lastIndexOf для поиска последнего пробела между датой и временем.
+     */
+    private static java.time.LocalDateTime parseAppointmentDateTime(String s) {
+        if (s == null || s.isEmpty()) return null;
+        
+        try {
+            // Ищем последний пробел, разделяющий дату и время
+            int spaceIdx = s.lastIndexOf(" ");
+            if (spaceIdx > 0 && spaceIdx < s.length() - 1) {
+                String dateStr = s.substring(0, spaceIdx).trim();
+                String timeStr = s.substring(spaceIdx + 1).trim();
+                
+                // Валидация: дата должна быть в формате dd/MM/yyyy (минимум 10 символов)
+                if (dateStr.length() < 10) {
+                    logger.debug("Некорректная дата: {} (слишком короткая)", dateStr);
+                    return null;
+                }
+                
+                // Проверяем, что дата в формате dd/MM/yyyy (содержит два слеша)
+                int slashCount = 0;
+                for (char c : dateStr.toCharArray()) {
+                    if (c == '/') slashCount++;
+                }
+                if (slashCount != 2) {
+                    logger.debug("Некорректный формат даты: {} (ожидается dd/MM/yyyy)", dateStr);
+                    return null;
+                }
+                
+                // Парсим дату в формате dd/MM/yyyy
+                java.time.format.DateTimeFormatter dateFormatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                java.time.LocalDate date = java.time.LocalDate.parse(dateStr, dateFormatter);
+                
+                // Валидация времени (должно быть не короче 4 символов, например 12:00)
+                if (timeStr.length() < 4) {
+                    logger.debug("Некорректное время: {} (слишком короткое)", timeStr);
+                    return null;
+                }
+                
+                // Парсим время - поддерживаем как дефис (-), так и двоеточие (:)
+                String[] timeParts;
+                if (timeStr.contains("-")) {
+                    timeParts = timeStr.split("-");
+                } else {
+                    timeParts = timeStr.split(":");
+                }
+                
+                if (timeParts.length >= 2) {
+                    int hour = Integer.parseInt(timeParts[0]);
+                    int minute = Integer.parseInt(timeParts[1]);
+                    
+                    // Валидация: час от 0 до 23, минута от 0 до 59
+                    if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
+                        return date.atTime(hour, minute);
+                    } else {
+                        logger.debug("Некорректное время: {} (ожидается 00:00-23:59)", timeStr);
+                        return null;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.debug("Ошибка парсинга даты-времени записи из строки '{}': {}", s, e.getMessage());
+        }
+        return null;
     }
 
     private static void onEdit() {
