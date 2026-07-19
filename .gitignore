@@ -32,4 +32,22 @@ dist/
 portable/
 app_log.txt
 backups/
+build/
+.gradle/
+caches/
+.tmp/
+jdks/
+daemon/
+
+# Собранные артефакты и дистрибутивы (не относятся к исходному коду)
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+gradle-8.5-bin.zip
+gradle-8.5/
+native/
+wrapper/
+
+# Временные/устаревшие файлы
+pom.xml.old
+.gigacode/
 

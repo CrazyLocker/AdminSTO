@@ -1,0 +1,181 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'jacoco'
+    id 'org.openjfx.javafxplugin' version '0.1.0'
+}
+
+group = 'com.autoservice'
+version = '1.1.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+application {
+    mainClass = 'com.autoservice.App'
+}
+
+// Конфигурация JavaFX: плагин автоматически подбирает platform-classifier
+// (win/linux/mac), который без Maven-профилей не резолвится в Gradle.
+javafx {
+    version = '17.0.6'
+    modules = ['javafx.controls', 'javafx.fxml']
+}
+
+// Установка кодировки UTF-8 для компиляции
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+// Настройка JavaFX JVM аргументов для выполнения
+// (--add-modules добавляется самим javafx-плагином, здесь только --add-opens)
+tasks.withType(JavaExec) {
+    jvmArgs = [
+        '--add-opens', 'javafx.controls/javafx.scene.control.skin=ALL-UNNAMED',
+        '--add-opens', 'javafx.graphics/javafx.scene=ALL-UNNAMED',
+        '--add-opens', 'javafx.graphics/javafx.scene.effect=ALL-UNNAMED',
+        '--add-opens', 'javafx.graphics/javafx.scene.shape=ALL-UNNAMED',
+        '--add-opens', 'javafx.base/com.sun.javafx.event=ALL-UNNAMED',
+        '--add-opens', 'javafx.controls/com.sun.javafx.scene.control=ALL-UNNAMED',
+        '--add-opens', 'javafx.controls/com.sun.javafx.scene.control.skin=ALL-UNNAMED',
+        '--add-opens', 'javafx.graphics/com.sun.javafx.stage=ALL-UNNAMED',
+        '--add-opens', 'javafx.base/com.sun.javafx.binding=ALL-UNNAMED',
+        '--add-opens', 'javafx.graphics/com.sun.javafx.scene=ALL-UNNAMED',
+        '--add-opens', 'javafx.controls/com.sun.javafx.scene.control.behavior=ALL-UNNAMED',
+        '--add-opens', 'javafx.base/com.sun.javafx.event=ALL-UNNAMED'
+    ]
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        url 'https://jitpack.io'
+    }
+}
+
+dependencies {
+    // ====== База данных ======
+    implementation 'org.xerial:sqlite-jdbc:3.44.1.0'
+    implementation 'com.zaxxer:HikariCP:5.0.1'
+
+    // ====== Сериализация ======
+    implementation 'com.google.code.gson:gson:2.10.1'
+
+    // ====== PDF ======
+    implementation 'com.itextpdf:itext7-core:7.2.5'
+
+    // ====== Логирование ======
+    implementation 'org.slf4j:slf4j-api:2.0.9'
+    implementation 'ch.qos.logback:logback-classic:1.4.14'
+    implementation 'ch.qos.logback:logback-core:1.4.14'
+
+    // ====== ТЕСТЫ ======
+
+    // JUnit 5
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
+
+    // AssertJ для красивых проверок
+    testImplementation 'org.assertj:assertj-core:3.25.1'
+
+    // Mockito для моков
+    testImplementation 'org.mockito:mockito-core:5.8.0'
+
+    // H2 для тестов (in-memory БД)
+    testImplementation 'com.h2database:h2:2.2.224'
+
+    // TestFX для UI-тестов JavaFX
+    testImplementation 'org.testfx:testfx-core:4.0.18'
+
+    // Monocle — headless-реализация glass-платформы JavaFX, необходимая для
+    // запуска UI-тестов без реального дисплея (CI). Версия должна совпадать
+    // с мажорной версией JavaFX проекта (17.0.10 для OpenJFX 17): младшие
+    // версии (jdk-11+26) дают AbstractMethodError на MonocleTimer._pause,
+    // т.к. Timer API в JavaFX 17 изменился.
+    testImplementation 'org.testfx:openjfx-monocle:17.0.10'
+
+    // Awaitility для асинхронных ожиданий
+    testImplementation 'org.awaitility:awaitility:4.2.0'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+
+    // Каждый тестовый класс запускается в свежей JVM — это изолирует общее
+    // статическое состояние (DataStore-синглтон, статические поля контроллеров)
+    // между классами. Без этого порядок выполнения классов в Gradle (отличный от
+    // Maven Surefire) приводит к утечке состояния и ложным падениям тестов.
+    forkEvery = 1
+
+    // Для UI-тестов включаем headless режим
+    systemProperty 'prism.order', 'sw'
+    systemProperty 'prism.text', 't2k'
+    systemProperty 'javafx.headless', 'true'
+    // TestFX / Monocle headless-настройки: программный рендеринг без дисплея.
+    // monocle.platform=Headless выбирает HeadlessPlatformFactory (чистая Java,
+    // без нативных библиотек) — единственный стабильный вариант headless на
+    // Windows в окружении без X-сервера/экрана.
+    systemProperty 'testfx.robot', 'glass'
+    systemProperty 'testfx.headless', 'true'
+    systemProperty 'glass.platform', 'Monocle'
+    systemProperty 'monocle.platform', 'Headless'
+
+    // Настройки JaCoCo
+    jacoco {
+        destinationFile = file("$buildDir/jacoco/test.exec")
+    }
+}
+
+tasks.named('jar') {
+    archiveBaseName = 'autoservice-admin'
+    
+    manifest {
+        attributes(
+            'Main-Class': 'com.autoservice.App',
+            'Class-Path': configurations.runtimeClasspath.collect { it.getName() }.join(' ')
+        )
+    }
+}
+
+// Задача для копирования зависимостей в папку lib
+task copyDependencies(type: Copy) {
+    from configurations.runtimeClasspath
+    into "$buildDir/lib"
+}
+
+// Сборка fat JAR с зависимостями
+// Имя без версии и суффикса — совместимо с run.bat (java -jar autoservice-admin.jar)
+task fatJar(type: Jar) {
+    archiveBaseName = 'autoservice-admin'
+    archiveVersion = ''
+    archiveClassifier = ''
+    manifest {
+        // Launcher не наследует Application, поэтому JVM не требует JavaFX
+        // на module-path при запуске fat jar через java -jar.
+        attributes 'Main-Class': 'com.autoservice.Launcher'
+    }
+    
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+
+    // Исключаем module-info.class от JavaFX-модулей: иначе JVM воспринимает
+    // fat jar как один именованный модуль и не находит классы приложения.
+    exclude 'module-info.class'
+    exclude 'META-INF/versions/*/module-info.class'
+
+    // Исключаем файлы подписи подписанных зависимостей (BouncyCastle и др.):
+    // после слияния в fat jar подписи недействительны, и JVM отказывается
+    // загружать классы из jar с невалидной подписью.
+    exclude 'META-INF/*.SF'
+    exclude 'META-INF/*.DSA'
+    exclude 'META-INF/*.RSA'
+
+    with jar
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+// Связывание задач
+build.finalizedBy(copyDependencies)
+build.finalizedBy(fatJar)

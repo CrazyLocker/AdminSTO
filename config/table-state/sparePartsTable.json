@@ -1,7 +1,7 @@
 {
   "tableId": "sparePartsTable",
   "version": "1.0",
-  "timestamp": "2026-07-18T16:03:56.336194500Z",
+  "timestamp": "2026-07-18T17:25:28.693128Z",
   "columns": [
     {
       "id": "colSparePartName",

@@ -1,13 +1,8 @@
 package com.autoservice;
 
 import com.autoservice.utils.LoggerManager;
-import com.autoservice.services.ScheduleService;
-import com.autoservice.services.TableStateManager;
 import com.autoservice.services.WindowStateManager;
 import com.autoservice.views.*;
-import com.autoservice.controllers.ServicePanelController;
-import com.autoservice.controllers.SparePartPanelController;
-import com.autoservice.controllers.StockPanelController;
 import com.autoservice.utils.IconHelper;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -17,9 +12,10 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 import javafx.application.Platform;
-import javafx.geometry.Point2D;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
@@ -27,11 +23,10 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
-import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
-import javafx.scene.input.MouseButton;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.SVGPath;
 import javafx.stage.Stage;
@@ -90,16 +85,20 @@ public abstract class BaseUITest {
     void clearDatabase() {
         try (Connection conn = DatabaseFactory.getDatabase().getConnection()) {
             var stmt = conn.createStatement();
-            stmt.execute("DELETE FROM order_parts");
-            stmt.execute("DELETE FROM order_services");
-            stmt.execute("DELETE FROM appointments");
-            stmt.execute("DELETE FROM orders");
-            stmt.execute("DELETE FROM spare_parts");
-            stmt.execute("DELETE FROM services");
-            stmt.execute("DELETE FROM clients");
-            stmt.execute("DELETE FROM settings");
-            stmt.execute("DELETE FROM to_parts");
-            stmt.execute("DELETE FROM service_spare_parts");
+            // Очищаем все таблицы по отдельности: часть таблиц (settings,
+            // to_parts, service_spare_parts) может отсутствовать в тестовой
+            // H2-схеме — игнорируем ошибки отсутствующих таблиц.
+            for (String table : new String[]{
+                    "order_parts", "order_services", "appointments", "orders",
+                    "spare_parts", "services", "clients", "settings",
+                    "to_parts", "service_spare_parts"
+            }) {
+                try {
+                    stmt.execute("DELETE FROM " + table);
+                } catch (SQLException ignored) {
+                    // таблица отсутствует в тестовой схеме — это нормально
+                }
+            }
             stmt.close();
             DataStore.load(); // Сброс кэша
         } catch (Exception e) {
@@ -117,17 +116,24 @@ public abstract class BaseUITest {
 
     /**
      * Создание UI приложения для теста.
-     * Вызывается в контексте JavaFX Application Thread.
-     * 
+     *
+     * <p>Создание узлов JavaFX должно происходить на JavaFX Application Thread,
+     * поэтому вся работа со Stage/Scene выполняется синхронно через
+     * {@link #runOnFxThread(Runnable)}.</p>
+     *
      * @return Stage с созданным UI
      */
     protected Stage createStage() {
-        Stage stage = new Stage();
-        createUI(stage);
-        stage.show();
-        stage.toFront();
-        currentScene = stage.getScene();
-        return stage;
+        AtomicReference<Stage> ref = new AtomicReference<>();
+        runOnFxThread(() -> {
+            Stage stage = new Stage();
+            createUI(stage);
+            stage.show();
+            stage.toFront();
+            currentScene = stage.getScene();
+            ref.set(stage);
+        });
+        return ref.get();
     }
 
     /**
@@ -163,12 +169,11 @@ public abstract class BaseUITest {
             }
         });
 
-        Scene scene = new Scene(tabPane, 1500, 1000);
+        Scene scene = new Scene(tabPane, 800, 600);
         scene.getStylesheets().add(
                 App.class.getResource("/styles.css").toExternalForm()
         );
 
-        tabPane.setId("mainStage");
         stage.setTitle("Администратор СТО - Test Mode");
         stage.setScene(scene);
         
@@ -221,96 +226,71 @@ public abstract class BaseUITest {
 
     /**
      * Клик по кнопке или другому узлу по ID.
-     * 
+     *
+     * В headless-режиме координатная эмуляция мыши ненадёжна (узлы не имеют
+     * реальных экранных координат), поэтому клик эмулируется через прямой
+     * вызов {@link Button#fire()} на JavaFX Application Thread. Для узлов,
+     * не являющихся Button, просто запрашивается фокус.
+     *
      * @param nodeId ID узла (кнопки, таблицы, поля и т.д.)
      */
     protected void clickOn(String nodeId) {
         Node node = findNode(nodeId);
-        
-        // Получаем координаты центра узла
-        Point2D center = getNodeCenter(node);
-        
-        // Используем Robot для эмуляции клика
-        Robot robot = new Robot();
-        robot.mouseMove((int)center.getX(), (int)center.getY());
-        robot.mousePress(MouseButton.PRIMARY);
-        robot.mouseRelease(MouseButton.PRIMARY);
-        
-        // Ждем завершения обработки события
-        awaitPlatform();
+        runOnFxThread(() -> {
+            if (node instanceof Button) {
+                ((Button) node).fire();
+            } else {
+                node.requestFocus();
+            }
+        });
     }
 
     /**
      * Ввод текста в TextField по ID.
-     * 
+     *
      * @param fieldId ID текстового поля
      * @param text Текст для ввода
      */
     protected void writeText(String fieldId, String text) {
         TextField field = (TextField) findNode(fieldId);
-        
-        Platform.runLater(() -> {
+        runOnFxThread(() -> {
             field.requestFocus();
-            field.selectAll();
-            field.insertText(field.getCaretPosition(), text);
+            field.clear();
+            field.setText(text);
         });
-        
-        // Ждем завершения ввода
-        awaitPlatform();
     }
 
     /**
      * Очистка текста в TextField и ввод нового текста.
-     * 
+     *
      * @param fieldId ID текстового поля
      * @param text Новый текст
      */
     protected void clearAndType(String fieldId, String text) {
-        TextField field = (TextField) findNode(fieldId);
-        
-        Platform.runLater(() -> {
-            field.requestFocus();
-            field.selectAll();
-            Platform.runLater(() -> {
-                field.deleteText(0, field.getLength());
-                field.insertText(field.getCaretPosition(), text);
-            });
-        });
-        
-        awaitPlatform();
+        writeText(fieldId, text);
     }
 
     /**
      * Выбор элемента из ComboBox по ID и тексту элемента.
-     * 
+     *
      * @param comboBoxId ID ComboBox
      * @param itemText Текст элемента для выбора
      */
     protected void selectFromComboBox(String comboBoxId, String itemText) {
         ComboBox<String> comboBox = (ComboBox<String>) findNode(comboBoxId);
-        
-        Platform.runLater(() -> {
-            comboBox.setValue(itemText);
-        });
-        
-        awaitPlatform();
+        runOnFxThread(() -> comboBox.setValue(itemText));
     }
 
     /**
      * Нажатие кнопки Enter в поле ввода.
-     * 
+     *
      * @param fieldId ID текстового поля
      */
     protected void pressEnter(String fieldId) {
         TextField field = (TextField) findNode(fieldId);
-        
-        Platform.runLater(() -> {
-            field.fireEvent(new javafx.scene.input.KeyEvent(
-                javafx.scene.input.KeyEvent.KEY_PRESSED, "", "", KeyCode.ENTER, false, false, false, false
-            ));
-        });
-        
-        awaitPlatform();
+        runOnFxThread(() -> field.fireEvent(new KeyEvent(
+                KeyEvent.KEY_PRESSED, "", "", KeyCode.ENTER, false, false, false, false
+        )));
     }
 
     /**
@@ -358,54 +338,138 @@ public abstract class BaseUITest {
 
     /**
      * Получение центра узла в координатах сцены.
+     *
+     * @deprecated В headless-режиме координатная эмуляция мыши ненадёжна;
+     *             используйте {@link #clickOn(String)} (через fire()).
      */
-    private Point2D getNodeCenter(Node node) {
+    @Deprecated
+    protected javafx.geometry.Point2D getNodeCenter(Node node) {
         double x = node.getBoundsInParent().getMinX() + node.getBoundsInParent().getWidth() / 2;
         double y = node.getBoundsInParent().getMinY() + node.getBoundsInParent().getHeight() / 2;
-        return new Point2D(x, y);
+        return new javafx.geometry.Point2D(x, y);
     }
 
     /**
-     * Ожидание завершения всех запланированных задач в Platform.
+     * Синхронно выполняет действие на JavaFX Application Thread и дожидается
+     * его завершения. Все операции с UI-узлами должны идти через этот метод:
+     * он гарантирует, что к моменту возврата управление изменённое состояние
+     * уже применилось, и последующие assert'ы видят актуальные данные.
+     *
+     * @param action действие, выполняемое на FX-потоке
      */
-    private void awaitPlatform() {
+    protected void runOnFxThread(Runnable action) {
+        if (Platform.isFxApplicationThread()) {
+            action.run();
+            waitForFxEvents();
+            return;
+        }
         CountDownLatch latch = new CountDownLatch(1);
-        Platform.runLater(latch::countDown);
+        Platform.runLater(() -> {
+            try {
+                action.run();
+            } finally {
+                latch.countDown();
+            }
+        });
         try {
-            if (!latch.await(2, TimeUnit.SECONDS)) {
-                System.err.println("Таймаут ожидания Platform");
+            if (!latch.await(5, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("Таймаут ожидания выполнения на FX-потоке");
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+        waitForFxEvents();
     }
 
     /**
-     * Класс для эмуляции ввода мыши.
+     * Синхронно вычисляет значение на JavaFX Application Thread.
+     *
+     * @param supplier поставщик значения
+     * @param <T> тип значения
+     * @return вычисленное значение
      */
-    private static class Robot {
-        void mouseMove(int x, int y) {
-            try {
-                Thread.sleep(50);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
+    protected <T> T getOnFxThread(Supplier<T> supplier) {
+        if (Platform.isFxApplicationThread()) {
+            return supplier.get();
         }
+        AtomicReference<T> ref = new AtomicReference<>();
+        runOnFxThread(() -> ref.set(supplier.get()));
+        return ref.get();
+    }
 
-        void mousePress(MouseButton button) {
+    /**
+     * Ожидание завершения всех запланированных задач в Platform (layout/pulse).
+     * Позволяет таблицам и bindings пересчитаться после изменения данных.
+     */
+    protected void waitForFxEvents() {
+        // Два прохода: первый запускает отложенные layout-задачи, второй
+        // дожидается их выполнения — этого достаточно для пересчёта bindings.
+        for (int i = 0; i < 2; i++) {
+            CountDownLatch latch = new CountDownLatch(1);
+            Platform.runLater(latch::countDown);
             try {
-                Thread.sleep(50);
+                if (!latch.await(2, TimeUnit.SECONDS)) {
+                    System.err.println("Таймаут ожидания Platform (проход " + (i + 1) + ")");
+                    return;
+                }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
+                return;
             }
         }
+    }
 
-        void mouseRelease(MouseButton button) {
-            try {
-                Thread.sleep(50);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+    /**
+     * Получение TableView по ID.
+     *
+     * @param tableId ID таблицы
+     * @param <T> тип элементов таблицы
+     * @return таблица
+     */
+    @SuppressWarnings("unchecked")
+    protected <T> TableView<T> getTable(String tableId) {
+        return (TableView<T>) findNode(tableId);
+    }
+
+    /**
+     * Выбор строки в TableView по индексу и прокрутка к ней.
+     *
+     * @param tableId ID таблицы
+     * @param index индекс строки
+     * @param <T> тип элементов таблицы
+     */
+    protected <T> void selectTableRow(String tableId, int index) {
+        TableView<T> table = getTable(tableId);
+        runOnFxThread(() -> {
+            table.getSelectionModel().select(index);
+            table.scrollTo(index);
+        });
+    }
+
+    /**
+     * Переключение вкладки в главном TabPane по индексу.
+     *
+     * @param tabIndex индекс вкладки
+     */
+    protected void switchTab(int tabIndex) {
+        TabPane tabPane = (TabPane) findNode("mainTabPane");
+        runOnFxThread(() -> tabPane.getSelectionModel().select(tabIndex));
+    }
+
+    /**
+     * Переключение вкладки в главном TabPane по заголовку.
+     *
+     * @param title заголовок вкладки
+     */
+    protected void switchTab(String title) {
+        TabPane tabPane = (TabPane) findNode("mainTabPane");
+        runOnFxThread(() -> {
+            for (Tab tab : tabPane.getTabs()) {
+                if (tab.getText() != null && tab.getText().equals(title)) {
+                    tabPane.getSelectionModel().select(tab);
+                    return;
+                }
             }
-        }
+        });
     }
 }

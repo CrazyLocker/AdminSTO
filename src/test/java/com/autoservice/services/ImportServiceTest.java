@@ -6,9 +6,9 @@ import org.junit.jupiter.api.*;
 import static org.assertj.core.api.Assertions.*;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -153,9 +153,11 @@ class ImportServiceTest extends BaseTest {
 
     private File createTempFile(String name, String content) throws IOException {
         File file = new File(tempDir.toFile(), name);
-        try (FileWriter writer = new FileWriter(file)) {
-            writer.write(content);
-        }
+        // ВАЖНО: пишем в UTF-8 явно. FileWriter использует кодировку системы по умолчанию
+        // (windows-1251 на Windows), из-за чего XML-декларация encoding="UTF-8"
+        // перестаёт соответствовать реальным байтам файла, и парсер падает с
+        // "Invalid byte N of N-byte UTF-8 sequence".
+        Files.writeString(file.toPath(), content, StandardCharsets.UTF_8);
         return file;
     }
 }
