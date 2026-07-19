@@ -426,6 +426,12 @@ public class SQLiteDatabase extends AbstractDatabase {
 
     @Override
     public void addOrder(WorkOrder order) {
+        logger.info("=== SQLiteDatabase.addOrder для заказа {} ===", order.getId());
+        logger.info("Услуг в заказе: {}", order.getServices().size());
+        for (int i = 0; i < order.getServices().size(); i++) {
+            logger.info("  Услуга {}: {} (price={}, serviceId={})", i, order.getServices().get(i), order.getServicePrices().get(i), i < order.getServiceIds().size() ? order.getServiceIds().get(i) : 0);
+        }
+        
         try (Connection conn = getConnection()) {
             int clientId = getClientId(order.getClient());
             if (clientId == -1) {
@@ -496,6 +502,12 @@ public class SQLiteDatabase extends AbstractDatabase {
     
     @Override
     public void updateOrder(WorkOrder order) {
+        logger.info("=== SQLiteDatabase.updateOrder для заказа {} ===", order.getId());
+        logger.info("Услуг в заказе: {}", order.getServices().size());
+        for (int i = 0; i < order.getServices().size(); i++) {
+            logger.info("  Услуга {}: {} (price={}, serviceId={})", i, order.getServices().get(i), order.getServicePrices().get(i), i < order.getServiceIds().size() ? order.getServiceIds().get(i) : 0);
+        }
+        
         try (Connection conn = getConnection()) {
             conn.setAutoCommit(false);
             
@@ -540,6 +552,19 @@ public class SQLiteDatabase extends AbstractDatabase {
     }
     
     private void saveOrderServices(Connection conn, String orderId, WorkOrder order) throws SQLException {
+        logger.debug("=== saveOrderServices для заказа {} ===", orderId);
+        logger.debug("Количество услуг: {}", order.getServices().size());
+        for (int i = 0; i < order.getServices().size(); i++) {
+            logger.debug("  Услуга {}: {} (price={}, serviceId={})", i, order.getServices().get(i), order.getServicePrices().get(i), i < order.getServiceIds().size() ? order.getServiceIds().get(i) : 0);
+        }
+
+        // Защитный DELETE: гарантируем, что старых услуг не осталось, даже если
+        // saveOrderServices вызван вне контекста updateOrder (защита от дубликатов).
+        try (PreparedStatement del = conn.prepareStatement("DELETE FROM order_services WHERE order_id = ?")) {
+            del.setString(1, orderId);
+            del.executeUpdate();
+        }
+
         String sql = "INSERT INTO order_services (order_id, service_name, price, service_id) VALUES (?, ?, ?, ?)";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             for (int i = 0; i < order.getServices().size(); i++) {

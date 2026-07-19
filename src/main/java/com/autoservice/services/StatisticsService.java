@@ -1,8 +1,9 @@
 package com.autoservice.services;
 
+import com.autoservice.AppConstants;
 import com.autoservice.DataStore;
-import com.autoservice.WorkOrder;
 import com.autoservice.Appointment;
+import com.autoservice.WorkOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,10 +64,8 @@ public class StatisticsService {
 
     public static Map<String, Integer> getMastersLoad() {
         Map<String, Integer> mastersLoad = new LinkedHashMap<>();
-
-        String[] masters = {"Саныч", "Малой"};
-        Set<String> knownMasters = new HashSet<>(Arrays.asList(masters));
-        for (String master : masters) {
+        Set<String> knownMasters = new HashSet<>(Arrays.asList(AppConstants.MASTERS));
+        for (String master : AppConstants.MASTERS) {
             mastersLoad.put(master, 0);
         }
 

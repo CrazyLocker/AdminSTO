@@ -45,7 +45,8 @@ daemon/
 gradle-8.5-bin.zip
 gradle-8.5/
 native/
-wrapper/
+/wrapper/
+gradle/wrapper/gradle-language-groovy-8.5.jar
 
 # Временные/устаревшие файлы
 pom.xml.old

@@ -1,11 +1,14 @@
 package com.autoservice.views;
 
+import com.autoservice.AppConstants;
 import com.autoservice.Client;
 import com.autoservice.DataStore;
 import com.autoservice.DateUtils;
 import com.autoservice.Validators;
 import com.autoservice.controllers.ClientController;
 import com.autoservice.dialogs.EditClientDialog;
+import com.autoservice.dialogs.ExportClientsDialog;
+import com.autoservice.dialogs.ImportClientsDialog;
 import com.autoservice.services.TableStateManager;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
@@ -43,11 +46,7 @@ public class ClientView {
     private static Button editBtn;
     private static Button deleteBtn;
 
-    private static final List<String> GWM_MODELS = Arrays.asList(
-            "Haval Jolion", "Haval F7", "Haval F7x", "Haval Dargo", "Haval Big Dog",
-            "Haval H6", "Haval H9", "GWM Poer", "GWM Tank 300", "GWM Tank 500",
-            "GWM Wingle 7", "GWM Cannon", "Great Wall Poer"
-    );
+    // GWM_MODELS перенесены в AppConstants
 
     public static VBox create() {
         VBox mainContainer = new VBox(15);
@@ -103,12 +102,20 @@ public class ClientView {
             }
         });
 
+        Button importBtn = new Button("Импорт из файла");
+        importBtn.getStyleClass().add("income-button");
+        importBtn.setOnAction(e -> ImportClientsDialog.show());
+
+        Button exportBtn = new Button("Экспорт в файл");
+        exportBtn.getStyleClass().add("export-button");
+        exportBtn.setOnAction(e -> ExportClientsDialog.show());
+
         HBox searchBox = createSearchPanel();
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        topPanel.getChildren().addAll(searchBox, spacer, addBtn, editBtn, deleteBtn);
+        topPanel.getChildren().addAll(searchBox, spacer, addBtn, editBtn, deleteBtn, importBtn, exportBtn);
 
         clientTable = createClientTable();
         VBox.setVgrow(clientTable, Priority.ALWAYS);

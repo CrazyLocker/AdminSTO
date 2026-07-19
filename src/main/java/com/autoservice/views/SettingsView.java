@@ -89,11 +89,7 @@ public class SettingsView {
         return toPartsTable;
     }
 
-    private static final List<String> GWM_MODELS = Arrays.asList(
-            "Haval Jolion", "Haval F7", "Haval F7x", "Haval Dargo", "Haval Big Dog",
-            "Haval H6", "Haval H9", "GWM Poer", "GWM Tank 300", "GWM Tank 500",
-            "GWM Wingle 7", "GWM Cannon", "Great Wall Poer"
-    );
+    // GWM_MODELS перенесены в AppConstants
 
     public static void showSettingsWindow() {
         Stage stage = new Stage();
@@ -1111,7 +1107,7 @@ public class SettingsView {
     private static ObservableList<String> getCarModelsObservable() {
         ObservableList<String> list = FXCollections.observableArrayList();
         // Добавляем стандартные модели GWM
-        for (String model : GWM_MODELS) {
+        for (String model : AppConstants.GWM_MODELS) {
             list.add(model);
         }
         // Получаем все уникальные модели авто из базы данных

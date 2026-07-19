@@ -1,5 +1,6 @@
 package com.autoservice.dialogs;
 
+import com.autoservice.AppConstants;
 import com.autoservice.Client;
 import com.autoservice.Service;
 import com.autoservice.SparePart;
@@ -41,21 +42,16 @@ public class EditOrderDialog {
     private static ComboBox<SparePart> partCombo;
     private static Stage currentStage;
     
+    // TIME_SLOTS и MASTERS перенесены в AppConstants
+    
+    // TIME_SLOTS и MASTERS перенесены в AppConstants
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+
     // Временные списки для редактирования
     private static final List<String> tempServices = new ArrayList<>();
     private static final List<Double> tempServicePrices = new ArrayList<>();
     private static final List<SparePart> tempParts = new ArrayList<>();
     private static final List<Double> tempPartQuantities = new ArrayList<>();
-    
-    // Константы
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy");
-    private static final String[] TIME_SLOTS = {
-        "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00",
-        "16:00", "17:00", "18:00", "19:00", "20:00"
-    };
-    private static final String[] MASTERS = {
-        "Саныч", "Малой"
-    };
 
     public static void show(WorkOrder order) {
         if (order.getStatus().equals(WorkOrder.STATUS_CLOSED)) {
@@ -127,8 +123,8 @@ public class EditOrderDialog {
         }
 
         DatePicker datePicker = new DatePicker();
-        ComboBox<String> timeCombo = new ComboBox<>(FXCollections.observableArrayList(TIME_SLOTS));
-        ComboBox<String> masterCombo = new ComboBox<>(FXCollections.observableArrayList(MASTERS));
+        ComboBox<String> timeCombo = new ComboBox<>(FXCollections.observableArrayList(AppConstants.TIME_SLOTS));
+        ComboBox<String> masterCombo = new ComboBox<>(FXCollections.observableArrayList(AppConstants.MASTERS));
 
         if (existingAppointment != null) {
             LocalDate apptDate = DateUtils.parseDate(existingAppointment.getDate());

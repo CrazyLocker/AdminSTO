@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<clients>
+    <client>
+        <lastName>Петров</lastName>
+        <name>Петр</name>
+        <phone>+79001234567</phone>
+        <carModel>Haval Dargo</carModel>
+        <carNumber>А123ВС163</carNumber>
+        <lastRepairDate>2026-05-21</lastRepairDate>
+    </client>
+    <client>
+        <lastName>Смирнова</lastName>
+        <name>Елена</name>
+        <phone>+79113456789</phone>
+        <carModel>Haval Jolion</carModel>
+        <carNumber>В456ЕК77</carNumber>
+        <lastRepairDate>2026-05-22</lastRepairDate>
+    </client>
+    <client>
+        <lastName>Козлов</lastName>
+        <name>Сергей</name>
+        <phone>+79224567890</phone>
+        <carModel>Tank 300</carModel>
+        <carNumber>М789НО50</carNumber>
+        <lastRepairDate>2026-05-23</lastRepairDate>
+    </client>
+    <client>
+        <lastName>Новикова</lastName>
+        <name>Анна</name>
+        <phone>+79335678901</phone>
+        <carModel>Great Wall Poer</carModel>
+        <carNumber>О159РТ40</carNumber>
+        <lastRepairDate>2026-05-24</lastRepairDate>
+    </client>
+    <client>
+        <lastName>Морозов</lastName>
+        <name>Дмитрий</name>
+        <phone>+79446789012</phone>
+        <carModel>Haval F7</carModel>
+        <carNumber>У357АЕ99</carNumber>
+        <lastRepairDate>2026-05-25</lastRepairDate>
+    </client>
+    <client>
+        <lastName>Васильева</lastName>
+        <name>Татьяна</name>
+        <phone>+79557890123</phone>
+        <carModel>Haval Dargo</carModel>
+        <carNumber>К753ВМ01</carNumber>
+        <lastRepairDate>2026-05-26</lastRepairDate>
+    </client>
+    <client>
+        <lastName>Николаев</lastName>
+        <name>Алексей</name>
+        <phone>+79668901234</phone>
+        <carModel>Tank 500</carModel>
+        <carNumber>Х951ТК22</carNumber>
+        <lastRepairDate>2026-05-27</lastRepairDate>
+    </client>
+    <client>
+        <lastName>Фёдорова</lastName>
+        <name>Мария</name>
+        <phone>+79779012345</phone>
+        <carModel>Haval Jolion</carModel>
+        <carNumber>Т357ХО18</carNumber>
+        <lastRepairDate>2026-05-28</lastRepairDate>
+    </client>
+    <client>
+        <lastName>Соколов</lastName>
+        <name>Владимир</name>
+        <phone>+79880123456</phone>
+        <carModel>Great Wall Poer</carModel>
+        <carNumber>А159АМ64</carNumber>
+        <lastRepairDate>2026-05-29</lastRepairDate>
+    </client>
+    <client>
+        <lastName>Михайлова</lastName>
+        <name>Ольга</name>
+        <phone>+79991234567</phone>
+        <carModel>Haval F7</carModel>
+        <carNumber>В753НС31</carNumber>
+        <lastRepairDate>2026-05-30</lastRepairDate>
+    </client>
+    <client>
+        <lastName>Кузнецов</lastName>
+        <name>Павел</name>
+        <phone>+79011234568</phone>
+        <carModel>Haval Dargo</carModel>
+        <carNumber>К123МР77</carNumber>
+        <lastRepairDate>2026-05-31</lastRepairDate>
+    </client>
+    <client>
+        <lastName>Попова</lastName>
+        <name>Наталья</name>
+        <phone>+79112345679</phone>
+        <carModel>Tank 300</carModel>
+        <carNumber>Х456РО99</carNumber>
+        <lastRepairDate>2026-05-31</lastRepairDate>
+    </client>
+    <client>
+        <lastName>Лебедев</lastName>
+        <name>Андрей</name>
+        <phone>+79213456780</phone>
+        <carModel>Haval Jolion</carModel>
+        <carNumber>Е789СН22</carNumber>
+        <lastRepairDate>2026-05-31</lastRepairDate>
+    </client>
+    <client>
+        <lastName>Соловьёва</lastName>
+        <name>Юлия</name>
+        <phone>+79314567891</phone>
+        <carModel>Great Wall Poer</carModel>
+        <carNumber>У951КМ44</carNumber>
+        <lastRepairDate>2026-05-31</lastRepairDate>
+    </client>
+    <client>
+        <lastName>Тимофеев</lastName>
+        <name>Максим</name>
+        <phone>+79415678902</phone>
+        <carModel>Haval F7</carModel>
+        <carNumber>А753ЕМ55</carNumber>
+        <lastRepairDate>2026-05-31</lastRepairDate>
+    </client>
+    <client>
+        <lastName>Григорьева</lastName>
+        <name>Светлана</name>
+        <phone>+79516789013</phone>
+        <carModel>Tank 500</carModel>
+        <carNumber>В159А66</carNumber>
+        <lastRepairDate>2026-05-31</lastRepairDate>
+    </client>
+    <client>
+        <lastName>Степанов</lastName>
+        <name>Никита</name>
+        <phone>+79617890124</phone>
+        <carModel>Haval Dargo</carModel>
+        <carNumber>С753РО77</carNumber>
+        <lastRepairDate>2026-05-31</lastRepairDate>
+    </client>
+    <client>
+        <lastName>Андреева</lastName>
+        <name>Екатерина</name>
+        <phone>+79718901235</phone>
+        <carModel>Haval Jolion</carModel>
+        <carNumber>М456КС88</carNumber>
+        <lastRepairDate>2026-05-31</lastRepairDate>
+    </client>
+    <client>
+        <lastName>Ильин</lastName>
+        <name>Роман</name>
+        <phone>+79819012346</phone>
+        <carModel>Great Wall Poer</carModel>
+        <carNumber>А753ВС99</carNumber>
+        <lastRepairDate>2026-05-31</lastRepairDate>
+    </client>
+    <client>
+        <lastName>Тестерович</lastName>
+        <name>Тестер</name>
+        <phone>+78887774445</phone>
+        <carModel>Haval H9</carModel>
+        <carNumber>А222АА77</carNumber>
+    </client>
+    <client>
+        <lastName>А</lastName>
+        <name>А</name>
+        <phone>+79999999999</phone>
+        <carModel>Haval Jolion</carModel>
+        <carNumber>А111АА63</carNumber>
+    </client>
+</clients>

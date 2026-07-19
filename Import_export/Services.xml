@@ -1,0 +1,447 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<services>
+    <service>
+        <name>Аа7</name>
+        <duration>12</duration>
+        <partNumber>ASDFV-23-WE</partNumber>
+        <price>12.0</price>
+    </service>
+    <service>
+        <name>Балансировка колес</name>
+        <duration>40</duration>
+        <partNumber>SRV-006</partNumber>
+        <price>1000.0</price>
+    </service>
+    <service>
+        <name>Дезинфекция системы кондиционирования</name>
+        <duration>30</duration>
+        <partNumber>GWM-AC-03</partNumber>
+        <price>2000.0</price>
+    </service>
+    <service>
+        <name>Диагностика подвески</name>
+        <duration>30</duration>
+        <partNumber>GWM-DIAG-05</partNumber>
+        <price>2500.0</price>
+    </service>
+    <service>
+        <name>Диагностика тормозной системы</name>
+        <duration>30</duration>
+        <partNumber>GWM-DIAG-06</partNumber>
+        <price>2500.0</price>
+    </service>
+    <service>
+        <name>Диагностика ходовой</name>
+        <duration>45</duration>
+        <partNumber>SRV-005</partNumber>
+        <price>1200.0</price>
+    </service>
+    <service>
+        <name>Диагностика электрооборудования</name>
+        <duration>45</duration>
+        <partNumber>GWM-ELEC-04</partNumber>
+        <price>3000.0</price>
+    </service>
+    <service>
+        <name>Замена аккумулятора</name>
+        <duration>20</duration>
+        <partNumber>GWM-ELEC-01</partNumber>
+        <price>1500.0</price>
+    </service>
+    <service>
+        <name>Замена амортизаторов задних</name>
+        <duration>120</duration>
+        <partNumber>GWM-SUS-02</partNumber>
+        <price>8000.0</price>
+    </service>
+    <service>
+        <name>Замена амортизаторов передних</name>
+        <duration>120</duration>
+        <partNumber>GWM-SUS-01</partNumber>
+        <price>8000.0</price>
+    </service>
+    <service>
+        <name>Замена воздушного фильтра</name>
+        <duration>30</duration>
+        <partNumber>SRV-002</partNumber>
+        <price>800.0</price>
+    </service>
+    <service>
+        <name>Замена генератора</name>
+        <duration>120</duration>
+        <partNumber>GWM-ELEC-02</partNumber>
+        <price>8000.0</price>
+    </service>
+    <service>
+        <name>Замена гидрокомпенсаторов</name>
+        <duration>360</duration>
+        <partNumber>GWM-ENG-06</partNumber>
+        <price>80000.0</price>
+    </service>
+    <service>
+        <name>Замена главного тормозного цилиндра</name>
+        <duration>120</duration>
+        <partNumber>GWM-BRK-07</partNumber>
+        <price>7000.0</price>
+    </service>
+    <service>
+        <name>Замена задних тормозных дисков</name>
+        <duration>60</duration>
+        <partNumber>GWM-BRK-04</partNumber>
+        <price>5000.0</price>
+    </service>
+    <service>
+        <name>Замена задних тормозных колодок</name>
+        <duration>40</duration>
+        <partNumber>GWM-BRK-02</partNumber>
+        <price>2500.0</price>
+    </service>
+    <service>
+        <name>Замена компрессора кондиционера</name>
+        <duration>180</duration>
+        <partNumber>GWM-AC-02</partNumber>
+        <price>15000.0</price>
+    </service>
+    <service>
+        <name>Замена масла ДВС</name>
+        <duration>60</duration>
+        <partNumber>SRV-001</partNumber>
+        <price>1500.0</price>
+    </service>
+    <service>
+        <name>Замена масла в АКПП</name>
+        <duration>60</duration>
+        <partNumber>GWM-TO-06</partNumber>
+        <price>7500.0</price>
+    </service>
+    <service>
+        <name>Замена масла в ДВС</name>
+        <duration>30</duration>
+        <partNumber>GWM-TO-01</partNumber>
+        <price>2500.0</price>
+    </service>
+    <service>
+        <name>Замена масла в МКПП</name>
+        <duration>45</duration>
+        <partNumber>GWM-TO-07</partNumber>
+        <price>5000.0</price>
+    </service>
+    <service>
+        <name>Замена масла в раздаточной коробке</name>
+        <duration>30</duration>
+        <partNumber>GWM-TO-09</partNumber>
+        <price>2000.0</price>
+    </service>
+    <service>
+        <name>Замена масла в редукторе</name>
+        <duration>30</duration>
+        <partNumber>GWM-TO-08</partNumber>
+        <price>2000.0</price>
+    </service>
+    <service>
+        <name>Замена маслоотделителя</name>
+        <duration>240</duration>
+        <partNumber>GWM-ENG-11</partNumber>
+        <price>75000.0</price>
+    </service>
+    <service>
+        <name>Замена масляного насоса</name>
+        <duration>150</duration>
+        <partNumber>GWM-ENG-02</partNumber>
+        <price>6500.0</price>
+    </service>
+    <service>
+        <name>Замена масляного фильтра</name>
+        <duration>15</duration>
+        <partNumber>GWM-TO-02</partNumber>
+        <price>800.0</price>
+    </service>
+    <service>
+        <name>Замена моторного масла</name>
+        <duration>30</duration>
+        <partNumber>GWM-TO-01</partNumber>
+        <price>2500.0</price>
+    </service>
+    <service>
+        <name>Замена муфт изменения фаз ГРМ</name>
+        <duration>240</duration>
+        <partNumber>GWM-ENG-12</partNumber>
+        <price>60000.0</price>
+    </service>
+    <service>
+        <name>Замена опор двигателя</name>
+        <duration>120</duration>
+        <partNumber>GWM-ENG-10</partNumber>
+        <price>7500.0</price>
+    </service>
+    <service>
+        <name>Замена охлаждающей жидкости</name>
+        <duration>60</duration>
+        <partNumber>SRV-007</partNumber>
+        <price>1800.0</price>
+    </service>
+    <service>
+        <name>Замена охлаждающей жидкости (антифриз)</name>
+        <duration>60</duration>
+        <partNumber>GWM-TO-11</partNumber>
+        <price>3500.0</price>
+    </service>
+    <service>
+        <name>Замена передних тормозных дисков</name>
+        <duration>60</duration>
+        <partNumber>GWM-BRK-03</partNumber>
+        <price>5000.0</price>
+    </service>
+    <service>
+        <name>Замена передних тормозных колодок</name>
+        <duration>40</duration>
+        <partNumber>GWM-BRK-01</partNumber>
+        <price>2500.0</price>
+    </service>
+    <service>
+        <name>Замена помпы двигателя</name>
+        <duration>180</duration>
+        <partNumber>GWM-ENG-01</partNumber>
+        <price>10000.0</price>
+    </service>
+    <service>
+        <name>Замена поршневых колец</name>
+        <duration>480</duration>
+        <partNumber>GWM-ENG-07</partNumber>
+        <price>125000.0</price>
+    </service>
+    <service>
+        <name>Замена приводных ремней</name>
+        <duration>30</duration>
+        <partNumber>GWM-TO-15</partNumber>
+        <price>2000.0</price>
+    </service>
+    <service>
+        <name>Замена прокладки клапанной крышки</name>
+        <duration>120</duration>
+        <partNumber>GWM-ENG-03</partNumber>
+        <price>6000.0</price>
+    </service>
+    <service>
+        <name>Замена прокладки поддона</name>
+        <duration>180</duration>
+        <partNumber>GWM-ENG-04</partNumber>
+        <price>12500.0</price>
+    </service>
+    <service>
+        <name>Замена пружин подвески</name>
+        <duration>90</duration>
+        <partNumber>GWM-SUS-03</partNumber>
+        <price>6000.0</price>
+    </service>
+    <service>
+        <name>Замена радиатора кондиционера</name>
+        <duration>150</duration>
+        <partNumber>GWM-AC-04</partNumber>
+        <price>10000.0</price>
+    </service>
+    <service>
+        <name>Замена распредвала</name>
+        <duration>360</duration>
+        <partNumber>GWM-ENG-08</partNumber>
+        <price>75000.0</price>
+    </service>
+    <service>
+        <name>Замена ремня ГРМ</name>
+        <duration>180</duration>
+        <partNumber>SRV-010</partNumber>
+        <price>5500.0</price>
+    </service>
+    <service>
+        <name>Замена ремня ГРМ</name>
+        <duration>180</duration>
+        <partNumber>GWM-TO-13</partNumber>
+        <price>25000.0</price>
+    </service>
+    <service>
+        <name>Замена рулевых наконечников</name>
+        <duration>60</duration>
+        <partNumber>GWM-SUS-06</partNumber>
+        <price>4000.0</price>
+    </service>
+    <service>
+        <name>Замена сайлентблоков</name>
+        <duration>90</duration>
+        <partNumber>GWM-SUS-04</partNumber>
+        <price>5000.0</price>
+    </service>
+    <service>
+        <name>Замена салонного фильтра</name>
+        <duration>15</duration>
+        <partNumber>GWM-TO-04</partNumber>
+        <price>1000.0</price>
+    </service>
+    <service>
+        <name>Замена свечей зажигания</name>
+        <duration>45</duration>
+        <partNumber>SRV-008</partNumber>
+        <price>1600.0</price>
+    </service>
+    <service>
+        <name>Замена свечей зажигания</name>
+        <duration>40</duration>
+        <partNumber>GWM-TO-12</partNumber>
+        <price>2000.0</price>
+    </service>
+    <service>
+        <name>Замена стартера</name>
+        <duration>120</duration>
+        <partNumber>GWM-ELEC-03</partNumber>
+        <price>7000.0</price>
+    </service>
+    <service>
+        <name>Замена суппорта</name>
+        <duration>90</duration>
+        <partNumber>GWM-BRK-08</partNumber>
+        <price>5000.0</price>
+    </service>
+    <service>
+        <name>Замена топливного фильтра</name>
+        <duration>30</duration>
+        <partNumber>GWM-TO-05</partNumber>
+        <price>1500.0</price>
+    </service>
+    <service>
+        <name>Замена тормозной жидкости</name>
+        <duration>45</duration>
+        <partNumber>GWM-TO-10</partNumber>
+        <price>2500.0</price>
+    </service>
+    <service>
+        <name>Замена тормозных колодок (зад)</name>
+        <duration>60</duration>
+        <partNumber>SRV-004</partNumber>
+        <price>2400.0</price>
+    </service>
+    <service>
+        <name>Замена тормозных колодок (перед)</name>
+        <duration>90</duration>
+        <partNumber>SRV-003</partNumber>
+        <price>3200.0</price>
+    </service>
+    <service>
+        <name>Замена тормозных шлангов</name>
+        <duration>60</duration>
+        <partNumber>GWM-BRK-05</partNumber>
+        <price>4000.0</price>
+    </service>
+    <service>
+        <name>Замена троса ручного тормоза</name>
+        <duration>60</duration>
+        <partNumber>GWM-BRK-09</partNumber>
+        <price>3500.0</price>
+    </service>
+    <service>
+        <name>Замена цепи ГРМ</name>
+        <duration>360</duration>
+        <partNumber>GWM-TO-14</partNumber>
+        <price>60000.0</price>
+    </service>
+    <service>
+        <name>Замена шаровых опор</name>
+        <duration>60</duration>
+        <partNumber>GWM-SUS-05</partNumber>
+        <price>4000.0</price>
+    </service>
+    <service>
+        <name>Замена щеток стеклоочистителя</name>
+        <duration>10</duration>
+        <partNumber>GWM-GEN-04</partNumber>
+        <price>500.0</price>
+    </service>
+    <service>
+        <name>Замер компрессии</name>
+        <duration>60</duration>
+        <partNumber>GWM-DIAG-03</partNumber>
+        <price>4000.0</price>
+    </service>
+    <service>
+        <name>Заправка кондиционера</name>
+        <duration>45</duration>
+        <partNumber>GWM-AC-01</partNumber>
+        <price>3000.0</price>
+    </service>
+    <service>
+        <name>Кап. ремонт двигателя</name>
+        <duration>720</duration>
+        <partNumber>GWM-ENG-09</partNumber>
+        <price>100000.0</price>
+    </service>
+    <service>
+        <name>Комплексная диагностика двигателя</name>
+        <duration>60</duration>
+        <partNumber>GWM-DIAG-01</partNumber>
+        <price>5000.0</price>
+    </service>
+    <service>
+        <name>Компьютерная диагностика</name>
+        <duration>30</duration>
+        <partNumber>SRV-009</partNumber>
+        <price>2000.0</price>
+    </service>
+    <service>
+        <name>Компьютерная диагностика</name>
+        <duration>45</duration>
+        <partNumber>GWM-DIAG-02</partNumber>
+        <price>3000.0</price>
+    </service>
+    <service>
+        <name>Мойка двигателя</name>
+        <duration>30</duration>
+        <partNumber>GWM-GEN-01</partNumber>
+        <price>1500.0</price>
+    </service>
+    <service>
+        <name>Полировка кузова</name>
+        <duration>180</duration>
+        <partNumber>GWM-GEN-03</partNumber>
+        <price>8000.0</price>
+    </service>
+    <service>
+        <name>Прокачка тормозной системы</name>
+        <duration>30</duration>
+        <partNumber>GWM-BRK-06</partNumber>
+        <price>1500.0</price>
+    </service>
+    <service>
+        <name>Развал-схождение</name>
+        <duration>45</duration>
+        <partNumber>GWM-SUS-07</partNumber>
+        <price>2000.0</price>
+    </service>
+    <service>
+        <name>Регулировка ручного тормоза</name>
+        <duration>30</duration>
+        <partNumber>GWM-BRK-10</partNumber>
+        <price>1500.0</price>
+    </service>
+    <service>
+        <name>Устранение течи масла</name>
+        <duration>90</duration>
+        <partNumber>GWM-ENG-05</partNumber>
+        <price>5000.0</price>
+    </service>
+    <service>
+        <name>Химчистка салона</name>
+        <duration>120</duration>
+        <partNumber>GWM-GEN-02</partNumber>
+        <price>5000.0</price>
+    </service>
+    <service>
+        <name>Шиномонтаж (1 колесо)</name>
+        <duration>20</duration>
+        <partNumber>GWM-SUS-09</partNumber>
+        <price>800.0</price>
+    </service>
+    <service>
+        <name>Эндоскопия цилиндров</name>
+        <duration>60</duration>
+        <partNumber>GWM-DIAG-04</partNumber>
+        <price>5000.0</price>
+    </service>
+</services>

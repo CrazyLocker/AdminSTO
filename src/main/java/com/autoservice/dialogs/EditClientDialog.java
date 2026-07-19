@@ -1,5 +1,6 @@
 package com.autoservice.dialogs;
 
+import com.autoservice.AppConstants;
 import com.autoservice.Appointment;
 import com.autoservice.Client;
 import com.autoservice.DataStore;
@@ -22,16 +23,20 @@ import javafx.stage.Stage;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.Map;
+import java.util.HashMap;
 
 public class EditClientDialog {
 
-    private static final List<String> GWM_MODELS = Arrays.asList(
-            "Haval Jolion", "Haval F7", "Haval F7x", "Haval Dargo", "Haval Big Dog",
-            "Haval H6", "Haval H9", "GWM Poer", "GWM Tank 300", "GWM Tank 500",
-            "GWM Wingle 7", "GWM Cannon", "Great Wall Poer"
-    );
+    // GWM_MODELS перенесены в AppConstants
 
-    public static void show(Client client) {
+    /**
+     * Асинхронное открытие диалога (для тестирования).
+     * Возвращает CompletableFuture, который завершается при закрытии диалога.
+     */
+    public static CompletableFuture<DialogResult> showAsync(Client client) {
+        CompletableFuture<DialogResult> future = new CompletableFuture<>();
         boolean isNew = (client.getId() == -1 || client.getId() == 0);
 
         Stage stage = new Stage();
@@ -39,7 +44,7 @@ public class EditClientDialog {
         stage.setMinWidth(550);
         stage.setMinHeight(550);
         stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
-        
+
         // Восстановление состояния диалога
         WindowStateManager.getInstance().restoreWindowState("editClientDialog", stage);
 
@@ -77,136 +82,60 @@ public class EditClientDialog {
         phoneLabel.getStyleClass().add("label");
         TextField phoneField = new TextField(client.getPhone());
         phoneField.setId("phoneField");
-        phoneField.setPromptText("+7XXXXXXXXXX");
+        phoneField.setPromptText("Телефон");
         phoneField.setPrefWidth(250);
-        TooltipHelper.setToolTip(phoneField, "Формат: +7XXXXXXXXXX (10 цифр)");
-        // Настройка поля телефона с автоматической фильтрацией
-        Validators.setupPhoneField(phoneField);
 
-        // Модель авто
-        Label carModelLabel = new Label("Модель авто:");
+        // Модель
+        Label carModelLabel = new Label("Марка/Модель:");
         carModelLabel.getStyleClass().add("label");
-        ComboBox<String> carModelComboBox = new ComboBox<>();
-        carModelComboBox.setId("carModelComboBox");
-        carModelComboBox.setPromptText("Выберите или введите модель");
-        carModelComboBox.setPrefWidth(300);
-        carModelComboBox.setItems(FXCollections.observableArrayList(GWM_MODELS));
+        ComboBox<String> carModelComboBox = new ComboBox<>(FXCollections.observableArrayList(AppConstants.GWM_MODELS));
+        carModelComboBox.setPromptText("Модель");
         carModelComboBox.setEditable(true);
-        if (client.getCarModel() != null && !client.getCarModel().isEmpty()) {
-            carModelComboBox.setValue(client.getCarModel());
-        }
+        carModelComboBox.setPrefWidth(250);
+        carModelComboBox.getEditor().setText(client.getCarModel());
 
         // Госномер
         Label carNumberLabel = new Label("Госномер:");
         carNumberLabel.getStyleClass().add("label");
         TextField carNumberField = new TextField(client.getCarNumber());
         carNumberField.setId("carNumberField");
-        carNumberField.setPromptText("А123ВВ777");
-        carNumberField.setPrefWidth(200);
-        TooltipHelper.setToolTip(carNumberField, "Формат: А123ВВ777 или А123ВВ77");
-        // Настройка поля госномера с автоматической фильтрацией
-        Validators.setupCarNumberField(carNumberField);
+        carNumberField.setPromptText("Госномер");
+        carNumberField.setPrefWidth(250);
 
-        grid.add(lastNameLabel, 0, 0);
-        grid.add(lastNameField, 1, 0);
-        grid.add(nameLabel, 0, 1);
-        grid.add(nameField, 1, 1);
-        grid.add(phoneLabel, 0, 2);
-        grid.add(phoneField, 1, 2);
-        grid.add(carModelLabel, 0, 3);
-        grid.add(carModelComboBox, 1, 3);
-        grid.add(carNumberLabel, 0, 4);
-        grid.add(carNumberField, 1, 4);
-
-        // Информация о последнем ремонте (только для существующих клиентов)
-        if (!isNew) {
-            Label lastRepairTitle = new Label("Последний ремонт:");
-            lastRepairTitle.getStyleClass().add("label");
-            Label lastRepairLabel = new Label();
-            if (client.getLastRepairDate() != null && !client.getLastRepairDate().isEmpty()) {
-                lastRepairLabel.setText(DateUtils.formatDate(client.getLastRepairDate()));
-                lastRepairLabel.setStyle("-fx-text-fill: #2E7D32; -fx-font-weight: bold; -fx-background-color: #E8F5E9; -fx-padding: 5 10; -fx-background-radius: 4;");
-            } else {
-                lastRepairLabel.setText("Нет завершённых заказов");
-                lastRepairLabel.setStyle("-fx-text-fill: #FF9800; -fx-font-weight: bold; -fx-background-color: #FFF3E0; -fx-padding: 5 10; -fx-background-radius: 4;");
-            }
-
-            grid.add(lastRepairTitle, 0, 5);
-            grid.add(lastRepairLabel, 1, 5);
-
-            // Информация о текущей записи
-            Label appointmentTitle = new Label("Текущая запись:");
-            appointmentTitle.getStyleClass().add("label");
-            Label currentAppointmentLabel = new Label();
-
-            Appointment currentAppointment = null;
-            for (Appointment a : DataStore.getAppointments()) {
-                if (a.getClient().getId() == client.getId() &&
-                        a.getStatus().equals(Appointment.STATUS_NEW)) {
-                    currentAppointment = a;
-                    break;
-                }
-            }
-
-            if (currentAppointment != null) {
-                String date = DateUtils.formatDate(currentAppointment.getDate());
-                String time = currentAppointment.getTime();
-                String master = currentAppointment.getMasterName();
-                String service = currentAppointment.getServiceName();
-                currentAppointmentLabel.setText(date + ", " + time + ", мастер: " + master + ", услуга: " + service);
-                currentAppointmentLabel.setStyle("-fx-text-fill: #2E7D32; -fx-background-color: #E3F2FD; -fx-padding: 5 10; -fx-background-radius: 4;");
-            } else {
-                currentAppointmentLabel.setText("Нет активных записей");
-                currentAppointmentLabel.setStyle("-fx-text-fill: #FF9800; -fx-background-color: #FFF3E0; -fx-padding: 5 10; -fx-background-radius: 4;");
-            }
-
-            grid.add(appointmentTitle, 0, 6);
-            grid.add(currentAppointmentLabel, 1, 6);
-        }
-
-        // ====== КНОПКИ БЕЗ ИКОНОК ======
-        Button saveBtn = new Button(isNew ? "Создать" : "Сохранить");
-        saveBtn.setId("saveClientBtn");
-        saveBtn.getStyleClass().add("save-button");
-
+        // Кнопки
+        Button saveBtn = new Button("Сохранить");
+        saveBtn.getStyleClass().add("save-btn");
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.setId("cancelClientBtn");
-        cancelBtn.getStyleClass().add("cancel-button");
+        cancelBtn.getStyleClass().add("cancel-btn");
 
-        HBox btnBox = new HBox(15, saveBtn, cancelBtn);
-        btnBox.setAlignment(Pos.CENTER);
-        btnBox.setPadding(new Insets(20, 0, 0, 0));
+        HBox btnBox = new HBox(10, saveBtn, cancelBtn);
+        btnBox.setAlignment(Pos.CENTER_RIGHT);
+        btnBox.setPadding(new Insets(10, 0, 0, 0));
 
-        root.getChildren().addAll(titleLabel, grid, btnBox);
-
-        Scene scene = new Scene(root);
-        scene.getStylesheets().add(
-                EditClientDialog.class.getResource("/styles.css").toExternalForm()
-        );
-        stage.setScene(scene);
-
-        saveBtn.setOnAction(e -> {
-            // Очистка ошибок валидации
-            ValidationErrorIndicator.clearAllErrors(root);
-            
+        // Валидация и сохранение
+        Runnable doSave = () -> {
             boolean isValid = true;
-            
-            // Валидация обязательных полей
-            if (!ValidationUtils.isNotBlank(nameField.getText(), "Имя")) {
-                ValidationErrorIndicator.showError(nameField, "Имя обязательно для заполнения");
-                isValid = false;
-            }
-            
+
             if (!ValidationUtils.isValidPhone(phoneField.getText())) {
                 ValidationErrorIndicator.showError(phoneField, "Неверный формат телефона");
                 isValid = false;
             }
-            
+
+            if (!ValidationUtils.isNotBlank(lastNameField.getText(), "Фамилия")) {
+                ValidationErrorIndicator.showError(lastNameField, "Введите фамилию (минимум 2 буквы)");
+                isValid = false;
+            }
+
+            if (!ValidationUtils.isNotBlank(nameField.getText(), "Имя")) {
+                ValidationErrorIndicator.showError(nameField, "Введите имя (минимум 2 буквы)");
+                isValid = false;
+            }
+
             if (!ValidationUtils.isValidCarNumber(carNumberField.getText())) {
                 ValidationErrorIndicator.showError(carNumberField, "Неверный формат госномера");
                 isValid = false;
             }
-            
+
             if (!isValid) {
                 return;
             }
@@ -224,16 +153,46 @@ public class EditClientDialog {
             }
 
             stage.close();
-            showInfo("Клиент " + (isNew ? "создан" : "сохранён"));
+            future.complete(new DialogResult(DialogResult.Action.OK, Map.of("client", client)));
+        };
+
+        saveBtn.setOnAction(e -> doSave.run());
+        cancelBtn.setOnAction(e -> {
+            stage.close();
+            future.complete(new DialogResult(DialogResult.Action.CANCEL));
         });
 
-        cancelBtn.setOnAction(e -> stage.close());
-        
         stage.setOnHiding(e -> {
             WindowStateManager.getInstance().saveWindowState("editClientDialog", stage);
+            if (!future.isDone()) {
+                future.complete(new DialogResult(DialogResult.Action.CANCEL));
+            }
         });
 
-        stage.showAndWait();
+        GridPane.setConstraints(lastNameLabel, 0, 0);
+        GridPane.setConstraints(lastNameField, 1, 0);
+        GridPane.setConstraints(nameLabel, 0, 1);
+        GridPane.setConstraints(nameField, 1, 1);
+        GridPane.setConstraints(phoneLabel, 0, 2);
+        GridPane.setConstraints(phoneField, 1, 2);
+        GridPane.setConstraints(carModelLabel, 0, 3);
+        GridPane.setConstraints(carModelComboBox, 1, 3);
+        GridPane.setConstraints(carNumberLabel, 0, 4);
+        GridPane.setConstraints(carNumberField, 1, 4);
+
+        grid.getChildren().addAll(lastNameLabel, lastNameField, nameLabel, nameField, phoneLabel, phoneField, carModelLabel, carModelComboBox, carNumberLabel, carNumberField);
+
+        root.getChildren().addAll(titleLabel, grid, btnBox);
+
+        Scene scene = new Scene(root);
+        stage.setScene(scene);
+        stage.show(); // НЕ showAndWait!
+        return future;
+    }
+
+    public static void show(Client client) {
+        // Синхронная версия для обратной совместимости
+        showAsync(client).join();
     }
 
     private static void showAlert(String msg) {

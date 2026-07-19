@@ -1,12 +1,11 @@
-﻿# Скрипт сборки полностью автономной portable-версии
+﻿﻿﻿﻿﻿# Скрипт сборки полностью автономной portable-версии
 # Запуск: powershell -ExecutionPolicy Bypass -File build-portable.ps1
 
 $ErrorActionPreference = "Stop"
 $projectDir = $PSScriptRoot
 $distDir = Join-Path $projectDir "portable"
-$jarFile = Join-Path $projectDir "target/autoservice-admin.jar"
-$javafxVersion = "17.0.6"
-$repo = Join-Path $env:USERPROFILE ".m2/repository/org/openjfx"
+$jarFile = Join-Path $projectDir "build/libs/autoservice-admin-1.1.0.jar"
+$buildLib = Join-Path $projectDir "build/lib"
 
 # Ищем JDK в системе
 $possibleJdks = @(
@@ -41,7 +40,7 @@ Write-Host ""
 
 # 1. Сборка проекта
 Write-Host "[1/7] Сборка проекта..." -ForegroundColor Yellow
-mvn clean package -DskipTests -q
+& "$projectDir\gradlew.bat" clean build -x test --no-daemon -q
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ОШИБКА сборки!" -ForegroundColor Red
     exit 1
@@ -71,17 +70,10 @@ Write-Host "[3/7] Создание встроенного JRE (jlink)..." -Foreg
     --output "$distDir/jre"
 Write-Host "    JRE создан." -ForegroundColor Green
 
-# 4. Копирование зависимостей из Maven
+# 4. Копирование зависимостей из Gradle (copyDependencies -> build/lib)
 Write-Host "[4/7] Копирование библиотек..." -ForegroundColor Yellow
-Copy-Item "$repo/javafx-base/$javafxVersion/javafx-base-$javafxVersion-win.jar" "$distDir/lib/" -Force
-Copy-Item "$repo/javafx-controls/$javafxVersion/javafx-controls-$javafxVersion-win.jar" "$distDir/lib/" -Force
-Copy-Item "$repo/javafx-fxml/$javafxVersion/javafx-fxml-$javafxVersion-win.jar" "$distDir/lib/" -Force
-Copy-Item "$repo/javafx-graphics/$javafxVersion/javafx-graphics-$javafxVersion-win.jar" "$distDir/lib/" -Force
-
-# Копируем остальные зависимости
-$targetLib = Join-Path $projectDir "target/lib"
-if (Test-Path $targetLib) {
-    Copy-Item "$targetLib/*" "$distDir/lib/" -Force
+if (Test-Path $buildLib) {
+    Copy-Item "$buildLib/*" "$distDir/lib/" -Force
 }
 
 Write-Host "    Библиотеки скопированы." -ForegroundColor Green
@@ -215,7 +207,7 @@ $version = @"
 AdminSTO Portable
 Дата сборки: $buildDate
 Java: встроенная (jlink)
-JavaFX: $javafxVersion
+JavaFX: 17.0.6
 "@
 [System.IO.File]::WriteAllText("$distDir/version.txt", $version, [System.Text.Encoding]::UTF8)
 

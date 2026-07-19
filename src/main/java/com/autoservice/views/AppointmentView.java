@@ -1,36 +1,61 @@
 package com.autoservice.views;
 
-import com.autoservice.*;
+import com.autoservice.AppConstants;
+import com.autoservice.Appointment;
+import com.autoservice.Client;
+import com.autoservice.DataStore;
+import com.autoservice.DateUtils;
+import com.autoservice.Service;
+import com.autoservice.SparePart;
+import com.autoservice.WorkOrder;
+import com.autoservice.controllers.ClientController;
 import com.autoservice.controllers.OrderController;
+import com.autoservice.controllers.ServicePanelController;
+import com.autoservice.controllers.SparePartPanelController;
+import com.autoservice.controllers.StockPanelController;
+import com.autoservice.dialogs.CreateOrderDialog;
+import com.autoservice.dialogs.EditClientDialog;
+import com.autoservice.dialogs.EditOrderDialog;
+import com.autoservice.dialogs.PrintOrderDialog;
+import com.autoservice.services.TableStateManager;
 import com.autoservice.services.WindowStateManager;
 import com.autoservice.utils.TooltipHelper;
 import javafx.collections.FXCollections;
+import javafx.collections.transformation.FilteredList;
+import javafx.collections.transformation.SortedList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.layout.*;
-import javafx.scene.shape.Circle;
-import javafx.stage.Modality;
-import javafx.stage.Stage;
-import javafx.scene.input.Dragboard;
-import javafx.scene.input.TransferMode;
+import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.input.KeyCode;
 import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.TransferMode;
+import javafx.scene.input.Dragboard;
+import javafx.scene.control.ToggleGroup;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.VBox;
+import javafx.scene.shape.SVGPath;
+import javafx.scene.shape.Circle;
+import javafx.stage.Stage;
+import javafx.stage.Modality;
+import javafx.scene.Scene;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
 public class AppointmentView {
 
-    private static final String[] TIME_SLOTS = {
-            "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00",
-            "16:00", "17:00", "18:00", "19:00", "20:00"
-    };
-
-    private static final String[] MASTERS = {"Саныч", "Малой"};
+    // TIME_SLOTS и MASTERS перенесены в AppConstants
     private static String[] SERVICES;
 
     private static DatePicker datePicker;
@@ -181,8 +206,8 @@ public class AppointmentView {
             scheduleGrid.add(dayHeader, i + 1, 0);
         }
 
-        for (int i = 0; i < TIME_SLOTS.length; i++) {
-            String time = TIME_SLOTS[i];
+        for (int i = 0; i < AppConstants.TIME_SLOTS.length; i++) {
+            String time = AppConstants.TIME_SLOTS[i];
             int row = i + 1;
 
             Label timeLabel = new Label(time);
@@ -841,14 +866,14 @@ public class AppointmentView {
             }
         });
 
-        ComboBox<String> masterCombo = new ComboBox<>(FXCollections.observableArrayList(MASTERS));
+        ComboBox<String> masterCombo = new ComboBox<>(FXCollections.observableArrayList(AppConstants.MASTERS));
         masterCombo.setPromptText("Выберите мастера");
         masterCombo.setPrefWidth(200);
 
         DatePicker datePickerLocal = new DatePicker(datePicker.getValue());
         datePickerLocal.setPrefWidth(200);
 
-        ComboBox<String> timeCombo = new ComboBox<>(FXCollections.observableArrayList(TIME_SLOTS));
+        ComboBox<String> timeCombo = new ComboBox<>(FXCollections.observableArrayList(AppConstants.TIME_SLOTS));
         if (presetTime != null) {
             timeCombo.setValue(presetTime);
         }
@@ -1019,7 +1044,7 @@ public class AppointmentView {
         grid.setVgap(12);
         grid.getStyleClass().add("dialog-grid");
 
-        ComboBox<String> masterCombo = new ComboBox<>(FXCollections.observableArrayList(MASTERS));
+        ComboBox<String> masterCombo = new ComboBox<>(FXCollections.observableArrayList(AppConstants.MASTERS));
         masterCombo.setValue(originalMaster);
         masterCombo.setPromptText("Выберите мастера");
         masterCombo.setPrefWidth(200);
@@ -1027,7 +1052,7 @@ public class AppointmentView {
         DatePicker datePickerLocal = new DatePicker(newDate);
         datePickerLocal.setPrefWidth(200);
 
-        ComboBox<String> timeCombo = new ComboBox<>(FXCollections.observableArrayList(TIME_SLOTS));
+        ComboBox<String> timeCombo = new ComboBox<>(FXCollections.observableArrayList(AppConstants.TIME_SLOTS));
         timeCombo.setValue(newTime);
         timeCombo.setPromptText("Выберите время");
         timeCombo.setPrefWidth(100);

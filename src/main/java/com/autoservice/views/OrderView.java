@@ -74,9 +74,13 @@ public class OrderView {
         printBtn = createActionButton("Печать");
         createOrderBtn = createActionButton("Новый");
 
+        editBtn.setId("editBtn");
         editBtn.setStyle("-fx-background-color: #f39c12;");
+        deleteBtn.setId("deleteBtn");
         deleteBtn.setStyle("-fx-background-color: #e74c3c;");
+        printBtn.setId("printBtn");
         printBtn.setStyle("-fx-background-color: #9b59b6;");
+        createOrderBtn.setId("createOrderBtn");
         createOrderBtn.setStyle("-fx-background-color: #2ecc71;");
 
         editBtn.setOnAction(e -> onEdit());
@@ -93,10 +97,12 @@ public class OrderView {
 
         // ========== ПАНЕЛЬ РАСШИРЕННЫХ ФИЛЬТРОВ ==========
         advancedToggleBtn = new ToggleButton("Расширенный фильтр");
+        advancedToggleBtn.setId("advancedToggleBtn");
         advancedToggleBtn.getStyleClass().add("toggle-button");
         advancedToggleBtn.setSelected(false);
 
         advancedFilterPanel = createAdvancedFilterPanel();
+        advancedFilterPanel.setId("advancedFilterPanel");
         advancedFilterPanel.setVisible(false);
         advancedFilterPanel.setManaged(false);
 
@@ -177,6 +183,7 @@ public class OrderView {
         Label statusLabel = new Label("Статус:");
         statusLabel.getStyleClass().add("filter-label");
         statusFilterCombo = new ComboBox<>();
+        statusFilterCombo.setId("statusFilterCombo");
         statusFilterCombo.getItems().addAll("Все", WorkOrder.STATUS_NEW, WorkOrder.STATUS_IN_PROGRESS, WorkOrder.STATUS_CLOSED);
         statusFilterCombo.setValue("Все");
         statusFilterCombo.setPrefWidth(120);
@@ -191,6 +198,7 @@ public class OrderView {
         Label dateFromLabel = new Label("Дата от:");
         dateFromLabel.getStyleClass().add("filter-label");
         dateFromPicker = new DatePicker();
+        dateFromPicker.setId("dateFromPicker");
         dateFromPicker.setPromptText("дд.мм.гггг");
         dateFromPicker.setPrefWidth(180);
         dateFromPicker.setOnAction(e -> applyFilters());
@@ -198,6 +206,7 @@ public class OrderView {
         Label dateToLabel = new Label("Дата до:");
         dateToLabel.getStyleClass().add("filter-label");
         dateToPicker = new DatePicker();
+        dateToPicker.setId("dateToPicker");
         dateToPicker.setPromptText("дд.мм.гггг");
         dateToPicker.setPrefWidth(180);
         dateToPicker.setOnAction(e -> applyFilters());
@@ -211,6 +220,7 @@ public class OrderView {
         Label minTotalLabel = new Label("Сумма от:");
         minTotalLabel.getStyleClass().add("filter-label");
         minTotalField = new TextField();
+        minTotalField.setId("minTotalField");
         minTotalField.setPromptText("0");
         minTotalField.setPrefWidth(100);
         minTotalField.textProperty().addListener((obs, oldVal, newVal) -> applyFilters());
@@ -218,12 +228,13 @@ public class OrderView {
         Label maxTotalLabel = new Label("Сумма до:");
         maxTotalLabel.getStyleClass().add("filter-label");
         maxTotalField = new TextField();
+        maxTotalField.setId("maxTotalField");
         maxTotalField.setPromptText("100000");
         maxTotalField.setPrefWidth(100);
         maxTotalField.textProperty().addListener((obs, oldVal, newVal) -> applyFilters());
 
         resetFiltersBtn = new Button("Сбросить");
-        resetFiltersBtn.getStyleClass().add("reset-button");
+        resetFiltersBtn.setId("resetFiltersBtn");
         resetFiltersBtn.setOnAction(e -> resetFilters());
 
         row3.getChildren().addAll(minTotalLabel, minTotalField, maxTotalLabel, maxTotalField, resetFiltersBtn);
@@ -399,12 +410,14 @@ public class OrderView {
 
     private static HBox createSearchPanel() {
         searchField = new TextField();
+        searchField.setId("searchField");
         searchField.setPromptText("Поиск по имени, телефону или номеру авто...");
         searchField.setPrefWidth(300);
         searchField.getStyleClass().add("search-field");
         searchField.textProperty().addListener((obs, oldVal, newVal) -> applyFilters());
 
         Button clearBtn = new Button("✕");
+        clearBtn.setId("clearSearchBtn");
         clearBtn.setStyle(
                 "-fx-background-color: #dc3545;" +
                         "-fx-text-fill: white;" +

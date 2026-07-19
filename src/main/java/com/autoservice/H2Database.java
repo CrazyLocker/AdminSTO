@@ -454,6 +454,12 @@ public class H2Database extends AbstractDatabase {
     }
     
     private void saveOrderServices(Connection conn, String orderId, WorkOrder order) throws SQLException {
+        // Защитный DELETE: гарантируем, что старых услуг не осталось (защита от дубликатов).
+        try (PreparedStatement del = conn.prepareStatement("DELETE FROM order_services WHERE order_id = ?")) {
+            del.setString(1, orderId);
+            del.executeUpdate();
+        }
+
         String sql = "INSERT INTO order_services (order_id, service_name, price, service_id) VALUES (?, ?, ?, ?)";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             for (int i = 0; i < order.getServices().size(); i++) {

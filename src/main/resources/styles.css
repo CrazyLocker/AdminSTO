@@ -259,6 +259,18 @@
     -fx-background-color: -purple-darker;
 }
 
+.button-export, .export-button {
+    -fx-background-color: -info-color;
+}
+
+.button-export:hover, .export-button:hover {
+    -fx-background-color: -info-dark;
+}
+
+.button-export:pressed, .export-button:pressed {
+    -fx-background-color: -info-darker;
+}
+
 .button-secondary, .refresh-button {
     -fx-background-color: -secondary-color;
 }
@@ -1103,4 +1115,47 @@
     -fx-background-radius: 4;
     -fx-border-radius: 4;
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 4, 0, 0, 2);
+}
+
+/* ========================================================================
+   13. ДИАЛОГИ ИМПОРТА/ЭКСПОРТА
+   ======================================================================== */
+
+.status-label {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #27ae60;
+}
+
+.status-label-warning {
+    -fx-text-fill: #f39c12;
+}
+
+.status-label-error {
+    -fx-text-fill: #e74c3c;
+}
+
+.errors-label {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2c3e50;
+}
+
+.error-list {
+    -fx-background-color: #f8f9fa;
+    -fx-border-color: #e0e0e0;
+    -fx-border-radius: 4;
+    -fx-padding: 4px;
+}
+
+.errors-box {
+    -fx-background-color: #fff5f5;
+    -fx-border-color: #e74c3c;
+    -fx-border-radius: 4;
+    -fx-padding: 8px;
+}
+
+.info-text {
+    -fx-font-size: 12px;
+    -fx-text-fill: #666;
 }

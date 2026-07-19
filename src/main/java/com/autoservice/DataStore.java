@@ -180,6 +180,11 @@ public class DataStore {
     public static List<WorkOrder> getOrders() { return orders; }
 
     public static void addOrder(WorkOrder o) {
+        logger.debug("=== DataStore.addOrder вызван для заказа {} ===", o.getId());
+        logger.debug("Услуг в заказе: {}", o.getServices().size());
+        for (int i = 0; i < o.getServices().size(); i++) {
+            logger.debug("  Услуга {}: {} (price={})", i, o.getServices().get(i), o.getServicePrices().get(i));
+        }
         DatabaseFactory.getDatabase().addOrder(o);
         orders = DatabaseFactory.getDatabase().getAllOrders();
         isDirty = true;
@@ -187,6 +192,11 @@ public class DataStore {
     }
 
     public static void updateOrder(WorkOrder o) {
+        logger.debug("=== DataStore.updateOrder вызван для заказа {} ===", o.getId());
+        logger.debug("Услуг в заказе: {}", o.getServices().size());
+        for (int i = 0; i < o.getServices().size(); i++) {
+            logger.debug("  Услуга {}: {} (price={})", i, o.getServices().get(i), o.getServicePrices().get(i));
+        }
         o.setDirty(true);
         DatabaseFactory.getDatabase().updateOrder(o);
         orders = DatabaseFactory.getDatabase().getAllOrders();

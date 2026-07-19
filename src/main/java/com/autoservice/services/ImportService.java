@@ -1,6 +1,8 @@
 package com.autoservice.services;
 
+import com.autoservice.Client;
 import com.autoservice.DataStore;
+import com.autoservice.Service;
 import com.autoservice.SparePart;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -411,5 +413,537 @@ public class ImportService {
             return el.getAsInt();
         }
         return defaultValue;
+    }
+
+    // ======================== ИМПОРТ КЛИЕНТОВ ========================
+
+    /**
+     * Импортирует клиентов из файла
+     */
+    public static ImportResult importClientsFromFile(File file) throws IOException {
+        String format = detectFormat(file);
+        if (format == null) {
+            throw new IllegalArgumentException("Неподдерживаемый формат файла: " + file.getName());
+        }
+
+        try (InputStream is = new FileInputStream(file)) {
+            switch (format) {
+                case "csv": return importClientsFromCsv(is);
+                case "xml": return importClientsFromXml(is);
+                case "json": return importClientsFromJson(is);
+                default: throw new IllegalArgumentException("Неизвестный формат: " + format);
+            }
+        }
+    }
+
+    // ======================== CSV КЛИЕНТОВ ========================
+
+    /**
+     * Формат CSV:
+     * lastName;name;phone;carModel;carNumber;lastRepairDate
+     * Поддерживает разделители ";" и ","
+     */
+    public static ImportResult importClientsFromCsv(InputStream is) {
+        List<String> errors = new ArrayList<>();
+        int imported = 0;
+        int skipped = 0;
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+            String line;
+            boolean isFirstLine = true;
+            boolean useSemicolon = false;
+
+            while ((line = reader.readLine()) != null) {
+                line = line.trim();
+                if (line.isEmpty()) continue;
+
+                // Определяем разделитель по первой строке данных
+                if (isFirstLine) {
+                    useSemicolon = line.contains(";");
+                    isFirstLine = false;
+                    continue; // Пропускаем заголовок
+                }
+
+                String[] fields = useSemicolon ? line.split(";") : line.split(",");
+
+                if (fields.length < 3) {
+                    errors.add("Строка пропущена (мало полей): " + line);
+                    skipped++;
+                    continue;
+                }
+
+                try {
+                    String lastName = fields[0].trim();
+                    String name = fields.length > 1 ? fields[1].trim() : "";
+                    String phone = fields.length > 2 ? fields[2].trim() : "";
+                    String carModel = fields.length > 3 ? fields[3].trim() : "";
+                    String carNumber = fields.length > 4 ? fields[4].trim() : "";
+                    String lastRepairDate = fields.length > 5 ? fields[5].trim() : "";
+
+                    if (lastName.isEmpty() && name.isEmpty()) {
+                        errors.add("Строка пропущена (пустое имя/фамилия): " + line);
+                        skipped++;
+                        continue;
+                    }
+
+                    Client client = new Client(name, lastName, phone, carModel, carNumber, lastRepairDate);
+
+                    if (findClientByPhone(client.getPhone()) == null) {
+                        DataStore.addClient(client);
+                        imported++;
+                    } else {
+                        skipped++;
+                    }
+                } catch (Exception e) {
+                    errors.add("Ошибка при разборе строки: " + line + " -> " + e.getMessage());
+                    skipped++;
+                }
+            }
+        } catch (IOException e) {
+            errors.add("Ошибка чтения CSV: " + e.getMessage());
+        }
+
+        return new ImportResult(imported, skipped, errors);
+    }
+
+    // ======================== XML КЛИЕНТОВ ========================
+
+    /**
+     * Формат XML:
+     * <clients>
+     *   <client>
+     *     <lastName>Иванов</lastName>
+     *     <name>Иван</name>
+     *     ...
+     *   </client>
+     * </clients>
+     */
+    public static ImportResult importClientsFromXml(InputStream is) {
+        List<String> errors = new ArrayList<>();
+        int imported = 0;
+        int skipped = 0;
+
+        try {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document doc = builder.parse(is);
+            doc.getDocumentElement().normalize();
+
+            NodeList clientsList = doc.getElementsByTagName("client");
+
+            for (int i = 0; i < clientsList.getLength(); i++) {
+                Element clientEl = (Element) clientsList.item(i);
+
+                try {
+                    String lastName = getTagValue(clientEl, "lastName");
+                    String name = getTagValue(clientEl, "name");
+                    if ((name == null || name.trim().isEmpty()) && (lastName == null || lastName.trim().isEmpty())) {
+                        errors.add("Пропущен элемент #" + (i + 1) + " (пустое имя/фамилия)");
+                        skipped++;
+                        continue;
+                    }
+
+                    String phone = getTagValue(clientEl, "phone");
+                    String carModel = getTagValue(clientEl, "carModel");
+                    String carNumber = getTagValue(clientEl, "carNumber");
+                    String lastRepairDate = getTagValue(clientEl, "lastRepairDate");
+
+                    Client client = new Client(
+                            name != null ? name.trim() : "",
+                            lastName != null ? lastName.trim() : "",
+                            phone != null ? phone.trim() : "",
+                            carModel != null ? carModel.trim() : "",
+                            carNumber != null ? carNumber.trim() : "",
+                            lastRepairDate != null ? lastRepairDate.trim() : ""
+                    );
+
+                    if (findClientByPhone(client.getPhone()) == null) {
+                        DataStore.addClient(client);
+                        imported++;
+                    } else {
+                        skipped++;
+                    }
+                } catch (Exception e) {
+                    errors.add("Ошибка при разборе элемента #" + (i + 1) + ": " + e.getMessage());
+                    skipped++;
+                }
+            }
+        } catch (Exception e) {
+            errors.add("Ошибка чтения XML: " + e.getMessage());
+        }
+
+        return new ImportResult(imported, skipped, errors);
+    }
+
+    // ======================== JSON КЛИЕНТОВ ========================
+
+    /**
+     * Формат JSON:
+     * {
+     *   "clients": [
+     *     {
+     *       "lastName": "Иванов",
+     *       "name": "Иван",
+     *       ...
+     *     }
+     *   ]
+     * }
+     * Или просто массив: [...]
+     */
+    public static ImportResult importClientsFromJson(InputStream is) {
+        List<String> errors = new ArrayList<>();
+        int imported = 0;
+        int skipped = 0;
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
+
+            com.google.gson.JsonParser parser = new com.google.gson.JsonParser();
+            JsonElement root = parser.parse(sb.toString());
+
+            JsonArray array = null;
+
+            // Проверяем, является ли корневой элемент массивом
+            if (root.isJsonArray()) {
+                array = root.getAsJsonArray();
+            } else if (root.isJsonObject()) {
+                // Проверяем известные ключи для массива клиентов
+                JsonObject obj = root.getAsJsonObject();
+                if (obj.has("clients")) {
+                    array = obj.get("clients").getAsJsonArray();
+                } else if (obj.has("clienti")) {
+                    array = obj.get("clienti").getAsJsonArray();
+                } else if (obj.has("people")) {
+                    array = obj.get("people").getAsJsonArray();
+                } else if (obj.has("пользователи")) {
+                    array = obj.get("пользователи").getAsJsonArray();
+                }
+            }
+
+            if (array == null) {
+                errors.add("JSON не содержит массива клиентов (ожидается clients/clienti/people)");
+                return new ImportResult(0, 0, errors);
+            }
+
+            for (int i = 0; i < array.size(); i++) {
+                JsonElement element = array.get(i);
+                if (!element.isJsonObject()) {
+                    errors.add("Элемент #" + (i + 1) + " не является объектом");
+                    skipped++;
+                    continue;
+                }
+
+                try {
+                    JsonObject obj = element.getAsJsonObject();
+
+                    String lastName = getJsonString(obj, "lastName");
+                    String name = getJsonString(obj, "name");
+                    if ((name == null || name.trim().isEmpty()) && (lastName == null || lastName.trim().isEmpty())) {
+                        errors.add("Элемент #" + (i + 1) + " пропущен (пустое имя/фамилия)");
+                        skipped++;
+                        continue;
+                    }
+
+                    String phone = getJsonString(obj, "phone");
+                    String carModel = getJsonString(obj, "carModel");
+                    String carNumber = getJsonString(obj, "carNumber");
+                    String lastRepairDate = getJsonString(obj, "lastRepairDate");
+
+                    Client client = new Client(
+                            name != null ? name.trim() : "",
+                            lastName != null ? lastName.trim() : "",
+                            phone != null ? phone.trim() : "",
+                            carModel != null ? carModel.trim() : "",
+                            carNumber != null ? carNumber.trim() : "",
+                            lastRepairDate != null ? lastRepairDate.trim() : ""
+                    );
+
+                    if (findClientByPhone(client.getPhone()) == null) {
+                        DataStore.addClient(client);
+                        imported++;
+                    } else {
+                        skipped++;
+                    }
+                } catch (Exception e) {
+                    errors.add("Ошибка при разборе элемента #" + (i + 1) + ": " + e.getMessage());
+                    skipped++;
+                }
+            }
+        } catch (IOException e) {
+            errors.add("Ошибка чтения JSON: " + e.getMessage());
+        }
+
+        return new ImportResult(imported, skipped, errors);
+    }
+
+    // ======================== Утилиты для клиентов ========================
+
+    private static Client findClientByPhone(String phone) {
+        if (phone == null || phone.trim().isEmpty()) return null;
+        String p = phone.trim().toLowerCase();
+        for (Client c : DataStore.getClients()) {
+            if (c.getPhone() != null && c.getPhone().toLowerCase().equals(p)) return c;
+        }
+        return null;
+    }
+
+    // ======================== ИМПОРТ УСЛУГ ========================
+
+    /**
+     * Импортирует услуги из файла
+     */
+    public static ImportResult importServicesFromFile(File file) throws IOException {
+        String format = detectFormat(file);
+        if (format == null) {
+            throw new IllegalArgumentException("Неподдерживаемый формат файла: " + file.getName());
+        }
+
+        try (InputStream is = new FileInputStream(file)) {
+            switch (format) {
+                case "csv": return importServicesFromCsv(is);
+                case "xml": return importServicesFromXml(is);
+                case "json": return importServicesFromJson(is);
+                default: throw new IllegalArgumentException("Неизвестный формат: " + format);
+            }
+        }
+    }
+
+    // ======================== CSV УСЛУГ ========================
+
+    /**
+     * Формат CSV:
+     * name;duration;partNumber;price
+     * Поддерживает разделители ";" и ","
+     */
+    public static ImportResult importServicesFromCsv(InputStream is) {
+        List<String> errors = new ArrayList<>();
+        int imported = 0;
+        int skipped = 0;
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+            String line;
+            boolean isFirstLine = true;
+            boolean useSemicolon = false;
+
+            while ((line = reader.readLine()) != null) {
+                line = line.trim();
+                if (line.isEmpty()) continue;
+
+                // Определяем разделитель по первой строке данных
+                if (isFirstLine) {
+                    useSemicolon = line.contains(";");
+                    isFirstLine = false;
+                    continue; // Пропускаем заголовок
+                }
+
+                String[] fields = useSemicolon ? line.split(";") : line.split(",");
+
+                if (fields.length < 2) {
+                    errors.add("Строка пропущена (мало полей): " + line);
+                    skipped++;
+                    continue;
+                }
+
+                try {
+                    String name = fields[0].trim();
+                    if (name.isEmpty()) {
+                        errors.add("Строка пропущена (пустое наименование): " + line);
+                        skipped++;
+                        continue;
+                    }
+
+                    int duration = fields.length > 1 ? parseIntSafe(fields[1]) : 60;
+                    String partNumber = fields.length > 2 ? fields[2].trim() : "";
+                    double price = fields.length > 3 ? parseDoubleSafe(fields[3]) : 0;
+
+                    Service service = new Service(name, price, duration, partNumber);
+
+                    if (findServiceByName(service.getName()) == null) {
+                        DataStore.addService(service);
+                        imported++;
+                    } else {
+                        skipped++;
+                    }
+                } catch (Exception e) {
+                    errors.add("Ошибка при разборе строки: " + line + " -> " + e.getMessage());
+                    skipped++;
+                }
+            }
+        } catch (IOException e) {
+            errors.add("Ошибка чтения CSV: " + e.getMessage());
+        }
+
+        return new ImportResult(imported, skipped, errors);
+    }
+
+    // ======================== XML УСЛУГ ========================
+
+    /**
+     * Формат XML:
+     * <services>
+     *   <service>
+     *     <name>Масляный фильтр</name>
+     *     <duration>30</duration>
+     *     ...
+     *   </service>
+     * </services>
+     */
+    public static ImportResult importServicesFromXml(InputStream is) {
+        List<String> errors = new ArrayList<>();
+        int imported = 0;
+        int skipped = 0;
+
+        try {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document doc = builder.parse(is);
+            doc.getDocumentElement().normalize();
+
+            NodeList servicesList = doc.getElementsByTagName("service");
+
+            for (int i = 0; i < servicesList.getLength(); i++) {
+                Element serviceEl = (Element) servicesList.item(i);
+
+                try {
+                    String name = getTagValue(serviceEl, "name");
+                    if (name == null || name.trim().isEmpty()) {
+                        errors.add("Пропущен элемент #" + (i + 1) + " (пустое наименование)");
+                        skipped++;
+                        continue;
+                    }
+
+                    if (findServiceByName(name) != null) {
+                        skipped++;
+                        continue;
+                    }
+
+                    int duration = parseIntSafe(getTagValue(serviceEl, "duration"));
+                    String partNumber = getTagValue(serviceEl, "partNumber");
+                    double price = parseDoubleSafe(getTagValue(serviceEl, "price"));
+
+                    Service service = new Service(name.trim(), price, duration, partNumber != null ? partNumber.trim() : "");
+
+                    DataStore.addService(service);
+                    imported++;
+                } catch (Exception e) {
+                    errors.add("Ошибка при разборе элемента #" + (i + 1) + ": " + e.getMessage());
+                    skipped++;
+                }
+            }
+        } catch (Exception e) {
+            errors.add("Ошибка чтения XML: " + e.getMessage());
+        }
+
+        return new ImportResult(imported, skipped, errors);
+    }
+
+    // ======================== JSON УСЛУГ ========================
+
+    /**
+     * Формат JSON:
+     * {
+     *   "services": [
+     *     {
+     *       "name": "Масляный фильтр",
+     *       "duration": 30,
+     *       ...
+     *     }
+     *   ]
+     * }
+     * Или просто массив: [...]
+     */
+    public static ImportResult importServicesFromJson(InputStream is) {
+        List<String> errors = new ArrayList<>();
+        int imported = 0;
+        int skipped = 0;
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
+
+            com.google.gson.JsonParser parser = new com.google.gson.JsonParser();
+            JsonElement root = parser.parse(sb.toString());
+
+            JsonArray array = null;
+
+            // Проверяем, является ли корневой элемент массивом
+            if (root.isJsonArray()) {
+                array = root.getAsJsonArray();
+            } else if (root.isJsonObject()) {
+                // Проверяем известные ключи для массива услуг
+                JsonObject obj = root.getAsJsonObject();
+                if (obj.has("services")) {
+                    array = obj.get("services").getAsJsonArray();
+                } else if (obj.has("uslugi")) {
+                    array = obj.get("uslugi").getAsJsonArray();
+                } else if (obj.has("items")) {
+                    array = obj.get("items").getAsJsonArray();
+                }
+            }
+
+            if (array == null) {
+                errors.add("JSON не содержит массива услуг (ожидается services/uslugi/items)");
+                return new ImportResult(0, 0, errors);
+            }
+
+            for (int i = 0; i < array.size(); i++) {
+                JsonElement element = array.get(i);
+                if (!element.isJsonObject()) {
+                    errors.add("Элемент #" + (i + 1) + " не является объектом");
+                    skipped++;
+                    continue;
+                }
+
+                try {
+                    JsonObject obj = element.getAsJsonObject();
+
+                    String name = getJsonString(obj, "name");
+                    if (name == null || name.trim().isEmpty()) {
+                        errors.add("Элемент #" + (i + 1) + " пропущен (пустое наименование)");
+                        skipped++;
+                        continue;
+                    }
+
+                    if (findServiceByName(name) != null) {
+                        skipped++;
+                        continue;
+                    }
+
+                    int duration = getJsonInt(obj, "duration", 60);
+                    String partNumber = getJsonString(obj, "partNumber");
+                    double price = getJsonDouble(obj, "price", 0);
+
+                    Service service = new Service(name.trim(), price, duration, partNumber != null ? partNumber.trim() : "");
+
+                    DataStore.addService(service);
+                    imported++;
+                } catch (Exception e) {
+                    errors.add("Ошибка при разборе элемента #" + (i + 1) + ": " + e.getMessage());
+                    skipped++;
+                }
+            }
+        } catch (IOException e) {
+            errors.add("Ошибка чтения JSON: " + e.getMessage());
+        }
+
+        return new ImportResult(imported, skipped, errors);
+    }
+
+    // ======================== Утилиты для услуг ========================
+
+    private static Service findServiceByName(String name) {
+        if (name == null || name.trim().isEmpty()) return null;
+        String n = name.trim().toLowerCase();
+        for (Service s : DataStore.getServices()) {
+            if (s.getName() != null && s.getName().toLowerCase().equals(n)) return s;
+        }
+        return null;
     }
 }
