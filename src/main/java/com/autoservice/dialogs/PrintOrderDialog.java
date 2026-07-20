@@ -49,9 +49,13 @@ public class PrintOrderDialog {
             Document doc = new Document(pdfDoc, PageSize.A5.rotate());
             doc.setMargins(15, 15, 15, 15);
 
-            // Шрифты с поддержкой кириллицы (Helvetica - встроенный PDF шрифт)
-            PdfFont regularFont = PdfFontFactory.createFont("Helvetica", "WinAnsi");
-            PdfFont boldFont = PdfFontFactory.createFont("Helvetica-Bold", "WinAnsi");
+            // Шрифты с поддержкой кириллицы через TTF (Arial)
+            String windowsFontsPath = "C:/Windows/Fonts/";
+            String arialPath = windowsFontsPath + "arial.ttf";
+            String arialBoldPath = windowsFontsPath + "arialbd.ttf";
+            
+            PdfFont regularFont = PdfFontFactory.createFont(arialPath, "Identity-H");
+            PdfFont boldFont = PdfFontFactory.createFont(arialBoldPath, "Identity-H");
 
             // Заголовок
             addHeader(doc, order, regularFont, boldFont);
