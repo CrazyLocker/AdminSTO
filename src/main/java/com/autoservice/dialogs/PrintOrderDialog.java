@@ -45,13 +45,13 @@ public class PrintOrderDialog {
             PdfWriter writer = new PdfWriter(filePath);
             PdfDocument pdfDoc = new PdfDocument(writer);
 
-            // Альбомная ориентация
-            Document doc = new Document(pdfDoc, PageSize.A4.rotate());
-            doc.setMargins(30, 30, 30, 30);
+            // Альбомная ориентация A5 для экономии места
+            Document doc = new Document(pdfDoc, PageSize.A5.rotate());
+            doc.setMargins(15, 15, 15, 15);
 
-            // Создаем шрифты для этого документа
-            PdfFont regularFont = PdfFontFactory.createFont();
-            PdfFont boldFont = PdfFontFactory.createFont();
+            // Шрифты с поддержкой кириллицы (Helvetica - встроенный PDF шрифт)
+            PdfFont regularFont = PdfFontFactory.createFont("Helvetica", "WinAnsi");
+            PdfFont boldFont = PdfFontFactory.createFont("Helvetica-Bold", "WinAnsi");
 
             // Заголовок
             addHeader(doc, order, regularFont, boldFont);
@@ -89,10 +89,10 @@ public class PrintOrderDialog {
         String safeId = order.getId().replaceAll("[\\\\/:*?\"<>|]", "_");
 
         Paragraph header = new Paragraph()
-                .add(new Text("ЗАКАЗ-НАРЯД " + safeId + "\n").setFont(boldFont).setFontSize(18))
-                .add(new Text("Дата приема заказа: " + LocalDate.now().format(DATE_FORMATTER) + "\n").setFont(regularFont))
-                .add(new Text("Дата выполнения заказа: " + LocalDate.now().plusDays(3).format(DATE_FORMATTER) + "\n").setFont(regularFont))
-                .add(new Text("Заказ принял: Администратор\n\n").setFont(regularFont))
+                .add(new Text("ЗАКАЗ-НАРЯД " + safeId + "\n").setFont(boldFont).setFontSize(10))
+                .add(new Text("Дата приема: " + LocalDate.now().format(DATE_FORMATTER) + "\n").setFont(regularFont).setFontSize(8))
+                .add(new Text("Дата выполнения: " + LocalDate.now().plusDays(3).format(DATE_FORMATTER) + "\n").setFont(regularFont).setFontSize(8))
+                .add(new Text("Заказ принял: Администратор\n\n").setFont(regularFont).setFontSize(8))
                 .setTextAlignment(TextAlignment.CENTER);
         doc.add(header);
     }
@@ -101,34 +101,35 @@ public class PrintOrderDialog {
         Client client = order.getClient();
 
         // Исполнитель
-        Paragraph executorTitle = new Paragraph("ИСПОЛНИТЕЛЬ").setFont(boldFont).setFontSize(12);
+        Paragraph executorTitle = new Paragraph("ИСПОЛНИТЕЛЬ").setFont(boldFont).setFontSize(9);
         doc.add(executorTitle);
 
         Paragraph executorInfo = new Paragraph()
-                .add(new Text("Автосервис \"GWM MASTER\"\n").setFont(regularFont))
-                .add(new Text("г. Москва, ул. Автомобильная, 15\n").setFont(regularFont))
-                .add(new Text("ИНН: 1234567890\n").setFont(regularFont))
-                .add(new Text("Тел: +7 (495) 123-45-67\n\n").setFont(regularFont));
+                .add(new Text("Автосервис \"GWM MASTER\"\n").setFont(regularFont).setFontSize(7))
+                .add(new Text("г. Москва, ул. Автомобильная, 15\n").setFont(regularFont).setFontSize(7))
+                .add(new Text("ИНН: 1234567890\n").setFont(regularFont).setFontSize(7))
+                .add(new Text("Тел: +7 (495) 123-45-67\n\n").setFont(regularFont).setFontSize(7));
         doc.add(executorInfo);
 
         // Заказчик
-        Paragraph clientTitle = new Paragraph("ЗАКАЗЧИК").setFont(boldFont).setFontSize(12);
+        Paragraph clientTitle = new Paragraph("ЗАКАЗЧИК").setFont(boldFont).setFontSize(9);
         doc.add(clientTitle);
 
         String fullName = (client.getLastName() != null && !client.getLastName().isEmpty())
                 ? client.getLastName() + " " + client.getName()
                 : client.getName();
         Paragraph clientInfo = new Paragraph()
-                .add(new Text(fullName + "\n").setFont(regularFont))
-                .add(new Text("Тел: " + client.getPhone() + "\n\n").setFont(regularFont));
+                .add(new Text(fullName + "\n").setFont(regularFont).setFontSize(7))
+                .add(new Text("Тел: " + client.getPhone() + "\n\n").setFont(regularFont).setFontSize(7));
         doc.add(clientInfo);
     }
 
     private static void addCarInfo(Document doc, WorkOrder order, PdfFont regularFont, PdfFont boldFont) {
         Client client = order.getClient();
 
-        Table table = new Table(UnitValue.createPercentArray(new float[]{12, 22, 12, 20, 12, 22}));
+        Table table = new Table(UnitValue.createPercentArray(new float[]{15, 25, 10, 18, 10, 22}));
         table.setWidth(UnitValue.createPercentValue(100));
+        table.setFontSize(7);
 
         // Заголовки
         table.addCell(new Cell().add(new Paragraph("Марка").setFont(boldFont)));
@@ -150,14 +151,15 @@ public class PrintOrderDialog {
     }
 
     private static void addServicesTable(Document doc, WorkOrder order, PdfFont regularFont, PdfFont boldFont) {
-        Paragraph title = new Paragraph("ВЫПОЛНЕННЫЕ РАБОТЫ").setFont(boldFont).setFontSize(12);
+        Paragraph title = new Paragraph("ВЫПОЛНЕННЫЕ РАБОТЫ").setFont(boldFont).setFontSize(9);
         doc.add(title);
 
         if (order.getServices().isEmpty()) {
-            doc.add(new Paragraph("Нет услуг").setFont(regularFont));
+            doc.add(new Paragraph("Нет услуг").setFont(regularFont).setFontSize(7));
         } else {
-            Table table = new Table(UnitValue.createPercentArray(new float[]{5, 8, 47, 8, 10, 10, 12}));
+            Table table = new Table(UnitValue.createPercentArray(new float[]{4, 6, 45, 7, 9, 9, 10}));
             table.setWidth(UnitValue.createPercentValue(100));
+            table.setFontSize(7);
 
             // Заголовки
             table.addCell(new Cell().add(new Paragraph("№").setFont(boldFont)));
@@ -166,7 +168,7 @@ public class PrintOrderDialog {
             table.addCell(new Cell().add(new Paragraph("Кол-во").setFont(boldFont)).setTextAlignment(TextAlignment.CENTER));
             table.addCell(new Cell().add(new Paragraph("Цена, руб").setFont(boldFont)).setTextAlignment(TextAlignment.RIGHT));
             table.addCell(new Cell().add(new Paragraph("Сумма, руб")).setFont(boldFont).setTextAlignment(TextAlignment.RIGHT));
-            table.addCell(new Cell().add(new Paragraph("Подпись")).setFont(boldFont).setTextAlignment(TextAlignment.CENTER));
+            table.addCell(new Cell().add(new Paragraph("Подпись").setFont(boldFont)).setTextAlignment(TextAlignment.CENTER));
 
             for (int i = 0; i < order.getServices().size(); i++) {
                 table.addCell(new Cell().add(new Paragraph(String.valueOf(i + 1)).setFont(regularFont)));
@@ -193,14 +195,15 @@ public class PrintOrderDialog {
     }
 
     private static void addPartsTable(Document doc, WorkOrder order, PdfFont regularFont, PdfFont boldFont) {
-        Paragraph title = new Paragraph("ИСПОЛЬЗОВАННЫЕ ЗАПЧАСТИ И МАТЕРИАЛЫ").setFont(boldFont).setFontSize(12);
+        Paragraph title = new Paragraph("ИСПОЛЬЗОВАННЫЕ ЗАПЧАСТИ И МАТЕРИАЛЫ").setFont(boldFont).setFontSize(9);
         doc.add(title);
 
         if (order.getSpareParts().isEmpty()) {
-            doc.add(new Paragraph("Нет запчастей").setFont(regularFont));
+            doc.add(new Paragraph("Нет запчастей").setFont(regularFont).setFontSize(7));
         } else {
-            Table table = new Table(UnitValue.createPercentArray(new float[]{5, 10, 45, 10, 10, 20}));
+            Table table = new Table(UnitValue.createPercentArray(new float[]{4, 8, 40, 8, 9, 21}));
             table.setWidth(UnitValue.createPercentValue(100));
+            table.setFontSize(7);
 
             // Заголовки
             table.addCell(new Cell().add(new Paragraph("№").setFont(boldFont)));
@@ -243,6 +246,7 @@ public class PrintOrderDialog {
 
         Table table = new Table(UnitValue.createPercentArray(new float[]{50, 50}));
         table.setWidth(UnitValue.createPercentValue(100));
+        table.setFontSize(9);
 
         table.addCell(new Cell().add(new Paragraph("ИТОГО, ЗА РАБОТЫ И МАТЕРИАЛЫ, РУБ:").setFont(boldFont)));
         table.addCell(new Cell().add(new Paragraph(String.format("%,.2f", total)).setFont(boldFont)).setTextAlignment(TextAlignment.RIGHT));
@@ -253,11 +257,12 @@ public class PrintOrderDialog {
 
     private static void addSignatures(Document doc, PdfFont regularFont) {
         Paragraph note = new Paragraph("Заказ и замененные дефектные детали (остатки материалов) получил.\n" +
-                "Изделие проверено в моем присутствии.\n\n").setFont(regularFont);
+                "Изделие проверено в моем присутствии.\n\n").setFont(regularFont).setFontSize(7);
         doc.add(note);
 
         Table table = new Table(UnitValue.createPercentArray(new float[]{50, 50}));
         table.setWidth(UnitValue.createPercentValue(100));
+        table.setFontSize(7);
 
         table.addCell(new Cell().add(new Paragraph("\nДата: ______________\n\nПодпись заказчика: ______________").setFont(regularFont)));
         table.addCell(new Cell().add(new Paragraph("\nДата: ______________\n\nПодпись исполнителя: ______________").setFont(regularFont)));
