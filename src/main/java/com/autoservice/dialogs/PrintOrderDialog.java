@@ -45,8 +45,8 @@ public class PrintOrderDialog {
             PdfWriter writer = new PdfWriter(filePath);
             PdfDocument pdfDoc = new PdfDocument(writer);
 
-            // Альбомная ориентация A5 для экономии места
-            Document doc = new Document(pdfDoc, PageSize.A5.rotate());
+            // Альбомная ориентация F4 (380x215 мм)
+            Document doc = new Document(pdfDoc, new PageSize(380, 215));
             doc.setMargins(15, 15, 15, 15);
 
             // Шрифты с поддержкой кириллицы через TTF (Arial)
