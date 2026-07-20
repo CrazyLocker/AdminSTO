@@ -8,14 +8,15 @@
 
 | Компонент | Технология |
 |-----------|------------|
-| Язык | Java 17 |
-| UI-фреймворк | JavaFX 17 |
-| База данных | SQLite (файловая) |
-| Пул соединений | HikariCP |
-| Тестирование | JUnit 5 + Mockito + AssertJ |
-| Логирование | SLF4J + Logback |
-| Отчёты (PDF) | iText 7 |
-| Сериализация | Gson |
+| Язык | Java 21 |
+| UI-фреймворк | JavaFX 21.0.6 |
+| База данных | SQLite (файловая) 3.44.1.0 |
+| Пул соединений | HikariCP 5.0.1 |
+| Сборка | Gradle 8.7 |
+| Тестирование | JUnit 5.10.1 + Mockito 5.8.0 + AssertJ 3.25.1 |
+| Логирование | SLF4J + Logback 1.4.14 |
+| Отчёты (PDF) | iText 7.2.5 |
+| Сериализация | Gson 2.10.1 |
 
 ---
 
@@ -43,10 +44,10 @@ mvn javafx:run
 ### Сборка исполняемого JAR
 
 ```bash
-mvn clean package
+./gradlew fatJar
 ```
 
-Результат: `target/autoservice-admin.jar` (fat JAR со всеми зависимостями).
+Результат: `build/libs/autoservice-admin.jar` (fat JAR со всеми зависимостями).
 
 ---
 
