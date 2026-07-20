@@ -1,0 +1,37 @@
+{
+  "tableId": "servicesTable",
+  "version": "1.0",
+  "timestamp": "2026-07-20T04:53:14.116094900Z",
+  "columns": [
+    {
+      "id": "colServiceName",
+      "width": 312.8,
+      "visible": true,
+      "index": 0
+    },
+    {
+      "id": "colPartNumber",
+      "width": 150.0,
+      "visible": true,
+      "index": 1
+    },
+    {
+      "id": "colPrice",
+      "width": 120.0,
+      "visible": true,
+      "index": 2
+    },
+    {
+      "id": "colDuration",
+      "width": 152.0,
+      "visible": true,
+      "index": 3
+    }
+  ],
+  "sortOrder": [
+    {
+      "columnId": "colServiceName",
+      "order": "ASC"
+    }
+  ]
+}

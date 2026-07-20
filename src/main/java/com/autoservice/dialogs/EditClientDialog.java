@@ -68,6 +68,7 @@ public class EditClientDialog {
         lastNameField.setId("lastNameField");
         lastNameField.setPromptText("Фамилия");
         lastNameField.setPrefWidth(250);
+        Validators.setupLastNameField(lastNameField);
 
         // Имя
         Label nameLabel = new Label("Имя:");
@@ -76,6 +77,7 @@ public class EditClientDialog {
         nameField.setId("nameField");
         nameField.setPromptText("Имя");
         nameField.setPrefWidth(250);
+        Validators.setupNameField(nameField);
 
         // Телефон
         Label phoneLabel = new Label("Телефон:");
@@ -84,6 +86,7 @@ public class EditClientDialog {
         phoneField.setId("phoneField");
         phoneField.setPromptText("Телефон");
         phoneField.setPrefWidth(250);
+        Validators.setupPhoneField(phoneField);
 
         // Модель
         Label carModelLabel = new Label("Марка/Модель:");
@@ -101,6 +104,7 @@ public class EditClientDialog {
         carNumberField.setId("carNumberField");
         carNumberField.setPromptText("Госномер");
         carNumberField.setPrefWidth(250);
+        Validators.setupCarNumberField(carNumberField);
 
         // Кнопки
         Button saveBtn = new Button("Сохранить");
@@ -121,13 +125,23 @@ public class EditClientDialog {
                 isValid = false;
             }
 
-            if (!ValidationUtils.isNotBlank(lastNameField.getText(), "Фамилия")) {
+            // Валидация фамилии: только кириллица, минимум 2 буквы
+            String lastName = lastNameField.getText().trim();
+            if (lastName.isEmpty()) {
                 ValidationErrorIndicator.showError(lastNameField, "Введите фамилию (минимум 2 буквы)");
+                isValid = false;
+            } else if (!lastName.matches("^[\u0400-\u04FF]{2,}$")) {
+                ValidationErrorIndicator.showError(lastNameField, "Фамилия должна содержать только русские буквы (минимум 2)");
                 isValid = false;
             }
 
-            if (!ValidationUtils.isNotBlank(nameField.getText(), "Имя")) {
+            // Валидация имени: только кириллица, минимум 2 буквы
+            String name = nameField.getText().trim();
+            if (name.isEmpty()) {
                 ValidationErrorIndicator.showError(nameField, "Введите имя (минимум 2 буквы)");
+                isValid = false;
+            } else if (!name.matches("^[\u0400-\u04FF]{2,}$")) {
+                ValidationErrorIndicator.showError(nameField, "Имя должно содержать только русские буквы (минимум 2)");
                 isValid = false;
             }
 
@@ -162,13 +176,6 @@ public class EditClientDialog {
             future.complete(new DialogResult(DialogResult.Action.CANCEL));
         });
 
-        stage.setOnHiding(e -> {
-            WindowStateManager.getInstance().saveWindowState("editClientDialog", stage);
-            if (!future.isDone()) {
-                future.complete(new DialogResult(DialogResult.Action.CANCEL));
-            }
-        });
-
         GridPane.setConstraints(lastNameLabel, 0, 0);
         GridPane.setConstraints(lastNameField, 1, 0);
         GridPane.setConstraints(nameLabel, 0, 1);
@@ -186,7 +193,7 @@ public class EditClientDialog {
 
         Scene scene = new Scene(root);
         stage.setScene(scene);
-        stage.show(); // НЕ showAndWait!
+        stage.showAndWait(); // Используем showAndWait вместо show + join()
         return future;
     }
 

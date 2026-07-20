@@ -1,0 +1,43 @@
+{
+  "tableId": "toPartsTable",
+  "version": "1.0",
+  "timestamp": "2026-07-20T04:53:14.121219800Z",
+  "columns": [
+    {
+      "id": "colCarModel",
+      "width": 303.19999999999993,
+      "visible": true,
+      "index": 0
+    },
+    {
+      "id": "colQuantity",
+      "width": 84.0,
+      "visible": true,
+      "index": 1
+    },
+    {
+      "id": "colUnitType",
+      "width": 80.0,
+      "visible": true,
+      "index": 2
+    },
+    {
+      "id": "colSpareParts",
+      "width": 624.0000000000001,
+      "visible": true,
+      "index": 3
+    },
+    {
+      "id": "colNote",
+      "width": 188.79999999999995,
+      "visible": true,
+      "index": 4
+    }
+  ],
+  "sortOrder": [
+    {
+      "columnId": "colCarModel",
+      "order": "DESC"
+    }
+  ]
+}

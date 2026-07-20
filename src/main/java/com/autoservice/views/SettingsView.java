@@ -2,6 +2,12 @@ package com.autoservice.views;
 
 import com.autoservice.*;
 import com.autoservice.controllers.SettingsController;
+import com.autoservice.dialogs.ImportClientsDialog;
+import com.autoservice.dialogs.ImportServicesDialog;
+import com.autoservice.dialogs.ImportSparePartsDialog;
+import com.autoservice.dialogs.ExportClientsDialog;
+import com.autoservice.dialogs.ExportServicesDialog;
+import com.autoservice.dialogs.ExportSparePartsDialog;
 import com.autoservice.model.ServiceSparePart;
 import com.autoservice.model.ServiceSparePartsList;
 import com.autoservice.model.ServiceSparePartsListItem;
@@ -147,7 +153,11 @@ public class SettingsView {
         backupTab.setContent(createBackupPanel());
         backupTab.setClosable(false);
 
-        settingsPane.getTabs().addAll(settingsAppTab, autoPartsTab, serviceSparePartsTab, toPartsTab, backupTab);
+        Tab importExportTab = new Tab("Импорт/Экспорт");
+        importExportTab.setContent(createImportExportPanel());
+        importExportTab.setClosable(false);
+
+        settingsPane.getTabs().addAll(settingsAppTab, autoPartsTab, serviceSparePartsTab, toPartsTab, backupTab, importExportTab);
 
         VBox vbox = new VBox(10);
         vbox.setPadding(new Insets(10));
@@ -2021,5 +2031,87 @@ public class SettingsView {
         label.setText(info);
         label.setWrapText(true);
         label.getStyleClass().add("label");
+    }
+
+    // ==================== Вкладка: Импорт/Экспорт ====================
+
+    private static VBox createImportExportPanel() {
+        VBox panel = new VBox(20);
+        panel.setPadding(new Insets(20));
+        panel.setStyle("-fx-background-color: #f5f7fa;");
+
+        // Заголовок
+        Label titleLabel = new Label("Импорт и экспорт данных");
+        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
+
+        // ==================== СЕКЦИЯ: ИМПОРТ ====================
+        Label importSectionTitle = new Label("Импорт данных");
+        importSectionTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #27ae60;");
+
+        // Кнопки импорта
+        HBox importButtons = new HBox(15);
+        importButtons.setAlignment(Pos.CENTER_LEFT);
+
+        Button importClientsBtn = new Button("📥 Импорт клиентов");
+        importClientsBtn.getStyleClass().add("add-button");
+        importClientsBtn.setPrefWidth(200);
+        importClientsBtn.setOnAction(e -> ImportClientsDialog.show());
+
+        Button importServicesBtn = new Button("📥 Импорт услуг");
+        importServicesBtn.getStyleClass().add("add-button");
+        importServicesBtn.setPrefWidth(200);
+        importServicesBtn.setOnAction(e -> ImportServicesDialog.show());
+
+        Button importSparePartsBtn = new Button("📥 Импорт запчастей");
+        importSparePartsBtn.getStyleClass().add("add-button");
+        importSparePartsBtn.setPrefWidth(200);
+        importSparePartsBtn.setOnAction(e -> ImportSparePartsDialog.show());
+
+        importButtons.getChildren().addAll(importClientsBtn, importServicesBtn, importSparePartsBtn);
+
+        // Информация о форматах
+        Label importInfoLabel = new Label("Поддерживаемые форматы: CSV, XML, JSON");
+        importInfoLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #7f8c8d;");
+
+        VBox importSection = new VBox(10, importSectionTitle, importButtons, importInfoLabel);
+        importSection.setPadding(new Insets(15));
+        importSection.setStyle("-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);");
+
+        // ==================== СЕКЦИЯ: ЭКСПОРТ ====================
+        Label exportSectionTitle = new Label("Экспорт данных");
+        exportSectionTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #2980b9;");
+
+        // Кнопки экспорта
+        HBox exportButtons = new HBox(15);
+        exportButtons.setAlignment(Pos.CENTER_LEFT);
+
+        Button exportClientsBtn = new Button("📤 Экспорт клиентов");
+        exportClientsBtn.getStyleClass().add("save-button");
+        exportClientsBtn.setPrefWidth(200);
+        exportClientsBtn.setOnAction(e -> ExportClientsDialog.show());
+
+        Button exportServicesBtn = new Button("📤 Экспорт услуг");
+        exportServicesBtn.getStyleClass().add("save-button");
+        exportServicesBtn.setPrefWidth(200);
+        exportServicesBtn.setOnAction(e -> ExportServicesDialog.show());
+
+        Button exportSparePartsBtn = new Button("📤 Экспорт запчастей");
+        exportSparePartsBtn.getStyleClass().add("save-button");
+        exportSparePartsBtn.setPrefWidth(200);
+        exportSparePartsBtn.setOnAction(e -> ExportSparePartsDialog.show());
+
+        exportButtons.getChildren().addAll(exportClientsBtn, exportServicesBtn, exportSparePartsBtn);
+
+        // Информация о форматах
+        Label exportInfoLabel = new Label("Поддерживаемые форматы: CSV, XML, JSON");
+        exportInfoLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #7f8c8d;");
+
+        VBox exportSection = new VBox(10, exportSectionTitle, exportButtons, exportInfoLabel);
+        exportSection.setPadding(new Insets(15));
+        exportSection.setStyle("-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);");
+
+        panel.getChildren().addAll(titleLabel, importSection, exportSection);
+
+        return panel;
     }
 }

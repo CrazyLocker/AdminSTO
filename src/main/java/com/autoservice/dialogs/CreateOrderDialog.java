@@ -438,16 +438,8 @@ public class CreateOrderDialog {
             stage.close();
             future.complete(new DialogResult(DialogResult.Action.CANCEL));
         });
-        
-        stage.setOnHiding(e -> {
-            // Сохранение состояния диалога при закрытии
-            WindowStateManager.getInstance().saveWindowState("createOrderDialog", stage);
-            if (!future.isDone()) {
-                future.complete(new DialogResult(DialogResult.Action.CANCEL));
-            }
-        });
 
-        stage.show(); // НЕ showAndWait!
+        stage.showAndWait(); // Используем showAndWait вместо show + join()
         return future;
     }
 

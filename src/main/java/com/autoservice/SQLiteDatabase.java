@@ -356,7 +356,7 @@ public class SQLiteDatabase extends AbstractDatabase {
                 }
             } else {
                 // Вставляем новую запись
-                try (PreparedStatement pstmt = conn.prepareStatement(sqlInsert, Statement.RETURN_GENERATED_KEYS)) {
+                try (PreparedStatement pstmt = conn.prepareStatement(sqlInsert)) {
                     pstmt.setString(1, part.getName());
                     pstmt.setDouble(2, part.getPurchasePrice());
                     pstmt.setDouble(3, part.getRetailPrice());
@@ -370,10 +370,13 @@ public class SQLiteDatabase extends AbstractDatabase {
                     pstmt.setString(11, part.getUnitType());
                     pstmt.executeUpdate();
                     
-                    // Получаем сгенерированный id
-                    ResultSet rs = pstmt.getGeneratedKeys();
-                    if (rs.next()) {
-                        part.setId(rs.getInt(1));
+                    // Получаем ID через last_insert_rowid() (SQLite-specific)
+                    String selectIdSql = "SELECT last_insert_rowid()";
+                    try (PreparedStatement selectStmt = conn.prepareStatement(selectIdSql);
+                         ResultSet rs = selectStmt.executeQuery()) {
+                        if (rs.next()) {
+                            part.setId(rs.getInt(1));
+                        }
                     }
                 }
             }

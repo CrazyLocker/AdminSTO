@@ -1,0 +1,43 @@
+{
+  "tableId": "clientTable",
+  "version": "1.0",
+  "timestamp": "2026-07-20T04:53:14.109546800Z",
+  "columns": [
+    {
+      "id": "colLastName",
+      "width": 206.80000000000027,
+      "visible": true,
+      "index": 0
+    },
+    {
+      "id": "colName",
+      "width": 189.2000000000001,
+      "visible": true,
+      "index": 1
+    },
+    {
+      "id": "colPhone",
+      "width": 150.39999999999998,
+      "visible": true,
+      "index": 2
+    },
+    {
+      "id": "colCar",
+      "width": 240.79999999999995,
+      "visible": true,
+      "index": 3
+    },
+    {
+      "id": "colLastRepair",
+      "width": 145.60000000000002,
+      "visible": true,
+      "index": 4
+    }
+  ],
+  "sortOrder": [
+    {
+      "columnId": "colLastName",
+      "order": "ASC"
+    }
+  ]
+}

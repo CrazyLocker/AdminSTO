@@ -1,7 +1,7 @@
 {
   "tableId": "serviceSparePartsTable",
   "version": "1.0",
-  "timestamp": "2026-07-19T08:16:12.347668600Z",
+  "timestamp": "2026-07-20T04:45:24.369322100Z",
   "columns": [
     {
       "id": "colService",

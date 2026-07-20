@@ -7,8 +7,6 @@ import com.autoservice.DateUtils;
 import com.autoservice.Validators;
 import com.autoservice.controllers.ClientController;
 import com.autoservice.dialogs.EditClientDialog;
-import com.autoservice.dialogs.ExportClientsDialog;
-import com.autoservice.dialogs.ImportClientsDialog;
 import com.autoservice.services.TableStateManager;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
@@ -102,20 +100,12 @@ public class ClientView {
             }
         });
 
-        Button importBtn = new Button("Импорт из файла");
-        importBtn.getStyleClass().add("income-button");
-        importBtn.setOnAction(e -> ImportClientsDialog.show());
-
-        Button exportBtn = new Button("Экспорт в файл");
-        exportBtn.getStyleClass().add("export-button");
-        exportBtn.setOnAction(e -> ExportClientsDialog.show());
-
         HBox searchBox = createSearchPanel();
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        topPanel.getChildren().addAll(searchBox, spacer, addBtn, editBtn, deleteBtn, importBtn, exportBtn);
+        topPanel.getChildren().addAll(searchBox, spacer, addBtn, editBtn, deleteBtn);
 
         clientTable = createClientTable();
         VBox.setVgrow(clientTable, Priority.ALWAYS);

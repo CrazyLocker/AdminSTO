@@ -14,8 +14,8 @@
 @rem limitations under the License.
 @rem
 
-@rem Force Java 17 for Gradle
-set JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-17.0.19.10-hotspot
+@rem Force Java 21 for Gradle
+set JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-21.0.11.10-hotspot
 
 @if "%DEBUG%"=="" @echo off
 @rem ##########################################################################

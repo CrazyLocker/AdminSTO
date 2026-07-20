@@ -4,8 +4,6 @@ import com.autoservice.DataStore;
 import com.autoservice.Service;
 import com.autoservice.controllers.ServicePanelController;
 import com.autoservice.dialogs.EditServiceDialog;
-import com.autoservice.dialogs.ExportServicesDialog;
-import com.autoservice.dialogs.ImportServicesDialog;
 import com.autoservice.services.TableStateManager;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -114,15 +112,7 @@ public class ServicePanel {
         deleteBtn.getStyleClass().add("delete-button");
         deleteBtn.setOnAction(e -> deleteSelectedService());
 
-        Button importBtn = new Button("Импорт из файла");
-        importBtn.getStyleClass().add("income-button");
-        importBtn.setOnAction(e -> ImportServicesDialog.show());
-
-        Button exportBtn = new Button("Экспорт в файл");
-        exportBtn.getStyleClass().add("export-button");
-        exportBtn.setOnAction(e -> ExportServicesDialog.show());
-
-        HBox headerPanel = new HBox(10, searchContainer, addBtn, deleteBtn, importBtn, exportBtn);
+        HBox headerPanel = new HBox(10, searchContainer, addBtn, deleteBtn);
         headerPanel.setAlignment(Pos.CENTER_LEFT);
         headerPanel.setPadding(new Insets(10, 0, 0, 0));
 

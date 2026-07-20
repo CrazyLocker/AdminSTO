@@ -3,8 +3,6 @@ package com.autoservice.views;
 import com.autoservice.DataStore;
 import com.autoservice.SparePart;
 import com.autoservice.controllers.SparePartPanelController;
-import com.autoservice.dialogs.ExportSparePartsDialog;
-import com.autoservice.dialogs.ImportSparePartsDialog;
 import com.autoservice.services.TableStateManager;
 import com.autoservice.services.WindowStateManager;
 import com.autoservice.utils.TooltipHelper;
@@ -192,15 +190,7 @@ public class SparePartPanel {
             });
         });
 
-        Button importBtn = new Button("Импорт из файла");
-        importBtn.getStyleClass().add("income-button");
-        importBtn.setOnAction(e -> ImportSparePartsDialog.show());
-
-        Button exportBtn = new Button("Экспорт в файл");
-        exportBtn.getStyleClass().add("export-button");
-        exportBtn.setOnAction(e -> ExportSparePartsDialog.show());
-
-        HBox headerPanel = new HBox(10, searchContainer, addBtn, deleteBtn, importBtn, exportBtn);
+        HBox headerPanel = new HBox(10, searchContainer, addBtn, deleteBtn);
         headerPanel.setAlignment(Pos.CENTER_LEFT);
         headerPanel.setPadding(new Insets(10, 0, 0, 0));
 

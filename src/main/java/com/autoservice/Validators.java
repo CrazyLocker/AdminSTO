@@ -1,85 +1,163 @@
 package com.autoservice;
 
 import javafx.scene.control.TextField;
+import javafx.scene.control.TextFormatter;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
+import java.util.regex.Pattern;
 
 public class Validators {
 
     // Допустимые буквы для российского госномера
     private static final String ALLOWED_LETTERS = "АВЕКМНОРСТУХ";
+    
+    // Паттерн для кириллицы
+    private static final Pattern CYRILLIC_PATTERN = Pattern.compile("^[\\u0400-\\u04FF]+$");
 
     /**
-     * Настройка поля телефона с маской +7
+     * Настройка поля телефона с маской +7 (не редактируемая)
+     * Разрешает ввод только 10 цифр после +7
      */
     public static void setupPhoneField(TextField phoneField) {
+        // Инициализируем поле +7 если пустое
         if (phoneField.getText().isEmpty()) {
             phoneField.setText("+7");
         }
-
-        phoneField.textProperty().addListener((obs, oldValue, newValue) -> {
-            if (!newValue.startsWith("+7")) {
-                phoneField.setText("+7");
-                return;
+        
+        // Создаем форматтер для телефона
+        // +7 - не редактируемая часть (позиция 0-1)
+        // Затем только 10 цифр (позиция 2-11)
+        TextFormatter<String> formatter = new TextFormatter<>(change -> {
+            // Если это удаление или вставка
+            String text = change.getText();
+            
+            // Разрешаем удаление любых символов
+            if (text.isEmpty()) {
+                return change;
             }
-
-            // Удаляем всё кроме + и цифр
-            String cleaned = newValue.replaceAll("[^+0-9]", "");
-            if (!cleaned.startsWith("+7")) {
-                phoneField.setText("+7");
-                return;
+            
+            // Разрешаем только цифры
+            if (!text.matches("[0-9]+")) {
+                return null; // Отклоняем
             }
-
-            // Ограничиваем длину: +7 + 10 цифр = 12 символов
-            if (cleaned.length() > 12) {
-                cleaned = cleaned.substring(0, 12);
+            
+            // Получаем новую текст
+            String newText = change.getControlNewText();
+            
+            // Проверяем длину - максимум 12 символов (+7 + 10 цифр)
+            if (newText.length() > 12) {
+                return null;
             }
-
-            if (!cleaned.equals(newValue)) {
-                phoneField.setText(cleaned);
+            
+            // Проверяем, что первые 2 символа это +7
+            if (newText.length() >= 2 && !newText.startsWith("+7")) {
+                // Если пользователь попытался удалить +7, восстанавливаем
+                if (change.getRangeStart() < 2) {
+                    change.setText("+7");
+                    change.setRange(0, newText.length());
+                    return change;
+                }
+                return null;
             }
+            
+            return change;
         });
-
-        // Запрещаем удаление префикса +7
-        phoneField.addEventFilter(javafx.scene.input.KeyEvent.KEY_TYPED, event -> {
-            int caretPos = phoneField.getCaretPosition();
-            if (caretPos < 2 && event.getCharacter().matches("\\p{Print}")) {
-                event.consume();
+        
+        phoneField.setTextFormatter(formatter);
+        
+        // Блокируем позицию каретки на +7 при фокусе
+        phoneField.focusedProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal) {
+                phoneField.positionCaret(2);
             }
         });
     }
 
     /**
      * Настройка поля госномера (только русские буквы и цифры, верхний регистр)
+     * Запрещает латиницу и специальные символы
      */
     public static void setupCarNumberField(TextField carNumberField) {
-        carNumberField.textProperty().addListener((obs, oldValue, newValue) -> {
-            if (newValue == null) return;
-
-            // Переводим в верхний регистр
-            String upper = newValue.toUpperCase();
-
-            // Удаляем недопустимые символы
+        // Создаем форматтер для госномера
+        TextFormatter<String> formatter = new TextFormatter<>(change -> {
+            String text = change.getText();
+            
+            // Разрешаем удаление
+            if (text.isEmpty()) {
+                return change;
+            }
+            
+            // Проверяем каждый символ
+            String upper = text.toUpperCase();
             StringBuilder filtered = new StringBuilder();
+            
             for (char c : upper.toCharArray()) {
                 if (ALLOWED_LETTERS.indexOf(c) >= 0 || Character.isDigit(c)) {
                     filtered.append(c);
                 }
             }
-
+            
+            // Если ничего не прошло фильтра, отклоняем
+            if (filtered.length() == 0) {
+                return null;
+            }
+            
+            // Ограничиваем длину (максимум 9 символов)
             String result = filtered.toString();
-
-            // Ограничиваем длину (максимум 9 символов: А123ВС163)
             if (result.length() > 9) {
                 result = result.substring(0, 9);
             }
-
-            if (!result.equals(newValue)) {
-                carNumberField.setText(result);
-            }
+            
+            change.setText(result);
+            return change;
         });
+        
+        carNumberField.setTextFormatter(formatter);
+    }
+
+    /**
+     * Настройка поля имени (только кириллица)
+     */
+    public static void setupNameField(TextField nameField) {
+        TextFormatter<String> formatter = new TextFormatter<>(change -> {
+            String text = change.getText();
+            
+            // Разрешаем удаление
+            if (text.isEmpty()) {
+                return change;
+            }
+            
+            // Разрешаем только кириллические символы
+            if (text.matches("^[\\u0400-\\u04FF]+$")) {
+                return change;
+            }
+            
+            return null; // Отклоняем изменение
+        });
+        
+        nameField.setTextFormatter(formatter);
+    }
+
+    /**
+     * Настройка поля фамилии (только кириллица)
+     */
+    public static void setupLastNameField(TextField lastNameField) {
+        TextFormatter<String> formatter = new TextFormatter<>(change -> {
+            String text = change.getText();
+            
+            // Разрешаем удаление
+            if (text.isEmpty()) {
+                return change;
+            }
+            
+            // Разрешаем только кириллические символы
+            if (text.matches("^[\\u0400-\\u04FF]+$")) {
+                return change;
+            }
+            
+            return null; // Отклоняем изменение
+        });
+        
+        lastNameField.setTextFormatter(formatter);
     }
 
     /**

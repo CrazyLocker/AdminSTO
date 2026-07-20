@@ -9,8 +9,8 @@ group = 'com.autoservice'
 version = '1.1.0'
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
 }
 
 application {
@@ -20,7 +20,7 @@ application {
 // Конфигурация JavaFX: плагин автоматически подбирает platform-classifier
 // (win/linux/mac), который без Maven-профилей не резолвится в Gradle.
 javafx {
-    version = '17.0.6'
+    version = '21.0.6'
     modules = ['javafx.controls', 'javafx.fxml']
 }
 
@@ -89,11 +89,9 @@ dependencies {
     testImplementation 'org.testfx:testfx-core:4.0.18'
 
     // Monocle — headless-реализация glass-платформы JavaFX, необходимая для
-    // запуска UI-тестов без реального дисплея (CI). Версия должна совпадать
-    // с мажорной версией JavaFX проекта (17.0.10 для OpenJFX 17): младшие
-    // версии (jdk-11+26) дают AbstractMethodError на MonocleTimer._pause,
-    // т.к. Timer API в JavaFX 17 изменился.
-    testImplementation 'org.testfx:openjfx-monocle:17.0.10'
+    // запуска UI-тестов без реального дисплея (CI). Используется версия,
+    // совместимая с JavaFX 21.0.6
+    testImplementation 'org.testfx:openjfx-monocle:21.0.2'
 
     // Awaitility для асинхронных ожиданий
     testImplementation 'org.awaitility:awaitility:4.2.0'
