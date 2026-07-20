@@ -1,8 +1,6 @@
 package com.autoservice.dialogs;
 
 import com.autoservice.*;
-import com.itextpdf.io.font.FontProgram;
-import com.itextpdf.io.font.FontProgramFactory;
 import com.itextpdf.kernel.font.PdfFont;
 import com.itextpdf.kernel.font.PdfFontFactory;
 import com.itextpdf.kernel.geom.PageSize;
@@ -24,19 +22,6 @@ import java.time.format.DateTimeFormatter;
 public class PrintOrderDialog {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy");
-    private static PdfFont regularFont;
-    private static PdfFont boldFont;
-
-    static {
-        try {
-            // Используем системный шрифт Arial (поддерживает кириллицу)
-            FontProgram fontProgram = FontProgramFactory.createFont("C:/Windows/Fonts/arial.ttf");
-            regularFont = PdfFontFactory.createFont(fontProgram, "Identity-H");
-            boldFont = PdfFontFactory.createFont(fontProgram, "Identity-H");
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
 
     public static void show(WorkOrder order) {
         FileChooser fileChooser = new FileChooser();
@@ -64,26 +49,30 @@ public class PrintOrderDialog {
             Document doc = new Document(pdfDoc, PageSize.A4.rotate());
             doc.setMargins(30, 30, 30, 30);
 
+            // Создаем шрифты для этого документа
+            PdfFont regularFont = PdfFontFactory.createFont();
+            PdfFont boldFont = PdfFontFactory.createFont();
+
             // Заголовок
-            addHeader(doc, order);
+            addHeader(doc, order, regularFont, boldFont);
 
             // Информация об исполнителе и заказчике
-            addExecutorAndClientInfo(doc, order);
+            addExecutorAndClientInfo(doc, order, regularFont, boldFont);
 
             // Информация об автомобиле
-            addCarInfo(doc, order);
+            addCarInfo(doc, order, regularFont, boldFont);
 
             // Работы
-            addServicesTable(doc, order);
+            addServicesTable(doc, order, regularFont, boldFont);
 
             // Запчасти
-            addPartsTable(doc, order);
+            addPartsTable(doc, order, regularFont, boldFont);
 
             // Итого
-            addTotalSection(doc, order);
+            addTotalSection(doc, order, regularFont, boldFont);
 
             // Подписи
-            addSignatures(doc);
+            addSignatures(doc, regularFont);
 
             doc.close();
 
@@ -96,7 +85,7 @@ public class PrintOrderDialog {
         }
     }
 
-    private static void addHeader(Document doc, WorkOrder order) {
+    private static void addHeader(Document doc, WorkOrder order, PdfFont regularFont, PdfFont boldFont) {
         String safeId = order.getId().replaceAll("[\\\\/:*?\"<>|]", "_");
 
         Paragraph header = new Paragraph()
@@ -108,7 +97,7 @@ public class PrintOrderDialog {
         doc.add(header);
     }
 
-    private static void addExecutorAndClientInfo(Document doc, WorkOrder order) {
+    private static void addExecutorAndClientInfo(Document doc, WorkOrder order, PdfFont regularFont, PdfFont boldFont) {
         Client client = order.getClient();
 
         // Исполнитель
@@ -135,7 +124,7 @@ public class PrintOrderDialog {
         doc.add(clientInfo);
     }
 
-    private static void addCarInfo(Document doc, WorkOrder order) {
+    private static void addCarInfo(Document doc, WorkOrder order, PdfFont regularFont, PdfFont boldFont) {
         Client client = order.getClient();
 
         Table table = new Table(UnitValue.createPercentArray(new float[]{12, 22, 12, 20, 12, 22}));
@@ -160,7 +149,7 @@ public class PrintOrderDialog {
         doc.add(new Paragraph("\n"));
     }
 
-    private static void addServicesTable(Document doc, WorkOrder order) {
+    private static void addServicesTable(Document doc, WorkOrder order, PdfFont regularFont, PdfFont boldFont) {
         Paragraph title = new Paragraph("ВЫПОЛНЕННЫЕ РАБОТЫ").setFont(boldFont).setFontSize(12);
         doc.add(title);
 
@@ -203,7 +192,7 @@ public class PrintOrderDialog {
         doc.add(new Paragraph("\n"));
     }
 
-    private static void addPartsTable(Document doc, WorkOrder order) {
+    private static void addPartsTable(Document doc, WorkOrder order, PdfFont regularFont, PdfFont boldFont) {
         Paragraph title = new Paragraph("ИСПОЛЬЗОВАННЫЕ ЗАПЧАСТИ И МАТЕРИАЛЫ").setFont(boldFont).setFontSize(12);
         doc.add(title);
 
@@ -249,7 +238,7 @@ public class PrintOrderDialog {
         doc.add(new Paragraph("\n"));
     }
 
-    private static void addTotalSection(Document doc, WorkOrder order) {
+    private static void addTotalSection(Document doc, WorkOrder order, PdfFont regularFont, PdfFont boldFont) {
         double total = order.getTotal();
 
         Table table = new Table(UnitValue.createPercentArray(new float[]{50, 50}));
@@ -262,7 +251,7 @@ public class PrintOrderDialog {
         doc.add(new Paragraph("\n"));
     }
 
-    private static void addSignatures(Document doc) {
+    private static void addSignatures(Document doc, PdfFont regularFont) {
         Paragraph note = new Paragraph("Заказ и замененные дефектные детали (остатки материалов) получил.\n" +
                 "Изделие проверено в моем присутствии.\n\n").setFont(regularFont);
         doc.add(note);
