@@ -45,9 +45,9 @@ public class PrintOrderDialog {
             PdfWriter writer = new PdfWriter(filePath);
             PdfDocument pdfDoc = new PdfDocument(writer);
 
-            // Альбомная ориентация F4 (380x215 мм)
-            Document doc = new Document(pdfDoc, new PageSize(380, 215));
-            doc.setMargins(15, 15, 15, 15);
+            // А4 альбомная ориентация
+            Document doc = new Document(pdfDoc, PageSize.A4.rotate());
+            doc.setMargins(12, 12, 12, 12);
 
             // Шрифты с поддержкой кириллицы через TTF (Arial)
             String windowsFontsPath = "C:/Windows/Fonts/";
@@ -143,13 +143,6 @@ public class PrintOrderDialog {
         table.addCell(new Cell().add(new Paragraph("VIN").setFont(boldFont)));
         table.addCell(new Cell().add(new Paragraph("—").setFont(regularFont)));
 
-        table.addCell(new Cell().add(new Paragraph("Описание дефектов:").setFont(boldFont)));
-        table.addCell(new Cell().add(new Paragraph(order.getServices().isEmpty() ? "—" : order.getServices().get(0)).setFont(regularFont)));
-        table.addCell(new Cell().add(new Paragraph("").setFont(regularFont)));
-        table.addCell(new Cell().add(new Paragraph("").setFont(regularFont)));
-        table.addCell(new Cell().add(new Paragraph("").setFont(boldFont)));
-        table.addCell(new Cell().add(new Paragraph("").setFont(regularFont)));
-
         doc.add(table);
         doc.add(new Paragraph("\n"));
     }
@@ -161,7 +154,7 @@ public class PrintOrderDialog {
         if (order.getServices().isEmpty()) {
             doc.add(new Paragraph("Нет услуг").setFont(regularFont).setFontSize(7));
         } else {
-            Table table = new Table(UnitValue.createPercentArray(new float[]{4, 6, 45, 7, 9, 9, 10}));
+            Table table = new Table(UnitValue.createPercentArray(new float[]{4, 6, 45, 7, 9, 9}));
             table.setWidth(UnitValue.createPercentValue(100));
             table.setFontSize(7);
 
@@ -172,7 +165,6 @@ public class PrintOrderDialog {
             table.addCell(new Cell().add(new Paragraph("Кол-во").setFont(boldFont)).setTextAlignment(TextAlignment.CENTER));
             table.addCell(new Cell().add(new Paragraph("Цена, руб").setFont(boldFont)).setTextAlignment(TextAlignment.RIGHT));
             table.addCell(new Cell().add(new Paragraph("Сумма, руб")).setFont(boldFont).setTextAlignment(TextAlignment.RIGHT));
-            table.addCell(new Cell().add(new Paragraph("Подпись").setFont(boldFont)).setTextAlignment(TextAlignment.CENTER));
 
             for (int i = 0; i < order.getServices().size(); i++) {
                 table.addCell(new Cell().add(new Paragraph(String.valueOf(i + 1)).setFont(regularFont)));
@@ -181,7 +173,6 @@ public class PrintOrderDialog {
                 table.addCell(new Cell().add(new Paragraph("1").setFont(regularFont)).setTextAlignment(TextAlignment.CENTER));
                 table.addCell(new Cell().add(new Paragraph(String.format("%,.0f", order.getServicePrices().get(i))).setFont(regularFont)).setTextAlignment(TextAlignment.RIGHT));
                 table.addCell(new Cell().add(new Paragraph(String.format("%,.0f", order.getServicePrices().get(i))).setFont(regularFont)).setTextAlignment(TextAlignment.RIGHT));
-                table.addCell(new Cell().add(new Paragraph(" ").setFont(regularFont)));
             }
 
             doc.add(table);

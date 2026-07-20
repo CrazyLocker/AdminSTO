@@ -45,74 +45,40 @@ class ImportServiceTest extends BaseTest {
 
     @Test
     @Order(1)
-    void testDetectFormatCSV() throws IOException {
-        File file = createTempFile("test.csv", "name,price\nМасло,1500\n");
-        assertThat(ImportService.detectFormat(file)).isEqualTo("csv");
-    }
-
-    @Test
-    @Order(2)
     void testDetectFormatXML() throws IOException {
         File file = createTempFile("test.xml", "<?xml version=\"1.0\"?><root></root>");
         assertThat(ImportService.detectFormat(file)).isEqualTo("xml");
     }
 
     @Test
-    @Order(3)
-    void testDetectFormatJSON() throws IOException {
-        File file = createTempFile("test.json", "{\"name\":\"Масло\"}");
-        assertThat(ImportService.detectFormat(file)).isEqualTo("json");
-    }
-
-    @Test
-    @Order(4)
+    @Order(2)
     void testDetectFormatUnsupported() {
         File file = new File("test.txt");
         assertThat(ImportService.detectFormat(file)).isEqualTo("unknown");
     }
 
     @Test
-    @Order(5)
+    @Order(3)
     void testDetectFormatNullFile() {
         assertThat(ImportService.detectFormat(null)).isEqualTo("unknown");
     }
 
     @Test
-    @Order(6)
+    @Order(4)
     void testDetectFormatEmptyName() {
         File file = new File("");
         assertThat(ImportService.detectFormat(file)).isEqualTo("unknown");
     }
 
     @Test
-    @Order(7)
+    @Order(5)
     void testDetectFormatNoExtension() {
         File file = new File("testfile");
         assertThat(ImportService.detectFormat(file)).isEqualTo("unknown");
     }
 
     @Test
-    @Order(8)
-    void testImportFromCsvEmptyFile() throws IOException {
-        File file = createTempFile("empty.csv", "");
-        try (InputStream is = new java.io.FileInputStream(file)) {
-            var result = ImportService.importFromCsv(is);
-            assertThat(result.getImportedCount()).isEqualTo(0);
-        }
-    }
-
-    @Test
-    @Order(9)
-    void testImportFromCsvWithUnicode() throws IOException {
-        File file = createTempFile("unicode.csv", "name;partNumber;manufacturer;retailPrice;purchasePrice;stock;location;compatibleModels\nМасло моторное;MO-123;Shell;1500;1200;20;Склад 1;Haval\nФильтр масляный;FL-456;Bosch;500;300;15;Склад 2;Haval\n");
-        try (InputStream is = new java.io.FileInputStream(file)) {
-            var result = ImportService.importFromCsv(is);
-            assertThat(result.getImportedCount()).isEqualTo(2);
-        }
-    }
-
-    @Test
-    @Order(10)
+    @Order(6)
     void testImportFromXmlEmptyFile() throws IOException {
         File file = createTempFile("empty.xml", "<?xml version=\"1.0\"?><root></root>");
         try (InputStream is = new java.io.FileInputStream(file)) {
@@ -122,32 +88,12 @@ class ImportServiceTest extends BaseTest {
     }
 
     @Test
-    @Order(11)
+    @Order(7)
     void testImportFromXmlWithEncoding() throws IOException {
         File file = createTempFile("utf8.xml", "<?xml version=\"1.0\" encoding=\"UTF-8\"?><root><part><name>Масло</name></part></root>");
         try (InputStream is = new java.io.FileInputStream(file)) {
             var result = ImportService.importFromXml(is);
             assertThat(result.getImportedCount()).isEqualTo(1);
-        }
-    }
-
-    @Test
-    @Order(12)
-    void testImportFromJsonEmptyFile() throws IOException {
-        File file = createTempFile("empty.json", "{}");
-        try (InputStream is = new java.io.FileInputStream(file)) {
-            var result = ImportService.importFromJson(is);
-            assertThat(result.getImportedCount()).isEqualTo(0);
-        }
-    }
-
-    @Test
-    @Order(13)
-    void testImportFromJsonWithEncoding() throws IOException {
-        File file = createTempFile("utf8.json", "{\"parts\":[{\"name\":\"Масло\"},{\"name\":\"Фильтр\"}]}");
-        try (InputStream is = new java.io.FileInputStream(file)) {
-            var result = ImportService.importFromJson(is);
-            assertThat(result.getImportedCount()).isEqualTo(2);
         }
     }
 

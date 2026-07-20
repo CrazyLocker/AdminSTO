@@ -11,7 +11,8 @@ import java.util.Locale;
  */
 public class DateUtils {
 
-    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("d MMMM yyyy 'г.'", new Locale("ru"));
+    private static final Locale RUSSIAN_LOCALE = new Locale.Builder().setLanguage("ru").build();
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("d MMMM yyyy 'г.'", RUSSIAN_LOCALE);
     private static final DateTimeFormatter DB_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     /**

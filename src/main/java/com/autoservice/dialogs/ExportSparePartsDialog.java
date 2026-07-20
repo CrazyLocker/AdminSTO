@@ -44,9 +44,7 @@ public class ExportSparePartsDialog {
 
         ComboBox<String> formatCombo = new ComboBox<>();
         formatCombo.getItems().addAll(
-                "CSV (Запятая/Точка с запятой)",
-                "XML (Структурированный)",
-                "JSON (Данные)"
+                "XML (Структурированный)"
         );
         formatCombo.getSelectionModel().selectFirst();
         formatCombo.setPrefWidth(300);
@@ -69,21 +67,15 @@ public class ExportSparePartsDialog {
             FileChooser fileChooser = new FileChooser();
             fileChooser.setTitle("Выберите место для сохранения");
             fileChooser.getExtensionFilters().addAll(
-                    new FileChooser.ExtensionFilter("CSV файлы (*.csv)", "*.csv"),
                     new FileChooser.ExtensionFilter("XML файлы (*.xml)", "*.xml"),
-                    new FileChooser.ExtensionFilter("JSON файлы (*.json)", "*.json"),
                     new FileChooser.ExtensionFilter("Все файлы", "*.*")
             );
             File file = fileChooser.showSaveDialog(stage);
             if (file != null) {
                 // Добавляем расширение, если пользователь не указал
                 String selectedFormat = formatCombo.getSelectionModel().getSelectedItem();
-                if (selectedFormat.contains("CSV") && !file.getName().toLowerCase().endsWith(".csv")) {
-                    file = new File(file.getParent(), file.getName() + ".csv");
-                } else if (selectedFormat.contains("XML") && !file.getName().toLowerCase().endsWith(".xml")) {
+                if (selectedFormat.contains("XML") && !file.getName().toLowerCase().endsWith(".xml")) {
                     file = new File(file.getParent(), file.getName() + ".xml");
-                } else if (selectedFormat.contains("JSON") && !file.getName().toLowerCase().endsWith(".json")) {
-                    file = new File(file.getParent(), file.getName() + ".json");
                 }
                 fileField.setText(file.getAbsolutePath());
                 fileField.setTooltip(new Tooltip(file.getName()));
@@ -129,9 +121,8 @@ public class ExportSparePartsDialog {
                 }
 
                 String format;
-                if (selectedFormat.contains("CSV")) format = "csv";
-                else if (selectedFormat.contains("XML")) format = "xml";
-                else format = "json";
+                if (selectedFormat.contains("XML")) format = "xml";
+                else format = "xml";
 
                 ExportService.exportToFile(parts, file, format);
 

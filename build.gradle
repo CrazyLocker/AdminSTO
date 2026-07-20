@@ -27,6 +27,7 @@ javafx {
 // Установка кодировки UTF-8 для компиляции
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
+    // options.compilerArgs << '-Xlint:deprecation' << '-Xlint:unchecked'  // Отключено для чистоты сборки
 }
 
 // Настройка JavaFX JVM аргументов для выполнения

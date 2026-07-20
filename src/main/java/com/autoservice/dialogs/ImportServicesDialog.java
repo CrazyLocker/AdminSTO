@@ -61,9 +61,7 @@ public class ImportServicesDialog {
             FileChooser fileChooser = new FileChooser();
             fileChooser.setTitle("Выберите файл для импорта");
             fileChooser.getExtensionFilters().addAll(
-                    new FileChooser.ExtensionFilter("CSV файлы (*.csv)", "*.csv"),
                     new FileChooser.ExtensionFilter("XML файлы (*.xml)", "*.xml"),
-                    new FileChooser.ExtensionFilter("JSON файлы (*.json)", "*.json"),
                     new FileChooser.ExtensionFilter("Все файлы", "*.*")
             );
             File file = fileChooser.showOpenDialog(stage);
@@ -80,9 +78,7 @@ public class ImportServicesDialog {
         formatLabel.getStyleClass().add("info-label");
 
         Label formatInfo = new Label(
-                "CSV: название;длительность;артикул;цена\n" +
-                "XML: <service><name>...</name>...</service>\n" +
-                "JSON: {\"services\": [{\"name\": \"...\", ...}]}");
+                "XML: <service><name>...</name>...</service>");
         formatInfo.setWrapText(true);
         formatInfo.setMaxWidth(580);
         formatInfo.getStyleClass().add("info-text");

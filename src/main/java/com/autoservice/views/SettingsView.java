@@ -2070,7 +2070,7 @@ public class SettingsView {
         importButtons.getChildren().addAll(importClientsBtn, importServicesBtn, importSparePartsBtn);
 
         // Информация о форматах
-        Label importInfoLabel = new Label("Поддерживаемые форматы: CSV, XML, JSON");
+        Label importInfoLabel = new Label("Поддерживаемые форматы: XML");
         importInfoLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #7f8c8d;");
 
         VBox importSection = new VBox(10, importSectionTitle, importButtons, importInfoLabel);
@@ -2103,7 +2103,7 @@ public class SettingsView {
         exportButtons.getChildren().addAll(exportClientsBtn, exportServicesBtn, exportSparePartsBtn);
 
         // Информация о форматах
-        Label exportInfoLabel = new Label("Поддерживаемые форматы: CSV, XML, JSON");
+        Label exportInfoLabel = new Label("Поддерживаемые форматы: XML");
         exportInfoLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #7f8c8d;");
 
         VBox exportSection = new VBox(10, exportSectionTitle, exportButtons, exportInfoLabel);

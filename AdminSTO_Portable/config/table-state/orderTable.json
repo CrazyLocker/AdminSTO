@@ -1,7 +1,7 @@
 {
   "tableId": "orderTable",
   "version": "1.0",
-  "timestamp": "2026-07-20T04:53:14.113826100Z",
+  "timestamp": "2026-07-20T07:42:32.960744600Z",
   "columns": [
     {
       "id": "colOrderId",
@@ -48,7 +48,7 @@
   ],
   "sortOrder": [
     {
-      "columnId": "colOrderId",
+      "columnId": "colAppointment",
       "order": "ASC"
     }
   ]

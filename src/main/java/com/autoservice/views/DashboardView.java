@@ -57,7 +57,7 @@ public class DashboardView extends ScrollPane {
     // ==================== КОНСТРУКТОР ====================
 
     private DashboardView() {
-        currencyFormat = NumberFormat.getCurrencyInstance(new Locale("ru", "RU"));
+        currencyFormat = NumberFormat.getCurrencyInstance(new Locale.Builder().setLanguage("ru").setRegion("RU").build());
 
         gridPane = new GridPane();
         gridPane.setPadding(new Insets(20));
@@ -376,7 +376,8 @@ public class DashboardView extends ScrollPane {
         table.setPrefHeight(300);
 
         // Отключаем автоматическое добавление колонок
-        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        // UNCONSTRAINED_RESIZE_POLICY устарел, по умолчанию используется unconstrained resize
+        // table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
 
         // ====== КОЛОНКА 1: ЗАКАЗ ======
         TableColumn<AppointmentRow, String> colOrder = new TableColumn<>("Заказ");

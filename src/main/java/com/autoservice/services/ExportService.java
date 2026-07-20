@@ -3,8 +3,6 @@ package com.autoservice.services;
 import com.autoservice.Client;
 import com.autoservice.Service;
 import com.autoservice.SparePart;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import javax.xml.parsers.DocumentBuilder;
@@ -19,55 +17,21 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
- * Сервис для экспорта запчастей, услуг и клиентов в файлы CSV, XML, JSON.
+ * Сервис для экспорта запчастей, услуг и клиентов в файлы XML.
  */
 public class ExportService {
 
     /**
-     * Экспортирует запчасти в файл выбранного формата
+     * Экспортирует запчасти в XML файл
      */
     public static void exportToFile(List<SparePart> parts, File file, String format) throws Exception {
         try (OutputStream os = new FileOutputStream(file)) {
-            switch (format.toLowerCase()) {
-                case "csv": exportToCsv(parts, os); break;
-                case "xml": exportToXml(parts, os); break;
-                case "json": exportToJson(parts, os); break;
-                default: throw new IllegalArgumentException("Неподдерживаемый формат: " + format);
+            if ("xml".equalsIgnoreCase(format)) {
+                exportToXml(parts, os);
+            } else {
+                throw new IllegalArgumentException("Неподдерживаемый формат: " + format);
             }
         }
-    }
-
-    // ======================== CSV ========================
-
-    private static void exportToCsv(List<SparePart> parts, OutputStream os) {
-        try (PrintWriter writer = new PrintWriter(new OutputStreamWriter(os, StandardCharsets.UTF_8))) {
-            // Заголовок
-            writer.println("Название;Артикул;Производитель;Розн. цена;Закуп. цена;Остаток;Место;Совместимые модели");
-
-            // Данные
-            for (SparePart part : parts) {
-                String name = escapeCsv(part.getName());
-                String partNumber = escapeCsv(part.getPartNumber());
-                String manufacturer = escapeCsv(part.getManufacturer());
-                double retailPrice = part.getRetailPrice();
-                double purchasePrice = part.getPurchasePrice();
-                double stock = part.getStock();
-                String location = escapeCsv(part.getLocation());
-                String compatibleModels = escapeCsv(part.getCompatibleModels());
-
-                writer.printf("%s;%s;%s;%.2f;%.2f;%.0f;%s;%s%n",
-                        name, partNumber, manufacturer, retailPrice, purchasePrice, stock, location, compatibleModels);
-            }
-        }
-    }
-
-    private static String escapeCsv(String value) {
-        if (value == null) return "";
-        // Если значение содержит точку с запятой или кавычки, экранируем
-        if (value.contains(";") || value.contains("\"") || value.contains("\n")) {
-            return "\"" + value.replace("\"", "\"\"") + "\"";
-        }
-        return value;
     }
 
     // ======================== XML ========================
@@ -113,68 +77,15 @@ public class ExportService {
         parent.appendChild(el);
     }
 
-    // ======================== JSON ========================
-
-    private static void exportToJson(List<SparePart> parts, OutputStream os) {
-        Gson gson = new GsonBuilder()
-                .setPrettyPrinting()
-                .disableHtmlEscaping()
-                .create();
-
-        JsonObject root = new JsonObject();
-        JsonArray partsArray = new JsonArray();
-
-        for (SparePart part : parts) {
-            JsonObject partObj = new JsonObject();
-            partObj.addProperty("name", part.getName() != null ? part.getName() : "");
-            partObj.addProperty("partNumber", part.getPartNumber() != null ? part.getPartNumber() : "");
-            partObj.addProperty("manufacturer", part.getManufacturer() != null ? part.getManufacturer() : "");
-            partObj.addProperty("retailPrice", part.getRetailPrice());
-            partObj.addProperty("purchasePrice", part.getPurchasePrice());
-            partObj.addProperty("stock", part.getStock());
-            partObj.addProperty("location", part.getLocation() != null ? part.getLocation() : "");
-            partObj.addProperty("compatibleModels", part.getCompatibleModels() != null ? part.getCompatibleModels() : "");
-
-            partsArray.add(partObj);
-        }
-
-        root.addProperty("spareParts", partsArray.toString());
-
-        try (PrintWriter writer = new PrintWriter(new OutputStreamWriter(os, StandardCharsets.UTF_8))) {
-            writer.println(gson.toJson(root));
-        }
-    }
-
     /**
-     * Экспортирует услуги в файл выбранного формата
+     * Экспортирует услуги в XML файл
      */
     public static void exportServicesToFile(List<Service> services, File file, String format) throws Exception {
         try (OutputStream os = new FileOutputStream(file)) {
-            switch (format.toLowerCase()) {
-                case "csv": exportServicesToCsv(services, os); break;
-                case "xml": exportServicesToXml(services, os); break;
-                case "json": exportServicesToJson(services, os); break;
-                default: throw new IllegalArgumentException("Неподдерживаемый формат: " + format);
-            }
-        }
-    }
-
-    // ======================== CSV УСЛУГ ========================
-
-    private static void exportServicesToCsv(List<Service> services, OutputStream os) {
-        try (PrintWriter writer = new PrintWriter(new OutputStreamWriter(os, StandardCharsets.UTF_8))) {
-            // Заголовок
-            writer.println("Название;Длительность (мин);Артикул;Цена (руб.)");
-
-            // Данные
-            for (Service service : services) {
-                String name = escapeCsv(service.getName());
-                int duration = service.getDuration();
-                String partNumber = escapeCsv(service.getPartNumber());
-                double price = service.getPrice();
-
-                writer.printf("%s;%.0f;%s;%.2f%n",
-                        name, duration, partNumber, price);
+            if ("xml".equalsIgnoreCase(format)) {
+                exportServicesToXml(services, os);
+            } else {
+                throw new IllegalArgumentException("Неподдерживаемый формат: " + format);
             }
         }
     }
@@ -211,68 +122,17 @@ public class ExportService {
         transformer.transform(source, result);
     }
 
-    // ======================== JSON УСЛУГ ========================
-
-    private static void exportServicesToJson(List<Service> services, OutputStream os) {
-        Gson gson = new GsonBuilder()
-                .setPrettyPrinting()
-                .disableHtmlEscaping()
-                .create();
-
-        JsonObject root = new JsonObject();
-        JsonArray servicesArray = new JsonArray();
-
-        for (Service service : services) {
-            JsonObject serviceObj = new JsonObject();
-            serviceObj.addProperty("name", service.getName() != null ? service.getName() : "");
-            serviceObj.addProperty("duration", service.getDuration());
-            serviceObj.addProperty("partNumber", service.getPartNumber() != null ? service.getPartNumber() : "");
-            serviceObj.addProperty("price", service.getPrice());
-
-            servicesArray.add(serviceObj);
-        }
-
-        root.addProperty("services", servicesArray.toString());
-
-        try (PrintWriter writer = new PrintWriter(new OutputStreamWriter(os, StandardCharsets.UTF_8))) {
-            writer.println(gson.toJson(root));
-        }
-    }
-
     // ======================== ЭКСПОРТ КЛИЕНТОВ ========================
 
     /**
-     * Экспортирует клиентов в файл выбранного формата
+     * Экспортирует клиентов в XML файл
      */
     public static void exportClientsToFile(List<Client> clients, File file, String format) throws Exception {
         try (OutputStream os = new FileOutputStream(file)) {
-            switch (format.toLowerCase()) {
-                case "csv": exportClientsToCsv(clients, os); break;
-                case "xml": exportClientsToXml(clients, os); break;
-                case "json": exportClientsToJson(clients, os); break;
-                default: throw new IllegalArgumentException("Неподдерживаемый формат: " + format);
-            }
-        }
-    }
-
-    // ======================== CSV КЛИЕНТОВ ========================
-
-    private static void exportClientsToCsv(List<Client> clients, OutputStream os) {
-        try (PrintWriter writer = new PrintWriter(new OutputStreamWriter(os, StandardCharsets.UTF_8))) {
-            // Заголовок
-            writer.println("Фамилия;Имя;Телефон;Автомобиль;Гос. номер;Последний ремонт");
-
-            // Данные
-            for (Client client : clients) {
-                String lastName = escapeCsv(client.getLastName());
-                String name = escapeCsv(client.getName());
-                String phone = escapeCsv(client.getPhone());
-                String carModel = escapeCsv(client.getCarModel());
-                String carNumber = escapeCsv(client.getCarNumber());
-                String lastRepairDate = escapeCsv(client.getLastRepairDate());
-
-                writer.printf("%s;%s;%s;%s;%s;%s%n",
-                        lastName, name, phone, carModel, carNumber, lastRepairDate);
+            if ("xml".equalsIgnoreCase(format)) {
+                exportClientsToXml(clients, os);
+            } else {
+                throw new IllegalArgumentException("Неподдерживаемый формат: " + format);
             }
         }
     }
@@ -311,92 +171,5 @@ public class ExportService {
         transformer.transform(source, result);
     }
 
-    // ======================== JSON КЛИЕНТОВ ========================
 
-    private static void exportClientsToJson(List<Client> clients, OutputStream os) {
-        Gson gson = new GsonBuilder()
-                .setPrettyPrinting()
-                .disableHtmlEscaping()
-                .create();
-
-        JsonObject root = new JsonObject();
-        JsonArray clientsArray = new JsonArray();
-
-        for (Client client : clients) {
-            JsonObject clientObj = new JsonObject();
-            clientObj.addProperty("lastName", client.getLastName() != null ? client.getLastName() : "");
-            clientObj.addProperty("name", client.getName() != null ? client.getName() : "");
-            clientObj.addProperty("phone", client.getPhone() != null ? client.getPhone() : "");
-            clientObj.addProperty("carModel", client.getCarModel() != null ? client.getCarModel() : "");
-            clientObj.addProperty("carNumber", client.getCarNumber() != null ? client.getCarNumber() : "");
-            clientObj.addProperty("lastRepairDate", client.getLastRepairDate() != null ? client.getLastRepairDate() : "");
-
-            clientsArray.add(clientObj);
-        }
-
-        root.addProperty("clients", clientsArray.toString());
-
-        try (PrintWriter writer = new PrintWriter(new OutputStreamWriter(os, StandardCharsets.UTF_8))) {
-            writer.println(gson.toJson(root));
-        }
-    }
-
-    private static class JsonObject {
-        private StringBuilder sb = new StringBuilder();
-        private boolean first = true;
-
-        public void addProperty(String key, String value) {
-            if (!first) sb.append(",\n");
-            sb.append("    \"").append(key).append("\": \"").append(escapeJson(value)).append("\"");
-            first = false;
-        }
-
-        public void addProperty(String key, double value) {
-            if (!first) sb.append(",\n");
-            sb.append("    \"").append(key).append("\": ").append(value);
-            first = false;
-        }
-
-        public void addProperty(String key, int value) {
-            if (!first) sb.append(",\n");
-            sb.append("    \"").append(key).append("\": ").append(value);
-            first = false;
-        }
-
-        public void add(String key, String value) {
-            if (!first) sb.append(",\n");
-            sb.append("    \"").append(key).append("\": ").append(value).append("\"");
-            first = false;
-        }
-
-        @Override
-        public String toString() {
-            return "{\n" + sb.toString() + "\n  }";
-        }
-    }
-
-    private static class JsonArray {
-        private StringBuilder sb = new StringBuilder();
-        private boolean first = true;
-
-        public void add(JsonObject obj) {
-            if (!first) sb.append(",\n");
-            sb.append("    ").append(obj.toString().replace("\n", "\n    "));
-            first = false;
-        }
-
-        @Override
-        public String toString() {
-            return "[\n" + sb.toString() + "\n  ]";
-        }
-    }
-
-    private static String escapeJson(String value) {
-        if (value == null) return "";
-        return value.replace("\\", "\\\\")
-                    .replace("\"", "\\\"")
-                    .replace("\n", "\\n")
-                    .replace("\r", "\\r")
-                    .replace("\t", "\\t");
-    }
 }

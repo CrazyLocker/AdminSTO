@@ -62,9 +62,7 @@ public class ImportSparePartsDialog {
             FileChooser fileChooser = new FileChooser();
             fileChooser.setTitle("Выберите файл для импорта");
             fileChooser.getExtensionFilters().addAll(
-                    new FileChooser.ExtensionFilter("CSV файлы (*.csv)", "*.csv"),
                     new FileChooser.ExtensionFilter("XML файлы (*.xml)", "*.xml"),
-                    new FileChooser.ExtensionFilter("JSON файлы (*.json)", "*.json"),
                     new FileChooser.ExtensionFilter("Все файлы", "*.*")
             );
             File file = fileChooser.showOpenDialog(stage);
@@ -81,9 +79,7 @@ public class ImportSparePartsDialog {
         formatLabel.getStyleClass().add("info-label");
 
         Label formatInfo = new Label(
-                "CSV: имя;артикул;производитель;цена;закупка;остаток;место;модели\n" +
-                "XML: <part><name>...</name>...</part>\n" +
-                "JSON: {\"spareParts\": [{\"name\": \"...\", ...}]}");
+                "XML: <part><name>...</name>...</part>");
         formatInfo.setWrapText(true);
         formatInfo.setMaxWidth(580);
         formatInfo.getStyleClass().add("info-text");

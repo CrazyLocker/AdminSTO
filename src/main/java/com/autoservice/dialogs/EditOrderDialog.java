@@ -454,7 +454,7 @@ public class EditOrderDialog {
                 Alert weekendAlert = new Alert(Alert.AlertType.CONFIRMATION);
                 weekendAlert.setTitle("Подтверждение записи");
                 weekendAlert.setHeaderText("Выбран выходной день!");
-                weekendAlert.setContentText("Запись в выходной день (" + selectedDate.format(DateTimeFormatter.ofPattern("EEEE", new java.util.Locale("ru"))) + ") может быть ограничена.\n\nПродолжить?");
+                weekendAlert.setContentText("Запись в выходной день (" + selectedDate.format(DateTimeFormatter.ofPattern("EEEE", new java.util.Locale.Builder().setLanguage("ru").build())) + ") может быть ограничена.\n\nПродолжить?");
                 weekendAlert.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
                 
                 if (weekendAlert.showAndWait().orElse(ButtonType.NO) == ButtonType.NO) {

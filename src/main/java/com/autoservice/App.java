@@ -70,6 +70,8 @@ public class App extends Application {
         tabPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, tab) -> {
             if (tab == dashTab) {
                 DashboardView.refresh();
+            } else if (tab == appointmentTab) {
+                AppointmentView.refresh();
             }
         });
 

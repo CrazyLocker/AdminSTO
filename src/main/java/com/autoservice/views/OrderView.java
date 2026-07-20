@@ -28,6 +28,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@SuppressWarnings({"unchecked", "deprecation"})
 public class OrderView {
 
     private static TableView<WorkOrder> orderTable;
@@ -390,8 +391,6 @@ public class OrderView {
         });
 
         orderTable.getColumns().addAll(colId, colClient, colCar, colServices, colAppointment, colTotal, colStatus);
-        // Отключаем CONSTRAINED_RESIZE_POLICY — позволяет сохранять ширину колонок
-        orderTable.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
 
         orderTable.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2 && event.getButton() == MouseButton.PRIMARY) {
@@ -543,7 +542,7 @@ public class OrderView {
         if (dateStr == null || dateStr.isEmpty()) return null;
         try {
             // Формат: "18 июля 2026"
-            java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("d MMMM yyyy", new java.util.Locale("ru"));
+            java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("d MMMM yyyy", new java.util.Locale.Builder().setLanguage("ru").build());
             return java.time.LocalDate.parse(dateStr, formatter);
         } catch (Exception e) {
             return null;
@@ -570,7 +569,7 @@ public class OrderView {
             if (idx > 0) {
                 String dateStr = s.substring(0, idx).trim();
                 timeStr = s.substring(idx + 5).trim();
-                java.time.format.DateTimeFormatter dateFormatter = java.time.format.DateTimeFormatter.ofPattern("d MMMM yyyy", new java.util.Locale("ru"));
+                java.time.format.DateTimeFormatter dateFormatter = java.time.format.DateTimeFormatter.ofPattern("d MMMM yyyy", new java.util.Locale.Builder().setLanguage("ru").build());
                 date = java.time.LocalDate.parse(dateStr, dateFormatter);
             } else {
                 // Формат БД: "2026-07-18 12-00" или "18/07/2026 12-00"

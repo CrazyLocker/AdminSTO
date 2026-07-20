@@ -51,7 +51,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
 
 public class AppointmentView {
 
@@ -65,8 +64,8 @@ public class AppointmentView {
     private static ToggleGroup viewToggle;
     private static String currentView = "week";
 
-    private static final DateTimeFormatter HEADER_FORMATTER = DateTimeFormatter.ofPattern("d MMMM yyyy 'г.'", new Locale("ru"));
-    private static final DateTimeFormatter WEEK_FORMATTER = DateTimeFormatter.ofPattern("d MMM", new Locale("ru"));
+    private static final DateTimeFormatter HEADER_FORMATTER = DateTimeFormatter.ofPattern("d MMMM yyyy 'г.'", new java.util.Locale.Builder().setLanguage("ru").build());
+    private static final DateTimeFormatter WEEK_FORMATTER = DateTimeFormatter.ofPattern("d MMM", new java.util.Locale.Builder().setLanguage("ru").build());
 
     public static VBox create() {
         SERVICES = DataStore.getServices().stream()
@@ -197,8 +196,8 @@ public class AppointmentView {
 
         for (int i = 0; i < 7; i++) {
             LocalDate day = startDate.plusDays(i);
-            String dayOfWeek = day.format(DateTimeFormatter.ofPattern("EEEE", new Locale("ru")));
-            String dayOfMonth = day.format(DateTimeFormatter.ofPattern("d MMMM", new Locale("ru")));
+            String dayOfWeek = day.format(DateTimeFormatter.ofPattern("EEEE", new java.util.Locale.Builder().setLanguage("ru").build()));
+            String dayOfMonth = day.format(DateTimeFormatter.ofPattern("d MMMM", new java.util.Locale.Builder().setLanguage("ru").build()));
             Label dayHeader = new Label(dayOfWeek + "\n" + dayOfMonth);
             dayHeader.getStyleClass().add("week-day-header");
             dayHeader.setWrapText(true);
@@ -341,7 +340,7 @@ public class AppointmentView {
         LocalDate currentDate = datePicker.getValue();
         if (currentDate == null) return;
 
-        selectedDateLabel.setText(currentDate.format(DateTimeFormatter.ofPattern("MMMM yyyy 'г.'", new Locale("ru"))));
+        selectedDateLabel.setText(currentDate.format(DateTimeFormatter.ofPattern("MMMM yyyy 'г.'", new java.util.Locale.Builder().setLanguage("ru").build())));
         scheduleGrid.getChildren().clear();
 
         String[] weekDays = {"Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"};
@@ -936,7 +935,7 @@ public class AppointmentView {
                 Alert weekendAlert = new Alert(Alert.AlertType.CONFIRMATION);
                 weekendAlert.setTitle("Подтверждение записи");
                 weekendAlert.setHeaderText("Выбран выходной день!");
-                weekendAlert.setContentText("Запись в выходной день (" + datePickerLocal.getValue().format(java.time.format.DateTimeFormatter.ofPattern("EEEE", new java.util.Locale("ru"))) + ") может быть ограничена.\n\nПродолжить?");
+                weekendAlert.setContentText("Запись в выходной день (" + datePickerLocal.getValue().format(java.time.format.DateTimeFormatter.ofPattern("EEEE", new java.util.Locale.Builder().setLanguage("ru").build())) + ") может быть ограничена.\n\nПродолжить?");
                 weekendAlert.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
                 
                 if (weekendAlert.showAndWait().orElse(ButtonType.NO) == ButtonType.NO) {
@@ -1100,7 +1099,7 @@ public class AppointmentView {
                 Alert weekendAlert = new Alert(Alert.AlertType.CONFIRMATION);
                 weekendAlert.setTitle("Подтверждение");
                 weekendAlert.setHeaderText("Выбран выходной день!");
-                weekendAlert.setContentText("Запись в выходной день (" + datePickerLocal.getValue().format(java.time.format.DateTimeFormatter.ofPattern("EEEE", new java.util.Locale("ru"))) + ") может быть ограничена.\n\nПродолжить?");
+                weekendAlert.setContentText("Запись в выходной день (" + datePickerLocal.getValue().format(java.time.format.DateTimeFormatter.ofPattern("EEEE", new java.util.Locale.Builder().setLanguage("ru").build())) + ") может быть ограничена.\n\nПродолжить?");
                 weekendAlert.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
                 
                 if (weekendAlert.showAndWait().orElse(ButtonType.NO) == ButtonType.NO) {
