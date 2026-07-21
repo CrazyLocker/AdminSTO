@@ -103,7 +103,7 @@ public class App extends Application {
             TableStateManager.saveTableState(SettingsView.getSettingsTable(), "settingsTable");
             TableStateManager.saveTableState(SettingsView.getServiceSparePartsTable(), "serviceSparePartsTable");
             TableStateManager.saveTableState(SettingsView.getToPartsTable(), "toPartsTable");
-            TableStateManager.saveTableState(ServicePartsTreeTableView.getTable(), "servicePartsTable");
+            TableStateManager.saveTableState(ServicePartsTreeTableView.getTreeTable(), "servicePartsTable");
             
             DataStore.save();
             Database.close();

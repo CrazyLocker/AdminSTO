@@ -4,18 +4,10 @@ import com.autoservice.DataStore;
 import com.autoservice.Service;
 import com.autoservice.SparePart;
 import com.autoservice.dialogs.AddServicePartDialog;
-import com.autoservice.services.TableStateManager;
 import com.autoservice.model.ServicePart;
-import javafx.application.Platform;
-import javafx.beans.property.BooleanProperty;
-import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleStringProperty;
-import javafx.beans.property.StringProperty;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.HBox;
@@ -27,10 +19,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * Таблица связей Услуга-Запчасти с вложенными запчастями.
+ * Использует TreeTableView для нативного раскрытия/сворачивания.
+ */
 public class ServicePartsTreeTableView {
 
-    private static TableView<ServiceRow> mainTable;
-    private static ObservableList<ServiceRow> serviceRows;
+    private static TreeTableView<ServiceTreeItem> treeTable;
     private static Button addBtn, editBtn, deleteBtn, refreshBtn;
 
     public static VBox create() {
@@ -49,56 +44,81 @@ public class ServicePartsTreeTableView {
         editBtn = new Button("Изменить связь");
         editBtn.getStyleClass().add("edit-button");
         editBtn.setDisable(true);
+        editBtn.setOnAction(e -> onEdit());
 
         deleteBtn = new Button("Удалить связь");
         deleteBtn.getStyleClass().add("delete-button");
         deleteBtn.setDisable(true);
+        deleteBtn.setOnAction(e -> onDelete());
 
         refreshBtn = new Button("Обновить");
         refreshBtn.getStyleClass().add("save-button");
-        refreshBtn.setOnAction(e -> refreshTable());
+        refreshBtn.setOnAction(e -> refreshTree());
 
         topPanel.getChildren().addAll(addBtn, editBtn, deleteBtn, refreshBtn);
 
-        mainTable = createTable();
-        VBox.setVgrow(mainTable, Priority.ALWAYS);
+        treeTable = createTreeTable();
+        VBox.setVgrow(treeTable, Priority.ALWAYS);
 
-        root.getChildren().addAll(topPanel, mainTable);
+        root.getChildren().addAll(topPanel, treeTable);
 
-        refreshTable();
-
-        Platform.runLater(() -> {
-            if (mainTable != null) {
-                TableStateManager.loadTableState(mainTable, "servicePartsTable");
-            }
-        });
+        refreshTree();
 
         return root;
     }
 
-    private static TableView<ServiceRow> createTable() {
-        TableView<ServiceRow> table = new TableView<>();
+    private static TreeTableView<ServiceTreeItem> createTreeTable() {
+        TreeTableView<ServiceTreeItem> table = new TreeTableView<>();
         table.getStyleClass().add("table-view");
-        table.setId("servicePartsTable");
         table.setPrefHeight(600);
-        table.setFixedCellSize(30);
+        table.setShowRoot(false);
 
-        TableColumn<ServiceRow, String> colService = new TableColumn<>("Услуга");
-        colService.setId("colService");
-        colService.setPrefWidth(400);
-        colService.setCellValueFactory(cell -> cell.getValue().serviceNameProperty());
+        // Колонка: Услуга
+        TreeTableColumn<ServiceTreeItem, String> colService = new TreeTableColumn<>("Услуга");
+        colService.setPrefWidth(350);
+        colService.setCellValueFactory(cell -> {
+            ServiceTreeItem item = cell.getValue().getValue();
+            if (item != null && item.getServiceName() != null) {
+                return new SimpleStringProperty(item.getServiceName());
+            }
+            return new SimpleStringProperty("");
+        });
 
-        TableColumn<ServiceRow, String> colParts = new TableColumn<>("Запчасти");
-        colParts.setId("colParts");
-        colParts.setPrefWidth(600);
-        colParts.setCellFactory(col -> new ExpandablePartsCell());
+        // Колонка: Запчасти
+        TreeTableColumn<ServiceTreeItem, String> colParts = new TreeTableColumn<>("Запчасти");
+        colParts.setPrefWidth(200);
+        colParts.setCellValueFactory(cell -> {
+            ServiceTreeItem item = cell.getValue().getValue();
+            if (item != null && item.getPartName() != null) {
+                return new SimpleStringProperty(item.getPartName());
+            }
+            if (item != null && item.getServiceName() != null) {
+                // Для родительского узла показываем количество
+                List<ServicePart> parts = item.getParts();
+                if (parts != null && !parts.isEmpty()) {
+                    return new SimpleStringProperty(parts.size() + " запчастей");
+                }
+            }
+            return new SimpleStringProperty("");
+        });
 
-        table.getColumns().addAll(colService, colParts);
+        // Колонка: Количество
+        TreeTableColumn<ServiceTreeItem, String> colQty = new TreeTableColumn<>("Количество");
+        colQty.setPrefWidth(100);
+        colQty.setCellValueFactory(cell -> {
+            ServiceTreeItem item = cell.getValue().getValue();
+            if (item != null && item.getQuantityStr() != null) {
+                return new SimpleStringProperty(item.getQuantityStr());
+            }
+            return new SimpleStringProperty("");
+        });
+
+        table.getColumns().addAll(colService, colParts, colQty);
 
         table.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
-            boolean hasSelection = newVal != null;
-            editBtn.setDisable(!hasSelection);
-            deleteBtn.setDisable(!hasSelection);
+            boolean canEdit = newVal != null && newVal.getValue() != null && newVal.isLeaf() && newVal.getValue().getPartName() != null;
+            editBtn.setDisable(!canEdit);
+            deleteBtn.setDisable(!canEdit);
         });
 
         table.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> {
@@ -114,80 +134,88 @@ public class ServicePartsTreeTableView {
             }
         });
 
-        serviceRows = FXCollections.observableArrayList();
-        table.setItems(serviceRows);
-
         return table;
     }
 
     private static void onAdd() {
-        ServiceRow selected = mainTable.getSelectionModel().getSelectedItem();
+        TreeItem<ServiceTreeItem> selected = treeTable.getSelectionModel().getSelectedItem();
         String serviceName = null;
 
-        if (selected != null) {
-            serviceName = selected.getServiceName();
-        } else if (!serviceRows.isEmpty()) {
-            serviceName = serviceRows.getFirst().getServiceName();
+        if (selected != null && selected.getValue() != null) {
+            serviceName = selected.getValue().getServiceName();
         }
 
-        int changesCount = AddServicePartDialog.showAddDialog(serviceName);
-
-        if (changesCount > 0) {
-            refreshTable();
+        if (serviceName == null) {
+            // Берём первый корневой узел
+            if (treeTable.getRoot() != null && !treeTable.getRoot().getChildren().isEmpty()) {
+                serviceName = treeTable.getRoot().getChildren().get(0).getValue().getServiceName();
+            }
         }
+
+        AddServicePartDialog.showAddDialog(serviceName);
+        refreshTree();
     }
 
     private static void onEdit() {
-        ServiceRow selected = mainTable.getSelectionModel().getSelectedItem();
-        if (selected != null) {
-            String serviceName = selected.getServiceName();
-            List<ServicePart> existingParts = DataStore.getServicePartsByServiceId(selected.getServiceId());
-
-            int changesCount = AddServicePartDialog.showEditDialog(serviceName, existingParts);
-            if (changesCount > 0) {
-                refreshTable();
+        TreeItem<ServiceTreeItem> selected = treeTable.getSelectionModel().getSelectedItem();
+        if (selected != null && selected.getValue() != null && selected.getValue().getPartName() != null) {
+            ServiceTreeItem item = selected.getValue();
+            String serviceName = item.getServiceName();
+            if (serviceName != null) {
+                Service service = DataStore.getServices().stream()
+                        .filter(s -> s.getName().equals(serviceName))
+                        .findFirst().orElse(null);
+                if (service != null) {
+                    List<ServicePart> parts = DataStore.getServicePartsByServiceId(service.getId());
+                    AddServicePartDialog.showEditDialog(serviceName, parts);
+                    refreshTree();
+                }
             }
         }
     }
 
     private static void onDelete() {
-        ServiceRow selected = mainTable.getSelectionModel().getSelectedItem();
-        if (selected == null) return;
+        TreeItem<ServiceTreeItem> selected = treeTable.getSelectionModel().getSelectedItem();
+        if (selected == null || selected.getValue() == null) return;
 
-        Service service = DataStore.getServiceById(selected.getServiceId());
-        List<ServicePart> parts = selected.getParts();
+        ServiceTreeItem item = selected.getValue();
+        if (item.getPartName() == null) return;
 
-        if (service == null || parts.isEmpty()) return;
+        String serviceName = item.getServiceName();
+        String partName = item.getPartName();
 
-        StringBuilder message = new StringBuilder();
-        message.append("Удалить все связи для услуги: ").append(service.getName()).append("?\n\n");
-        for (ServicePart part : parts) {
-            SparePart sparePart = DataStore.getSparePartById(part.getSparePartId());
-            if (sparePart != null) {
-                message.append("- ").append(sparePart.getName()).append("\n");
-            }
-        }
-
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION, message.toString(), ButtonType.YES, ButtonType.NO);
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                "Удалить связь: " + serviceName + " → " + partName + "?",
+                ButtonType.YES, ButtonType.NO);
         confirm.setTitle("Подтверждение удаления");
 
         confirm.showAndWait().ifPresent(response -> {
             if (response == ButtonType.YES) {
-                for (ServicePart part : parts) {
-                    DataStore.deleteServicePart(part);
+                Service service = DataStore.getServices().stream()
+                        .filter(s -> s.getName().equals(serviceName))
+                        .findFirst().orElse(null);
+                if (service != null) {
+                    SparePart sparePart = DataStore.getSpareParts().stream()
+                            .filter(sp -> sp.getName().equals(partName))
+                            .findFirst().orElse(null);
+                    if (sparePart != null) {
+                        List<ServicePart> parts = DataStore.getServicePartsByServiceId(service.getId());
+                        for (ServicePart sp : parts) {
+                            if (sp.getSparePartId() == sparePart.getId()) {
+                                DataStore.deleteServicePart(sp);
+                                break;
+                            }
+                        }
+                    }
                 }
-                refreshTable();
+                refreshTree();
             }
         });
     }
 
-    public static void refreshTable() {
-        Map<Service, Boolean> expandedState = new HashMap<>();
-        for (ServiceRow row : serviceRows) {
-            expandedState.put(row.getService(), row.isExpanded());
-        }
-
-        serviceRows.clear();
+    public static void refreshTree() {
+        TreeItem<ServiceTreeItem> root = new TreeItem<>(new ServiceTreeItem(null, null, null, null, null));
+        root.setExpanded(true);
 
         List<Service> services = DataStore.getServices();
         Map<Integer, List<ServicePart>> partsByService = DataStore.getAllServiceParts().stream()
@@ -196,109 +224,63 @@ public class ServicePartsTreeTableView {
         for (Service service : services) {
             List<ServicePart> parts = partsByService.getOrDefault(service.getId(), List.of());
             if (!parts.isEmpty()) {
-                boolean wasExpanded = expandedState.getOrDefault(service, false);
-                serviceRows.add(new ServiceRow(service, parts, wasExpanded));
-            }
-        }
-    }
+                ServiceTreeItem serviceItem = new ServiceTreeItem(service.getName(), null, parts, null, null);
+                TreeItem<ServiceTreeItem> serviceNode = new TreeItem<>(serviceItem);
+                serviceNode.setExpanded(false);
 
-    public static TableView<ServiceRow> getTable() {
-        return mainTable;
-    }
-
-    public static class ServiceRow {
-        private final Service service;
-        private final List<ServicePart> parts;
-        private final StringProperty serviceNameProperty;
-        private final BooleanProperty expanded;
-
-        public ServiceRow(Service service, List<ServicePart> parts, boolean expanded) {
-            this.service = service;
-            this.parts = parts;
-            this.serviceNameProperty = new SimpleStringProperty(service.getName());
-            this.expanded = new SimpleBooleanProperty(expanded);
-        }
-
-        public Service getService() { return service; }
-        public List<ServicePart> getParts() { return parts; }
-        public Integer getServiceId() { return service.getId(); }
-        public String getServiceName() { return serviceNameProperty.get(); }
-        public StringProperty serviceNameProperty() { return serviceNameProperty; }
-        public boolean isExpanded() { return expanded.get(); }
-        public void setExpanded(boolean expanded) { this.expanded.set(expanded); }
-        public BooleanProperty expandedProperty() { return expanded; }
-    }
-
-    private static class ExpandablePartsCell extends TableCell<ServiceRow, String> {
-        private final VBox contentBox;
-
-        public ExpandablePartsCell() {
-            super();
-            contentBox = new VBox(5);
-            contentBox.setPadding(new Insets(5));
-            contentBox.getStyleClass().add("expandable-cell");
-        }
-
-        @Override
-        protected void updateItem(String item, boolean empty) {
-            super.updateItem(item, empty);
-            if (empty || item == null) {
-                setGraphic(null);
-                return;
-            }
-
-            ServiceRow row = getTableView().getItems().get(getIndex());
-            List<ServicePart> parts = row.getParts();
-            boolean expanded = row.isExpanded();
-
-            contentBox.getChildren().clear();
-
-            if (parts.isEmpty()) {
-                Label noPartsLabel = new Label("Нет связанных запчастей");
-                noPartsLabel.getStyleClass().add("text-muted");
-                contentBox.getChildren().add(noPartsLabel);
-            } else {
-                HBox headerBox = new HBox(10);
-                headerBox.setAlignment(Pos.CENTER_LEFT);
-
-                Button expandBtn = new Button(expanded ? "−" : "+");
-                expandBtn.getStyleClass().add("expand-button");
-                expandBtn.setPrefWidth(25);
-                expandBtn.setOnAction(e -> row.setExpanded(!row.isExpanded()));
-
-                Label partsCount = new Label(parts.size() + " запчастей");
-                partsCount.getStyleClass().add("parts-count");
-
-                headerBox.getChildren().addAll(expandBtn, partsCount);
-                contentBox.getChildren().add(headerBox);
-
-                row.expandedProperty().addListener((obs, oldVal, newVal) -> updateItem(getItem(), false));
-
-                if (expanded) {
-                    TableView<String> partsTable = new TableView<>();
-                    partsTable.getStyleClass().add("parts-table");
-                    partsTable.setPrefHeight(Math.min(parts.size() * 25 + 30, 150));
-                    partsTable.setFixedCellSize(25);
-
-                    TableColumn<String, String> colName = new TableColumn<>("Запчасть");
-                    colName.setCellValueFactory(cell -> new SimpleStringProperty(cell.getValue()));
-
-                    partsTable.getColumns().add(colName);
-
-                    ObservableList<String> names = FXCollections.observableArrayList();
-                    for (ServicePart part : parts) {
-                        SparePart sparePart = DataStore.getSparePartById(part.getSparePartId());
-                        if (sparePart != null) {
-                            names.add(sparePart.getName());
+                for (ServicePart part : parts) {
+                    SparePart sparePart = DataStore.getSparePartById(part.getSparePartId());
+                    if (sparePart != null) {
+                        String qtyStr;
+                        boolean isLiquid = "л".equals(sparePart.getUnitType()) || "L".equals(sparePart.getUnitType());
+                        if (isLiquid) {
+                            qtyStr = String.format("%.1f %s", part.getQuantity(), sparePart.getUnitType());
+                        } else {
+                            qtyStr = String.format("%.0f %s", part.getQuantity(), sparePart.getUnitType());
                         }
+
+                        ServiceTreeItem partItem = new ServiceTreeItem(
+                                service.getName(),
+                                sparePart.getName(),
+                                null,
+                                sparePart,
+                                qtyStr
+                        );
+                        serviceNode.getChildren().add(new TreeItem<>(partItem));
                     }
-                    partsTable.setItems(names);
-
-                    contentBox.getChildren().add(partsTable);
                 }
-            }
 
-            setGraphic(contentBox);
+                root.getChildren().add(serviceNode);
+            }
         }
+
+        treeTable.setRoot(root);
+    }
+
+    public static TreeTableView<ServiceTreeItem> getTreeTable() {
+        return treeTable;
+    }
+
+    public static class ServiceTreeItem {
+        private final String serviceName;
+        private final String partName;
+        private final List<ServicePart> parts;
+        private final SparePart sparePart;
+        private final String quantityStr;
+
+        public ServiceTreeItem(String serviceName, String partName, List<ServicePart> parts,
+                               SparePart sparePart, String quantityStr) {
+            this.serviceName = serviceName;
+            this.partName = partName;
+            this.parts = parts;
+            this.sparePart = sparePart;
+            this.quantityStr = quantityStr;
+        }
+
+        public String getServiceName() { return serviceName; }
+        public String getPartName() { return partName; }
+        public List<ServicePart> getParts() { return parts; }
+        public SparePart getSparePart() { return sparePart; }
+        public String getQuantityStr() { return quantityStr; }
     }
 }
