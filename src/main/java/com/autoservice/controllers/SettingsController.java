@@ -6,6 +6,7 @@ import com.autoservice.SparePart;
 import com.autoservice.model.ServiceSparePart;
 import com.autoservice.model.ServiceSparePartsList;
 import com.autoservice.model.ServiceSparePartsListItem;
+import com.autoservice.model.ServicePart;
 import com.autoservice.model.ToPart;
 import com.autoservice.services.BackupService;
 import com.autoservice.services.ScheduleService;
@@ -36,8 +37,9 @@ public class SettingsController {
     private static TableView<ToPart> toPartsTable;
     private static TableView<ServiceSparePartsRow> serviceSparePartsRowTable;
     private static TableView<ToPartsRow> toPartsRowTable;
+    private static TableView<ServicePart> servicePartsTable;
 
-    // ==================== SERVICE-SPARE PART RELATIONSHIPS ====================
+    // ==================== SERVICE-PART RELATIONSHIPS (NEW STRUCTURE) ====================
 
     public static void setServiceSparePartsTable(TableView<ServiceSparePart> table) {
         serviceSparePartsTable = table;
@@ -52,6 +54,11 @@ public class SettingsController {
     public static void setServiceSparePartsRowTable(TableView<ServiceSparePartsRow> table) {
         serviceSparePartsRowTable = table;
         loadServiceSparePartsRows();
+    }
+
+    public static void setServicePartsTable(TableView<ServicePart> table) {
+        servicePartsTable = table;
+        loadServiceParts();
     }
 
     public static TableView<ServiceSparePartsRow> getServiceSparePartsRowTable() {
@@ -262,6 +269,41 @@ public class SettingsController {
         DataStore.deleteToPart(part);
         loadToRemoveParts();
         loadToRemovePartsRows();
+    }
+
+    // ==================== SERVICE-PART RELATIONSHIPS (NEW STRUCTURE) ====================
+
+    public static List<ServicePart> getAllServiceParts() {
+        return DataStore.getAllServiceParts();
+    }
+
+    public static void addServicePart(ServicePart part) {
+        DataStore.addServicePart(part);
+        loadServiceParts();
+    }
+
+    public static void updateServicePart(ServicePart part) {
+        DataStore.updateServicePart(part);
+        loadServiceParts();
+    }
+
+    public static void deleteServicePart(ServicePart part) {
+        DataStore.deleteServicePart(part);
+        loadServiceParts();
+    }
+
+    public static void loadServiceParts() {
+        if (servicePartsTable == null) return;
+        List<ServicePart> parts = DataStore.getAllServiceParts();
+        servicePartsTable.setItems(javafx.collections.FXCollections.observableArrayList(parts));
+    }
+
+    // ==================== SERVICE-SPARE PART DUPLICATES ====================
+
+    public static void deleteDuplicateServiceSpareParts() {
+        DataStore.deleteDuplicateServiceSpareParts();
+        loadServiceSparePartsRows();
+        loadServiceSpareParts();
     }
 
     // ==================== SETTINGS ====================

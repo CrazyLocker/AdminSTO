@@ -146,9 +146,41 @@ public class Database {
         DatabaseFactory.getDatabase().deleteServiceSparePartsByServiceId(serviceId);
     }
     
+    public static void deleteDuplicateServiceSpareParts() {
+        DatabaseFactory.getDatabase().deleteDuplicateServiceSpareParts();
+    }
+    
+    // ==================== SERVICE-PART RELATIONSHIPS (NEW STRUCTURE) ====================
+    
+    public static List<com.autoservice.model.ServicePart> getAllServiceParts() {
+        return DatabaseFactory.getDatabase().getAllServiceParts();
+    }
+    
+    public static void addServicePart(com.autoservice.model.ServicePart part) {
+        DatabaseFactory.getDatabase().addServicePart(part);
+    }
+    
+    public static void updateServicePart(com.autoservice.model.ServicePart part) {
+        DatabaseFactory.getDatabase().updateServicePart(part);
+    }
+    
+    public static void deleteServicePart(com.autoservice.model.ServicePart part) {
+        DatabaseFactory.getDatabase().deleteServicePart(part);
+    }
+    
+    public static void deleteServicePartsByServiceId(int serviceId) {
+        DatabaseFactory.getDatabase().deleteServicePartsByServiceId(serviceId);
+    }
+    
+    public static void deleteServicePartsBySparePartId(int sparePartId) {
+        DatabaseFactory.getDatabase().deleteServicePartsBySparePartId(sparePartId);
+    }
+    
     public static List<com.autoservice.model.ServiceSparePartsList> getServiceSparePartsListsByServiceId(int serviceId) {
         return DatabaseFactory.getDatabase().getServiceSparePartsListsByServiceId(serviceId);
     }
+    
+    // ==================== SERVICE-SPARE PARTS LISTS (NEW STRUCTURE) ====================
     
     public static List<com.autoservice.model.ServiceSparePartsListItem> getServiceSparePartsListItems(int listId) {
         return DatabaseFactory.getDatabase().getServiceSparePartsListItems(listId);

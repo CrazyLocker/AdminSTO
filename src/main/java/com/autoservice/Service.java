@@ -6,12 +6,14 @@ public class Service {
     private double price;
     private int duration;
     private String partNumber;
+    private int categoryId;
 
-    // ====== ПОЛЯ ДЛЯ ГИБРИДНОГО УЧЁТА ======
-    private double oilVolume;          // объём масла для замены (в литрах)
-    private boolean usesOil;           // true — расходует масло
-    private String sparePartName;      // какая запчасть расходуется (фильтр)
-    private int sparePartQuantity;     // сколько штук
+    // ====== СТАРЫЕ ПОЛЯ ДЛЯ СОВМЕСТИМОСТИ С БАЗОЙ ДАННЫХ ======
+    // Они используются только при миграции данных, в новой системе не используются
+    private double oilVolume;
+    private boolean usesOil;
+    private String sparePartName;
+    private int sparePartQuantity;
 
     private boolean dirty = false;
 
@@ -23,6 +25,8 @@ public class Service {
         this.price = 0;
         this.duration = 60;
         this.partNumber = "";
+        this.categoryId = 0;
+        // Старые поля инициализируются дефолтными значениями
         this.oilVolume = 0;
         this.usesOil = false;
         this.sparePartName = "";
@@ -49,10 +53,14 @@ public class Service {
     public double getPrice() { return price; }
     public int getDuration() { return duration; }
     public String getPartNumber() { return partNumber; }
+    public int getCategoryId() { return categoryId; }
+    
+    // ====== ГЕТТЕРЫ ДЛЯ СТАРЫХ ПОЛЕЙ (ДЛЯ СОВМЕСТИМОСТИ) ======
     public double getOilVolume() { return oilVolume; }
     public boolean isUsesOil() { return usesOil; }
     public String getSparePartName() { return sparePartName; }
     public int getSparePartQuantity() { return sparePartQuantity; }
+    
     public boolean isDirty() { return dirty; }
 
     // ==================== СЕТТЕРЫ ====================
@@ -62,10 +70,14 @@ public class Service {
     public void setPrice(double price) { this.price = price; this.dirty = true; }
     public void setDuration(int duration) { this.duration = duration; this.dirty = true; }
     public void setPartNumber(String partNumber) { this.partNumber = partNumber; this.dirty = true; }
+    public void setCategoryId(int categoryId) { this.categoryId = categoryId; this.dirty = true; }
+    
+    // ====== СЕТТЕРЫ ДЛЯ СТАРЫХ ПОЛЕЙ (ДЛЯ СОВМЕСТИМОСТИ) ======
     public void setOilVolume(double oilVolume) { this.oilVolume = oilVolume; this.dirty = true; }
     public void setUsesOil(boolean usesOil) { this.usesOil = usesOil; this.dirty = true; }
     public void setSparePartName(String sparePartName) { this.sparePartName = sparePartName; this.dirty = true; }
     public void setSparePartQuantity(int sparePartQuantity) { this.sparePartQuantity = sparePartQuantity; this.dirty = true; }
+    
     public void setDirty(boolean dirty) { this.dirty = dirty; }
 
     public void markClean() { this.dirty = false; }

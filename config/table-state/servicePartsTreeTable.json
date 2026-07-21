@@ -1,0 +1,38 @@
+{
+  "tableId": "servicePartsTreeTable",
+  "version": "1.0",
+  "timestamp": "2026-07-21T04:45:24.660573200Z",
+  "columns": [
+    {
+      "id": "colService",
+      "width": 461.59999999999997,
+      "visible": true,
+      "index": 0
+    },
+    {
+      "id": "colSparePart",
+      "width": 274.79999999999995,
+      "visible": true,
+      "index": 1
+    },
+    {
+      "id": "colQuantity",
+      "width": 154.39999999999998,
+      "visible": true,
+      "index": 2
+    },
+    {
+      "id": "colUnit",
+      "width": 176.0,
+      "visible": true,
+      "index": 3
+    },
+    {
+      "id": "colRequired",
+      "width": 248.0,
+      "visible": true,
+      "index": 4
+    }
+  ],
+  "sortOrder": []
+}

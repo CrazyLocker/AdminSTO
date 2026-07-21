@@ -222,18 +222,19 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     
     @Override
     public void addService(Service service) {
-        String sql = "INSERT INTO services (name, price, duration, part_number, oil_volume, uses_oil, spare_part_name, spare_part_quantity) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO services (name, price, duration, part_number, category_id, oil_volume, uses_oil, spare_part_name, spare_part_quantity) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+              PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             pstmt.setString(1, service.getName());
             pstmt.setDouble(2, service.getPrice());
             pstmt.setInt(3, service.getDuration());
             pstmt.setString(4, service.getPartNumber());
-            pstmt.setDouble(5, service.getOilVolume());
-            pstmt.setInt(6, service.isUsesOil() ? 1 : 0);
-            pstmt.setString(7, service.getSparePartName());
-            pstmt.setInt(8, service.getSparePartQuantity());
+            pstmt.setInt(5, service.getCategoryId());
+            pstmt.setDouble(6, service.getOilVolume());
+            pstmt.setInt(7, service.isUsesOil() ? 1 : 0);
+            pstmt.setString(8, service.getSparePartName());
+            pstmt.setInt(9, service.getSparePartQuantity());
             pstmt.executeUpdate();
             
             // Получаем сгенерированный id
@@ -249,11 +250,11 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     @Override
     public List<Service> getAllServices() {
         List<Service> services = new ArrayList<>();
-        String sql = "SELECT id, name, price, duration, part_number, oil_volume, uses_oil, spare_part_name, spare_part_quantity FROM services ORDER BY name";
+        String sql = "SELECT id, name, price, duration, part_number, category_id, oil_volume, uses_oil, spare_part_name, spare_part_quantity FROM services ORDER BY name";
 
         try (Connection conn = getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+              Statement stmt = conn.createStatement();
+              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
                 Service service = new Service();
                 service.setId(rs.getInt("id"));
@@ -261,6 +262,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                 service.setPrice(rs.getDouble("price"));
                 service.setDuration(rs.getInt("duration"));
                 service.setPartNumber(rs.getString("part_number"));
+                service.setCategoryId(rs.getInt("category_id"));
                 service.setOilVolume(rs.getDouble("oil_volume"));
                 service.setUsesOil(rs.getInt("uses_oil") == 1);
                 service.setSparePartName(rs.getString("spare_part_name"));
@@ -288,19 +290,20 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     
     @Override
     public void updateService(Service service) {
-        String sql = "UPDATE services SET name = ?, price = ?, duration = ?, part_number = ?, oil_volume = ?, uses_oil = ?, spare_part_name = ?, spare_part_quantity = ? WHERE id = ?";
+        String sql = "UPDATE services SET name = ?, price = ?, duration = ?, part_number = ?, category_id = ?, oil_volume = ?, uses_oil = ?, spare_part_name = ?, spare_part_quantity = ? WHERE id = ?";
 
         try (Connection conn = getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, service.getName());
             pstmt.setDouble(2, service.getPrice());
             pstmt.setInt(3, service.getDuration());
             pstmt.setString(4, service.getPartNumber());
-            pstmt.setDouble(5, service.getOilVolume());
-            pstmt.setInt(6, service.isUsesOil() ? 1 : 0);
-            pstmt.setString(7, service.getSparePartName());
-            pstmt.setInt(8, service.getSparePartQuantity());
-            pstmt.setInt(9, service.getId());
+            pstmt.setInt(5, service.getCategoryId());
+            pstmt.setDouble(6, service.getOilVolume());
+            pstmt.setInt(7, service.isUsesOil() ? 1 : 0);
+            pstmt.setString(8, service.getSparePartName());
+            pstmt.setInt(9, service.getSparePartQuantity());
+            pstmt.setInt(10, service.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
             logger.error("Ошибка обновления услуги", e);
@@ -777,6 +780,153 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.executeUpdate();
         } catch (SQLException e) {
             logger.error("Ошибка удаления связей услуги-запчастей по ID услуги", e);
+        }
+    }
+
+    @Override
+    public void deleteDuplicateServiceSpareParts() {
+        // Удаляет дубликаты связей для одной услуги-запчасти, оставляя только одну
+        String sql = "DELETE FROM service_spare_parts WHERE id NOT IN (" +
+                "SELECT MIN(id) FROM service_spare_parts GROUP BY service_id, spare_part_id)";
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            int deletedCount = pstmt.executeUpdate();
+            logger.info("Удалено дубликатов связей услуги-запчасти: {}", deletedCount);
+        } catch (SQLException e) {
+            logger.error("Ошибка удаления дубликатов связей услуги-запчасти", e);
+        }
+    }
+
+    // ==================== SERVICE-PART RELATIONSHIPS (NEW STRUCTURE) ====================
+
+    @Override
+    public List<com.autoservice.model.ServicePart> getAllServiceParts() {
+        List<com.autoservice.model.ServicePart> parts = new ArrayList<>();
+        String sql = "SELECT id, service_id, spare_part_id, quantity, is_required, created_date FROM service_parts";
+
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                com.autoservice.model.ServicePart part = new com.autoservice.model.ServicePart();
+                part.setId(rs.getInt("id"));
+                part.setServiceId(rs.getInt("service_id"));
+                part.setSparePartId(rs.getInt("spare_part_id"));
+                part.setQuantity(rs.getDouble("quantity"));
+                part.setRequired(rs.getInt("is_required") == 1);
+                part.setCreatedDate(rs.getString("created_date"));
+                parts.add(part);
+            }
+            rs.close();
+        } catch (SQLException e) {
+            logger.error("Ошибка загрузки связей услуг-запчастей (service_parts)", e);
+        }
+        return parts;
+    }
+
+    @Override
+    public void addServicePart(com.autoservice.model.ServicePart part) {
+        String sql = "INSERT INTO service_parts (service_id, spare_part_id, quantity, is_required, created_date) VALUES (?, ?, ?, ?, ?)";
+
+        try (Connection conn = getConnection();
+              PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            pstmt.setInt(1, part.getServiceId());
+            pstmt.setInt(2, part.getSparePartId());
+            pstmt.setDouble(3, part.getQuantity());
+            pstmt.setInt(4, part.isRequired() ? 1 : 0);
+            pstmt.setString(5, part.getCreatedDate());
+            pstmt.executeUpdate();
+            
+            // Получаем сгенерированный id
+            try {
+                int id = getGeneratedKeyId(conn, pstmt);
+                if (id > 0) {
+                    part.setId(id);
+                }
+            } catch (SQLException e) {
+                // SQLite не поддерживает getGeneratedKeys, используем последний ID
+                try (Statement stmt = conn.createStatement();
+                     ResultSet rs = stmt.executeQuery("SELECT last_insert_rowid()")) {
+                    if (rs.next()) {
+                        part.setId(rs.getInt(1));
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            logger.error("Ошибка добавления связи услуги-запчасти (service_parts)", e);
+        }
+    }
+
+    @Override
+    public void updateServicePart(com.autoservice.model.ServicePart part) {
+        String sql = "UPDATE service_parts SET service_id = ?, spare_part_id = ?, quantity = ?, is_required = ? WHERE id = ?";
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, part.getServiceId());
+            pstmt.setInt(2, part.getSparePartId());
+            pstmt.setDouble(3, part.getQuantity());
+            pstmt.setInt(4, part.isRequired() ? 1 : 0);
+            pstmt.setInt(5, part.getId());
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            logger.error("Ошибка обновления связи услуги-запчасти (service_parts)", e);
+        }
+    }
+
+    @Override
+    public void deleteServicePart(com.autoservice.model.ServicePart part) {
+        String sql = "DELETE FROM service_parts WHERE id = ?";
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, part.getId());
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            logger.error("Ошибка удаления связи услуги-запчасти (service_parts)", e);
+        }
+    }
+
+    @Override
+    public void deleteServicePartsByServiceId(int serviceId) {
+        String sql;
+        
+        if (serviceId == -1) {
+            sql = "DELETE FROM service_parts";
+        } else {
+            sql = "DELETE FROM service_parts WHERE service_id = ?";
+        }
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            if (serviceId != -1) {
+                pstmt.setInt(1, serviceId);
+            }
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            logger.error("Ошибка удаления связей услуги-запчасти по ID услуги (service_parts)", e);
+        }
+    }
+
+    @Override
+    public void deleteServicePartsBySparePartId(int sparePartId) {
+        String sql;
+        
+        if (sparePartId == -1) {
+            sql = "DELETE FROM service_parts";
+        } else {
+            sql = "DELETE FROM service_parts WHERE spare_part_id = ?";
+        }
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            if (sparePartId != -1) {
+                pstmt.setInt(1, sparePartId);
+            }
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            logger.error("Ошибка удаления связей услуги-запчасти по ID запчасти (service_parts)", e);
         }
     }
 

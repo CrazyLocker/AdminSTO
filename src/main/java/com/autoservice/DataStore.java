@@ -3,6 +3,7 @@ package com.autoservice;
 import com.autoservice.model.ServiceSparePart;
 import com.autoservice.model.ServiceSparePartsList;
 import com.autoservice.model.ServiceSparePartsListItem;
+import com.autoservice.model.ServicePart;
 import com.autoservice.model.ToPart;
 import com.autoservice.model.Setting;
 import com.autoservice.services.AutoAddSparePartService;
@@ -24,6 +25,7 @@ public class DataStore {
     private static List<ServiceSparePart> serviceSpareParts = new ArrayList<>();
     private static List<ServiceSparePartsList> serviceSparePartsLists = new ArrayList<>();
     private static List<ServiceSparePartsListItem> serviceSparePartsListItems = new ArrayList<>();
+    private static List<ServicePart> serviceParts = new ArrayList<>();
     private static List<ToPart> toParts = new ArrayList<>();
     private static List<Setting> settings = new ArrayList<>();
 
@@ -42,6 +44,7 @@ public class DataStore {
             List<ServiceSparePartsListItem> items = DatabaseFactory.getDatabase().getServiceSparePartsListItems(list.getId());
             list.setItems(items);
         }
+        serviceParts = DatabaseFactory.getDatabase().getAllServiceParts();
         toParts = DatabaseFactory.getDatabase().getToPartsByCarModel("");
         settings = DatabaseFactory.getDatabase().getAllSettings();
         isDirty = false;
@@ -122,6 +125,15 @@ public class DataStore {
             if (setting.isDirty()) {
                 Database.updateSetting(setting);
                 setting.markClean();
+                saved++;
+            }
+        }
+
+        // Сохраняем serviceParts (связи услуги-запчасти)
+        for (ServicePart sp : serviceParts) {
+            if (sp.isDirty()) {
+                Database.updateServicePart(sp);
+                sp.setDirty(false);
                 saved++;
             }
         }
@@ -253,6 +265,13 @@ public class DataStore {
                 .orElse(null);
     }
 
+    public static Service getServiceById(int id) {
+        return services.stream()
+                .filter(s -> s.getId() == id)
+                .findFirst()
+                .orElse(null);
+    }
+
     public static SparePart getSparePartById(int id) {
         return spareParts.stream()
                 .filter(s -> s.getId() == id)
@@ -359,8 +378,30 @@ public class DataStore {
     }
 
     public static void addServiceSparePart(ServiceSparePart relation) {
-        DatabaseFactory.getDatabase().addServiceSparePart(relation);
-        serviceSpareParts.add(relation);
+        // Проверка на дубликат: связь с такими же serviceId и sparePartId уже существует?
+        boolean exists = serviceSpareParts.stream()
+                .filter(s -> s.getServiceId() == relation.getServiceId() && s.getSparePartId() == relation.getSparePartId())
+                .findFirst()
+                .orElse(null) != null;
+        
+        if (exists) {
+            logger.warn("Связь услуги-запчасти уже существует: serviceId={}, sparePartId={}", 
+                    relation.getServiceId(), relation.getSparePartId());
+            // Обновляем количество, если связь уже существует
+            ServiceSparePart existing = serviceSpareParts.stream()
+                    .filter(s -> s.getServiceId() == relation.getServiceId() && s.getSparePartId() == relation.getSparePartId())
+                    .findFirst()
+                    .orElse(null);
+            if (existing != null) {
+                existing.setQuantity(relation.getQuantity());
+                existing.setUnitType(relation.getUnitType());
+                existing.setActive(relation.isActive());
+                DatabaseFactory.getDatabase().addServiceSparePart(existing);
+            }
+        } else {
+            DatabaseFactory.getDatabase().addServiceSparePart(relation);
+            serviceSpareParts.add(relation);
+        }
         isDirty = true;
     }
 
@@ -374,6 +415,63 @@ public class DataStore {
         DatabaseFactory.getDatabase().deleteServiceSparePartsByServiceId(serviceId);
         serviceSpareParts.removeIf(s -> s.getServiceId() == serviceId);
         isDirty = true;
+    }
+
+    public static void deleteDuplicateServiceSpareParts() {
+        DatabaseFactory.getDatabase().deleteDuplicateServiceSpareParts();
+        // Перезагружаем данные из БД
+        serviceSpareParts = DatabaseFactory.getDatabase().getServiceSparePartsByServiceId(-1);
+        isDirty = true;
+    }
+
+    // ==================== SERVICE-PART RELATIONSHIPS (NEW STRUCTURE) ====================
+
+    public static List<ServicePart> getAllServiceParts() {
+        return serviceParts;
+    }
+
+    public static List<ServicePart> getServicePartsByServiceId(int serviceId) {
+        return serviceParts.stream()
+                .filter(p -> p.getServiceId() == serviceId)
+                .toList();
+    }
+
+    public static void addServicePart(ServicePart part) {
+        DatabaseFactory.getDatabase().addServicePart(part);
+        serviceParts.add(part);
+        isDirty = true;
+    }
+
+    public static void updateServicePart(ServicePart part) {
+        part.setDirty(true);
+        DatabaseFactory.getDatabase().updateServicePart(part);
+        serviceParts = DatabaseFactory.getDatabase().getAllServiceParts();
+        isDirty = true;
+    }
+
+    public static void deleteServicePart(ServicePart part) {
+        DatabaseFactory.getDatabase().deleteServicePart(part);
+        serviceParts.remove(part);
+        isDirty = true;
+    }
+
+    public static void deleteServicePartsByServiceId(int serviceId) {
+        DatabaseFactory.getDatabase().deleteServicePartsByServiceId(serviceId);
+        serviceParts.removeIf(s -> s.getServiceId() == serviceId);
+        isDirty = true;
+    }
+
+    public static void deleteServicePartsBySparePartId(int sparePartId) {
+        DatabaseFactory.getDatabase().deleteServicePartsBySparePartId(sparePartId);
+        serviceParts.removeIf(s -> s.getSparePartId() == sparePartId);
+        isDirty = true;
+    }
+
+    public static ServicePart getServicePartById(int id) {
+        return serviceParts.stream()
+                .filter(s -> s.getId() == id)
+                .findFirst()
+                .orElse(null);
     }
 
     // ==================== SERVICE-SPARE PARTS LISTS (NEW STRUCTURE) ====================

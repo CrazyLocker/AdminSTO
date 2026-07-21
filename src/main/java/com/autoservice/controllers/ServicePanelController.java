@@ -28,6 +28,8 @@ public class ServicePanelController {
     }
 
     public static void removeService(Service service) {
+        // Удаляем все связи service_parts для этой услуги
+        DataStore.deleteServicePartsByServiceId(service.getId());
         DataStore.removeService(service);
         refreshTable();
     }

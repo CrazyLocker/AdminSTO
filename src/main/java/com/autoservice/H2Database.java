@@ -78,6 +78,7 @@ public class H2Database extends AbstractDatabase {
                 "price REAL NOT NULL CHECK(price >= 0), " +
                 "duration INTEGER DEFAULT 60 CHECK(duration >= 0), " +
                 "part_number TEXT DEFAULT '', " +
+                "category_id INTEGER DEFAULT 0, " +
                 "oil_volume REAL DEFAULT 0 CHECK(oil_volume >= 0), " +
                 "uses_oil INTEGER DEFAULT 0 CHECK(uses_oil IN (0, 1)), " +
                 "spare_part_name TEXT DEFAULT '', " +
@@ -191,6 +192,18 @@ public class H2Database extends AbstractDatabase {
                 "FOREIGN KEY (spare_part_id) REFERENCES spare_parts(id)" +
                 ")";
 
+        // ====== НОВАЯ ТАБЛИЦА service_parts (гибкие связи услуги и запчасти) ======
+        String createServiceParts = "CREATE TABLE IF NOT EXISTS service_parts (" +
+                "id INTEGER " + autoIncrement + ", " +
+                "service_id INTEGER NOT NULL CHECK(service_id > 0), " +
+                "spare_part_id INTEGER NOT NULL CHECK(spare_part_id > 0), " +
+                "quantity REAL DEFAULT 1 CHECK(quantity > 0), " +
+                "is_required INTEGER DEFAULT 1 CHECK(is_required IN (0, 1)), " +
+                "created_date TEXT NOT NULL CHECK(length(created_date) > 0), " +
+                "FOREIGN KEY (service_id) REFERENCES services(id), " +
+                "FOREIGN KEY (spare_part_id) REFERENCES spare_parts(id)" +
+                ")";
+
         try (Statement stmt = conn.createStatement()) {
             stmt.execute(createClients);
             stmt.execute(createServices);
@@ -204,6 +217,7 @@ public class H2Database extends AbstractDatabase {
             stmt.execute(createAppSettings);
             stmt.execute(createServiceSparePartsLists);
             stmt.execute(createServiceSparePartsListItems);
+            stmt.execute(createServiceParts);
             createIndexes(conn);
             logger.info("Таблицы и индексы созданы/проверены");
         }
@@ -231,7 +245,9 @@ public class H2Database extends AbstractDatabase {
                 "CREATE INDEX IF NOT EXISTS idx_service_spare_parts_lists_service_id ON service_spare_parts_lists(service_id)",
                 "CREATE INDEX IF NOT EXISTS idx_service_spare_parts_lists_created_date ON service_spare_parts_lists(created_date)",
                 "CREATE INDEX IF NOT EXISTS idx_service_spare_parts_list_items_list_id ON service_spare_parts_list_items(list_id)",
-                "CREATE INDEX IF NOT EXISTS idx_service_spare_parts_list_items_spare_part_id ON service_spare_parts_list_items(spare_part_id)"
+                "CREATE INDEX IF NOT EXISTS idx_service_spare_parts_list_items_spare_part_id ON service_spare_parts_list_items(spare_part_id)",
+                "CREATE INDEX IF NOT EXISTS idx_service_parts_service_id ON service_parts(service_id)",
+                "CREATE INDEX IF NOT EXISTS idx_service_parts_spare_part_id ON service_parts(spare_part_id)"
         };
         
         try (Statement stmt = conn.createStatement()) {
@@ -285,18 +301,19 @@ public class H2Database extends AbstractDatabase {
     
     @Override
     public void addService(Service service) {
-        String sql = "MERGE INTO services (name, price, duration, part_number, oil_volume, uses_oil, spare_part_name, spare_part_quantity) KEY(name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "MERGE INTO services (name, price, duration, part_number, category_id, oil_volume, uses_oil, spare_part_name, spare_part_quantity) KEY(name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+              PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             pstmt.setString(1, service.getName());
             pstmt.setDouble(2, service.getPrice());
             pstmt.setInt(3, service.getDuration());
             pstmt.setString(4, service.getPartNumber());
-            pstmt.setDouble(5, service.getOilVolume());
-            pstmt.setInt(6, service.isUsesOil() ? 1 : 0);
-            pstmt.setString(7, service.getSparePartName());
-            pstmt.setInt(8, service.getSparePartQuantity());
+            pstmt.setInt(5, service.getCategoryId());
+            pstmt.setDouble(6, service.getOilVolume());
+            pstmt.setInt(7, service.isUsesOil() ? 1 : 0);
+            pstmt.setString(8, service.getSparePartName());
+            pstmt.setInt(9, service.getSparePartQuantity());
             pstmt.executeUpdate();
             
             // Получаем сгенерированный id

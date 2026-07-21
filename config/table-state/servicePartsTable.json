@@ -1,17 +1,17 @@
 {
-  "tableId": "serviceSparePartsTable",
+  "tableId": "servicePartsTable",
   "version": "1.0",
-  "timestamp": "2026-07-21T05:46:20.374817400Z",
+  "timestamp": "2026-07-21T05:46:20.375800800Z",
   "columns": [
     {
       "id": "colService",
-      "width": 394.40000000000003,
+      "width": 336.0,
       "visible": true,
       "index": 0
     },
     {
-      "id": "colSpareParts",
-      "width": 5000.0,
+      "id": "colParts",
+      "width": 508.0,
       "visible": true,
       "index": 1
     }
@@ -19,7 +19,7 @@
   "sortOrder": [
     {
       "columnId": "colService",
-      "order": "DESC"
+      "order": "ASC"
     }
   ]
 }

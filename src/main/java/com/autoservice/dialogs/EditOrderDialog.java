@@ -10,7 +10,7 @@ import com.autoservice.DataStore;
 import com.autoservice.controllers.OrderController;
 import com.autoservice.services.AutoAddSparePartService;
 import com.autoservice.services.WindowStateManager;
-import com.autoservice.utils.OilHelper;
+import com.autoservice.utils.ServicePartHelper;
 import com.autoservice.utils.ValidationErrorIndicator;
 import com.autoservice.utils.ValidationUtils;
 import com.autoservice.utils.TooltipHelper;
@@ -488,9 +488,16 @@ public class EditOrderDialog {
             order.addSparePart(tempParts.get(i), tempPartQuantities.get(i));
         }
 
-        // ====== 🆕 АВТОМАТИЧЕСКИ ДОБАВЛЯЕМ МАСЛО И РАСХОДНИКИ ======
-        List<String> serviceNames = new ArrayList<>(tempServices);
-        OilHelper.addOilAndPartsToOrder(order, serviceNames);
+        // ====== 🆕 АВТОМАТИЧЕСКИ ДОБАВЛЯЕМ ЗАПЧАСТИ ПО СВЯЗЯМ ======
+        // Получаем serviceIds для услуг
+        List<Integer> serviceIds = new ArrayList<>();
+        for (String serviceName : tempServices) {
+            Service service = DataStore.getServiceByName(serviceName);
+            if (service != null) {
+                serviceIds.add(service.getId());
+            }
+        }
+        ServicePartHelper.addServicePartsToOrder(order, serviceIds);
 
         // ====== СОХРАНЯЕМ ЗАКАЗ ======
         DataStore.updateOrder(order);

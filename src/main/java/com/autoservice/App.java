@@ -55,6 +55,7 @@ public class App extends Application {
         Tab stockTab = createTab("Склад", IconHelper.box());
         Tab appointmentTab = createTab("Запись", IconHelper.event());
         Tab settingsTab = createTab("Настройки", IconHelper.settings());
+        Tab servicePartsTab = createTab("Связи", IconHelper.link());
 
         dashTab.setContent(DashboardView.create());
         clientTab.setContent(ClientView.create());
@@ -63,9 +64,10 @@ public class App extends Application {
         sparePartsTab.setContent(SparePartPanel.create());
         stockTab.setContent(StockPanel.create());
         settingsTab.setContent(SettingsView.create());
+        servicePartsTab.setContent(ServicePartsTreeTableView.create());
         appointmentTab.setContent(AppointmentView.create());
 
-        tabPane.getTabs().addAll(dashTab, clientTab, orderTab, servicesTab, sparePartsTab, stockTab, appointmentTab, settingsTab);
+        tabPane.getTabs().addAll(dashTab, clientTab, orderTab, servicesTab, sparePartsTab, stockTab, appointmentTab, settingsTab, servicePartsTab);
 
         tabPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, tab) -> {
             if (tab == dashTab) {
@@ -101,6 +103,7 @@ public class App extends Application {
             TableStateManager.saveTableState(SettingsView.getSettingsTable(), "settingsTable");
             TableStateManager.saveTableState(SettingsView.getServiceSparePartsTable(), "serviceSparePartsTable");
             TableStateManager.saveTableState(SettingsView.getToPartsTable(), "toPartsTable");
+            TableStateManager.saveTableState(ServicePartsTreeTableView.getTable(), "servicePartsTable");
             
             DataStore.save();
             Database.close();

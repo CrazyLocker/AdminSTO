@@ -72,6 +72,7 @@ public class SQLiteDatabase extends AbstractDatabase {
                 "price REAL NOT NULL CHECK(price >= 0), " +
                 "duration INTEGER DEFAULT 60 CHECK(duration >= 0), " +
                 "part_number TEXT DEFAULT '', " +
+                "category_id INTEGER DEFAULT 0, " +
                 "oil_volume REAL DEFAULT 0 CHECK(oil_volume >= 0), " +
                 "uses_oil INTEGER DEFAULT 0 CHECK(uses_oil IN (0, 1)), " +
                 "spare_part_name TEXT DEFAULT '', " +
@@ -183,6 +184,18 @@ public class SQLiteDatabase extends AbstractDatabase {
                 "FOREIGN KEY (spare_part_id) REFERENCES spare_parts(id)" +
                 ")";
 
+        // ====== НОВАЯ ТАБЛИЦА service_parts (гибкие связи услуги и запчасти) ======
+        String createServiceParts = "CREATE TABLE IF NOT EXISTS service_parts (" +
+                "id INTEGER " + autoIncrement + ", " +
+                "service_id INTEGER NOT NULL CHECK(service_id > 0), " +
+                "spare_part_id INTEGER NOT NULL CHECK(spare_part_id > 0), " +
+                "quantity REAL DEFAULT 1 CHECK(quantity > 0), " +
+                "is_required INTEGER DEFAULT 1 CHECK(is_required IN (0, 1)), " +
+                "created_date TEXT NOT NULL CHECK(length(created_date) > 0), " +
+                "FOREIGN KEY (service_id) REFERENCES services(id), " +
+                "FOREIGN KEY (spare_part_id) REFERENCES spare_parts(id)" +
+                ")";
+
         try (Statement stmt = conn.createStatement()) {
             stmt.execute(createClients);
             stmt.execute(createServices);
@@ -196,6 +209,7 @@ public class SQLiteDatabase extends AbstractDatabase {
             stmt.execute(createAppSettings);
             stmt.execute(createServiceSparePartsLists);
             stmt.execute(createServiceSparePartsListItems);
+            stmt.execute(createServiceParts);
             createIndexes(conn);
             logger.info("Tables and indexes created/verified");
         }
@@ -222,7 +236,9 @@ public class SQLiteDatabase extends AbstractDatabase {
                 "CREATE INDEX IF NOT EXISTS idx_to_parts_spare_part_id ON to_parts(spare_part_id)",
                 "CREATE INDEX IF NOT EXISTS idx_service_spare_parts_lists_service_id ON service_spare_parts_lists(service_id)",
                 "CREATE INDEX IF NOT EXISTS idx_service_spare_parts_list_items_list_id ON service_spare_parts_list_items(list_id)",
-                "CREATE INDEX IF NOT EXISTS idx_service_spare_parts_list_items_spare_part_id ON service_spare_parts_list_items(spare_part_id)"
+                "CREATE INDEX IF NOT EXISTS idx_service_spare_parts_list_items_spare_part_id ON service_spare_parts_list_items(spare_part_id)",
+                "CREATE INDEX IF NOT EXISTS idx_service_parts_service_id ON service_parts(service_id)",
+                "CREATE INDEX IF NOT EXISTS idx_service_parts_spare_part_id ON service_parts(spare_part_id)"
         };
         
         try (Statement stmt = conn.createStatement()) {
@@ -291,18 +307,19 @@ public class SQLiteDatabase extends AbstractDatabase {
     
     @Override
     public void addService(Service service) {
-        String sql = "INSERT OR REPLACE INTO services (name, price, duration, part_number, oil_volume, uses_oil, spare_part_name, spare_part_quantity) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT OR REPLACE INTO services (name, price, duration, part_number, category_id, oil_volume, uses_oil, spare_part_name, spare_part_quantity) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+              PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             pstmt.setString(1, service.getName());
             pstmt.setDouble(2, service.getPrice());
             pstmt.setInt(3, service.getDuration());
             pstmt.setString(4, service.getPartNumber());
-            pstmt.setDouble(5, service.getOilVolume());
-            pstmt.setInt(6, service.isUsesOil() ? 1 : 0);
-            pstmt.setString(7, service.getSparePartName());
-            pstmt.setInt(8, service.getSparePartQuantity());
+            pstmt.setInt(5, service.getCategoryId());
+            pstmt.setDouble(6, service.getOilVolume());
+            pstmt.setInt(7, service.isUsesOil() ? 1 : 0);
+            pstmt.setString(8, service.getSparePartName());
+            pstmt.setInt(9, service.getSparePartQuantity());
             pstmt.executeUpdate();
             
             // Получаем сгенерированный id
@@ -819,6 +836,36 @@ public class SQLiteDatabase extends AbstractDatabase {
             try (Statement stmt = conn.createStatement()) {
                 stmt.execute("ALTER TABLE orders ADD COLUMN notes TEXT DEFAULT ''");
                 logger.info("Добавлена колонка notes в orders");
+            }
+        }
+        
+        // ====== НОВАЯ ТАБЛИЦА service_parts (гибкие связи услуги и запчасти) ======
+        if (!tableExists(conn, "service_parts")) {
+            try (Statement stmt = conn.createStatement()) {
+                stmt.execute("CREATE TABLE service_parts (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                        "service_id INTEGER NOT NULL CHECK(service_id > 0), " +
+                        "spare_part_id INTEGER NOT NULL CHECK(spare_part_id > 0), " +
+                        "quantity REAL DEFAULT 1 CHECK(quantity > 0), " +
+                        "is_required INTEGER DEFAULT 1 CHECK(is_required IN (0, 1)), " +
+                        "created_date TEXT NOT NULL CHECK(length(created_date) > 0), " +
+                        "FOREIGN KEY (service_id) REFERENCES services(id), " +
+                        "FOREIGN KEY (spare_part_id) REFERENCES spare_parts(id)" +
+                        ")");
+                logger.info("Создана таблица service_parts с CHECK constraints");
+                
+                // Создаём индексы для новой таблицы
+                stmt.execute("CREATE INDEX IF NOT EXISTS idx_service_parts_service_id ON service_parts(service_id)");
+                stmt.execute("CREATE INDEX IF NOT EXISTS idx_service_parts_spare_part_id ON service_parts(spare_part_id)");
+                logger.info("Созданы индексы для service_parts");
+            }
+        }
+        
+        // Добавляем колонку category_id в таблицу services, если её нет
+        if (!columnExists(conn, "services", "category_id")) {
+            try (Statement stmt = conn.createStatement()) {
+                stmt.execute("ALTER TABLE services ADD COLUMN category_id INTEGER DEFAULT 0");
+                logger.info("Добавлена колонка category_id в services");
             }
         }
     }

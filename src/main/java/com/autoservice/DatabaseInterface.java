@@ -99,6 +99,22 @@ public interface DatabaseInterface {
     
     void deleteServiceSparePartsByServiceId(int serviceId);
     
+    void deleteDuplicateServiceSpareParts();
+    
+    // ==================== SERVICE-PART RELATIONSHIPS (NEW STRUCTURE) ====================
+    
+    List<com.autoservice.model.ServicePart> getAllServiceParts();
+    
+    void addServicePart(com.autoservice.model.ServicePart part);
+    
+    void updateServicePart(com.autoservice.model.ServicePart part);
+    
+    void deleteServicePart(com.autoservice.model.ServicePart part);
+    
+    void deleteServicePartsByServiceId(int serviceId);
+    
+    void deleteServicePartsBySparePartId(int sparePartId);
+    
     // ==================== SERVICE-SPARE PARTS LISTS (NEW STRUCTURE) ====================
     
     List<com.autoservice.model.ServiceSparePartsList> getServiceSparePartsListsByServiceId(int serviceId);
