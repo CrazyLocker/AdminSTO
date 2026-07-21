@@ -1090,6 +1090,7 @@ public class SettingsView {
             }
 
             if (addedCount > 0) {
+                refreshServiceSparePartsRows();
                 showAlert("Связь добавлена:\n" +
                         "- Добавлено новых связей: " + addedCount, 
                         Alert.AlertType.INFORMATION);
@@ -1343,6 +1344,8 @@ public class SettingsView {
                     SettingsController.deleteServiceSparePart(relation);
                 }
             }
+
+            refreshServiceSparePartsRows();
 
             if (addedCount > 0 || updatedCount > 0) {
                 showAlert("Изменения сохранены:\n" +
