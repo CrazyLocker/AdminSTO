@@ -18,8 +18,17 @@ echo "=================================================="
 # Проверка fat JAR
 if [ ! -f "$JAR_FILE" ]; then
     echo "ERROR: fat JAR не найден: $JAR_FILE"
-    echo "Запустите: ./gradlew clean fatJar"
-    exit 1
+    echo "Ищем любой jar в build/libs..."
+    JAR=$(find build/libs -name "*.jar" 2>/dev/null | head -n 1)
+    if [ -n "$JAR" ]; then
+        echo "Найден: $JAR"
+        JAR_FILE="$JAR"
+    else
+        echo "JAR-файлы не найдены! Проверьте логи шага 'Создаём fat JAR'"
+        echo "Содержимое build/libs:"
+        ls -la build/libs/ 2>/dev/null || echo "Папка build/libs отсутствует"
+        exit 1
+    fi
 fi
 
 # Очистка
