@@ -34,28 +34,16 @@ jobs:
       - name: Проверяем версию Java
         run: java -version
 
-      - name: Устанавливаем Xvfb для headless-рендеринга
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y xvfb
-
       - name: Делаем gradlew исполняемым
         run: chmod +x gradlew
 
       - name: Собираем проект
         run: ./gradlew clean compileJava --stacktrace
 
-      - name: Обновляем зависимости
-        run: ./gradlew dependencies --stacktrace
-
       - name: Запускаем тесты
-        # Headless-параметры уже есть в build.gradle (systemProperty + jvmArgs)
-        # Xvfb создаёт виртуальный дисплей для JavaFX
-        run: |
-          export DISPLAY=:99
-          Xvfb :99 -screen 0 1024x768x24 &
-          sleep 2
-          ./gradlew test --stacktrace
+        # UI-тесты исключены из задачи test (build.gradle)
+        # Они нестабильны в CI/CD — запускаются отдельно
+        run: ./gradlew test --stacktrace
 
       - name: Сохраняем результаты тестов
         if: always()

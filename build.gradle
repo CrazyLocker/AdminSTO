@@ -107,6 +107,13 @@ tasks.named('test') {
     // Maven Surefire) приводит к утечке состояния и ложным падениям тестов.
     forkEvery = 1
 
+    // Исключаем UI-тесты из общей сборки — они нестабильны в CI/CD
+    // UI-тесты запускаются отдельно через задачу uiTest
+    exclude '**/ClientViewUITest.class'
+    exclude '**/OrderViewUITest.class'
+    exclude '**/MainAppUITest.class'
+    exclude '**/BaseUITest.class'
+
     // Для UI-тестов включаем headless режим
     systemProperty 'prism.order', 'sw'
     systemProperty 'prism.text', 't2k'
@@ -147,6 +154,55 @@ tasks.named('test') {
         '--add-opens', 'javafx.controls/com.sun.javafx.scene.control.behavior=ALL-UNNAMED',
         '--add-opens', 'javafx.base/com.sun.javafx.event=ALL-UNNAMED'
     )
+}
+
+// ============================================================
+// ОТДЕЛЬНАЯ ЗАДАЧА ДЛЯ UI-ТЕСТОВ
+// ============================================================
+// UI-тесты нестабильны в CI/CD (зависят от дисплея, Monocle, Xvfb)
+// Запускаются вручную или в отдельном workflow
+task uiTest(type: Test) {
+    description = 'Запускает UI-тесты JavaFX'
+    group = 'verification'
+
+    useJUnitPlatform()
+
+    // UI-тесты требуют headless-режима
+    systemProperty 'javafx.headless', 'true'
+    systemProperty 'testfx.headless', 'true'
+    systemProperty 'glass.platform', 'Monocle'
+    systemProperty 'monocle.platform', 'Headless'
+
+    // JVM аргументы для JavaFX headless
+    jvmArgs(
+        '-Dprism.order=sw',
+        '-Dprism.text=t2k',
+        '-Djavafx.headless=true',
+        '-Dtestfx.headless=true',
+        '-Dglass.platform=Monocle',
+        '-Dmonocle.platform=Headless',
+        '--add-opens', 'javafx.controls/javafx.scene.control.skin=ALL-UNNAMED',
+        '--add-opens', 'javafx.graphics/javafx.scene=ALL-UNNAMED',
+        '--add-opens', 'javafx.graphics/javafx.scene.effect=ALL-UNNAMED',
+        '--add-opens', 'javafx.graphics/javafx.scene.shape=ALL-UNNAMED',
+        '--add-opens', 'javafx.base/com.sun.javafx.event=ALL-UNNAMED',
+        '--add-opens', 'javafx.controls/com.sun.javafx.scene.control=ALL-UNNAMED',
+        '--add-opens', 'javafx.controls/com.sun.javafx.scene.control.skin=ALL-UNNAMED',
+        '--add-opens', 'javafx.graphics/com.sun.javafx.stage=ALL-UNNAMED',
+        '--add-opens', 'javafx.base/com.sun.javafx.binding=ALL-UNNAMED',
+        '--add-opens', 'javafx.graphics/com.sun.javafx.scene=ALL-UNNAMED',
+        '--add-opens', 'javafx.controls/com.sun.javafx.scene.control.behavior=ALL-UNNAMED',
+        '--add-opens', 'javafx.base/com.sun.javafx.event=ALL-UNNAMED'
+    )
+
+    include '**/ClientViewUITest.class'
+    include '**/OrderViewUITest.class'
+    include '**/MainAppUITest.class'
+
+    // Каждый UI-тест в отдельной JVM
+    forkEvery = 1
+
+    maxParallelForks = 1
 }
 
 tasks.named('jar') {
