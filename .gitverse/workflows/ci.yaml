@@ -60,12 +60,8 @@ jobs:
           cd ..
           echo "=== ZIP создан ==="
           ls -lh AdminSTO-portable-*.zip
-
-      - name: Сохраняем артефакты
-        uses: actions/upload-artifact@v4
-        with:
-          name: AdminSTO-ZIP
-          path: AdminSTO-portable-*.zip
+          # Сохраняем имя ZIP файла в переменную окружения
+          echo "ZIP_FILE=AdminSTO-portable-${{ github.ref_name }}.zip" >> $GITHUB_ENV
 
       - name: Создаём релиз (если это тег)
         if: startsWith(github.ref, 'refs/tags/v')
@@ -75,7 +71,7 @@ jobs:
           set -e
           
           TAG="${{ github.ref_name }}"
-          ZIP="AdminSTO-portable-${TAG}.zip"
+          ZIP="${ZIP_FILE}"
           OWNER="dez21"
           REPO="AdminSTO"
           
