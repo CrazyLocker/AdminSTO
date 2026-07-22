@@ -3,6 +3,7 @@
 # Формат: GitHub Actions совместимый
 # GHES (GitHub Enterprise Server) не поддерживает upload/download artifact
 # Тесты запускаются только локально — в Actions только сборка
+# Релизы создаются через GitHub CLI (gh)
 # ============================================================
 
 name: AdminSTO Build
@@ -12,6 +13,8 @@ on:
     branches:
       - main
       - develop
+    tags:
+      - 'v*'
   pull_request:
     branches:
       - main
@@ -54,6 +57,15 @@ jobs:
           chmod +x build-portable.sh
           ./build-portable.sh
 
+      - name: Создаём ZIP для релиза
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          cd AdminSTO_Portable
+          zip -r ../AdminSTO-portable-${{ github.ref_name }}.zip .
+          cd ..
+          echo "=== ZIP создан ==="
+          ls -lh AdminSTO-portable-*.zip
+
       - name: Проверяем portable-версию
         run: |
           echo "=== Portable версия ==="
@@ -62,3 +74,56 @@ jobs:
           du -sh AdminSTO_Portable/
           echo "Файл запуска:"
           ls -lh AdminSTO_Portable/run.sh
+
+  release:
+    name: Создание релиза
+    runs-on: ubuntu-latest
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Клонируем репозиторий
+        uses: actions/checkout@v4
+
+      - name: Устанавливаем JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Устанавливаем gh CLI
+        run: |
+          type -p curl >/dev/null || sudo apt install curl -y
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+          sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+          sudo apt update
+          sudo apt install gh -y
+
+      - name: Делаем gradlew исполняемым
+        run: chmod +x gradlew
+
+      - name: Создаём portable-версию
+        run: |
+          chmod +x build-portable.sh
+          ./build-portable.sh
+
+      - name: Создаём ZIP
+        run: |
+          cd AdminSTO_Portable
+          zip -r ../AdminSTO-portable-${{ github.ref_name }}.zip .
+          cd ..
+
+      - name: Создаём релиз в GitVerse
+        run: |
+          echo "=== Создание релиза ==="
+          echo "Тег: ${{ github.ref_name }}"
+          echo "ZIP: AdminSTO-portable-${{ github.ref_name }}.zip"
+          
+          # Создаём релиз через gh CLI
+          gh release create "${{ github.ref_name }}" \
+            --title "Релиз ${{ github.ref_name }}" \
+            --notes "Автономная версия AdminSTO ${{ github.ref_name }}" \
+            AdminSTO-portable-${{ github.ref_name }}.zip
