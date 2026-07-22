@@ -57,9 +57,10 @@ echo "[3/5] Копирование JavaFX..."
 GRADLE_CACHE="$HOME/.gradle/caches/modules-2/files-2.1/org.openjfx"
 
 for mod in javafx-controls javafx-fxml javafx-base javafx-graphics; do
-    JAR=$(find "$GRADLE_CACHE/$mod" -name "${mod}-*-$JAVAFX_VERSION.jar" -type f | head -1)
+    # Ищем JAR для JavaFX 21.0.6 (без -win, без -sources, без -javadoc)
+    JAR=$(find "$GRADLE_CACHE/$mod" -name "*.jar" -path "*/21.0.6/*" ! -name "*-win.jar" ! -name "*-sources.jar" ! -name "*-javadoc.jar" -type f | head -1)
     if [ -z "$JAR" ]; then
-        echo "  ERROR: $mod не найден в gradle cache!"
+        echo "  ERROR: $mod 21.0.6 не найден в gradle cache!"
         echo "  Запустите: ./gradlew dependencies"
         exit 1
     fi
