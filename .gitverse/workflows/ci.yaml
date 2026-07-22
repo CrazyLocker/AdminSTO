@@ -1,9 +1,5 @@
 # ============================================================
 # CI/CD ДЛЯ AdminSTO (GitVerse)
-# Формат: GitHub Actions совместимый
-# GHES (GitHub Enterprise Server) не поддерживает upload/download artifact
-# Тесты запускаются только локально — в Actions только сборка
-# Релизы создаются через GitHub CLI (gh)
 # ============================================================
 
 name: AdminSTO Build
@@ -35,6 +31,8 @@ jobs:
           echo "github.ref_type: ${{ github.ref_type }}"
           echo "github.event_name: ${{ github.event_name }}"
           echo "github.sha: ${{ github.sha }}"
+          echo "github.repository: ${{ github.repository }}"
+          echo "github.server_url: ${{ github.server_url }}"
 
       - name: Устанавливаем JDK 21
         uses: actions/setup-java@v4
@@ -83,6 +81,19 @@ jobs:
           echo "Файл запуска:"
           ls -lh AdminSTO_Portable/run.sh
 
+      - name: Сохраняем артефакты
+        uses: actions/upload-artifact@v4
+        with:
+          name: AdminSTO-Portable
+          path: AdminSTO_Portable/
+
+      - name: Сохраняем ZIP
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v4
+        with:
+          name: AdminSTO-ZIP
+          path: AdminSTO-portable-*.zip
+
   release:
     name: Создание релиза
     runs-on: ubuntu-latest
@@ -90,77 +101,132 @@ jobs:
     if: startsWith(github.ref_name, 'v')
     permissions:
       contents: write
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Клонируем репозиторий
         uses: actions/checkout@v4
 
-      - name: Устанавливаем JDK 21
-        uses: actions/setup-java@v4
+      - name: Скачиваем ZIP артефакт
+        uses: actions/download-artifact@v4
         with:
-          distribution: 'temurin'
-          java-version: '21'
+          name: AdminSTO-ZIP
+          path: .
 
-      - name: Делаем gradlew исполняемым
-        run: chmod +x gradlew
-
-      - name: Собираем проект
-        run: ./gradlew clean compileJava --stacktrace
-
-      - name: Создаём fat JAR
-        run: ./gradlew fatJar --stacktrace
-
-      - name: Создаём portable-версию
+      - name: Проверяем ZIP файл
         run: |
-          chmod +x build-portable.sh
-          ./build-portable.sh
+          echo "=== Найденные ZIP файлы ==="
+          ls -lh *.zip || echo "ZIP не найден"
 
-      - name: Создаём ZIP
-        run: |
-          cd AdminSTO_Portable
-          zip -r ../AdminSTO-portable-${{ github.ref_name }}.zip .
-          cd ..
-
-      - name: Создаём релиз через API
+      - name: Создаём релиз через GitVerse API
+        env:
+          SECRETTOKEN: ${{ secrets.SECRETTOKEN }}
         run: |
           set -e
+          
           TAG="${{ github.ref_name }}"
           ZIP="AdminSTO-portable-${TAG}.zip"
           OWNER=$(echo "${{ github.repository }}" | cut -d/ -f1)
           REPO=$(echo "${{ github.repository }}" | cut -d/ -f2)
-          API_URL="${{ github.server_url }}/api/v3/repos/$OWNER/$REPO"
           
-          echo "=== Создание релиза ==="
-          echo "Тег: $TAG"
-          echo "Файл: $ZIP"
+          # Правильный URL для GitVerse API (v1)
+          API_URL="https://gitverse.ru/api/v1/repos/${OWNER}/${REPO}"
+          
+          echo "=== Создание релиза через GitVerse API ==="
+          echo "Тег: ${TAG}"
+          echo "Файл: ${ZIP}"
+          echo "API URL: ${API_URL}"
+          echo "Репозиторий: ${OWNER}/${REPO}"
+          echo "Токен установлен: $([ -n "$SECRETTOKEN" ] && echo "Да" || echo "Нет")"
+          
+          # Проверяем существование ZIP файла
+          if [ ! -f "${ZIP}" ]; then
+            echo "❌ ZIP файл не найден: ${ZIP}"
+            ls -lh *.zip || echo "Нет ZIP файлов"
+            exit 1
+          fi
+          
+          echo "✅ ZIP файл найден: $(ls -lh ${ZIP})"
           
           # 1. Создаём релиз
-          RESPONSE=$(curl -s -X POST "$API_URL/releases" \
-            -H "Authorization: token $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github.v3+json" \
+          echo "Создаём релиз..."
+          RESPONSE=$(curl -s -X POST "${API_URL}/releases" \
+            -H "Authorization: token ${SECRETTOKEN}" \
+            -H "Accept: application/json" \
+            -H "Content-Type: application/json" \
             -d "{
-              \"tag_name\": \"$TAG\",
-              \"name\": \"Релиз $TAG\",
-              \"body\": \"Автономная версия AdminSTO $TAG\",
+              \"tag_name\": \"${TAG}\",
+              \"name\": \"Релиз ${TAG}\",
+              \"body\": \"Автономная версия AdminSTO ${TAG}\",
               \"draft\": false,
               \"prerelease\": false
             }")
           
-          echo "Ответ API: $RESPONSE"
+          echo "Ответ API: ${RESPONSE}"
           
-          UPLOAD_URL=$(echo "$RESPONSE" | grep -o '"upload_url": "[^"]*' | cut -d'"' -f4 | cut -d'{' -f1)
-          
-          if [ -z "$UPLOAD_URL" ]; then
+          # Проверяем ответ
+          if echo "${RESPONSE}" | grep -q '"error"'; then
             echo "❌ Ошибка создания релиза!"
+            echo "${RESPONSE}"
             exit 1
           fi
           
-          echo "Загружаем ZIP в релиз..."
-          curl -s -X POST "$UPLOAD_URL?name=$ZIP" \
-            -H "Authorization: token $GITHUB_TOKEN" \
-            -H "Content-Type: application/zip" \
-            --data-binary @"$ZIP"
+          # Извлекаем ID релиза
+          RELEASE_ID=$(echo "${RESPONSE}" | grep -o '"id": [0-9]*' | head -1 | awk -F': ' '{print $2}' | tr -d ' ')
+          
+          if [ -z "${RELEASE_ID}" ]; then
+            echo "❌ Не удалось получить ID релиза!"
+            echo "Ответ: ${RESPONSE}"
+            exit 1
+          fi
+          
+          echo "✅ Релиз создан с ID: ${RELEASE_ID}"
+          
+          # 2. Загружаем файл
+          echo "Загружаем ZIP файл в релиз..."
+          
+          UPLOAD_RESPONSE=$(curl -s -X POST "${API_URL}/releases/${RELEASE_ID}/assets" \
+            -H "Authorization: token ${SECRETTOKEN}" \
+            -H "Accept: application/json" \
+            -H "Content-Type: multipart/form-data" \
+            -F "attachment=@${ZIP}")
+          
+          echo "Ответ загрузки: ${UPLOAD_RESPONSE}"
+          
+          if echo "${UPLOAD_RESPONSE}" | grep -q '"error"'; then
+            echo "❌ Ошибка загрузки файла!"
+            echo "${UPLOAD_RESPONSE}"
+            exit 1
+          fi
           
           echo "✅ Релиз успешно создан!"
+          echo "🔗 https://gitverse.ru/${OWNER}/${REPO}/releases/tag/${TAG}"
+
+      - name: Альтернативный метод (если API не работает)
+        if: failure()
+        env:
+          SECRETTOKEN: ${{ secrets.SECRETTOKEN }}
+        run: |
+          set -e
+          
+          TAG="${{ github.ref_name }}"
+          ZIP="AdminSTO-portable-${TAG}.zip"
+          OWNER=$(echo "${{ github.repository }}" | cut -d/ -f1)
+          REPO=$(echo "${{ github.repository }}" | cut -d/ -f2)
+          
+          echo "=== Альтернативный метод создания релиза ==="
+          
+          # Пробуем использовать другой эндпоинт
+          API_URL="https://gitverse.ru/api/v3/repos/${OWNER}/${REPO}"
+          echo "Пробуем API v3: ${API_URL}"
+          
+          RESPONSE=$(curl -s -X POST "${API_URL}/releases" \
+            -H "Authorization: token ${SECRETTOKEN}" \
+            -H "Accept: application/json" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"tag_name\": \"${TAG}\",
+              \"name\": \"Релиз ${TAG}\",
+              \"body\": \"Автономная версия AdminSTO ${TAG}\"
+            }")
+          
+          echo "Ответ API v3: ${RESPONSE}"
