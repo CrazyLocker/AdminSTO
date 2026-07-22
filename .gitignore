@@ -48,6 +48,9 @@ native/
 /wrapper/
 gradle/wrapper/gradle-language-groovy-8.5.jar
 
+# Portable-версия (собирается в CI/CD)
+AdminSTO_Portable/
+
 # Временные/устаревшие файлы
 pom.xml.old
 .gigacode/

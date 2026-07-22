@@ -48,3 +48,17 @@ jobs:
           echo "=== Результаты сборки JAR ==="
           ls -lh build/libs/*.jar 2>/dev/null || echo "JAR не найден"
           du -sh build/libs/*.jar 2>/dev/null || true
+
+      - name: Создаём portable-версию
+        run: |
+          chmod +x build-portable.sh
+          ./build-portable.sh
+
+      - name: Проверяем portable-версию
+        run: |
+          echo "=== Portable версия ==="
+          ls -lh AdminSTO_Portable/
+          echo "Размер папки:"
+          du -sh AdminSTO_Portable/
+          echo "Файл запуска:"
+          ls -lh AdminSTO_Portable/run.sh
