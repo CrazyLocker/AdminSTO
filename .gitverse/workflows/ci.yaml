@@ -1,6 +1,7 @@
 # ============================================================
 # CI/CD ДЛЯ AdminSTO (GitVerse)
 # Формат: GitHub Actions совместимый
+# GHES (GitHub Enterprise Server) не поддерживает upload/download artifact
 # ============================================================
 
 name: AdminSTO Build & Test
@@ -13,8 +14,6 @@ on:
   pull_request:
     branches:
       - main
-  release:
-    types: [published]
 
 jobs:
   build-and-test:
@@ -45,12 +44,16 @@ jobs:
         # Они нестабильны в CI/CD — запускаются отдельно
         run: ./gradlew test --stacktrace
 
-      - name: Сохраняем результаты тестов
+      - name: Проверяем результаты тестов
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-reports
-          path: build/test-results/test/
+        run: |
+          echo "=== Результаты тестов ==="
+          if [ -d "build/test-results/test" ]; then
+            ls -la build/test-results/test/
+            echo "Файлов тестов: $(ls build/test-results/test/*.xml 2>/dev/null | wc -l)"
+          else
+            echo "Директория результатов тестов не найдена"
+          fi
 
   package:
     name: Создание JAR
@@ -74,39 +77,8 @@ jobs:
       - name: Создаём fat JAR
         run: ./gradlew fatJar --stacktrace
 
-      - name: Сохраняем JAR
-        uses: actions/upload-artifact@v4
-        with:
-          name: AdminSTO-JAR
-          path: build/libs/*.jar
-
-  release:
-    name: Создание релиза
-    runs-on: ubuntu-latest
-    needs: package
-    if: startsWith(github.ref, 'refs/tags/v')
-
-    steps:
-      - name: Клонируем репозиторий
-        uses: actions/checkout@v4
-
-      - name: Скачиваем артефакты JAR
-        uses: actions/download-artifact@v4
-        with:
-          name: AdminSTO-JAR
-          path: build/libs
-
-      - name: Создаём ZIP для релиза
+      - name: Проверяем JAR
         run: |
-          cd build/libs
-          zip -r ../AdminSTO-${{ github.ref_name }}.zip *.jar
-          cd ..
-
-      - name: Создаём релиз
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            AdminSTO-${{ github.ref_name }}.zip
-          name: Релиз ${{ github.ref_name }}
-          draft: false
-          prerelease: false
+          echo "=== Результаты сборки JAR ==="
+          ls -lh build/libs/*.jar 2>/dev/null || echo "JAR не найден"
+          du -sh build/libs/*.jar 2>/dev/null || true
