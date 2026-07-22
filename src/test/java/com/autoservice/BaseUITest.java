@@ -125,14 +125,28 @@ public abstract class BaseUITest {
      */
     protected Stage createStage() {
         AtomicReference<Stage> ref = new AtomicReference<>();
+        AtomicReference<Exception> errorRef = new AtomicReference<>();
         runOnFxThread(() -> {
-            Stage stage = new Stage();
-            createUI(stage);
-            stage.show();
-            stage.toFront();
-            currentScene = stage.getScene();
-            ref.set(stage);
+            try {
+                Stage stage = new Stage();
+                createUI(stage);
+                stage.show();
+                stage.toFront();
+                currentScene = stage.getScene();
+                ref.set(stage);
+            } catch (Exception e) {
+                errorRef.set(e);
+                throw e;
+            }
         });
+        Exception error = errorRef.get();
+        if (error != null) {
+            throw new IllegalStateException(
+                    "Ошибка при создании UI-сцены. Убедитесь, что styles.css находится в src/main/resources/."
+                    + " Подробности: " + error.getMessage(),
+                    error
+            );
+        }
         return ref.get();
     }
 
@@ -170,9 +184,12 @@ public abstract class BaseUITest {
         });
 
         Scene scene = new Scene(tabPane, 800, 600);
-        scene.getStylesheets().add(
-                App.class.getResource("/styles.css").toExternalForm()
-        );
+        // В headless-режиме CSS-файл может отсутствовать — это не критично для тестов.
+        // Проверяем null, чтобы не ломать тесты в CI/CD, где ресурсы могут не копироваться.
+        java.net.URL cssUrl = App.class.getResource("/styles.css");
+        if (cssUrl != null) {
+            scene.getStylesheets().add(cssUrl.toExternalForm());
+        }
 
         stage.setTitle("Администратор СТО - Test Mode");
         stage.setScene(scene);
@@ -453,6 +470,11 @@ public abstract class BaseUITest {
      */
     protected void switchTab(int tabIndex) {
         TabPane tabPane = (TabPane) findNode("mainTabPane");
+        if (tabPane == null) {
+            throw new IllegalStateException(
+                    "TabPane с ID 'mainTabPane' не найден. Убедитесь, что сцена инициализирована корректно."
+            );
+        }
         runOnFxThread(() -> tabPane.getSelectionModel().select(tabIndex));
     }
 
