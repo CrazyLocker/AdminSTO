@@ -1,8 +1,6 @@
 # ============================================================
 # CI/CD ДЛЯ AdminSTO (GitVerse)
-# Официальный API: https://api.gitverse.ru
 # Запуск только по тегам v*
-# Сборка Windows-портативки на self-hosted Windows-раннере
 # ============================================================
 
 name: AdminSTO Build
@@ -19,7 +17,7 @@ jobs:
 
     steps:
       # ==========================================
-      # 1. Клонируем репозиторий
+      # 1. Клонирование
       # ==========================================
       - name: Клонируем репозиторий
         uses: actions/checkout@v4
@@ -86,28 +84,17 @@ jobs:
           Write-Host "Размер: $([math]::Round($size, 2)) MB"
 
       # ==========================================
-      # 6. Упаковка в ZIP
+      # 6. КОПИРУЕМ ПАПКУ КАК АРТЕФАКТ (БЕЗ УПАКОВКИ)
       # ==========================================
-      - name: Упаковываем портативку в ZIP
-        shell: pwsh
-        run: |
-          $TAG = "${{ github.ref_name }}"
-          $ZIP_NAME = "AdminSTO-portable-${TAG}.zip"
-          
-          Write-Host "=== Упаковка ==="
-          if (!(Test-Path "AdminSTO_Portable")) {
-            Write-Error "Папка AdminSTO_Portable не найдена!"
-            exit 1
-          }
-          
-          Compress-Archive -Path "AdminSTO_Portable\*" -DestinationPath $ZIP_NAME -Force -CompressionLevel Optimal
-          $size = (Get-Item $ZIP_NAME).Length / 1MB
-          Write-Host "✅ ZIP создан: $ZIP_NAME ($([math]::Round($size, 2)) MB)"
-          Write-Output "ZIP_FILE=$ZIP_NAME" >> $env:GITHUB_ENV
-          Write-Output "ZIP_SIZE=$([math]::Round($size, 2)) MB" >> $env:GITHUB_ENV
+      - name: Копируем портативку как артефакт
+        uses: actions/upload-artifact@v4
+        with:
+          name: AdminSTO-Portable-${{ github.ref_name }}
+          path: AdminSTO_Portable/
+          retention-days: 30
 
       # ==========================================
-      # 7. Создание релиза и загрузка ZIP
+      # 7. Создание релиза (без ZIP)
       # ==========================================
       - name: Создаём релиз
         env:
@@ -126,7 +113,7 @@ jobs:
           $body = @{
             tag_name = $TAG
             name = "AdminSTO ${TAG}"
-            body = "Автономная версия AdminSTO ${TAG}"
+            body = "Автономная версия AdminSTO ${TAG}`n`n📦 Папка с портативной версией сохранена как артефакт CI.`nСкачайте её из вкладки Actions → Artifacts."
             draft = $false
             prerelease = $false
           } | ConvertTo-Json -Depth 10
@@ -143,103 +130,22 @@ jobs:
           Write-Host "ID: $($response.id)"
           Write-Host "URL: $($response.html_url)"
           
-          $RELEASE_ID = $response.id
-          Write-Output "RELEASE_ID=${RELEASE_ID}" >> $env:GITHUB_ENV
           Write-Output "RELEASE_URL=$($response.html_url)" >> $env:GITHUB_ENV
 
       # ==========================================
-      # 8. Загрузка ZIP с повторными попытками
-      # ==========================================
-      - name: Загружаем ZIP с повторными попытками
-        env:
-          SECRETTOKEN: ${{ secrets.SECRETTOKEN }}
-        shell: pwsh
-        run: |
-          $TAG = "${{ github.ref_name }}"
-          $ZIP = $env:ZIP_FILE
-          $OWNER = "dez21"
-          $REPO = "AdminSTO"
-          $RELEASE_ID = $env:RELEASE_ID
-          
-          Write-Host "=== Загрузка ZIP с повторными попытками ==="
-          Write-Host "Тег: ${TAG}"
-          Write-Host "Файл: ${ZIP} ($env:ZIP_SIZE)"
-          Write-Host "ID релиза: ${RELEASE_ID}"
-          
-          if (!(Test-Path $ZIP)) {
-            Write-Error "ZIP не найден: $ZIP"
-            exit 1
-          }
-          
-          $ASSET_URL = "https://api.gitverse.ru/repos/${OWNER}/${REPO}/releases/${RELEASE_ID}/assets"
-          
-          $maxRetries = 5
-          $retryCount = 0
-          $success = $false
-          
-          while ($retryCount -lt $maxRetries -and -not $success) {
-            $retryCount++
-            Write-Host "Попытка ${retryCount}/${maxRetries}..."
-          
-            try {
-              $file = Get-Item $ZIP
-              $multipartContent = [System.Net.Http.MultipartFormDataContent]::new()
-              $fileStream = [System.IO.FileStream]::new($file.FullName, [System.IO.FileMode]::Open)
-              $fileContent = [System.Net.Http.StreamContent]::new($fileStream)
-              $multipartContent.Add($fileContent, "file", $file.Name)
-          
-              $headers = @{
-                "Authorization" = "Bearer $env:SECRETTOKEN"
-                "Accept" = "application/vnd.gitverse.object+json;version=1"
-              }
-          
-              $uploadResponse = Invoke-RestMethod -Uri $ASSET_URL -Method Post `
-                -Headers $headers `
-                -Body $multipartContent `
-                -TimeoutSec 120
-          
-              $fileStream.Dispose()
-              $multipartContent.Dispose()
-          
-              Write-Host "✅ ZIP загружен успешно!"
-              Write-Host "ID ассета: $($uploadResponse.id)"
-              $success = $true
-          
-            } catch {
-              Write-Host "⚠️ Попытка ${retryCount} не удалась: $_"
-          
-              if ($retryCount -lt $maxRetries) {
-                $waitTime = $retryCount * 5
-                Write-Host "Ожидание ${waitTime} секунд перед повторной попыткой..."
-                Start-Sleep -Seconds $waitTime
-              }
-            }
-          }
-          
-          if (-not $success) {
-            Write-Error "Не удалось загрузить ZIP после ${maxRetries} попыток"
-            Write-Host ""
-            Write-Host "⚠️ Релиз создан, но файл не загружен."
-            Write-Host "Загрузите файл вручную на странице релиза:"
-            Write-Host "$env:RELEASE_URL"
-            exit 1
-          }
-          
-          Write-Host ""
-          Write-Host "✅ Релиз готов!"
-          Write-Host "🔗 $env:RELEASE_URL"
-
-      # ==========================================
-      # 9. Информация о завершении
+      # 8. Информация о завершении
       # ==========================================
       - name: Завершение сборки
         shell: pwsh
         run: |
           Write-Host "=== Сборка завершена ==="
           Write-Host "Тег: ${{ github.ref_name }}"
-          if ($env:RELEASE_URL) {
-            Write-Host "✅ Релиз создан: $env:RELEASE_URL"
-          } else {
-            Write-Host "❌ Релиз не создан!"
-            exit 1
-          }
+          Write-Host ""
+          Write-Host "✅ Релиз создан: $env:RELEASE_URL"
+          Write-Host ""
+          Write-Host "📦 Портативная версия сохранена как артефакт CI:"
+          Write-Host "   1. Перейдите во вкладку Actions"
+          Write-Host "   2. Выберите этот запуск"
+          Write-Host "   3. Скачайте артефакт AdminSTO-Portable-${{ github.ref_name }}"
+          Write-Host ""
+          Write-Host "▶️  Распакуйте папку и запустите STO.bat"
