@@ -1,6 +1,8 @@
 # ============================================================
 # CI/CD ДЛЯ AdminSTO (GitVerse)
+# Официальная документация: https://gitverse.ru/docs/developers/public-api/releases/
 # Запуск только по тегам v*
+# Сборка портативки, сохранение на диск, создание релиза (без ассетов)
 # ============================================================
 
 name: AdminSTO Build
@@ -84,19 +86,44 @@ jobs:
           Write-Host "Размер: $([math]::Round($size, 2)) MB"
 
       # ==========================================
-      # 6. КОПИРУЕМ ПАПКУ КАК АРТЕФАКТ (БЕЗ УПАКОВКИ)
+      # 6. СОХРАНЯЕМ ПОРТАТИВКУ НА ДИСК РАННЕРА
       # ==========================================
-      - name: Копируем портативку как артефакт
-        uses: actions/upload-artifact@v4
-        with:
-          name: AdminSTO-Portable-${{ github.ref_name }}
-          path: AdminSTO_Portable/
-          retention-days: 30
+      - name: Сохраняем портативку на диск
+        shell: pwsh
+        run: |
+          $TAG = "${{ github.ref_name }}"
+          $SOURCE = "AdminSTO_Portable"
+          $DEST = "E:\Alecsey\Java Projects for QA\AdminSTO-Releases\${TAG}"
+          
+          Write-Host "=== Сохранение портативной версии ==="
+          Write-Host "Тег: ${TAG}"
+          Write-Host "Источник: ${SOURCE}"
+          Write-Host "Назначение: ${DEST}"
+          
+          # Создаём папку для всех релизов
+          if (!(Test-Path "E:\Alecsey\Java Projects for QA\AdminSTO-Releases")) {
+            New-Item -ItemType Directory -Path "E:\Alecsey\Java Projects for QA\AdminSTO-Releases" -Force
+          }
+          
+          # Копируем папку с портативкой
+          if (Test-Path $DEST) {
+            Remove-Item $DEST -Recurse -Force
+          }
+          Copy-Item -Path $SOURCE -Destination $DEST -Recurse -Force
+          
+          Write-Host ""
+          Write-Host "✅ Портативка сохранена на диск!"
+          Write-Host "📁 Папка: ${DEST}"
+          
+          # Сохраняем путь для информации
+          Write-Output "PORTABLE_PATH=${DEST}" >> $env:GITHUB_ENV
 
       # ==========================================
-      # 7. Создание релиза (без ZIP)
+      # 7. СОЗДАЁМ РЕЛИЗ (БЕЗ ЗАГРУЗКИ АССЕТОВ)
+      # Используем официальный API: POST /repos/{owner}/{repo}/releases
+      # Документация: https://gitverse.ru/docs/developers/public-api/releases/#2-post-repos-owner-repo-releases
       # ==========================================
-      - name: Создаём релиз
+      - name: Создаём релиз через API
         env:
           SECRETTOKEN: ${{ secrets.SECRETTOKEN }}
         shell: pwsh
@@ -107,30 +134,57 @@ jobs:
           
           $API_URL = "https://api.gitverse.ru/repos/${OWNER}/${REPO}/releases"
           
-          Write-Host "=== Создание релиза ==="
+          Write-Host "=== Создание релиза через официальный API ==="
           Write-Host "Тег: ${TAG}"
+          Write-Host "API URL: ${API_URL}"
           
+          # Формируем тело запроса согласно документации
           $body = @{
             tag_name = $TAG
             name = "AdminSTO ${TAG}"
-            body = "Автономная версия AdminSTO ${TAG}`n`n📦 Папка с портативной версией сохранена как артефакт CI.`nСкачайте её из вкладки Actions → Artifacts."
+            body = "Автономная версия AdminSTO ${TAG}`n`n📁 Портативная версия сохранена на диске раннера: E:\Alecsey\Java Projects for QA\AdminSTO-Releases\${TAG}"
             draft = $false
             prerelease = $false
           } | ConvertTo-Json -Depth 10
           
-          $response = Invoke-RestMethod -Uri $API_URL -Method Post `
-            -Headers @{
-              "Authorization" = "Bearer $env:SECRETTOKEN"
-              "Accept" = "application/vnd.gitverse.object+json;version=1"
-              "Content-Type" = "application/json"
-            } `
-            -Body $body
+          Write-Host "Тело запроса: $body"
           
-          Write-Host "✅ Релиз создан!"
-          Write-Host "ID: $($response.id)"
-          Write-Host "URL: $($response.html_url)"
+          # Отправляем запрос
+          try {
+            $response = Invoke-RestMethod -Uri $API_URL -Method Post `
+              -Headers @{
+                "Authorization" = "Bearer $env:SECRETTOKEN"
+                "Accept" = "application/vnd.gitverse.object+json;version=1"
+                "Content-Type" = "application/json"
+              } `
+              -Body $body
           
-          Write-Output "RELEASE_URL=$($response.html_url)" >> $env:GITHUB_ENV
+            Write-Host ""
+            Write-Host "✅ Релиз успешно создан!"
+            Write-Host "ID: $($response.id)"
+            Write-Host "URL: $($response.html_url)"
+            Write-Host "Тег: $($response.tag_name)"
+            Write-Host "Название: $($response.name)"
+          
+            Write-Output "RELEASE_URL=$($response.html_url)" >> $env:GITHUB_ENV
+            Write-Output "RELEASE_ID=$($response.id)" >> $env:GITHUB_ENV
+          
+          } catch {
+            Write-Error "❌ Ошибка создания релиза!"
+            Write-Error "Статус: $($_.Exception.Response.StatusCode.value__)"
+            Write-Error "Ответ: $($_.Exception.Response)"
+          
+            # Показываем детали ошибки
+            if ($_.Exception.Response) {
+              $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
+              $reader.BaseStream.Position = 0
+              $reader.DiscardBufferedData()
+              $responseBody = $reader.ReadToEnd()
+              Write-Error "Детали: $responseBody"
+            }
+          
+            exit 1
+          }
 
       # ==========================================
       # 8. Информация о завершении
@@ -138,14 +192,14 @@ jobs:
       - name: Завершение сборки
         shell: pwsh
         run: |
-          Write-Host "=== Сборка завершена ==="
-          Write-Host "Тег: ${{ github.ref_name }}"
           Write-Host ""
-          Write-Host "✅ Релиз создан: $env:RELEASE_URL"
+          Write-Host "=================================================="
+          Write-Host "  ✅ СБОРКА И РЕЛИЗ УСПЕШНО ЗАВЕРШЕНЫ!"
+          Write-Host "=================================================="
           Write-Host ""
-          Write-Host "📦 Портативная версия сохранена как артефакт CI:"
-          Write-Host "   1. Перейдите во вкладку Actions"
-          Write-Host "   2. Выберите этот запуск"
-          Write-Host "   3. Скачайте артефакт AdminSTO-Portable-${{ github.ref_name }}"
+          Write-Host "🔗 Релиз: $env:RELEASE_URL"
+          Write-Host "📁 Портативка сохранена: $env:PORTABLE_PATH"
           Write-Host ""
-          Write-Host "▶️  Распакуйте папку и запустите STO.bat"
+          Write-Host "📌 Если нужно загрузить файлы в релиз:"
+          Write-Host "   Используйте POST /repos/{owner}/{repo}/releases/{release_id}/assets"
+          Write-Host "   Документация: https://gitverse.ru/docs/developers/public-api/releases/#9-post-repos-owner-repo-releases-release-id-assets"
