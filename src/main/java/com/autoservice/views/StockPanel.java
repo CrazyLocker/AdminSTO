@@ -33,6 +33,7 @@ public class StockPanel {
 
     private static TableView<SparePart> table;
     private static Button stockIncomeBtn;
+    private static TextField searchField;
     private static ObservableList<SparePart> masterData;
     private static FilteredList<SparePart> filteredData;
     private static SortedList<SparePart> sortedData;
@@ -111,6 +112,7 @@ public class StockPanel {
                 if (selected != null) editStockDialog(selected);
             } else if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
                 e.consume();
+                if (searchField != null) searchField.clear();
             }
         });
 
@@ -121,6 +123,30 @@ public class StockPanel {
             }
         });
 
+        // ========== ВЕРХНЯЯ ПАНЕЛЬ С КНОПКАМИ И ПОИСКОМ ==========
+        HBox topPanel = new HBox(10);
+        topPanel.setAlignment(Pos.CENTER_LEFT);
+        topPanel.setPadding(new Insets(0, 0, 10, 0));
+
+        searchField = new TextField();
+        searchField.setPromptText("Поиск по названию или артикулу");
+        searchField.setPrefWidth(250);
+        searchField.textProperty().addListener((observable, oldValue, newValue) -> filterStock(newValue));
+
+        Button clearBtn = new Button("✖");
+        clearBtn.setStyle(
+                "-fx-background-color: #dc3545;" +
+                "-fx-text-fill: white;" +
+                "-fx-font-weight: bold;" +
+                "-fx-padding: 4 8 4 8;" +
+                "-fx-background-radius: 4;"
+        );
+        clearBtn.getStyleClass().add("clear-button");
+        clearBtn.setOnAction(e -> {
+            searchField.clear();
+            filterStock("");
+        });
+
         stockIncomeBtn = new Button("Внести приход");
         stockIncomeBtn.getStyleClass().add("income-button");
         stockIncomeBtn.setDisable(true);
@@ -129,10 +155,10 @@ public class StockPanel {
             if (selected != null) editStockDialog(selected);
         });
 
-        HBox btnRow = new HBox(10, stockIncomeBtn);
-        btnRow.setAlignment(Pos.CENTER_LEFT);
-        btnRow.setPadding(new Insets(10, 0, 0, 0));
-        VBox panel = new VBox(10, table, btnRow);
+        topPanel.getChildren().addAll(searchField, clearBtn, stockIncomeBtn);
+
+        // Создаем панель с верхней панелью и таблицей
+        VBox panel = new VBox(10, topPanel, table);
 
         // Загружаем состояние таблицы ПОСЛЕ отрисовки
         Platform.runLater(() -> {
@@ -142,6 +168,22 @@ public class StockPanel {
         });
 
         return panel;
+    }
+
+    /**
+     * Фильтрует список запчастей по тексту поиска.
+     */
+    private static void filterStock(String filterText) {
+        if (filterText == null || filterText.trim().isEmpty()) {
+            filteredData.setPredicate(p -> true);
+        } else {
+            String lowerFilter = filterText.toLowerCase().trim();
+            filteredData.setPredicate(part -> {
+                if (part.getName() != null && part.getName().toLowerCase().contains(lowerFilter)) return true;
+                if (part.getPartNumber() != null && part.getPartNumber().toLowerCase().contains(lowerFilter)) return true;
+                return false;
+            });
+        }
     }
 
     /**
@@ -155,6 +197,9 @@ public class StockPanel {
         sortedData = new SortedList<>(filteredData);
         sortedData.comparatorProperty().bind(table.comparatorProperty());
         table.setItems(sortedData);
+        if (searchField != null) {
+            filterStock(searchField.getText());
+        }
     }
 
     private static void editStockDialog(SparePart part) {

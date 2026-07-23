@@ -1293,11 +1293,17 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         String sql = "INSERT INTO app_settings (setting_key, setting_value, description) VALUES (?, ?, ?)";
 
         try (Connection conn = getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+             PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             pstmt.setString(1, setting.getKey());
             pstmt.setString(2, setting.getValue());
             pstmt.setString(3, setting.getDescription());
             pstmt.executeUpdate();
+            
+            // Получаем сгенерированный id
+            ResultSet rs = pstmt.getGeneratedKeys();
+            if (rs.next()) {
+                setting.setId(rs.getInt(1));
+            }
         } catch (SQLException e) {
             logger.error("Ошибка добавления настройки", e);
         }
@@ -1306,14 +1312,19 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     @Override
     public void updateSetting(com.autoservice.model.Setting setting) {
         String sql = "UPDATE app_settings SET setting_value = ? WHERE id = ?";
+        logger.info("AbstractDatabase.updateSetting: id={}, value={}, sql={}", setting.getId(), setting.getValue(), sql);
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, setting.getValue());
             pstmt.setInt(2, setting.getId());
-            pstmt.executeUpdate();
+            int rows = pstmt.executeUpdate();
+            logger.info("  UPDATE completed, rows affected={}", rows);
+            if (rows == 0) {
+                logger.error("  WARNING: No rows updated! id={} may not exist in DB", setting.getId());
+            }
         } catch (SQLException e) {
-            logger.error("Ошибка обновления настройки", e);
+            logger.error("Ошибка обновления настройки: id={}, value={}", setting.getId(), setting.getValue(), e);
         }
     }
 

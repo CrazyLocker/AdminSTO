@@ -1159,3 +1159,44 @@
     -fx-font-size: 12px;
     -fx-text-fill: #666;
 }
+
+/* ========================================================================
+   СТИЛИ ДЛЯ ТАБЛИЦЫ СВЯЗЕЙ
+   ======================================================================== */
+
+.expandable-cell {
+    -fx-background-color: #f9f9f9;
+    -fx-border-color: #e0e0e0;
+    -fx-border-radius: 4;
+    -fx-padding: 8px;
+}
+
+.parts-table {
+    -fx-background-color: white;
+    -fx-border-color: #e0e0e0;
+    -fx-border-radius: 4;
+}
+
+.text-muted {
+    -fx-text-fill: #999;
+    -fx-font-style: italic;
+}
+
+.expand-button {
+    -fx-background-color: #1976d2;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-min-width: 25;
+    -fx-min-height: 25;
+    -fx-cursor: hand;
+}
+
+.expand-button:hover {
+    -fx-background-color: #1565c0;
+}
+
+.parts-count {
+    -fx-text-fill: #666;
+    -fx-font-size: 12px;
+}

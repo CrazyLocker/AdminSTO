@@ -570,9 +570,25 @@ public class DataStore {
     }
 
     public static void updateSetting(Setting setting) {
+        logger.info("DataStore.updateSetting: setting id={}, key={}, value={}, dirty={}", 
+                setting.getId(), setting.getKey(), setting.getValue(), setting.isDirty());
         setting.setDirty(true);
         DatabaseFactory.getDatabase().updateSetting(setting);
-        settings = DatabaseFactory.getDatabase().getAllSettings();
+        logger.info("  Database.updateSetting completed");
+        // Обновляем значение в существующем объекте, чтобы избежать создания новых объектов
+        // Найдем объект в списке по ID и обновим его значение
+        boolean found = false;
+        for (int i = 0; i < settings.size(); i++) {
+            if (settings.get(i).getId() == setting.getId()) {
+                settings.set(i, setting);
+                found = true;
+                logger.info("  Found setting in DataStore.settings at index {}, replaced", i);
+                break;
+            }
+        }
+        if (!found) {
+            logger.warn("  Setting with id={} NOT FOUND in DataStore.settings! Size={}", setting.getId(), settings.size());
+        }
         isDirty = true;
     }
 

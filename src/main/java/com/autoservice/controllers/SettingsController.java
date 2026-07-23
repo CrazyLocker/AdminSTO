@@ -319,12 +319,10 @@ public class SettingsController {
     }
 
     public static void saveBackupSettings(boolean enabled, String time, int retention) {
-        // Сохраняем настройки в базу данных
-        SettingService.setAutoAddSparePartsEnabled(enabled);
-        SettingService.setSparePartConfirmationRequired(false); // для совместимости
-        
-        // Сохраняем время и количество копий в настройки
-        SettingService.saveBackupSettings(enabled, time, retention);
+        // Сохраняем настройки резервного копирования
+        SettingService.setAutoBackupEnabled(enabled);
+        SettingService.setBackupTime(time);
+        SettingService.setBackupRetention(retention);
         
         ScheduleService.saveSettings(enabled, time, retention);
     }

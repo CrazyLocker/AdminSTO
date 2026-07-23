@@ -2,7 +2,10 @@ package com.autoservice.services;
 
 import com.autoservice.DataStore;
 import com.autoservice.model.Setting;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -12,18 +15,21 @@ import java.util.Map;
  */
 public class SettingService {
 
+    private static final Logger logger = LoggerFactory.getLogger(SettingService.class);
     private static Map<String, Setting> settingsCache = null;
 
     /**
      * Получить все настройки из базы данных и кэшировать их.
+     * Загружает напрямую из Database, чтобы избежать рассинхронизации с DataStore.
      */
-    private static void loadSettings() {
-        if (settingsCache == null) {
-            settingsCache = new HashMap<>();
-            List<Setting> settings = DataStore.getAllSettings();
-            for (Setting setting : settings) {
-                settingsCache.put(setting.getKey(), setting);
-            }
+    public static void loadSettings() {
+        settingsCache = new HashMap<>();
+        List<com.autoservice.model.Setting> settings = 
+                com.autoservice.DatabaseFactory.getDatabase().getAllSettings();
+        logger.info("SettingService.loadSettings: загружено {} настроек из БД", settings.size());
+        for (com.autoservice.model.Setting setting : settings) {
+            logger.debug("  Setting: key={}, value={}, id={}", setting.getKey(), setting.getValue(), setting.getId());
+            settingsCache.put(setting.getKey(), setting);
         }
     }
 
@@ -56,10 +62,17 @@ public class SettingService {
      */
     public static void setSettingValue(String key, String value) {
         Setting setting = getSetting(key);
+        logger.info("SettingService.setSettingValue: key={}, newValue={}, setting={}", key, value, setting);
         if (setting != null) {
+            logger.info("  setting found: id={}, oldValue={}, oldKey={}", setting.getId(), setting.getValue(), setting.getKey());
             setting.setValue(value);
+            logger.info("  after setValue: id={}, newValue={}, dirty={}", setting.getId(), setting.getValue(), setting.isDirty());
             DataStore.updateSetting(setting);
+            logger.info("  DataStore.updateSetting completed");
+            loadSettings();
+            logger.info("  loadSettings completed, cache size={}", settingsCache.size());
         } else {
+            logger.warn("  setting NOT found in cache for key={}, creating new", key);
             setting = new Setting(key, value, "");
             DataStore.addSetting(setting);
             loadSettings();
@@ -74,7 +87,8 @@ public class SettingService {
         if (settingsCache == null) {
             loadSettings();
         }
-        return DataStore.getAllSettings();
+        // Возвращаем значения из кэша, который всегда синхронизирован с БД
+        return new ArrayList<>(settingsCache.values());
     }
 
     /**

@@ -1,7 +1,7 @@
 {
   "tableId": "clientTable",
   "version": "1.0",
-  "timestamp": "2026-07-20T07:42:32.956762900Z",
+  "timestamp": "2026-07-23T03:37:33.993046100Z",
   "columns": [
     {
       "id": "colLastName",

@@ -146,8 +146,8 @@ public class SettingsView {
         autoPartsTab.setContent(createAutoPartsPanel());
         autoPartsTab.setClosable(false);
 
-        Tab serviceSparePartsTab = new Tab("Связи услуг-запчастей");
-        serviceSparePartsTab.setContent(createServiceSparePartsPanel());
+        Tab serviceSparePartsTab = new Tab("Связи");
+        serviceSparePartsTab.setContent(ServicePartsTreeTableView.create());
         serviceSparePartsTab.setClosable(false);
 
         Tab toPartsTab = new Tab("Расходники ТО");

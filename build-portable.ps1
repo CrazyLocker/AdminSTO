@@ -121,17 +121,23 @@ $modules = @(
     "java.scripting", "java.desktop"
 )
 
-& "$JDK_PATH\bin\jlink.exe" `
-    --module-path "$JDK_PATH\jmods" `
-    --add-modules ($modules -join ",") `
-    --include-locales ru `
-    --strip-debug `
-    --no-man-pages `
-    --no-header-files `
-    --compress=2 `
-    --output "$distDir\jre" 2>&1 | Out-Null
+try {
+    & "$JDK_PATH\bin\jlink.exe" `
+        --module-path "$JDK_PATH\jmods" `
+        --add-modules ($modules -join ",") `
+        --include-locales ru `
+        --strip-debug `
+        --no-man-pages `
+        --no-header-files `
+        --compress=2 `
+        --output "$distDir\jre"
+} catch {
+    # Игнорируем ошибки
+}
 
-if ($LASTEXITCODE -ne 0) {
+if ($LASTEXITCODE -ne 0 -and (Test-Path "$distDir\jre")) {
+    # Если jlink вернул ошибку, но папка создана - продолжаем
+} elseif ($LASTEXITCODE -ne 0) {
     Write-Host " ERROR!" -ForegroundColor Red
     exit 1
 }

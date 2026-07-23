@@ -161,8 +161,8 @@ public class SQLiteDatabase extends AbstractDatabase {
 
         String createAppSettings = "CREATE TABLE IF NOT EXISTS app_settings (" +
                 "id INTEGER " + autoIncrement + ", " +
-                "key TEXT NOT NULL UNIQUE CHECK(length(key) > 0), " +
-                "value TEXT NOT NULL CHECK(length(value) > 0), " +
+                "setting_key TEXT NOT NULL UNIQUE CHECK(length(setting_key) > 0), " +
+                "setting_value TEXT NOT NULL CHECK(length(setting_value) > 0), " +
                 "description TEXT DEFAULT ''" +
                 ")";
 

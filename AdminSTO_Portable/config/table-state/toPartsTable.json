@@ -1,7 +1,7 @@
 {
   "tableId": "toPartsTable",
   "version": "1.0",
-  "timestamp": "2026-07-20T07:42:32.968747100Z",
+  "timestamp": "2026-07-23T03:37:34.003045900Z",
   "columns": [
     {
       "id": "colCarModel",
@@ -23,7 +23,7 @@
     },
     {
       "id": "colSpareParts",
-      "width": 624.0000000000001,
+      "width": 807.2000000000002,
       "visible": true,
       "index": 3
     },

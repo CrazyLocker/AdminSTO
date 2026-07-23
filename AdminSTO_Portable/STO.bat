@@ -5,13 +5,13 @@ setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
 if not exist "jre\bin\java.exe" (
-    echo OSHIBKA: Java ne naydena!
+    echo ERROR: Java not found!
     pause
     exit /b 1
 )
 
 if not exist "lib\javafx-controls.jar" (
-    echo OSHIBKA: JavaFX ne naydena!
+    echo ERROR: JavaFX not found!
     pause
     exit /b 1
 )
@@ -22,10 +22,9 @@ echo ============================================
 echo  AdminSTO - Administrator STO
 echo ============================================
 echo.
-echo Zapusk...
+echo Starting...
 echo.
 
-:: JavaFX na module-path, DLL v native/, aplikaciya na classpath
 jre\bin\java.exe ^
     -Duser.language=ru ^
     -Duser.country=RU ^
@@ -51,13 +50,13 @@ jre\bin\java.exe ^
 if errorlevel 1 (
     echo.
     echo ============================================
-    echo  OSHIBKA zapuska!
+    echo  LAUNCH ERROR!
     echo ============================================
     echo.
-    echo Proverьте:
-    echo   1. Vsya papka skopirovana celikom?
+    echo Please check:
+    echo   1. Folder copied completely?
     echo   2. Windows 64-bit?
-    echo   3. Faili ne blokiruyut antivirus?
+    echo   3. Files not blocked by antivirus?
     echo.
     pause
 )
