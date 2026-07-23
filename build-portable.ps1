@@ -1,7 +1,6 @@
 # ============================================================
 # build-portable.ps1
 # Сборка портативной версии AdminSTO для Windows
-# Гарантированный поиск JavaFX в репозитории
 # ============================================================
 
 $ErrorActionPreference = "Stop"
@@ -85,52 +84,26 @@ Write-Host " OK" -ForegroundColor Green
 Write-Host ""
 
 # ============================================================
-# 3. ПОИСК JAVAFX (ПРОВЕРЯЕМ ВСЕ ВОЗМОЖНЫЕ ПУТИ)
+# 3. ПОИСК JAVAFX
 # ============================================================
 Write-Host "[3/7] Searching JavaFX SDK..." -NoNewline
 
-$javafxSourceDir = $null
-$javafxLib = $null
+$javafxLib = "$projectDir\javafx-sdk-21.0.6\lib"
 
-# Возможные пути (исправлено: каждый путь отдельно)
-$searchPaths = @(
-    "$projectDir\javafx-sdk-21.0.6",
-    "$projectDir\javafx-sdk-21",
-    "$projectDir\javafx-sdk",
-    "$projectDir\..\javafx-sdk-21.0.6"
-)
-
-foreach ($path in $searchPaths) {
-    if (Test-Path $path) {
-        $javafxSourceDir = $path
-        $javafxLib = "$path\lib"
-        if (Test-Path $javafxLib) {
-            Write-Host " FOUND at $javafxLib" -ForegroundColor Green
-            break
-        }
-    }
-}
-
-if (-not $javafxLib) {
+if (-not (Test-Path $javafxLib)) {
     Write-Host " NOT FOUND!" -ForegroundColor Red
-    Write-Host "ERROR: JavaFX SDK not found!" -ForegroundColor Red
-    Write-Host "Search paths checked:" -ForegroundColor Yellow
-    foreach ($path in $searchPaths) {
-        Write-Host "  - $path" -ForegroundColor Gray
-    }
+    Write-Host "ERROR: JavaFX SDK not found at $javafxLib" -ForegroundColor Red
     exit 1
 }
 
-# Проверяем наличие JAR-файлов
 $allJars = Get-ChildItem -Path $javafxLib -Filter "*.jar" -ErrorAction SilentlyContinue
 
 if (-not $allJars -or $allJars.Count -eq 0) {
-    Write-Host "   NO JAR FILES FOUND in $javafxLib!" -ForegroundColor Red
-    Write-Host "   Contents:" -ForegroundColor Yellow
-    Get-ChildItem -Path $javafxLib | ForEach-Object { Write-Host "     $($_.Name)" -ForegroundColor Gray }
+    Write-Host " NO JAR FILES FOUND!" -ForegroundColor Red
     exit 1
 }
 
+Write-Host " FOUND at $javafxLib" -ForegroundColor Green
 Write-Host "   JAR files found: $($allJars.Count)" -ForegroundColor Gray
 foreach ($jar in $allJars) {
     Write-Host "     $($jar.Name)" -ForegroundColor Gray
@@ -184,32 +157,33 @@ $jreSize = (Get-ChildItem "$distDir\jre" -Recurse | Measure-Object -Property Len
 Write-Host " OK (~$([math]::Round($jreSize, 1)) MB)" -ForegroundColor Green
 
 # ============================================================
-# 6. КОПИРОВАНИЕ JAVAFX
+# 6. КОПИРОВАНИЕ JAVAFX (ТОЛЬКО С ТОЧКАМИ)
 # ============================================================
 Write-Host "[6/7] Copying JavaFX..." -NoNewline
 
+# Список модулей с правильными именами (с точками)
 $javafxModules = @(
-    "javafx-controls",
-    "javafx-fxml",
-    "javafx-base",
-    "javafx-graphics"
+    @{ name = "javafx-controls"; file = "javafx.controls.jar" },
+    @{ name = "javafx-fxml"; file = "javafx.fxml.jar" },
+    @{ name = "javafx-base"; file = "javafx.base.jar" },
+    @{ name = "javafx-graphics"; file = "javafx.graphics.jar" }
 )
 
 $copiedCount = 0
-foreach ($mod in $javafxModules) {
-    $jarFileFound = $allJars | Where-Object { $_.Name -eq "$mod.jar" } | Select-Object -First 1
+foreach ($module in $javafxModules) {
+    $jarFileFound = $allJars | Where-Object { $_.Name -eq $module.file } | Select-Object -First 1
 
     if ($jarFileFound) {
-        Copy-Item $jarFileFound.FullName "$distDir\lib\$mod.jar" -Force
-        Write-Host "`n   + $mod.jar" -ForegroundColor Gray
+        Copy-Item $jarFileFound.FullName "$distDir\lib\$($module.name).jar" -Force
+        Write-Host "`n   + $($module.name).jar" -ForegroundColor Gray
         $copiedCount++
     } else {
-        Write-Host "`n   WARNING: $mod.jar not found" -ForegroundColor Yellow
+        Write-Host "`n   WARNING: $($module.file) not found" -ForegroundColor Yellow
     }
 }
 
 # Копируем Windows JAR с DLL (если есть)
-$winJars = $allJars | Where-Object { $_.Name -like "*-win.jar" }
+$winJars = $allJars | Where-Object { $_.Name -like "*.win.jar" }
 if ($winJars) {
     foreach ($winJar in $winJars) {
         Push-Location "$distDir\native"
