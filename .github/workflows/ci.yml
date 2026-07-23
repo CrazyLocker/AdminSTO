@@ -4,12 +4,12 @@ name: AdminSTO Build and Release
 on:
   push:
     tags:
-      - 'v*'  # Запуск по тегам, начинающимся с 'v'
+      - 'v*'
 
 jobs:
   build:
     name: Build and Release
-    runs-on: windows-latest  # GitHub предоставляет бесплатные Windows-раннеры
+    runs-on: windows-latest
 
     steps:
       # 1. Клонирование
@@ -23,7 +23,7 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      # 3. Кэширование Gradle (ускоряет сборку)
+      # 3. Кэширование Gradle
       - name: Cache Gradle packages
         uses: actions/cache@v4
         with:
@@ -36,6 +36,21 @@ jobs:
       # 4. Сборка проекта
       - name: Build with Gradle
         run: ./gradlew clean fatJar --stacktrace
+
+      # ==========================================
+      # 4.5 СКАЧИВАЕМ JAVAFX (для портативной сборки)
+      # ==========================================
+      - name: Download JavaFX SDK
+        shell: pwsh
+        run: |
+          Write-Host "Downloading JavaFX SDK..."
+          $JAVAFX_VERSION = "21.0.6"
+          $url = "https://download2.gluonhq.com/openjfx/${JAVAFX_VERSION}/openjfx-${JAVAFX_VERSION}_windows-x64_bin-sdk.zip"
+          $zip = "javafx-sdk.zip"
+          Invoke-WebRequest -Uri $url -OutFile $zip -UseBasicParsing
+          Expand-Archive -Path $zip -DestinationPath .
+          Remove-Item $zip -Force
+          Write-Host "JavaFX SDK downloaded and extracted"
 
       # 5. Создание портативной версии
       - name: Build portable version
@@ -55,7 +70,7 @@ jobs:
           Write-Host "ZIP created successfully."
           Write-Output "ZIP_FILE=$ZIP_NAME" >> $env:GITHUB_ENV
 
-      # 7. Сохранение ZIP как артефакта (доступен для скачивания из Actions)
+      # 7. Сохранение ZIP как артефакта
       - name: Upload ZIP as artifact
         uses: actions/upload-artifact@v4
         with:
@@ -63,7 +78,7 @@ jobs:
           path: ${{ env.ZIP_FILE }}
           retention-days: 30
 
-      # 8. Создание релиза и загрузка ZIP в него
+      # 8. Создание релиза и загрузка ZIP
       - name: Create Release and Upload Asset
         uses: softprops/action-gh-release@v2
         with:

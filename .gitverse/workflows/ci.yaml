@@ -1,171 +1,171 @@
-# ============================================================
-# CI/CD ДЛЯ AdminSTO (GitVerse)
-# Официальная документация: https://gitverse.ru/docs/developers/public-api/releases/
-# Запуск только по тегам v*
-# Сборка портативки и загрузка ZIP в релиз через curl
-# ============================================================
-
-name: AdminSTO Build
-
-on:
-  push:
-    tags:
-      - 'v*'
-
-jobs:
-  build:
-    name: Сборка и релиз
-    runs-on: [windows]
-
-    steps:
-      - name: Клонируем репозиторий
-        uses: actions/checkout@v4
-
-      - name: Отладка
-        run: |
-          echo "ref_name: ${{ github.ref_name }}"
-          echo "repository: ${{ github.repository }}"
-
-      - name: Устанавливаем JDK 21
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '21'
-
-      - name: Проверяем Java
-        run: java -version
-
-      - name: Кэшируем Gradle
-        uses: actions/cache@v4
-        id: gradle-cache
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-
-      - name: Собираем проект
-        run: ./gradlew clean compileJava --stacktrace
-
-      - name: Создаём fat JAR
-        run: ./gradlew fatJar --stacktrace
-
-      - name: Создаём portable-версию
-        shell: pwsh
-        run: |
-          Write-Host "=== Создание portable-версии ==="
-          if (!(Test-Path "build/libs/autoservice-admin.jar")) {
-            Write-Error "JAR не найден!"
-            exit 1
-          }
-          & .\build-portable.ps1
-
-      - name: Проверяем portable-версию
-        shell: pwsh
-        run: |
-          Write-Host "=== Содержимое AdminSTO_Portable ==="
-          Get-ChildItem AdminSTO_Portable
-          $size = (Get-ChildItem AdminSTO_Portable -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
-          Write-Host "Размер: $([math]::Round($size, 2)) MB"
-
-      - name: Упаковываем портативку в ZIP
-        shell: pwsh
-        run: |
-          $TAG = "${{ github.ref_name }}"
-          $ZIP_NAME = "AdminSTO-portable-${TAG}.zip"
-          
-          Write-Host "=== Упаковка портативки ==="
-          if (!(Test-Path "AdminSTO_Portable")) {
-            Write-Error "Папка AdminSTO_Portable не найдена!"
-            exit 1
-          }
-          
-          Compress-Archive -Path "AdminSTO_Portable\*" -DestinationPath $ZIP_NAME -Force -CompressionLevel Optimal
-          $size = (Get-Item $ZIP_NAME).Length / 1MB
-          Write-Host "✅ ZIP создан: $ZIP_NAME ($([math]::Round($size, 2)) MB)"
-          
-          Write-Output "ZIP_FILE=$ZIP_NAME" >> $env:GITHUB_ENV
-          Write-Output "ZIP_SIZE=$([math]::Round($size, 2)) MB" >> $env:GITHUB_ENV
-
-      - name: Создаём релиз
-        env:
-          SECRETTOKEN: ${{ secrets.SECRETTOKEN }}
-        shell: pwsh
-        run: |
-          $TAG = "${{ github.ref_name }}"
-          
-          $body = @{
-            tag_name = $TAG
-            name = "AdminSTO ${TAG}"
-            body = "Автономная версия AdminSTO ${TAG}"
-            draft = $false
-            prerelease = $false
-          } | ConvertTo-Json -Depth 10
-          
-          $response = Invoke-RestMethod -Uri "https://api.gitverse.ru/repos/dez21/AdminSTO/releases" -Method Post `
-            -Headers @{
-              "Authorization" = "Bearer $env:SECRETTOKEN"
-              "Accept" = "application/vnd.gitverse.object+json;version=1"
-              "Content-Type" = "application/json"
-            } `
-            -Body $body
-          
-          Write-Host "✅ Релиз создан!"
-          Write-Host "ID: $($response.id)"
-          Write-Host "URL: $($response.html_url)"
-          
-          Write-Output "RELEASE_ID=$($response.id)" >> $env:GITHUB_ENV
-          Write-Output "RELEASE_URL=$($response.html_url)" >> $env:GITHUB_ENV
-
-      - name: Загружаем ZIP как ассет
-        env:
-          SECRETTOKEN: ${{ secrets.SECRETTOKEN }}
-        shell: pwsh
-        run: |
-          $ZIP = $env:ZIP_FILE
-          $RELEASE_ID = $env:RELEASE_ID
-          $ASSET_URL = "https://api.gitverse.ru/repos/dez21/AdminSTO/releases/${RELEASE_ID}/assets"
-          
-          Write-Host "=== Загрузка ZIP ==="
-          Write-Host "Файл: ${ZIP}"
-          
-          if (!(Test-Path $ZIP)) {
-            Write-Error "ZIP не найден!"
-            exit 1
-          }
-          
-          # Загружаем через curl
-          $tempFile = "upload_response.json"
-          
-          Write-Host "Начинаем загрузку (может занять несколько минут)..."
-          $httpCode = curl.exe -X POST $ASSET_URL `
-            -H "Authorization: Bearer $env:SECRETTOKEN" `
-            -H "Accept: application/vnd.gitverse.object+json;version=1" `
-            -F "file=@${ZIP}" `
-            --max-time 300 `
-            -w "%{http_code}" `
-            -o $tempFile `
-            -s
-          
-          Write-Host "HTTP код: $httpCode"
-          
-          if ($httpCode -eq "201") {
-            Write-Host "✅ ZIP загружен успешно!"
-            Get-Content $tempFile
-          } else {
-            Write-Error "❌ Не удалось загрузить ZIP (HTTP $httpCode)"
-            exit 1
-          }
-
-      - name: Завершение сборки
-        shell: pwsh
-        run: |
-          Write-Host ""
-          Write-Host "=================================================="
-          Write-Host "  ✅ СБОРКА И РЕЛИЗ УСПЕШНО ЗАВЕРШЕНЫ!"
-          Write-Host "=================================================="
-          Write-Host ""
-          Write-Host "🔗 Релиз: $env:RELEASE_URL"
-          Write-Host "✅ ZIP загружен в релиз"
+## ============================================================
+## CI/CD ДЛЯ AdminSTO (GitVerse)
+## Официальная документация: https://gitverse.ru/docs/developers/public-api/releases/
+## Запуск только по тегам v*
+## Сборка портативки и загрузка ZIP в релиз через curl
+## ============================================================
+#
+#name: AdminSTO Build
+#
+#on:
+#  push:
+#    tags:
+#      - 'v*'
+#
+#jobs:
+#  build:
+#    name: Сборка и релиз
+#    runs-on: [windows]
+#
+#    steps:
+#      - name: Клонируем репозиторий
+#        uses: actions/checkout@v4
+#
+#      - name: Отладка
+#        run: |
+#          echo "ref_name: ${{ github.ref_name }}"
+#          echo "repository: ${{ github.repository }}"
+#
+#      - name: Устанавливаем JDK 21
+#        uses: actions/setup-java@v4
+#        with:
+#          distribution: 'temurin'
+#          java-version: '21'
+#
+#      - name: Проверяем Java
+#        run: java -version
+#
+#      - name: Кэшируем Gradle
+#        uses: actions/cache@v4
+#        id: gradle-cache
+#        with:
+#          path: |
+#            ~/.gradle/caches
+#            ~/.gradle/wrapper
+#          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+#          restore-keys: |
+#            ${{ runner.os }}-gradle-
+#
+#      - name: Собираем проект
+#        run: ./gradlew clean compileJava --stacktrace
+#
+#      - name: Создаём fat JAR
+#        run: ./gradlew fatJar --stacktrace
+#
+#      - name: Создаём portable-версию
+#        shell: pwsh
+#        run: |
+#          Write-Host "=== Создание portable-версии ==="
+#          if (!(Test-Path "build/libs/autoservice-admin.jar")) {
+#            Write-Error "JAR не найден!"
+#            exit 1
+#          }
+#          & .\build-portable.ps1
+#
+#      - name: Проверяем portable-версию
+#        shell: pwsh
+#        run: |
+#          Write-Host "=== Содержимое AdminSTO_Portable ==="
+#          Get-ChildItem AdminSTO_Portable
+#          $size = (Get-ChildItem AdminSTO_Portable -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
+#          Write-Host "Размер: $([math]::Round($size, 2)) MB"
+#
+#      - name: Упаковываем портативку в ZIP
+#        shell: pwsh
+#        run: |
+#          $TAG = "${{ github.ref_name }}"
+#          $ZIP_NAME = "AdminSTO-portable-${TAG}.zip"
+#
+#          Write-Host "=== Упаковка портативки ==="
+#          if (!(Test-Path "AdminSTO_Portable")) {
+#            Write-Error "Папка AdminSTO_Portable не найдена!"
+#            exit 1
+#          }
+#
+#          Compress-Archive -Path "AdminSTO_Portable\*" -DestinationPath $ZIP_NAME -Force -CompressionLevel Optimal
+#          $size = (Get-Item $ZIP_NAME).Length / 1MB
+#          Write-Host "✅ ZIP создан: $ZIP_NAME ($([math]::Round($size, 2)) MB)"
+#
+#          Write-Output "ZIP_FILE=$ZIP_NAME" >> $env:GITHUB_ENV
+#          Write-Output "ZIP_SIZE=$([math]::Round($size, 2)) MB" >> $env:GITHUB_ENV
+#
+#      - name: Создаём релиз
+#        env:
+#          SECRETTOKEN: ${{ secrets.SECRETTOKEN }}
+#        shell: pwsh
+#        run: |
+#          $TAG = "${{ github.ref_name }}"
+#
+#          $body = @{
+#            tag_name = $TAG
+#            name = "AdminSTO ${TAG}"
+#            body = "Автономная версия AdminSTO ${TAG}"
+#            draft = $false
+#            prerelease = $false
+#          } | ConvertTo-Json -Depth 10
+#
+#          $response = Invoke-RestMethod -Uri "https://api.gitverse.ru/repos/dez21/AdminSTO/releases" -Method Post `
+#            -Headers @{
+#              "Authorization" = "Bearer $env:SECRETTOKEN"
+#              "Accept" = "application/vnd.gitverse.object+json;version=1"
+#              "Content-Type" = "application/json"
+#            } `
+#            -Body $body
+#
+#          Write-Host "✅ Релиз создан!"
+#          Write-Host "ID: $($response.id)"
+#          Write-Host "URL: $($response.html_url)"
+#
+#          Write-Output "RELEASE_ID=$($response.id)" >> $env:GITHUB_ENV
+#          Write-Output "RELEASE_URL=$($response.html_url)" >> $env:GITHUB_ENV
+#
+#      - name: Загружаем ZIP как ассет
+#        env:
+#          SECRETTOKEN: ${{ secrets.SECRETTOKEN }}
+#        shell: pwsh
+#        run: |
+#          $ZIP = $env:ZIP_FILE
+#          $RELEASE_ID = $env:RELEASE_ID
+#          $ASSET_URL = "https://api.gitverse.ru/repos/dez21/AdminSTO/releases/${RELEASE_ID}/assets"
+#
+#          Write-Host "=== Загрузка ZIP ==="
+#          Write-Host "Файл: ${ZIP}"
+#
+#          if (!(Test-Path $ZIP)) {
+#            Write-Error "ZIP не найден!"
+#            exit 1
+#          }
+#
+#          # Загружаем через curl
+#          $tempFile = "upload_response.json"
+#
+#          Write-Host "Начинаем загрузку (может занять несколько минут)..."
+#          $httpCode = curl.exe -X POST $ASSET_URL `
+#            -H "Authorization: Bearer $env:SECRETTOKEN" `
+#            -H "Accept: application/vnd.gitverse.object+json;version=1" `
+#            -F "file=@${ZIP}" `
+#            --max-time 300 `
+#            -w "%{http_code}" `
+#            -o $tempFile `
+#            -s
+#
+#          Write-Host "HTTP код: $httpCode"
+#
+#          if ($httpCode -eq "201") {
+#            Write-Host "✅ ZIP загружен успешно!"
+#            Get-Content $tempFile
+#          } else {
+#            Write-Error "❌ Не удалось загрузить ZIP (HTTP $httpCode)"
+#            exit 1
+#          }
+#
+#      - name: Завершение сборки
+#        shell: pwsh
+#        run: |
+#          Write-Host ""
+#          Write-Host "=================================================="
+#          Write-Host "  ✅ СБОРКА И РЕЛИЗ УСПЕШНО ЗАВЕРШЕНЫ!"
+#          Write-Host "=================================================="
+#          Write-Host ""
+#          Write-Host "🔗 Релиз: $env:RELEASE_URL"
+#          Write-Host "✅ ZIP загружен в релиз"
