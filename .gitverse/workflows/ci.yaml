@@ -2,7 +2,7 @@
 # CI/CD ДЛЯ AdminSTO (GitVerse)
 # Официальный API: https://api.gitverse.ru
 # Запуск только по тегам v*
-# Сборка Windows-портативки
+# Сборка Windows-портативки на self-hosted раннере
 # ============================================================
 
 name: AdminSTO Build
@@ -15,7 +15,7 @@ on:
 jobs:
   build:
     name: Сборка и релиз
-    runs-on: windows-latest
+    runs-on: [self-hosted, windows]
 
     steps:
       # ==========================================
@@ -43,7 +43,7 @@ jobs:
         run: java -version
 
       # ==========================================
-      # 3. Кэширование Gradle (Windows)
+      # 3. Кэширование Gradle
       # ==========================================
       - name: Кэшируем Gradle
         uses: actions/cache@v4
@@ -75,7 +75,7 @@ jobs:
         run: ./gradlew fatJar --stacktrace
 
       # ==========================================
-      # 5. Создание Windows-портативки
+      # 5. Создание портативки
       # ==========================================
       - name: Создаём portable-версию для Windows
         shell: pwsh
@@ -125,7 +125,7 @@ jobs:
             exit 1
           }
           
-          # Упаковываем содержимое папки (без самой папки)
+          # Упаковываем содержимое папки
           Compress-Archive -Path "AdminSTO_Portable\*" -DestinationPath $ZIP_NAME -Force -CompressionLevel Optimal
           
           $size = (Get-Item $ZIP_NAME).Length / 1MB
@@ -226,3 +226,16 @@ jobs:
           Write-Host "✅ Релиз готов!"
           Write-Host "🔗 https://gitverse.ru/${OWNER}/${REPO}/releases/tag/${TAG}"
           Write-Host "=================================================="
+
+      # ==========================================
+      # 8. Информация о завершении
+      # ==========================================
+      - name: Завершение сборки
+        run: |
+          Write-Host "=== Сборка завершена ==="
+          Write-Host "Ветка: ${{ github.ref_name }}"
+          if ("${{ startsWith(github.ref, 'refs/tags/v') }}" -eq "true") {
+            Write-Host "✅ Релиз создан!"
+          } else {
+            Write-Host "ℹ️ Обычная сборка (без релиза)"
+          }
