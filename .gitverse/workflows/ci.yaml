@@ -15,7 +15,7 @@ on:
 jobs:
   build:
     name: Сборка и релиз
-    runs-on: [windows]
+    runs-on: [self-hosted, windows]
 
     steps:
       # ==========================================
@@ -28,7 +28,6 @@ jobs:
         run: |
           echo "ref_name: ${{ github.ref_name }}"
           echo "repository: ${{ github.repository }}"
-          echo "OS: ${{ runner.os }}"
 
       # ==========================================
       # 2. Настройка JDK 21
@@ -56,15 +55,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      - name: Проверка кэша
-        run: |
-          if (Test-Path "~/.gradle/caches") {
-            $size = (Get-ChildItem ~/.gradle/caches -Recurse -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum / 1MB
-            Write-Host "✅ Кэш Gradle найден: $([math]::Round($size, 1)) MB"
-          } else {
-            Write-Host "ℹ️ Кэш Gradle не найден, будет скачан"
-          }
-
       # ==========================================
       # 4. Сборка проекта
       # ==========================================
@@ -77,30 +67,22 @@ jobs:
       # ==========================================
       # 5. Создание портативки
       # ==========================================
-      - name: Создаём portable-версию для Windows
+      - name: Создаём portable-версию
         shell: pwsh
         run: |
           Write-Host "=== Создание portable-версии ==="
-          Write-Host "Текущая директория: $pwd"
-          Write-Host "JAVA_HOME: $env:JAVA_HOME"
-          
-          # Проверяем наличие JAR
           if (!(Test-Path "build/libs/autoservice-admin.jar")) {
             Write-Error "JAR не найден!"
             exit 1
           }
-          
-          # Запускаем скрипт сборки
           & .\build-portable.ps1
 
       - name: Проверяем portable-версию
         run: |
           echo "=== Содержимое AdminSTO_Portable ==="
           dir AdminSTO_Portable
-          echo ""
-          echo "Размер папки:"
           $size = (Get-ChildItem AdminSTO_Portable -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
-          echo "$([math]::Round($size, 2)) MB"
+          echo "Размер: $([math]::Round($size, 2)) MB"
 
       # ==========================================
       # 6. Упаковка в ZIP
@@ -111,31 +93,19 @@ jobs:
           $ZIP_NAME = "AdminSTO-portable-${TAG}.zip"
           
           echo "=== Упаковка ==="
-          echo "Тег: ${TAG}"
-          echo "ZIP: ${ZIP_NAME}"
-          
           if (!(Test-Path "AdminSTO_Portable")) {
             Write-Error "Папка AdminSTO_Portable не найдена!"
             exit 1
           }
           
-          # Проверяем наличие STO.bat
-          if (!(Test-Path "AdminSTO_Portable/STO.bat")) {
-            Write-Error "STO.bat не найден в AdminSTO_Portable!"
-            exit 1
-          }
-          
-          # Упаковываем содержимое папки
           Compress-Archive -Path "AdminSTO_Portable\*" -DestinationPath $ZIP_NAME -Force -CompressionLevel Optimal
-          
           $size = (Get-Item $ZIP_NAME).Length / 1MB
           echo "✅ ZIP создан: $([math]::Round($size, 2)) MB"
-          
           echo "ZIP_FILE=${ZIP_NAME}" >> $env:GITHUB_ENV
           echo "ZIP_SIZE=$([math]::Round($size, 2)) MB" >> $env:GITHUB_ENV
 
       # ==========================================
-      # 7. Создание релиза
+      # 7. Создание релиза и загрузка ZIP
       # ==========================================
       - name: Создаём релиз
         env:
@@ -151,14 +121,7 @@ jobs:
           
           Write-Host "=== Создание релиза ==="
           Write-Host "Тег: ${TAG}"
-          Write-Host "ZIP: ${ZIP} ($env:ZIP_SIZE)"
           
-          if (!(Test-Path $ZIP)) {
-            Write-Error "ZIP не найден: $ZIP"
-            exit 1
-          }
-          
-          # Создаём релиз
           $body = @{
             tag_name = $TAG
             name = "AdminSTO ${TAG}"
@@ -167,75 +130,114 @@ jobs:
             prerelease = $false
           } | ConvertTo-Json -Depth 10
           
-          Write-Host "Отправка запроса к API..."
-          
-          try {
-            $response = Invoke-RestMethod -Uri $API_URL -Method Post `
-              -Headers @{
-                "Authorization" = "Bearer $env:SECRETTOKEN"
-                "Accept" = "application/vnd.gitverse.object+json;version=1"
-                "Content-Type" = "application/json"
-              } `
-              -Body $body
-          } catch {
-            Write-Error "Ошибка API: $_"
-            Write-Error "Ответ: $($_.Exception.Response)"
-            exit 1
-          }
+          $response = Invoke-RestMethod -Uri $API_URL -Method Post `
+            -Headers @{
+              "Authorization" = "Bearer $env:SECRETTOKEN"
+              "Accept" = "application/vnd.gitverse.object+json;version=1"
+              "Content-Type" = "application/json"
+            } `
+            -Body $body
           
           Write-Host "✅ Релиз создан!"
           Write-Host "ID: $($response.id)"
           Write-Host "URL: $($response.html_url)"
           
-          $releaseId = $response.id
-          
-          # Загружаем ZIP
-          $ASSET_URL = "https://api.gitverse.ru/repos/${OWNER}/${REPO}/releases/${releaseId}/assets"
-          
-          Write-Host ""
-          Write-Host "Загрузка ZIP ($env:ZIP_SIZE)..."
-          
-          $file = Get-Item $ZIP
-          $multipartContent = [System.Net.Http.MultipartFormDataContent]::new()
-          $fileStream = [System.IO.FileStream]::new($file.FullName, [System.IO.FileMode]::Open)
-          $fileContent = [System.Net.Http.StreamContent]::new($fileStream)
-          $multipartContent.Add($fileContent, "file", $file.Name)
-          
-          $headers = @{
-            "Authorization" = "Bearer $env:SECRETTOKEN"
-            "Accept" = "application/vnd.gitverse.object+json;version=1"
-          }
-          
-          try {
-            $uploadResponse = Invoke-RestMethod -Uri $ASSET_URL -Method Post `
-              -Headers $headers `
-              -Body $multipartContent
-          
-            Write-Host "✅ ZIP загружен!"
-            Write-Host "Ассет ID: $($uploadResponse.id)"
-          } catch {
-            Write-Error "Ошибка загрузки ZIP: $_"
-            exit 1
-          } finally {
-            $fileStream.Dispose()
-            $multipartContent.Dispose()
-          }
-          
-          Write-Host ""
-          Write-Host "=================================================="
-          Write-Host "✅ Релиз готов!"
-          Write-Host "🔗 https://gitverse.ru/${OWNER}/${REPO}/releases/tag/${TAG}"
-          Write-Host "=================================================="
+          $RELEASE_ID = $response.id
+          echo "RELEASE_ID=${RELEASE_ID}" >> $env:GITHUB_ENV
+          echo "RELEASE_URL=$($response.html_url)" >> $env:GITHUB_ENV
 
       # ==========================================
-      # 8. Информация о завершении
+      # 8. Загрузка ZIP с повторными попытками
+      # ==========================================
+      - name: Загружаем ZIP с повторными попытками
+        env:
+          SECRETTOKEN: ${{ secrets.SECRETTOKEN }}
+        shell: pwsh
+        run: |
+          $TAG = "${{ github.ref_name }}"
+          $ZIP = $env:ZIP_FILE
+          $OWNER = "dez21"
+          $REPO = "AdminSTO"
+          $RELEASE_ID = $env:RELEASE_ID
+          
+          Write-Host "=== Загрузка ZIP с повторными попытками ==="
+          Write-Host "Тег: ${TAG}"
+          Write-Host "Файл: ${ZIP} ($env:ZIP_SIZE)"
+          Write-Host "ID релиза: ${RELEASE_ID}"
+          
+          if (!(Test-Path $ZIP)) {
+            Write-Error "ZIP не найден: $ZIP"
+            exit 1
+          }
+          
+          $ASSET_URL = "https://api.gitverse.ru/repos/${OWNER}/${REPO}/releases/${RELEASE_ID}/assets"
+          
+          $maxRetries = 5
+          $retryCount = 0
+          $success = $false
+          
+          while ($retryCount -lt $maxRetries -and -not $success) {
+            $retryCount++
+            Write-Host "Попытка ${retryCount}/${maxRetries}..."
+          
+            try {
+              $file = Get-Item $ZIP
+              $multipartContent = [System.Net.Http.MultipartFormDataContent]::new()
+              $fileStream = [System.IO.FileStream]::new($file.FullName, [System.IO.FileMode]::Open)
+              $fileContent = [System.Net.Http.StreamContent]::new($fileStream)
+              $multipartContent.Add($fileContent, "file", $file.Name)
+          
+              $headers = @{
+                "Authorization" = "Bearer $env:SECRETTOKEN"
+                "Accept" = "application/vnd.gitverse.object+json;version=1"
+              }
+          
+              $uploadResponse = Invoke-RestMethod -Uri $ASSET_URL -Method Post `
+                -Headers $headers `
+                -Body $multipartContent `
+                -TimeoutSec 120
+          
+              $fileStream.Dispose()
+              $multipartContent.Dispose()
+          
+              Write-Host "✅ ZIP загружен успешно!"
+              Write-Host "ID ассета: $($uploadResponse.id)"
+              $success = $true
+          
+            } catch {
+              Write-Host "⚠️ Попытка ${retryCount} не удалась: $_"
+          
+              if ($retryCount -lt $maxRetries) {
+                $waitTime = $retryCount * 5
+                Write-Host "Ожидание ${waitTime} секунд перед повторной попыткой..."
+                Start-Sleep -Seconds $waitTime
+              }
+            }
+          }
+          
+          if (-not $success) {
+            Write-Error "Не удалось загрузить ZIP после ${maxRetries} попыток"
+            Write-Host ""
+            Write-Host "⚠️ Релиз создан, но файл не загружен."
+            Write-Host "Загрузите файл вручную на странице релиза:"
+            Write-Host "$env:RELEASE_URL"
+            exit 1
+          }
+          
+          Write-Host ""
+          Write-Host "✅ Релиз готов!"
+          Write-Host "🔗 $env:RELEASE_URL"
+
+      # ==========================================
+      # 9. Информация о завершении
       # ==========================================
       - name: Завершение сборки
         run: |
           Write-Host "=== Сборка завершена ==="
-          Write-Host "Ветка: ${{ github.ref_name }}"
-          if ("${{ startsWith(github.ref, 'refs/tags/v') }}" -eq "true") {
-            Write-Host "✅ Релиз создан!"
+          Write-Host "Тег: ${{ github.ref_name }}"
+          if ($env:RELEASE_URL) {
+            Write-Host "✅ Релиз создан: $env:RELEASE_URL"
           } else {
-            Write-Host "ℹ️ Обычная сборка (без релиза)"
+            Write-Host "❌ Релиз не создан!"
+            exit 1
           }
