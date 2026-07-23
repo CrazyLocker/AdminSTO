@@ -15,7 +15,7 @@ on:
 jobs:
   build:
     name: Сборка и релиз
-    runs-on: [self-hosted, windows]
+    runs-on: [windows]
 
     steps:
       # ==========================================
