@@ -1,6 +1,7 @@
 # ============================================================
 # build-portable.ps1
 # Сборка портативной версии AdminSTO для Windows
+# С копированием всех DLL
 # ============================================================
 
 $ErrorActionPreference = "Stop"
@@ -157,11 +158,10 @@ $jreSize = (Get-ChildItem "$distDir\jre" -Recurse | Measure-Object -Property Len
 Write-Host " OK (~$([math]::Round($jreSize, 1)) MB)" -ForegroundColor Green
 
 # ============================================================
-# 6. КОПИРОВАНИЕ JAVAFX (ТОЛЬКО С ТОЧКАМИ)
+# 6. КОПИРОВАНИЕ JAVAFX И ВСЕХ DLL
 # ============================================================
-Write-Host "[6/7] Copying JavaFX..." -NoNewline
+Write-Host "[6/7] Copying JavaFX and DLLs..." -NoNewline
 
-# Список модулей с правильными именами (с точками)
 $javafxModules = @(
     @{ name = "javafx-controls"; file = "javafx.controls.jar" },
     @{ name = "javafx-fxml"; file = "javafx.fxml.jar" },
@@ -182,24 +182,21 @@ foreach ($module in $javafxModules) {
     }
 }
 
-# Копируем Windows JAR с DLL (если есть)
-$winJars = $allJars | Where-Object { $_.Name -like "*.win.jar" }
-if ($winJars) {
-    foreach ($winJar in $winJars) {
-        Push-Location "$distDir\native"
-        & "$JDK_PATH\bin\jar.exe" xf $winJar.FullName *.dll 2>&1 | Out-Null
-        Pop-Location
-        Write-Host "   + DLL extracted from $($winJar.Name)" -ForegroundColor Gray
+# Копируем ВСЕ DLL из папки bin
+$javafxBin = "$projectDir\javafx-sdk-21.0.6\bin"
+if (Test-Path $javafxBin) {
+    $binDlls = Get-ChildItem -Path $javafxBin -Filter "*.dll"
+    foreach ($dll in $binDlls) {
+        Copy-Item $dll.FullName "$distDir\native\" -Force
+        Write-Host "   + DLL (bin): $($dll.Name)" -ForegroundColor Gray
     }
-} else {
-    Write-Host "   WARNING: No Windows JAR with DLL found" -ForegroundColor Yellow
 }
 
-# Копируем все DLL-файлы из папки lib
+# Копируем DLL из папки lib
 $dllFiles = Get-ChildItem -Path $javafxLib -Filter "*.dll"
 foreach ($dll in $dllFiles) {
     Copy-Item $dll.FullName "$distDir\native\" -Force
-    Write-Host "   + DLL: $($dll.Name)" -ForegroundColor Gray
+    Write-Host "   + DLL (lib): $($dll.Name)" -ForegroundColor Gray
 }
 
 Write-Host "`n   JavaFX copied ($copiedCount modules)" -ForegroundColor Green
@@ -223,7 +220,7 @@ if (Test-Path $config) { Copy-Item $config "$distDir\" -Recurse -Force }
 Write-Host " OK" -ForegroundColor Green
 
 # ============================================================
-# 8. СОЗДАНИЕ STO.BAT
+# 8. СОЗДАНИЕ STO.BAT (с программным рендерингом)
 # ============================================================
 Write-Host "Creating STO.bat..." -NoNewline
 
@@ -255,7 +252,10 @@ echo.
 echo Starting...
 echo.
 
-jre\bin\java.exe ^
+:: Принудительно используем программный рендеринг (Software)
+set JAVA_OPTS=-Dprism.order=sw -Dprism.text=t2k -Djavafx.headless=false -Dglass.platform=Monocle
+
+jre\bin\java.exe %JAVA_OPTS% ^
     -Duser.language=ru ^
     -Duser.country=RU ^
     -Dfile.encoding=UTF-8 ^
