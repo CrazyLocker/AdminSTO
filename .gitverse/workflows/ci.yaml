@@ -1,20 +1,15 @@
 # ============================================================
 # CI/CD ДЛЯ AdminSTO (GitVerse)
 # Официальный API: https://api.gitverse.ru
+# Запуск только по тегам v*
 # ============================================================
 
 name: AdminSTO Build
 
 on:
   push:
-    branches:
-      - main
-      - develop
     tags:
       - 'v*'
-  pull_request:
-    branches:
-      - main
 
 jobs:
   build:
@@ -36,7 +31,6 @@ jobs:
           echo "ref_type: ${{ github.ref_type }}"
           echo "event_name: ${{ github.event_name }}"
           echo "repository: ${{ github.repository }}"
-          echo "server_url: ${{ github.server_url }}"
 
       - name: Устанавливаем JDK 21
         uses: actions/setup-java@v4
@@ -83,17 +77,15 @@ jobs:
           ls -lh AdminSTO_Portable/run.sh
 
       # ==========================================
-      # 4. Создание ZIP для релиза (только для тегов)
+      # 4. Создание ZIP для релиза
       # ==========================================
       - name: Создаём ZIP для релиза
-        if: startsWith(github.ref, 'refs/tags/v')
         run: |
           cd AdminSTO_Portable
           zip -r ../AdminSTO-portable-${{ github.ref_name }}.zip .
           cd ..
           echo "=== ZIP создан ==="
           ls -lh AdminSTO-portable-*.zip
-          # Сохраняем имя ZIP файла в переменную окружения для следующего шага
           echo "ZIP_FILE=AdminSTO-portable-${{ github.ref_name }}.zip" >> $GITHUB_ENV
           echo "ZIP_SIZE=$(du -h AdminSTO-portable-${{ github.ref_name }}.zip | cut -f1)" >> $GITHUB_ENV
 
@@ -101,7 +93,6 @@ jobs:
       # 5. Создание релиза через официальный API GitVerse
       # ==========================================
       - name: Создаём релиз через официальный API GitVerse
-        if: startsWith(github.ref, 'refs/tags/v')
         env:
           SECRETTOKEN: ${{ secrets.SECRETTOKEN }}
         run: |
@@ -121,13 +112,10 @@ jobs:
           echo "Размер ZIP: ${ZIP_SIZE}"
           echo "API URL: ${API_URL}"
           echo "Токен установлен: $([ -n "${SECRETTOKEN}" ] && echo "Да" || echo "Нет")"
-          echo "Владелец: ${OWNER}"
-          echo "Репозиторий: ${REPO}"
 
           # Проверяем наличие ZIP файла
           if [ ! -f "${ZIP}" ]; then
             echo "❌ ZIP файл не найден: ${ZIP}"
-            echo "Содержимое директории:"
             ls -lh *.zip 2>/dev/null || echo "Нет ZIP файлов"
             exit 1
           fi
@@ -151,16 +139,15 @@ jobs:
 
           echo "Ответ API: ${RESPONSE}"
 
-          # Проверяем ответ
+          # Проверяем ответ на наличие ошибки
           if echo "${RESPONSE}" | grep -q '"error"'; then
             ERROR_MSG=$(echo "${RESPONSE}" | grep -o '"message":"[^"]*"' | cut -d'"' -f4)
             echo "❌ Ошибка создания релиза: ${ERROR_MSG}"
-            echo "Полный ответ: ${RESPONSE}"
             exit 1
           fi
 
           # Извлекаем ID релиза
-          RELEASE_ID=$(echo "${RESPONSE}" | grep -o '"id": [0-9]*' | head -1 | awk -F': ' '{print $2}' | tr -d ' ')
+          RELEASE_ID=$(echo "${RESPONSE}" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*')
 
           if [ -z "${RELEASE_ID}" ]; then
             echo "❌ Не удалось получить ID релиза!"
@@ -176,7 +163,7 @@ jobs:
           ASSET_URL="https://api.gitverse.ru/repos/${OWNER}/${REPO}/releases/${RELEASE_ID}/assets"
 
           echo "Загрузка на: ${ASSET_URL}"
-          echo "Файл: ${ZIP} ($(du -h ${ZIP} | cut -f1))"
+          echo "Файл: ${ZIP}"
 
           UPLOAD_RESPONSE=$(curl -s -X POST "${ASSET_URL}" \
             -H "Authorization: Bearer ${SECRETTOKEN}" \
@@ -188,16 +175,15 @@ jobs:
           if echo "${UPLOAD_RESPONSE}" | grep -q '"error"'; then
             ERROR_MSG=$(echo "${UPLOAD_RESPONSE}" | grep -o '"message":"[^"]*"' | cut -d'"' -f4)
             echo "❌ Ошибка загрузки ассета: ${ERROR_MSG}"
-            echo "Полный ответ: ${UPLOAD_RESPONSE}"
             exit 1
           fi
 
           # Проверяем успешность загрузки
           if echo "${UPLOAD_RESPONSE}" | grep -q '"id"'; then
-            ASSET_ID=$(echo "${UPLOAD_RESPONSE}" | grep -o '"id": [0-9]*' | head -1 | awk -F': ' '{print $2}' | tr -d ' ')
+            ASSET_ID=$(echo "${UPLOAD_RESPONSE}" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*')
             echo "✅ Ассет загружен! ID: ${ASSET_ID}"
           else
-            echo "⚠️ Не удалось проверить загрузку ассета, но ошибок нет."
+            echo "⚠️ Не удалось получить ID ассета, но ошибок нет."
           fi
 
           echo ""
@@ -205,14 +191,19 @@ jobs:
           echo "🔗 Ссылка: https://gitverse.ru/${OWNER}/${REPO}/releases/tag/${TAG}"
           echo "📦 ZIP файл: ${ZIP}"
 
+          # Сохраняем информацию для последующих шагов
+          echo "RELEASE_ID=${RELEASE_ID}" >> $GITHUB_ENV
+          echo "RELEASE_URL=https://gitverse.ru/${OWNER}/${REPO}/releases/tag/${TAG}" >> $GITHUB_ENV
+
       # ==========================================
-      # 6. Информация о завершении (для всех запусков)
+      # 6. Информация о завершении
       # ==========================================
       - name: Завершение сборки
         run: |
           echo "=== Сборка завершена ==="
-          if [ -f "${ZIP_FILE}" ]; then
-            echo "✅ ZIP создан: ${ZIP_FILE}"
+          if [ -n "${RELEASE_URL}" ]; then
+            echo "✅ Релиз создан: ${RELEASE_URL}"
           else
-            echo "ℹ️ ZIP не создан (не тег)"
+            echo "❌ Релиз не создан!"
+            exit 1
           fi
