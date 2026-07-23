@@ -73,4 +73,4 @@ jobs:
           prerelease: false
           files: ${{ env.ZIP_FILE }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Встроенный токен, ничего создавать не нужно!
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }} # Встроенный токен, ничего создавать не нужно!
