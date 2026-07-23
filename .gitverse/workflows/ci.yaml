@@ -2,7 +2,7 @@
 # CI/CD ДЛЯ AdminSTO (GitVerse)
 # Официальная документация: https://gitverse.ru/docs/developers/public-api/releases/
 # Запуск только по тегам v*
-# Сборка портативки, сохранение на диск, создание релиза (без ассетов)
+# Сборка портативки и загрузка ZIP в релиз через API ассетов
 # ============================================================
 
 name: AdminSTO Build
@@ -86,44 +86,34 @@ jobs:
           Write-Host "Размер: $([math]::Round($size, 2)) MB"
 
       # ==========================================
-      # 6. СОХРАНЯЕМ ПОРТАТИВКУ НА ДИСК РАННЕРА
+      # 6. Упаковка портативки в ZIP
       # ==========================================
-      - name: Сохраняем портативку на диск
+      - name: Упаковываем портативку в ZIP
         shell: pwsh
         run: |
           $TAG = "${{ github.ref_name }}"
-          $SOURCE = "AdminSTO_Portable"
-          $DEST = "E:\Alecsey\Java Projects for QA\AdminSTO-Releases\${TAG}"
+          $ZIP_NAME = "AdminSTO-portable-${TAG}.zip"
           
-          Write-Host "=== Сохранение портативной версии ==="
-          Write-Host "Тег: ${TAG}"
-          Write-Host "Источник: ${SOURCE}"
-          Write-Host "Назначение: ${DEST}"
-          
-          # Создаём папку для всех релизов
-          if (!(Test-Path "E:\Alecsey\Java Projects for QA\AdminSTO-Releases")) {
-            New-Item -ItemType Directory -Path "E:\Alecsey\Java Projects for QA\AdminSTO-Releases" -Force
+          Write-Host "=== Упаковка портативки ==="
+          if (!(Test-Path "AdminSTO_Portable")) {
+            Write-Error "Папка AdminSTO_Portable не найдена!"
+            exit 1
           }
           
-          # Копируем папку с портативкой
-          if (Test-Path $DEST) {
-            Remove-Item $DEST -Recurse -Force
-          }
-          Copy-Item -Path $SOURCE -Destination $DEST -Recurse -Force
+          # Упаковываем содержимое папки (без самой папки)
+          Compress-Archive -Path "AdminSTO_Portable\*" -DestinationPath $ZIP_NAME -Force -CompressionLevel Optimal
+          $size = (Get-Item $ZIP_NAME).Length / 1MB
+          Write-Host "✅ ZIP создан: $ZIP_NAME ($([math]::Round($size, 2)) MB)"
           
-          Write-Host ""
-          Write-Host "✅ Портативка сохранена на диск!"
-          Write-Host "📁 Папка: ${DEST}"
-          
-          # Сохраняем путь для информации
-          Write-Output "PORTABLE_PATH=${DEST}" >> $env:GITHUB_ENV
+          # Сохраняем имя файла и размер в переменные окружения
+          Write-Output "ZIP_FILE=$ZIP_NAME" >> $env:GITHUB_ENV
+          Write-Output "ZIP_SIZE=$([math]::Round($size, 2)) MB" >> $env:GITHUB_ENV
 
       # ==========================================
-      # 7. СОЗДАЁМ РЕЛИЗ (БЕЗ ЗАГРУЗКИ АССЕТОВ)
-      # Используем официальный API: POST /repos/{owner}/{repo}/releases
-      # Документация: https://gitverse.ru/docs/developers/public-api/releases/#2-post-repos-owner-repo-releases
+      # 7. СОЗДАЁМ РЕЛИЗ
+      # POST /repos/{owner}/{repo}/releases
       # ==========================================
-      - name: Создаём релиз через API
+      - name: Создаём релиз
         env:
           SECRETTOKEN: ${{ secrets.SECRETTOKEN }}
         shell: pwsh
@@ -134,7 +124,7 @@ jobs:
           
           $API_URL = "https://api.gitverse.ru/repos/${OWNER}/${REPO}/releases"
           
-          Write-Host "=== Создание релиза через официальный API ==="
+          Write-Host "=== Создание релиза ==="
           Write-Host "Тег: ${TAG}"
           Write-Host "API URL: ${API_URL}"
           
@@ -142,14 +132,11 @@ jobs:
           $body = @{
             tag_name = $TAG
             name = "AdminSTO ${TAG}"
-            body = "Автономная версия AdminSTO ${TAG}`n`n📁 Портативная версия сохранена на диске раннера: E:\Alecsey\Java Projects for QA\AdminSTO-Releases\${TAG}"
+            body = "Автономная версия AdminSTO ${TAG}"
             draft = $false
             prerelease = $false
           } | ConvertTo-Json -Depth 10
           
-          Write-Host "Тело запроса: $body"
-          
-          # Отправляем запрос
           try {
             $response = Invoke-RestMethod -Uri $API_URL -Method Post `
               -Headers @{
@@ -160,34 +147,103 @@ jobs:
               -Body $body
           
             Write-Host ""
-            Write-Host "✅ Релиз успешно создан!"
+            Write-Host "✅ Релиз создан!"
             Write-Host "ID: $($response.id)"
             Write-Host "URL: $($response.html_url)"
-            Write-Host "Тег: $($response.tag_name)"
-            Write-Host "Название: $($response.name)"
           
+            $RELEASE_ID = $response.id
+            Write-Output "RELEASE_ID=$RELEASE_ID" >> $env:GITHUB_ENV
             Write-Output "RELEASE_URL=$($response.html_url)" >> $env:GITHUB_ENV
-            Write-Output "RELEASE_ID=$($response.id)" >> $env:GITHUB_ENV
           
           } catch {
             Write-Error "❌ Ошибка создания релиза!"
             Write-Error "Статус: $($_.Exception.Response.StatusCode.value__)"
-            Write-Error "Ответ: $($_.Exception.Response)"
-          
-            # Показываем детали ошибки
-            if ($_.Exception.Response) {
-              $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
-              $reader.BaseStream.Position = 0
-              $reader.DiscardBufferedData()
-              $responseBody = $reader.ReadToEnd()
-              Write-Error "Детали: $responseBody"
-            }
-          
             exit 1
           }
 
       # ==========================================
-      # 8. Информация о завершении
+      # 8. ЗАГРУЖАЕМ ZIP КАК АССЕТ В РЕЛИЗ
+      # POST /repos/{owner}/{repo}/releases/{release_id}/assets
+      # Документация: https://gitverse.ru/docs/developers/public-api/releases/#9-post-repos-owner-repo-releases-release-id-assets
+      # ==========================================
+      - name: Загружаем ZIP как ассет
+        env:
+          SECRETTOKEN: ${{ secrets.SECRETTOKEN }}
+        shell: pwsh
+        run: |
+          $ZIP = $env:ZIP_FILE
+          $OWNER = "dez21"
+          $REPO = "AdminSTO"
+          $RELEASE_ID = $env:RELEASE_ID
+          
+          $ASSET_URL = "https://api.gitverse.ru/repos/${OWNER}/${REPO}/releases/${RELEASE_ID}/assets"
+          
+          Write-Host ""
+          Write-Host "=== Загрузка ZIP как ассета ==="
+          Write-Host "Файл: ${ZIP} ($env:ZIP_SIZE)"
+          Write-Host "URL: ${ASSET_URL}"
+          
+          if (!(Test-Path $ZIP)) {
+            Write-Error "ZIP не найден: $ZIP"
+            exit 1
+          }
+          
+          try {
+            # Подготавливаем файл для загрузки
+            $file = Get-Item $ZIP
+            $multipartContent = [System.Net.Http.MultipartFormDataContent]::new()
+            $fileStream = [System.IO.FileStream]::new($file.FullName, [System.IO.FileMode]::Open)
+            $fileContent = [System.Net.Http.StreamContent]::new($fileStream)
+            $multipartContent.Add($fileContent, "file", $file.Name)
+          
+            # Отправляем запрос на загрузку ассета
+            $uploadResponse = Invoke-RestMethod -Uri $ASSET_URL -Method Post `
+              -Headers @{
+                "Authorization" = "Bearer $env:SECRETTOKEN"
+                "Accept" = "application/vnd.gitverse.object+json;version=1"
+              } `
+              -Body $multipartContent `
+              -TimeoutSec 300
+          
+            # Освобождаем ресурсы
+            $fileStream.Dispose()
+            $multipartContent.Dispose()
+          
+            Write-Host ""
+            Write-Host "✅ ZIP загружен как ассет!"
+            Write-Host "ID ассета: $($uploadResponse.id)"
+            Write-Host "Имя: $($uploadResponse.name)"
+            Write-Host "Размер: $($uploadResponse.size) байт"
+            Write-Host "URL: $($uploadResponse.url)"
+          
+          } catch {
+            Write-Error "❌ Ошибка загрузки ZIP!"
+            Write-Error "Статус: $($_.Exception.Response.StatusCode.value__)"
+          
+            # Если ошибка 500 - пробуем через curl как запасной вариант
+            Write-Host ""
+            Write-Host "Пробуем загрузить через curl..."
+          
+            $curlResult = curl.exe -X POST $ASSET_URL `
+              -H "Authorization: Bearer $env:SECRETTOKEN" `
+              -H "Accept: application/vnd.gitverse.object+json;version=1" `
+              -F "file=@$ZIP" `
+              --max-time 120 `
+              -w "%{http_code}" `
+              -o "upload_response.json" `
+              -s
+          
+            if ($curlResult -eq "201") {
+              Write-Host "✅ ZIP загружен через curl!"
+              Get-Content upload_response.json
+            } else {
+              Write-Error "Не удалось загрузить ZIP (HTTP $curlResult)"
+              exit 1
+            }
+          }
+
+      # ==========================================
+      # 9. Информация о завершении
       # ==========================================
       - name: Завершение сборки
         shell: pwsh
@@ -198,8 +254,6 @@ jobs:
           Write-Host "=================================================="
           Write-Host ""
           Write-Host "🔗 Релиз: $env:RELEASE_URL"
-          Write-Host "📁 Портативка сохранена: $env:PORTABLE_PATH"
+          Write-Host "📦 ZIP загружен в релиз как ассет"
           Write-Host ""
-          Write-Host "📌 Если нужно загрузить файлы в релиз:"
-          Write-Host "   Используйте POST /repos/{owner}/{repo}/releases/{release_id}/assets"
-          Write-Host "   Документация: https://gitverse.ru/docs/developers/public-api/releases/#9-post-repos-owner-repo-releases-release-id-assets"
+          Write-Host "✅ Готово!"
