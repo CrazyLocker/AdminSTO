@@ -19,7 +19,7 @@ Write-Host ""
 # ============================================================
 # 1. ПОИСК JDK 21
 # ============================================================
-Write-Host "[1/6] Looking for JDK 21..." -NoNewline
+Write-Host "[1/7] Looking for JDK 21..." -NoNewline
 
 $JDK_PATH = $null
 
@@ -74,7 +74,7 @@ Write-Host ""
 # ============================================================
 # 2. ПРОВЕРКА JAR
 # ============================================================
-Write-Host "[2/6] Checking fat JAR..." -NoNewline
+Write-Host "[2/7] Checking fat JAR..." -NoNewline
 if (-not (Test-Path $jarFile)) {
     Write-Host " NOT FOUND!" -ForegroundColor Red
     Write-Host "ERROR: fat JAR not found!" -ForegroundColor Red
@@ -87,7 +87,7 @@ Write-Host ""
 # ============================================================
 # 3. ПОДГОТОВКА ПАПОК
 # ============================================================
-Write-Host "[3/6] Preparing directories..." -NoNewline
+Write-Host "[3/7] Preparing directories..." -NoNewline
 
 if (Test-Path $distDir) {
     Remove-Item $distDir -Recurse -Force
@@ -103,7 +103,7 @@ Write-Host " OK" -ForegroundColor Green
 # ============================================================
 # 4. СОЗДАНИЕ JRE
 # ============================================================
-Write-Host "[4/6] Creating JRE via jlink..." -NoNewline
+Write-Host "[4/7] Creating JRE via jlink..." -NoNewline
 
 $modules = @(
     "java.base", "java.sql", "java.logging", "java.instrument",
@@ -131,9 +131,9 @@ $jreSize = (Get-ChildItem "$distDir\jre" -Recurse | Measure-Object -Property Len
 Write-Host " OK (~$([math]::Round($jreSize, 1)) MB)" -ForegroundColor Green
 
 # ============================================================
-# 5. СКАЧИВАНИЕ И КОПИРОВАНИЕ JAVAFX
+# 5. СКАЧИВАНИЕ И КОПИРОВАНИЕ JAVAFX (УПРОЩЁННЫЙ ВАРИАНТ)
 # ============================================================
-Write-Host "[5/6] Downloading and copying JavaFX..." -NoNewline
+Write-Host "[5/7] Downloading and copying JavaFX..." -NoNewline
 
 $javafxModules = @(
     "javafx-controls",
@@ -145,44 +145,19 @@ $javafxModules = @(
 $javafxZip = "javafx-sdk.zip"
 $javafxTemp = "javafx-sdk-temp"
 
-# Источники для скачивания
-$sources = @(
-    "https://download2.gluonhq.com/openjfx/${JAVAFX_VERSION}/openjfx-${JAVAFX_VERSION}_windows-x64_bin-sdk.zip",
-    "https://download.andreschleich.de/openjfx/${JAVAFX_VERSION}/openjfx-${JAVAFX_VERSION}_windows-x64_bin-sdk.zip"
-)
+# Скачиваем JavaFX
+Write-Host "`n   Downloading JavaFX SDK..." -ForegroundColor Gray
 
-$downloaded = $false
-
-foreach ($source in $sources) {
-    Write-Host "`n   Trying source: $source" -ForegroundColor Gray
-
-    for ($attempt = 1; $attempt -le 3; $attempt++) {
-        try {
-            Write-Host "   Attempt $attempt/3..." -ForegroundColor Gray
-            Invoke-WebRequest -Uri $source -OutFile $javafxZip -UseBasicParsing -ErrorAction Stop -TimeoutSec 60
-            Write-Host "   Downloaded successfully!" -ForegroundColor Green
-            $downloaded = $true
-            break
-        } catch {
-            Write-Host "   Attempt $attempt failed: $($_.Exception.Message)" -ForegroundColor Yellow
-            if ($attempt -lt 3) {
-                Write-Host "   Waiting 5 seconds..." -ForegroundColor Gray
-                Start-Sleep -Seconds 5
-            }
-        }
-    }
-
-    if ($downloaded) {
-        break
-    }
-}
-
-if (-not $downloaded) {
-    Write-Host "`n   ERROR: Failed to download JavaFX from all sources!" -ForegroundColor Red
+$url = "https://download2.gluonhq.com/openjfx/${JAVAFX_VERSION}/openjfx-${JAVAFX_VERSION}_windows-x64_bin-sdk.zip"
+try {
+    Invoke-WebRequest -Uri $url -OutFile $javafxZip -UseBasicParsing -ErrorAction Stop -TimeoutSec 120
+    Write-Host "   Downloaded successfully!" -ForegroundColor Green
+} catch {
+    Write-Host "   ERROR: Failed to download JavaFX!" -ForegroundColor Red
     exit 1
 }
 
-# Распаковка в конкретную папку
+# Распаковка
 try {
     if (Test-Path $javafxTemp) {
         Remove-Item $javafxTemp -Recurse -Force
@@ -190,28 +165,23 @@ try {
     New-Item -ItemType Directory -Path $javafxTemp -Force | Out-Null
     Expand-Archive -Path $javafxZip -DestinationPath $javafxTemp -Force
     Remove-Item $javafxZip -Force
-    Write-Host "   JavaFX SDK extracted to: $javafxTemp" -ForegroundColor Gray
+    Write-Host "   Extracted successfully!" -ForegroundColor Green
 } catch {
     Write-Host "   ERROR: Failed to extract JavaFX SDK!" -ForegroundColor Red
     exit 1
 }
 
-# --- ОТЛАДКА: показываем структуру распакованного архива ---
-Write-Host "   Debug: Contents of extracted JavaFX:" -ForegroundColor Gray
-Get-ChildItem -Path $javafxTemp -Recurse | ForEach-Object { Write-Host "     $($_.FullName)" -ForegroundColor Gray }
-
-# Ищем папку lib с JAR-файлами
+# --- ИЩЕМ ПАПКУ lib ---
 $javafxLib = $null
 
-# Ищем в разных возможных местах
-$searchPaths = @(
+# Варианты путей
+$possiblePaths = @(
     "$javafxTemp\javafx-sdk-${JAVAFX_VERSION}\lib",
     "$javafxTemp\javafx-sdk\lib",
-    "$javafxTemp\lib",
-    "$javafxTemp\javafx-sdk-21.0.6\lib"
+    "$javafxTemp\lib"
 )
 
-foreach ($path in $searchPaths) {
+foreach ($path in $possiblePaths) {
     if (Test-Path $path) {
         $javafxLib = $path
         Write-Host "   Found JavaFX lib at: $javafxLib" -ForegroundColor Green
@@ -219,11 +189,11 @@ foreach ($path in $searchPaths) {
     }
 }
 
-# Если не нашли — ищем любую папку lib
+# Если не нашли — ищем рекурсивно
 if (-not $javafxLib) {
+    Write-Host "   Searching for lib folder..." -ForegroundColor Gray
     $foundDirs = Get-ChildItem -Path $javafxTemp -Directory -Recurse | Where-Object { $_.Name -eq "lib" }
     foreach ($dir in $foundDirs) {
-        # Проверяем, есть ли там javafx-controls.jar
         $testJar = Join-Path $dir.FullName "javafx-controls.jar"
         if (Test-Path $testJar) {
             $javafxLib = $dir.FullName
@@ -235,39 +205,45 @@ if (-not $javafxLib) {
 
 if (-not $javafxLib) {
     Write-Host "`n   ERROR: JavaFX lib folder not found!" -ForegroundColor Red
-    Write-Host "   Full contents of ${javafxTemp}:" -ForegroundColor Yellow
+    Write-Host "   Contents of ${javafxTemp}:" -ForegroundColor Yellow
     Get-ChildItem -Path $javafxTemp -Recurse | ForEach-Object { Write-Host "     $($_.FullName)" -ForegroundColor Gray }
     exit 1
 }
 
-# Копируем JAR-файлы
+# --- КОПИРУЕМ JAR-ФАЙЛЫ ---
+Write-Host "   Copying JAR files..." -ForegroundColor Gray
 foreach ($mod in $javafxModules) {
     $src = Join-Path $javafxLib "$mod.jar"
     if (Test-Path $src) {
         Copy-Item $src "$distDir\lib\$mod.jar" -Force
-        Write-Host "   + $mod.jar" -ForegroundColor Gray
+        Write-Host "     + $mod.jar" -ForegroundColor Gray
     } else {
-        Write-Host "   WARNING: $mod.jar not found, searching..." -ForegroundColor Yellow
-        # Ищем файл с похожим именем
+        # Пробуем найти файл с другим именем
         $foundJar = Get-ChildItem -Path $javafxLib -Filter "${mod}*.jar" | Select-Object -First 1
         if ($foundJar) {
             Copy-Item $foundJar.FullName "$distDir\lib\$mod.jar" -Force
-            Write-Host "   + $mod.jar (found as $($foundJar.Name))" -ForegroundColor Gray
+            Write-Host "     + $mod.jar (found as $($foundJar.Name))" -ForegroundColor Gray
         } else {
-            Write-Host "   ERROR: $mod.jar not found in $javafxLib" -ForegroundColor Red
+            Write-Host "     ERROR: $mod.jar not found!" -ForegroundColor Red
         }
     }
 }
 
-# Копируем Windows JAR с DLL
-$winJarFound = Get-ChildItem -Path $javafxLib -Filter "*win*.jar" | Select-Object -First 1
-if ($winJarFound) {
-    Push-Location "$distDir\native"
-    & "$JDK_PATH\bin\jar.exe" xf $winJarFound.FullName *.dll 2>&1 | Out-Null
-    Pop-Location
-    Write-Host "   + DLL extracted from $($winJarFound.Name)" -ForegroundColor Gray
-} else {
-    Write-Host "   WARNING: No Windows JAR with DLL found!" -ForegroundColor Yellow
+# --- КОПИРУЕМ DLL ---
+Write-Host "   Copying DLL files..." -ForegroundColor Gray
+$dllFiles = Get-ChildItem -Path $javafxLib -Filter "*.dll" -Recurse
+foreach ($dll in $dllFiles) {
+    Copy-Item $dll.FullName "$distDir\native\" -Force
+    Write-Host "     + $($dll.Name)" -ForegroundColor Gray
+}
+
+# Если DLL не нашли в lib — ищем в папке bin
+if ($dllFiles.Count -eq 0) {
+    $dllFiles = Get-ChildItem -Path $javafxTemp -Filter "*.dll" -Recurse
+    foreach ($dll in $dllFiles) {
+        Copy-Item $dll.FullName "$distDir\native\" -Force
+        Write-Host "     + $($dll.Name)" -ForegroundColor Gray
+    }
 }
 
 # Удаляем временную папку
@@ -280,7 +256,7 @@ Write-Host "   JavaFX ready" -ForegroundColor Green
 # ============================================================
 # 6. КОПИРОВАНИЕ ФАЙЛОВ ПРИЛОЖЕНИЯ
 # ============================================================
-Write-Host "[6/6] Copying application files..." -NoNewline
+Write-Host "[6/7] Copying application files..." -NoNewline
 
 # JAR
 Copy-Item $jarFile "$distDir\autoservice-admin.jar" -Force
@@ -308,7 +284,7 @@ Write-Host " OK" -ForegroundColor Green
 # ============================================================
 # 7. ПРОВЕРКА РЕЗУЛЬТАТА
 # ============================================================
-Write-Host "Checking result..." -NoNewline
+Write-Host "[7/7] Checking result..." -NoNewline
 
 $libFiles = Get-ChildItem "$distDir\lib" -Filter "*.jar"
 $missingJars = @()
@@ -324,6 +300,10 @@ if ($missingJars.Count -gt 0) {
 } else {
     Write-Host " OK - all JARs present" -ForegroundColor Green
 }
+
+# Проверяем наличие DLL
+$dllCount = (Get-ChildItem "$distDir\native" -Filter "*.dll").Count
+Write-Host "   DLLs found: $dllCount" -ForegroundColor Gray
 
 # ============================================================
 # 8. СОЗДАНИЕ STO.BAT
