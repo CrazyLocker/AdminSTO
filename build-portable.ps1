@@ -92,18 +92,18 @@ Write-Host "[3/7] Searching JavaFX SDK..." -NoNewline
 $javafxSourceDir = $null
 $javafxLib = $null
 
-# Возможные пути
+# Возможные пути (исправлено: каждый путь отдельно)
 $searchPaths = @(
-    Join-Path $projectDir "javafx-sdk-21.0.6",
-    Join-Path $projectDir "javafx-sdk-21",
-    Join-Path $projectDir "javafx-sdk",
-    Join-Path $projectDir "..\javafx-sdk-21.0.6"
+    "$projectDir\javafx-sdk-21.0.6",
+    "$projectDir\javafx-sdk-21",
+    "$projectDir\javafx-sdk",
+    "$projectDir\..\javafx-sdk-21.0.6"
 )
 
 foreach ($path in $searchPaths) {
     if (Test-Path $path) {
         $javafxSourceDir = $path
-        $javafxLib = Join-Path $path "lib"
+        $javafxLib = "$path\lib"
         if (Test-Path $javafxLib) {
             Write-Host " FOUND at $javafxLib" -ForegroundColor Green
             break
@@ -208,7 +208,7 @@ foreach ($mod in $javafxModules) {
     }
 }
 
-# Копируем Windows JAR с DLL
+# Копируем Windows JAR с DLL (если есть)
 $winJars = $allJars | Where-Object { $_.Name -like "*-win.jar" }
 if ($winJars) {
     foreach ($winJar in $winJars) {
@@ -221,7 +221,7 @@ if ($winJars) {
     Write-Host "   WARNING: No Windows JAR with DLL found" -ForegroundColor Yellow
 }
 
-# Копируем все DLL-файлы
+# Копируем все DLL-файлы из папки lib
 $dllFiles = Get-ChildItem -Path $javafxLib -Filter "*.dll"
 foreach ($dll in $dllFiles) {
     Copy-Item $dll.FullName "$distDir\native\" -Force
