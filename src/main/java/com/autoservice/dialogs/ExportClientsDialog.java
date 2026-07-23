@@ -3,6 +3,7 @@ package com.autoservice.dialogs;
 import com.autoservice.Client;
 import com.autoservice.DataStore;
 import com.autoservice.services.ExportService;
+import com.autoservice.services.FileDialogPathManager;
 import com.autoservice.services.WindowStateManager;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -70,6 +71,16 @@ public class ExportClientsDialog {
                     new FileChooser.ExtensionFilter("XML файлы (*.xml)", "*.xml"),
                     new FileChooser.ExtensionFilter("Все файлы", "*.*")
             );
+            
+            // Устанавливаем последний использованный путь
+            String lastPath = FileDialogPathManager.getInstance().getLastPath("exportClients");
+            if (lastPath != null) {
+                File lastDir = new File(lastPath).getParentFile();
+                if (lastDir != null && lastDir.exists()) {
+                    fileChooser.setInitialDirectory(lastDir);
+                }
+            }
+            
             File file = fileChooser.showSaveDialog(stage);
             if (file != null) {
                 // Добавляем расширение, если пользователь не указал
@@ -79,6 +90,9 @@ public class ExportClientsDialog {
                 }
                 fileField.setText(file.getAbsolutePath());
                 fileField.setTooltip(new Tooltip(file.getName()));
+                
+                // Сохраняем путь к директории
+                FileDialogPathManager.getInstance().saveLastPath("exportClients", file.getAbsolutePath());
             }
         });
 
