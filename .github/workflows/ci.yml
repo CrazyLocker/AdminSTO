@@ -1,0 +1,76 @@
+# .github/workflows/ci.yml
+name: AdminSTO Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Запуск по тегам, начинающимся с 'v'
+
+jobs:
+  build:
+    name: Build and Release
+    runs-on: windows-latest  # GitHub предоставляет бесплатные Windows-раннеры
+
+    steps:
+      # 1. Клонирование
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Настройка JDK 21
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      # 3. Кэширование Gradle (ускоряет сборку)
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: ${{ runner.os }}-gradle-
+
+      # 4. Сборка проекта
+      - name: Build with Gradle
+        run: ./gradlew clean fatJar --stacktrace
+
+      # 5. Создание портативной версии
+      - name: Build portable version
+        shell: pwsh
+        run: |
+          Write-Host "Building portable version..."
+          .\build-portable.ps1
+
+      # 6. Упаковка портативки в ZIP
+      - name: Package portable version
+        shell: pwsh
+        run: |
+          $TAG = "${{ github.ref_name }}"
+          $ZIP_NAME = "AdminSTO-portable-${TAG}.zip"
+          Write-Host "Creating ZIP: $ZIP_NAME"
+          Compress-Archive -Path "AdminSTO_Portable\*" -DestinationPath $ZIP_NAME -Force
+          Write-Host "ZIP created successfully."
+          Write-Output "ZIP_FILE=$ZIP_NAME" >> $env:GITHUB_ENV
+
+      # 7. Сохранение ZIP как артефакта (доступен для скачивания из Actions)
+      - name: Upload ZIP as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AdminSTO-Portable-${{ github.ref_name }}
+          path: ${{ env.ZIP_FILE }}
+          retention-days: 30
+
+      # 8. Создание релиза и загрузка ZIP в него
+      - name: Create Release and Upload Asset
+        uses: softprops/action-gh-release@v2
+        with:
+          name: AdminSTO ${{ github.ref_name }}
+          body: "Автономная версия AdminSTO ${{ github.ref_name }}"
+          draft: false
+          prerelease: false
+          files: ${{ env.ZIP_FILE }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Встроенный токен, ничего создавать не нужно!
