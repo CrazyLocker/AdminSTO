@@ -67,10 +67,9 @@ jobs:
       - name: Create Release and Upload Asset
         uses: softprops/action-gh-release@v2
         with:
+          token: ${{ secrets.RELEASE_TOKEN }}
           name: AdminSTO ${{ github.ref_name }}
           body: "Автономная версия AdminSTO ${{ github.ref_name }}"
           draft: false
           prerelease: false
           files: ${{ env.ZIP_FILE }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }} # Встроенный токен, ничего создавать не нужно!
