@@ -1,6 +1,7 @@
 # ============================================================
 # build-portable.ps1
 # Сборка портативной версии AdminSTO для Windows
+# Гарантированный поиск JavaFX в репозитории
 # ============================================================
 
 $ErrorActionPreference = "Stop"
@@ -9,13 +10,12 @@ $projectDir = $PSScriptRoot
 $distDir = Join-Path $projectDir "AdminSTO_Portable"
 $jarFile = Join-Path $projectDir "build/libs/autoservice-admin.jar"
 $JAVAFX_VERSION = "21.0.6"
-$javafxSourceDir = Join-Path $projectDir "javafx-sdk-21.0.6"
-$javafxLib = Join-Path $javafxSourceDir "lib"
 
 Write-Host "==================================================" -ForegroundColor Cyan
 Write-Host "  AdminSTO Portable Builder" -ForegroundColor Cyan
 Write-Host "==================================================" -ForegroundColor Cyan
 Write-Host ""
+Write-Host "Project directory: $projectDir" -ForegroundColor Gray
 
 # ============================================================
 # 1. ПОИСК JDK 21
@@ -85,56 +85,55 @@ Write-Host " OK" -ForegroundColor Green
 Write-Host ""
 
 # ============================================================
-# 3. ПРОВЕРКА НАЛИЧИЯ JAVAFX
+# 3. ПОИСК JAVAFX (ПРОВЕРЯЕМ ВСЕ ВОЗМОЖНЫЕ ПУТИ)
 # ============================================================
-Write-Host "[3/7] Checking JavaFX SDK..." -NoNewline
+Write-Host "[3/7] Searching JavaFX SDK..." -NoNewline
 
-$javafxExists = $false
-$allJars = $null
+$javafxSourceDir = $null
+$javafxLib = $null
 
-if (Test-Path $javafxLib) {
-    $allJars = Get-ChildItem -Path $javafxLib -Filter "*.jar" -ErrorAction SilentlyContinue
-    if ($allJars -and $allJars.Count -gt 0) {
-        $javafxExists = $true
-        Write-Host " FOUND at $javafxSourceDir ($($allJars.Count) JARs)" -ForegroundColor Green
+# Возможные пути
+$searchPaths = @(
+    Join-Path $projectDir "javafx-sdk-21.0.6",
+    Join-Path $projectDir "javafx-sdk-21",
+    Join-Path $projectDir "javafx-sdk",
+    Join-Path $projectDir "..\javafx-sdk-21.0.6"
+)
+
+foreach ($path in $searchPaths) {
+    if (Test-Path $path) {
+        $javafxSourceDir = $path
+        $javafxLib = Join-Path $path "lib"
+        if (Test-Path $javafxLib) {
+            Write-Host " FOUND at $javafxLib" -ForegroundColor Green
+            break
+        }
     }
 }
 
-if (-not $javafxExists) {
-    Write-Host " NOT FOUND or incomplete - downloading..." -ForegroundColor Yellow
-
-    # Удаляем старую папку, если она есть
-    if (Test-Path $javafxSourceDir) {
-        Write-Host "   Removing existing incomplete JavaFX folder..." -ForegroundColor Gray
-        Remove-Item $javafxSourceDir -Recurse -Force -ErrorAction SilentlyContinue
+if (-not $javafxLib) {
+    Write-Host " NOT FOUND!" -ForegroundColor Red
+    Write-Host "ERROR: JavaFX SDK not found!" -ForegroundColor Red
+    Write-Host "Search paths checked:" -ForegroundColor Yellow
+    foreach ($path in $searchPaths) {
+        Write-Host "  - $path" -ForegroundColor Gray
     }
+    exit 1
+}
 
-    $javafxZip = "javafx-sdk.zip"
-    $url = "https://download2.gluonhq.com/openjfx/${JAVAFX_VERSION}/openjfx-${JAVAFX_VERSION}_windows-x64_bin-sdk.zip"
+# Проверяем наличие JAR-файлов
+$allJars = Get-ChildItem -Path $javafxLib -Filter "*.jar" -ErrorAction SilentlyContinue
 
-    try {
-        Write-Host "   Downloading JavaFX SDK..." -ForegroundColor Gray
-        Invoke-WebRequest -Uri $url -OutFile $javafxZip -UseBasicParsing -ErrorAction Stop -TimeoutSec 120
-        Write-Host "   Downloaded successfully" -ForegroundColor Green
+if (-not $allJars -or $allJars.Count -eq 0) {
+    Write-Host "   NO JAR FILES FOUND in $javafxLib!" -ForegroundColor Red
+    Write-Host "   Contents:" -ForegroundColor Yellow
+    Get-ChildItem -Path $javafxLib | ForEach-Object { Write-Host "     $($_.Name)" -ForegroundColor Gray }
+    exit 1
+}
 
-        Write-Host "   Extracting..." -ForegroundColor Gray
-        Expand-Archive -Path $javafxZip -DestinationPath . -Force
-        Remove-Item $javafxZip -Force
-        Write-Host "   Extracted successfully" -ForegroundColor Green
-
-        $javafxLib = Join-Path $javafxSourceDir "lib"
-        if (-not (Test-Path $javafxLib)) {
-            Write-Host "   ERROR: lib folder not found!" -ForegroundColor Red
-            exit 1
-        }
-
-        $allJars = Get-ChildItem -Path $javafxLib -Filter "*.jar"
-        Write-Host "   JAR files found: $($allJars.Count)" -ForegroundColor Gray
-
-    } catch {
-        Write-Host "   ERROR: Failed to download/extract JavaFX!" -ForegroundColor Red
-        exit 1
-    }
+Write-Host "   JAR files found: $($allJars.Count)" -ForegroundColor Gray
+foreach ($jar in $allJars) {
+    Write-Host "     $($jar.Name)" -ForegroundColor Gray
 }
 Write-Host ""
 
@@ -199,9 +198,6 @@ $javafxModules = @(
 $copiedCount = 0
 foreach ($mod in $javafxModules) {
     $jarFileFound = $allJars | Where-Object { $_.Name -eq "$mod.jar" } | Select-Object -First 1
-    if (-not $jarFileFound) {
-        $jarFileFound = $allJars | Where-Object { $_.Name -like "*$mod*.jar" -and $_.Name -notlike "*-win.jar" } | Select-Object -First 1
-    }
 
     if ($jarFileFound) {
         Copy-Item $jarFileFound.FullName "$distDir\lib\$mod.jar" -Force
@@ -225,7 +221,7 @@ if ($winJars) {
     Write-Host "   WARNING: No Windows JAR with DLL found" -ForegroundColor Yellow
 }
 
-# Копируем все DLL-файлы из папки lib
+# Копируем все DLL-файлы
 $dllFiles = Get-ChildItem -Path $javafxLib -Filter "*.dll"
 foreach ($dll in $dllFiles) {
     Copy-Item $dll.FullName "$distDir\native\" -Force
