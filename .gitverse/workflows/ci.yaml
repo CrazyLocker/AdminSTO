@@ -28,8 +28,6 @@ jobs:
           echo "=== Отладка ==="
           echo "ref: ${{ github.ref }}"
           echo "ref_name: ${{ github.ref_name }}"
-          echo "ref_type: ${{ github.ref_type }}"
-          echo "event_name: ${{ github.event_name }}"
           echo "repository: ${{ github.repository }}"
 
       - name: Устанавливаем JDK 21
@@ -45,7 +43,20 @@ jobs:
         run: chmod +x gradlew
 
       # ==========================================
-      # 2. Сборка проекта
+      # 2. Кэширование Gradle (ускоряет сборку)
+      # ==========================================
+      - name: Кэшируем Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches/
+            ~/.gradle/wrapper/dists/
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      # ==========================================
+      # 3. Сборка проекта
       # ==========================================
       - name: Собираем проект
         run: ./gradlew clean compileJava --stacktrace
@@ -60,7 +71,7 @@ jobs:
           du -sh build/libs/*.jar 2>/dev/null || true
 
       # ==========================================
-      # 3. Создание portable-версии
+      # 4. Создание portable-версии
       # ==========================================
       - name: Создаём portable-версию
         run: |
@@ -77,7 +88,7 @@ jobs:
           ls -lh AdminSTO_Portable/run.sh
 
       # ==========================================
-      # 4. Создание ZIP для релиза
+      # 5. Создание ZIP для релиза
       # ==========================================
       - name: Создаём ZIP для релиза
         run: |
@@ -90,7 +101,7 @@ jobs:
           echo "ZIP_SIZE=$(du -h AdminSTO-portable-${{ github.ref_name }}.zip | cut -f1)" >> $GITHUB_ENV
 
       # ==========================================
-      # 5. Создание релиза через официальный API GitVerse
+      # 6. Создание релиза через официальный API GitVerse
       # ==========================================
       - name: Создаём релиз через официальный API GitVerse
         env:
@@ -103,7 +114,6 @@ jobs:
           OWNER="dez21"
           REPO="AdminSTO"
 
-          # Официальный базовый URL API GitVerse
           API_URL="https://api.gitverse.ru/repos/${OWNER}/${REPO}/releases"
 
           echo "=== Создание релиза через официальный API GitVerse ==="
@@ -113,7 +123,6 @@ jobs:
           echo "API URL: ${API_URL}"
           echo "Токен установлен: $([ -n "${SECRETTOKEN}" ] && echo "Да" || echo "Нет")"
 
-          # Проверяем наличие ZIP файла
           if [ ! -f "${ZIP}" ]; then
             echo "❌ ZIP файл не найден: ${ZIP}"
             ls -lh *.zip 2>/dev/null || echo "Нет ZIP файлов"
@@ -122,7 +131,6 @@ jobs:
 
           echo "✅ ZIP файл найден: $(ls -lh ${ZIP})"
 
-          # 1. Создаём релиз
           echo ""
           echo "--- Шаг 1: Создание релиза ---"
           RESPONSE=$(curl -s -X POST "${API_URL}" \
@@ -139,14 +147,12 @@ jobs:
 
           echo "Ответ API: ${RESPONSE}"
 
-          # Проверяем ответ на наличие ошибки
           if echo "${RESPONSE}" | grep -q '"error"'; then
             ERROR_MSG=$(echo "${RESPONSE}" | grep -o '"message":"[^"]*"' | cut -d'"' -f4)
             echo "❌ Ошибка создания релиза: ${ERROR_MSG}"
             exit 1
           fi
 
-          # Извлекаем ID релиза
           RELEASE_ID=$(echo "${RESPONSE}" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*')
 
           if [ -z "${RELEASE_ID}" ]; then
@@ -157,7 +163,6 @@ jobs:
 
           echo "✅ Релиз создан! ID: ${RELEASE_ID}"
 
-          # 2. Загружаем ассет (ZIP файл)
           echo ""
           echo "--- Шаг 2: Загрузка ассета ---"
           ASSET_URL="https://api.gitverse.ru/repos/${OWNER}/${REPO}/releases/${RELEASE_ID}/assets"
@@ -178,7 +183,6 @@ jobs:
             exit 1
           fi
 
-          # Проверяем успешность загрузки
           if echo "${UPLOAD_RESPONSE}" | grep -q '"id"'; then
             ASSET_ID=$(echo "${UPLOAD_RESPONSE}" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*')
             echo "✅ Ассет загружен! ID: ${ASSET_ID}"
@@ -191,12 +195,11 @@ jobs:
           echo "🔗 Ссылка: https://gitverse.ru/${OWNER}/${REPO}/releases/tag/${TAG}"
           echo "📦 ZIP файл: ${ZIP}"
 
-          # Сохраняем информацию для последующих шагов
           echo "RELEASE_ID=${RELEASE_ID}" >> $GITHUB_ENV
           echo "RELEASE_URL=https://gitverse.ru/${OWNER}/${REPO}/releases/tag/${TAG}" >> $GITHUB_ENV
 
       # ==========================================
-      # 6. Информация о завершении
+      # 7. Информация о завершении
       # ==========================================
       - name: Завершение сборки
         run: |
