@@ -13,50 +13,48 @@ on:
 
 jobs:
   build:
-    name: Сборка проекта
+    name: Сборка и релиз
     runs-on: ubuntu-latest
 
     steps:
       # ==========================================
-      # 1. Клонирование и настройка окружения
+      # 1. Клонирование
       # ==========================================
       - name: Клонируем репозиторий
         uses: actions/checkout@v4
 
-      - name: Отладка переменных
+      - name: Отладка
         run: |
-          echo "=== Отладка ==="
-          echo "ref: ${{ github.ref }}"
           echo "ref_name: ${{ github.ref_name }}"
           echo "repository: ${{ github.repository }}"
 
+      # ==========================================
+      # 2. Настройка JDK
+      # ==========================================
       - name: Устанавливаем JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Проверяем версию Java
-        run: java -version
-
       - name: Делаем gradlew исполняемым
         run: chmod +x gradlew
 
       # ==========================================
-      # 2. Кэширование Gradle (ускоряет сборку)
+      # 3. Кэширование Gradle
       # ==========================================
       - name: Кэшируем Gradle
         uses: actions/cache@v4
         with:
           path: |
-            ~/.gradle/caches/
-            ~/.gradle/wrapper/dists/
+            ~/.gradle/caches
+            ~/.gradle/wrapper
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
 
       # ==========================================
-      # 3. Сборка проекта
+      # 4. Сборка проекта
       # ==========================================
       - name: Собираем проект
         run: ./gradlew clean compileJava --stacktrace
@@ -64,14 +62,8 @@ jobs:
       - name: Создаём fat JAR
         run: ./gradlew fatJar --stacktrace
 
-      - name: Проверяем JAR
-        run: |
-          echo "=== Результаты сборки JAR ==="
-          ls -lh build/libs/*.jar 2>/dev/null || echo "JAR не найден"
-          du -sh build/libs/*.jar 2>/dev/null || true
-
       # ==========================================
-      # 4. Создание portable-версии
+      # 5. Создание портативной версии
       # ==========================================
       - name: Создаём portable-версию
         run: |
@@ -80,30 +72,48 @@ jobs:
 
       - name: Проверяем portable-версию
         run: |
-          echo "=== Portable версия ==="
-          ls -lh AdminSTO_Portable/
-          echo "Размер папки:"
+          echo "=== Содержимое AdminSTO_Portable ==="
+          ls -la AdminSTO_Portable/
+          echo "Размер:"
           du -sh AdminSTO_Portable/
-          echo "Файл запуска:"
-          ls -lh AdminSTO_Portable/run.sh
 
       # ==========================================
-      # 5. Создание ZIP для релиза
+      # 6. Упаковка портативной версии в ZIP
       # ==========================================
-      - name: Создаём ZIP для релиза
+      - name: Упаковываем портативку в ZIP
         run: |
+          TAG="${{ github.ref_name }}"
+          ZIP_NAME="AdminSTO-portable-${TAG}.zip"
+          
+          echo "=== Упаковка портативной версии ==="
+          echo "Тег: ${TAG}"
+          echo "ZIP: ${ZIP_NAME}"
+          
+          # Проверяем, что папка существует
+          if [ ! -d "AdminSTO_Portable" ]; then
+            echo "❌ Папка AdminSTO_Portable не найдена!"
+            exit 1
+          fi
+          
+          # Упаковываем содержимое папки (без самой папки)
           cd AdminSTO_Portable
-          zip -r ../AdminSTO-portable-${{ github.ref_name }}.zip .
+          zip -r "../${ZIP_NAME}" .
           cd ..
-          echo "=== ZIP создан ==="
-          ls -lh AdminSTO-portable-*.zip
-          echo "ZIP_FILE=AdminSTO-portable-${{ github.ref_name }}.zip" >> $GITHUB_ENV
-          echo "ZIP_SIZE=$(du -h AdminSTO-portable-${{ github.ref_name }}.zip | cut -f1)" >> $GITHUB_ENV
+          
+          echo "✅ ZIP создан: $(ls -lh ${ZIP_NAME})"
+          
+          # Сохраняем имя файла для следующих шагов
+          echo "ZIP_FILE=${ZIP_NAME}" >> $GITHUB_ENV
+          echo "ZIP_SIZE=$(du -h ${ZIP_NAME} | cut -f1)" >> $GITHUB_ENV
+          
+          # Проверяем содержимое ZIP
+          echo "=== Содержимое ZIP ==="
+          unzip -l "${ZIP_NAME}" | head -20
 
       # ==========================================
-      # 6. Создание релиза через официальный API GitVerse
+      # 7. Создание релиза через API GitVerse
       # ==========================================
-      - name: Создаём релиз через официальный API GitVerse
+      - name: Создаём релиз
         env:
           SECRETTOKEN: ${{ secrets.SECRETTOKEN }}
         run: |
@@ -116,30 +126,23 @@ jobs:
 
           API_URL="https://api.gitverse.ru/repos/${OWNER}/${REPO}/releases"
 
-          echo "=== Создание релиза через официальный API GitVerse ==="
+          echo "=== Создание релиза ==="
           echo "Тег: ${TAG}"
-          echo "ZIP файл: ${ZIP}"
-          echo "Размер ZIP: ${ZIP_SIZE}"
-          echo "API URL: ${API_URL}"
-          echo "Токен установлен: $([ -n "${SECRETTOKEN}" ] && echo "Да" || echo "Нет")"
+          echo "ZIP: ${ZIP} (${ZIP_SIZE})"
 
           if [ ! -f "${ZIP}" ]; then
-            echo "❌ ZIP файл не найден: ${ZIP}"
-            ls -lh *.zip 2>/dev/null || echo "Нет ZIP файлов"
+            echo "❌ ZIP не найден!"
             exit 1
           fi
 
-          echo "✅ ZIP файл найден: $(ls -lh ${ZIP})"
-
-          echo ""
-          echo "--- Шаг 1: Создание релиза ---"
+          # Создаём релиз
           RESPONSE=$(curl -s -X POST "${API_URL}" \
             -H "Authorization: Bearer ${SECRETTOKEN}" \
             -H "Accept: application/vnd.gitverse.object+json;version=1" \
             -H "Content-Type: application/json" \
             -d "{
               \"tag_name\": \"${TAG}\",
-              \"name\": \"Релиз ${TAG}\",
+              \"name\": \"AdminSTO ${TAG}\",
               \"body\": \"Автономная версия AdminSTO ${TAG}\",
               \"draft\": false,
               \"prerelease\": false
@@ -148,8 +151,7 @@ jobs:
           echo "Ответ API: ${RESPONSE}"
 
           if echo "${RESPONSE}" | grep -q '"error"'; then
-            ERROR_MSG=$(echo "${RESPONSE}" | grep -o '"message":"[^"]*"' | cut -d'"' -f4)
-            echo "❌ Ошибка создания релиза: ${ERROR_MSG}"
+            echo "❌ Ошибка: ${RESPONSE}"
             exit 1
           fi
 
@@ -157,56 +159,28 @@ jobs:
 
           if [ -z "${RELEASE_ID}" ]; then
             echo "❌ Не удалось получить ID релиза!"
-            echo "Ответ: ${RESPONSE}"
             exit 1
           fi
 
           echo "✅ Релиз создан! ID: ${RELEASE_ID}"
 
-          echo ""
-          echo "--- Шаг 2: Загрузка ассета ---"
+          # Загружаем ZIP
           ASSET_URL="https://api.gitverse.ru/repos/${OWNER}/${REPO}/releases/${RELEASE_ID}/assets"
 
-          echo "Загрузка на: ${ASSET_URL}"
-          echo "Файл: ${ZIP}"
-
+          echo "Загрузка ZIP..."
           UPLOAD_RESPONSE=$(curl -s -X POST "${ASSET_URL}" \
             -H "Authorization: Bearer ${SECRETTOKEN}" \
             -H "Accept: application/vnd.gitverse.object+json;version=1" \
             -F "file=@${ZIP}")
 
-          echo "Ответ загрузки: ${UPLOAD_RESPONSE}"
-
-          if echo "${UPLOAD_RESPONSE}" | grep -q '"error"'; then
-            ERROR_MSG=$(echo "${UPLOAD_RESPONSE}" | grep -o '"message":"[^"]*"' | cut -d'"' -f4)
-            echo "❌ Ошибка загрузки ассета: ${ERROR_MSG}"
-            exit 1
-          fi
+          echo "Загрузка: ${UPLOAD_RESPONSE}"
 
           if echo "${UPLOAD_RESPONSE}" | grep -q '"id"'; then
-            ASSET_ID=$(echo "${UPLOAD_RESPONSE}" | grep -o '"id":[0-9]*' | head -1 | grep -o '[0-9]*')
-            echo "✅ Ассет загружен! ID: ${ASSET_ID}"
+            echo "✅ ZIP загружен!"
           else
-            echo "⚠️ Не удалось получить ID ассета, но ошибок нет."
+            echo "⚠️ Ошибок нет, но ID не получен"
           fi
 
           echo ""
-          echo "✅ Релиз успешно создан!"
-          echo "🔗 Ссылка: https://gitverse.ru/${OWNER}/${REPO}/releases/tag/${TAG}"
-          echo "📦 ZIP файл: ${ZIP}"
-
-          echo "RELEASE_ID=${RELEASE_ID}" >> $GITHUB_ENV
-          echo "RELEASE_URL=https://gitverse.ru/${OWNER}/${REPO}/releases/tag/${TAG}" >> $GITHUB_ENV
-
-      # ==========================================
-      # 7. Информация о завершении
-      # ==========================================
-      - name: Завершение сборки
-        run: |
-          echo "=== Сборка завершена ==="
-          if [ -n "${RELEASE_URL}" ]; then
-            echo "✅ Релиз создан: ${RELEASE_URL}"
-          else
-            echo "❌ Релиз не создан!"
-            exit 1
-          fi
+          echo "✅ Релиз готов!"
+          echo "🔗 https://gitverse.ru/${OWNER}/${REPO}/releases/tag/${TAG}"
