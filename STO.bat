@@ -2,11 +2,12 @@
 chcp 65001 >nul
 setlocal enabledelayedexpansion
 
+cd /d "%~dp0"
+
 :: ============================================
 :: AdminSTO - Администратор СТО (Portable)
+:: Запуск портативной версии с флэшки
 :: ============================================
-
-cd /d "%~dp0"
 
 :: Проверка наличия JRE
 if not exist "jre\bin\java.exe" (
@@ -16,7 +17,7 @@ if not exist "jre\bin\java.exe" (
     exit /b 1
 )
 
-:: Проверка наличия JavaFX JAR
+:: Проверка наличия JavaFX
 if not exist "lib\javafx.controls.jar" (
     echo ОШИБКА: Не найдены библиотеки JavaFX!
     echo Убедитесь, что вся папка скопирована целиком.
@@ -27,23 +28,25 @@ if not exist "lib\javafx.controls.jar" (
 set APP_DIR=%CD%
 
 echo ============================================
-echo  AdminSTO - Администратор СТО
+echo   AdminSTO - Администратор СТО
 echo ============================================
 echo.
 echo Запуск...
 echo.
 
-:: Запуск приложения:
-:: -fat JAR на classpath (классы приложения + non-JavaFX зависимости)
-:: -JavaFX JAR на module-path (с нативными DLL в lib/)
-:: -Данные и конфиги в папке приложения (portable)
+:: Формируем module-path из всех JAR в lib
+set MODULE_PATH=lib\javafx.base.jar;lib\javafx.controls.jar;lib\javafx.fxml.jar;lib\javafx.graphics.jar;lib\javafx.media.jar;lib\javafx.swing.jar;lib\javafx.web.jar
+
 jre\bin\java.exe ^
     -Duser.language=ru ^
     -Duser.country=RU ^
     -Dfile.encoding=UTF-8 ^
     -Dapp.home="!APP_DIR!" ^
-    -Djava.library.path="!APP_DIR!\lib" ^
-    --module-path "lib" ^
+    -Djava.library.path="!APP_DIR!\native" ^
+    -Dprism.order=sw ^
+    -Dprism.text=t2k ^
+    -Djavafx.headless=false ^
+    --module-path "%MODULE_PATH%" ^
     --add-modules javafx.controls,javafx.fxml ^
     --add-opens javafx.controls/javafx.scene.control.skin=ALL-UNNAMED ^
     --add-opens javafx.graphics/javafx.scene=ALL-UNNAMED ^
@@ -62,11 +65,11 @@ jre\bin\java.exe ^
 if errorlevel 1 (
     echo.
     echo ============================================
-    echo  ОШИБКА запуска!
+    echo   ОШИБКА запуска!
     echo ============================================
     echo.
     echo Проверьте:
-    echo   1. Вся папка скопирована целиком?
+    echo   1. Вся папка AdminSTO_Portable скопирована целиком?
     echo   2. Windows 64-bit?
     echo   3. Файлы не заблокированы антивирусом?
     echo.
