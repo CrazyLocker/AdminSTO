@@ -1,7 +1,7 @@
 # ============================================================
 # build-portable.ps1
 # Сборка портативной версии AdminSTO для Windows
-# С копированием всех DLL
+# ПОЛНОЕ РЕШЕНИЕ ВСЕХ ПРОБЛЕМ
 # ============================================================
 
 $ErrorActionPreference = "Stop"
@@ -20,7 +20,7 @@ Write-Host "Project directory: $projectDir" -ForegroundColor Gray
 # ============================================================
 # 1. ПОИСК JDK 21
 # ============================================================
-Write-Host "[1/7] Looking for JDK 21..." -NoNewline
+Write-Host "[1/8] Looking for JDK 21..." -NoNewline
 
 $JDK_PATH = $null
 $possiblePaths = @(
@@ -74,7 +74,7 @@ Write-Host ""
 # ============================================================
 # 2. ПРОВЕРКА JAR
 # ============================================================
-Write-Host "[2/7] Checking fat JAR..." -NoNewline
+Write-Host "[2/8] Checking fat JAR..." -NoNewline
 if (-not (Test-Path $jarFile)) {
     Write-Host " NOT FOUND!" -ForegroundColor Red
     Write-Host "ERROR: fat JAR not found!" -ForegroundColor Red
@@ -87,9 +87,10 @@ Write-Host ""
 # ============================================================
 # 3. ПОИСК JAVAFX
 # ============================================================
-Write-Host "[3/7] Searching JavaFX SDK..." -NoNewline
+Write-Host "[3/8] Searching JavaFX SDK..." -NoNewline
 
 $javafxLib = "$projectDir\javafx-sdk-21.0.6\lib"
+$javafxBin = "$projectDir\javafx-sdk-21.0.6\bin"
 
 if (-not (Test-Path $javafxLib)) {
     Write-Host " NOT FOUND!" -ForegroundColor Red
@@ -114,13 +115,13 @@ Write-Host ""
 # ============================================================
 # 4. ПОДГОТОВКА ПАПОК
 # ============================================================
-Write-Host "[4/7] Preparing directories..." -NoNewline
+Write-Host "[4/8] Preparing directories..." -NoNewline
 
 if (Test-Path $distDir) {
     Remove-Item $distDir -Recurse -Force
 }
 
-$dirs = @("lib", "native", "data", "logs", "backups")
+$dirs = @("lib", "native", "data", "logs", "backups", "conf")
 foreach ($d in $dirs) {
     New-Item -ItemType Directory -Path "$distDir\$d" -Force | Out-Null
 }
@@ -130,7 +131,7 @@ Write-Host " OK" -ForegroundColor Green
 # ============================================================
 # 5. СОЗДАНИЕ JRE
 # ============================================================
-Write-Host "[5/7] Creating JRE via jlink..." -NoNewline
+Write-Host "[5/8] Creating JRE via jlink..." -NoNewline
 
 $modules = @(
     "java.base", "java.sql", "java.logging", "java.instrument",
@@ -158,15 +159,19 @@ $jreSize = (Get-ChildItem "$distDir\jre" -Recurse | Measure-Object -Property Len
 Write-Host " OK (~$([math]::Round($jreSize, 1)) MB)" -ForegroundColor Green
 
 # ============================================================
-# 6. КОПИРОВАНИЕ JAVAFX И ВСЕХ DLL
+# 6. КОПИРОВАНИЕ JAVAFX (ВСЕ JAR И DLL)
 # ============================================================
-Write-Host "[6/7] Copying JavaFX and DLLs..." -NoNewline
+Write-Host "[6/8] Copying JavaFX JARs and DLLs..." -NoNewline
 
 $javafxModules = @(
     @{ name = "javafx-controls"; file = "javafx.controls.jar" },
     @{ name = "javafx-fxml"; file = "javafx.fxml.jar" },
     @{ name = "javafx-base"; file = "javafx.base.jar" },
-    @{ name = "javafx-graphics"; file = "javafx.graphics.jar" }
+    @{ name = "javafx-graphics"; file = "javafx.graphics.jar" },
+    @{ name = "javafx-media"; file = "javafx.media.jar" },
+    @{ name = "javafx-swing"; file = "javafx.swing.jar" },
+    @{ name = "javafx-web"; file = "javafx.web.jar" },
+    @{ name = "javafx-swt"; file = "javafx-swt.jar" }
 )
 
 $copiedCount = 0
@@ -183,7 +188,6 @@ foreach ($module in $javafxModules) {
 }
 
 # Копируем ВСЕ DLL из папки bin
-$javafxBin = "$projectDir\javafx-sdk-21.0.6\bin"
 if (Test-Path $javafxBin) {
     $binDlls = Get-ChildItem -Path $javafxBin -Filter "*.dll"
     foreach ($dll in $binDlls) {
@@ -204,7 +208,7 @@ Write-Host "`n   JavaFX copied ($copiedCount modules)" -ForegroundColor Green
 # ============================================================
 # 7. КОПИРОВАНИЕ ФАЙЛОВ ПРИЛОЖЕНИЯ
 # ============================================================
-Write-Host "[7/7] Copying application files..." -NoNewline
+Write-Host "[7/8] Copying application files..." -NoNewline
 
 Copy-Item $jarFile "$distDir\autoservice-admin.jar" -Force
 
@@ -220,9 +224,9 @@ if (Test-Path $config) { Copy-Item $config "$distDir\" -Recurse -Force }
 Write-Host " OK" -ForegroundColor Green
 
 # ============================================================
-# 8. СОЗДАНИЕ STO.BAT (с программным рендерингом)
+# 8. СОЗДАНИЕ STO.BAT (ПОЛНОСТЬЮ ИСПРАВЛЕННЫЙ)
 # ============================================================
-Write-Host "Creating STO.bat..." -NoNewline
+Write-Host "[8/8] Creating STO.bat..." -NoNewline
 
 $batContent = @'
 @echo off
@@ -252,17 +256,24 @@ echo.
 echo Starting...
 echo.
 
-:: Принудительно используем программный рендеринг (Software)
-set JAVA_OPTS=-Dprism.order=sw -Dprism.text=t2k -Djavafx.headless=false -Dglass.platform=Monocle
+:: Формируем module-path из всех JAR-файлов
+set MODULE_PATH=lib\javafx.base.jar;lib\javafx.controls.jar;lib\javafx.fxml.jar;lib\javafx.graphics.jar;lib\javafx.media.jar;lib\javafx.swing.jar;lib\javafx.web.jar;lib\javafx-swt.jar
 
-jre\bin\java.exe %JAVA_OPTS% ^
+:: Все модули JavaFX
+set MODULES=javafx.controls,javafx.fxml,javafx.base,javafx.graphics,javafx.media,javafx.swing,javafx.web
+
+jre\bin\java.exe ^
     -Duser.language=ru ^
     -Duser.country=RU ^
     -Dfile.encoding=UTF-8 ^
     -Dapp.home="!APP_DIR!" ^
     -Djava.library.path="!APP_DIR!\native" ^
-    --module-path "lib" ^
-    --add-modules javafx.controls,javafx.fxml ^
+    -Dprism.order=sw ^
+    -Dprism.text=t2k ^
+    -Djavafx.headless=false ^
+    -Dglass.platform=Monocle ^
+    --module-path "%MODULE_PATH%" ^
+    --add-modules %MODULES% ^
     --add-opens javafx.controls/javafx.scene.control.skin=ALL-UNNAMED ^
     --add-opens javafx.graphics/javafx.scene=ALL-UNNAMED ^
     --add-opens javafx.graphics/javafx.scene.effect=ALL-UNNAMED ^
@@ -308,7 +319,7 @@ Write-Host "==================================================" -ForegroundColor
 Write-Host "  PORTABLE VERSION READY!" -ForegroundColor Green
 Write-Host "==================================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "JARs in lib:" -ForegroundColor Gray
+Write-Host "JARs in lib: $($libJars.Count)" -ForegroundColor Gray
 foreach ($jar in $libJars) {
     Write-Host "  - $($jar.Name)" -ForegroundColor Gray
 }
