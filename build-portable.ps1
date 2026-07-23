@@ -1,15 +1,14 @@
 # ============================================================
 # build-portable.ps1
 # Сборка портативной версии AdminSTO для Windows
-# Рекурсивный поиск JavaFX в папке репозитория
 # ============================================================
 
 $ErrorActionPreference = "Stop"
 
-# ----- ПЕРЕМЕННЫЕ -----
 $projectDir = $PSScriptRoot
 $distDir = Join-Path $projectDir "AdminSTO_Portable"
 $jarFile = Join-Path $projectDir "build/libs/autoservice-admin.jar"
+$JAVAFX_VERSION = "21.0.6"
 $javafxSourceDir = Join-Path $projectDir "javafx-sdk-21.0.6"
 
 Write-Host "==================================================" -ForegroundColor Cyan
@@ -20,10 +19,9 @@ Write-Host ""
 # ============================================================
 # 1. ПОИСК JDK 21
 # ============================================================
-Write-Host "[1/6] Looking for JDK 21..." -NoNewline
+Write-Host "[1/7] Looking for JDK 21..." -NoNewline
 
 $JDK_PATH = $null
-
 $possiblePaths = @(
     "C:\Program Files\Eclipse Adoptium\jdk-21*",
     "C:\Program Files\Java\jdk-21*",
@@ -75,7 +73,7 @@ Write-Host ""
 # ============================================================
 # 2. ПРОВЕРКА JAR
 # ============================================================
-Write-Host "[2/6] Checking fat JAR..." -NoNewline
+Write-Host "[2/7] Checking fat JAR..." -NoNewline
 if (-not (Test-Path $jarFile)) {
     Write-Host " NOT FOUND!" -ForegroundColor Red
     Write-Host "ERROR: fat JAR not found!" -ForegroundColor Red
@@ -86,30 +84,54 @@ Write-Host " OK" -ForegroundColor Green
 Write-Host ""
 
 # ============================================================
-# 3. ПОИСК JAVAFX (РЕКУРСИВНО)
+# 3. ПРОВЕРКА НАЛИЧИЯ JAVAFX (НЕ СКАЧИВАЕМ, ЕСЛИ УЖЕ ЕСТЬ!)
 # ============================================================
-Write-Host "[3/6] Searching JavaFX recursively..." -NoNewline
+Write-Host "[3/7] Checking JavaFX SDK..." -NoNewline
 
-if (-not (Test-Path $javafxSourceDir)) {
-    Write-Host " NOT FOUND!" -ForegroundColor Red
-    Write-Host "ERROR: JavaFX SDK not found at $javafxSourceDir" -ForegroundColor Red
-    exit 1
+$javafxLib = Join-Path $javafxSourceDir "lib"
+
+if (Test-Path $javafxLib) {
+    Write-Host " FOUND at $javafxSourceDir" -ForegroundColor Green
+    $allJars = Get-ChildItem -Path $javafxLib -Filter "*.jar"
+    Write-Host "   JAR files found: $($allJars.Count)" -ForegroundColor Gray
+} else {
+    Write-Host " NOT FOUND - downloading..." -ForegroundColor Yellow
+
+    $javafxZip = "javafx-sdk.zip"
+    $url = "https://download2.gluonhq.com/openjfx/${JAVAFX_VERSION}/openjfx-${JAVAFX_VERSION}_windows-x64_bin-sdk.zip"
+
+    try {
+        Invoke-WebRequest -Uri $url -OutFile $javafxZip -UseBasicParsing -ErrorAction Stop -TimeoutSec 120
+        Write-Host "   Downloaded successfully" -ForegroundColor Green
+
+        # Удаляем старую папку, если есть
+        if (Test-Path $javafxSourceDir) {
+            Remove-Item $javafxSourceDir -Recurse -Force
+        }
+
+        Expand-Archive -Path $javafxZip -DestinationPath . -Force
+        Remove-Item $javafxZip -Force
+        Write-Host "   Extracted successfully" -ForegroundColor Green
+
+        $javafxLib = Join-Path $javafxSourceDir "lib"
+        if (-not (Test-Path $javafxLib)) {
+            Write-Host "   ERROR: lib folder not found!" -ForegroundColor Red
+            exit 1
+        }
+        $allJars = Get-ChildItem -Path $javafxLib -Filter "*.jar"
+        Write-Host "   JAR files found: $($allJars.Count)" -ForegroundColor Gray
+
+    } catch {
+        Write-Host "   ERROR: Failed to download JavaFX!" -ForegroundColor Red
+        exit 1
+    }
 }
-
-# Ищем все JAR-файлы в папке JavaFX
-$allJars = Get-ChildItem -Path $javafxSourceDir -Recurse -Filter "*.jar"
-Write-Host " Found $($allJars.Count) JAR files" -ForegroundColor Green
-
-# Отладочный вывод
-Write-Host "   JAR files found:" -ForegroundColor Gray
-foreach ($jar in $allJars) {
-    Write-Host "     $($jar.Name) -> $($jar.DirectoryName)" -ForegroundColor Gray
-}
+Write-Host ""
 
 # ============================================================
 # 4. ПОДГОТОВКА ПАПОК
 # ============================================================
-Write-Host "[4/6] Preparing directories..." -NoNewline
+Write-Host "[4/7] Preparing directories..." -NoNewline
 
 if (Test-Path $distDir) {
     Remove-Item $distDir -Recurse -Force
@@ -123,9 +145,39 @@ foreach ($d in $dirs) {
 Write-Host " OK" -ForegroundColor Green
 
 # ============================================================
-# 5. КОПИРОВАНИЕ JAVAFX
+# 5. СОЗДАНИЕ JRE
 # ============================================================
-Write-Host "[5/6] Copying JavaFX..." -NoNewline
+Write-Host "[5/7] Creating JRE via jlink..." -NoNewline
+
+$modules = @(
+    "java.base", "java.sql", "java.logging", "java.instrument",
+    "java.management", "jdk.zipfs", "java.xml", "jdk.httpserver",
+    "jdk.unsupported", "jdk.localedata", "java.naming",
+    "java.scripting", "java.desktop"
+)
+
+& "$JDK_PATH\bin\jlink.exe" `
+    --module-path "$JDK_PATH\jmods" `
+    --add-modules ($modules -join ",") `
+    --include-locales ru `
+    --strip-debug `
+    --no-man-pages `
+    --no-header-files `
+    --compress=2 `
+    --output "$distDir\jre" 2>&1 | Out-Null
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host " ERROR!" -ForegroundColor Red
+    exit 1
+}
+
+$jreSize = (Get-ChildItem "$distDir\jre" -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
+Write-Host " OK (~$([math]::Round($jreSize, 1)) MB)" -ForegroundColor Green
+
+# ============================================================
+# 6. КОПИРОВАНИЕ JAVAFX
+# ============================================================
+Write-Host "[6/7] Copying JavaFX..." -NoNewline
 
 $javafxModules = @(
     "javafx-controls",
@@ -134,43 +186,31 @@ $javafxModules = @(
     "javafx-graphics"
 )
 
-$copiedJars = @()
-$missingJars = @()
-
 foreach ($mod in $javafxModules) {
-    # Ищем JAR с точным именем
-    $foundJar = $allJars | Where-Object { $_.Name -eq "$mod.jar" } | Select-Object -First 1
-
-    if (-not $foundJar) {
-        # Ищем JAR, который содержит имя модуля
-        $foundJar = $allJars | Where-Object { $_.Name -like "*$mod*.jar" -and $_.Name -notlike "*-win.jar" } | Select-Object -First 1
+    $jarFileFound = $allJars | Where-Object { $_.Name -eq "$mod.jar" } | Select-Object -First 1
+    if (-not $jarFileFound) {
+        $jarFileFound = $allJars | Where-Object { $_.Name -like "*$mod*.jar" -and $_.Name -notlike "*-win.jar" } | Select-Object -First 1
     }
 
-    if ($foundJar) {
-        Copy-Item $foundJar.FullName "$distDir\lib\$mod.jar" -Force
-        $copiedJars += "$mod.jar (from $($foundJar.Name))"
+    if ($jarFileFound) {
+        Copy-Item $jarFileFound.FullName "$distDir\lib\$mod.jar" -Force
         Write-Host "`n   + $mod.jar" -ForegroundColor Gray
     } else {
-        $missingJars += $mod
         Write-Host "`n   WARNING: $mod.jar not found" -ForegroundColor Yellow
     }
 }
 
 # Копируем Windows JAR с DLL
 $winJars = $allJars | Where-Object { $_.Name -like "*-win.jar" }
-if ($winJars) {
-    foreach ($winJar in $winJars) {
-        Push-Location "$distDir\native"
-        & "$JDK_PATH\bin\jar.exe" xf $winJar.FullName *.dll 2>&1 | Out-Null
-        Pop-Location
-        Write-Host "   + DLL extracted from $($winJar.Name)" -ForegroundColor Gray
-    }
-} else {
-    Write-Host "   WARNING: No Windows JAR with DLL found!" -ForegroundColor Yellow
+foreach ($winJar in $winJars) {
+    Push-Location "$distDir\native"
+    & "$JDK_PATH\bin\jar.exe" xf $winJar.FullName *.dll 2>&1 | Out-Null
+    Pop-Location
+    Write-Host "   + DLL extracted from $($winJar.Name)" -ForegroundColor Gray
 }
 
-# Копируем все DLL-файлы из папки JavaFX
-$dllFiles = Get-ChildItem -Path $javafxSourceDir -Recurse -Filter "*.dll"
+# Копируем все DLL-файлы
+$dllFiles = Get-ChildItem -Path $javafxLib -Filter "*.dll"
 foreach ($dll in $dllFiles) {
     Copy-Item $dll.FullName "$distDir\native\" -Force
     Write-Host "   + DLL: $($dll.Name)" -ForegroundColor Gray
@@ -179,35 +219,25 @@ foreach ($dll in $dllFiles) {
 Write-Host "`n   JavaFX copied" -ForegroundColor Green
 
 # ============================================================
-# 6. КОПИРОВАНИЕ ФАЙЛОВ ПРИЛОЖЕНИЯ
+# 7. КОПИРОВАНИЕ ФАЙЛОВ ПРИЛОЖЕНИЯ
 # ============================================================
-Write-Host "[6/6] Copying application files..." -NoNewline
+Write-Host "[7/7] Copying application files..." -NoNewline
 
-# JAR
 Copy-Item $jarFile "$distDir\autoservice-admin.jar" -Force
 
-# styles.css
 $styles = Join-Path $projectDir "src\main\resources\styles.css"
-if (Test-Path $styles) {
-    Copy-Item $styles "$distDir\styles.css" -Force
-}
+if (Test-Path $styles) { Copy-Item $styles "$distDir\styles.css" -Force }
 
-# logback.xml
 $logback = Join-Path $projectDir "src\main\resources\logback.xml"
-if (Test-Path $logback) {
-    Copy-Item $logback "$distDir\logback.xml" -Force
-}
+if (Test-Path $logback) { Copy-Item $logback "$distDir\logback.xml" -Force }
 
-# config
 $config = Join-Path $projectDir "config"
-if (Test-Path $config) {
-    Copy-Item $config "$distDir\" -Recurse -Force
-}
+if (Test-Path $config) { Copy-Item $config "$distDir\" -Recurse -Force }
 
 Write-Host " OK" -ForegroundColor Green
 
 # ============================================================
-# 7. СОЗДАНИЕ STO.BAT
+# 8. СОЗДАНИЕ STO.BAT
 # ============================================================
 Write-Host "Creating STO.bat..." -NoNewline
 
@@ -281,10 +311,11 @@ Set-Content "$distDir\STO.bat" $batContent -Encoding Default
 Write-Host " OK" -ForegroundColor Green
 
 # ============================================================
-# 8. ПРОВЕРКА РЕЗУЛЬТАТА
+# 9. ИТОГИ
 # ============================================================
 $libJars = Get-ChildItem "$distDir\lib" -Filter "*.jar"
 $dllCount = (Get-ChildItem "$distDir\native" -Filter "*.dll").Count
+$size = (Get-ChildItem $distDir -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
 
 Write-Host ""
 Write-Host "==================================================" -ForegroundColor Green
@@ -296,8 +327,6 @@ foreach ($jar in $libJars) {
     Write-Host "  - $($jar.Name)" -ForegroundColor Gray
 }
 Write-Host "DLLs in native: $dllCount" -ForegroundColor Gray
-
-$size = (Get-ChildItem $distDir -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
 Write-Host "Total size: $([math]::Round($size, 2)) MB" -ForegroundColor Gray
 Write-Host ""
 Write-Host "Folder: $distDir"
