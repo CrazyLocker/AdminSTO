@@ -235,7 +235,7 @@ if (-not $javafxLib) {
 
 if (-not $javafxLib) {
     Write-Host "`n   ERROR: JavaFX lib folder not found!" -ForegroundColor Red
-    Write-Host "   Full contents of $javafxTemp:" -ForegroundColor Yellow
+    Write-Host "   Full contents of ${javafxTemp}:" -ForegroundColor Yellow
     Get-ChildItem -Path $javafxTemp -Recurse | ForEach-Object { Write-Host "     $($_.FullName)" -ForegroundColor Gray }
     exit 1
 }
@@ -249,7 +249,7 @@ foreach ($mod in $javafxModules) {
     } else {
         Write-Host "   WARNING: $mod.jar not found, searching..." -ForegroundColor Yellow
         # Ищем файл с похожим именем
-        $foundJar = Get-ChildItem -Path $javafxLib -Filter "$mod*.jar" | Select-Object -First 1
+        $foundJar = Get-ChildItem -Path $javafxLib -Filter "${mod}*.jar" | Select-Object -First 1
         if ($foundJar) {
             Copy-Item $foundJar.FullName "$distDir\lib\$mod.jar" -Force
             Write-Host "   + $mod.jar (found as $($foundJar.Name))" -ForegroundColor Gray
