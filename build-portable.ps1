@@ -23,7 +23,6 @@ Write-Host "[1/6] Looking for JDK 21..." -NoNewline
 
 $JDK_PATH = $null
 
-# Поиск в стандартных папках
 $possiblePaths = @(
     "C:\Program Files\Eclipse Adoptium\jdk-21*",
     "C:\Program Files\Java\jdk-21*",
@@ -38,14 +37,12 @@ foreach ($pattern in $possiblePaths) {
     }
 }
 
-# Если не нашли — пробуем JAVA_HOME
 if (-not $JDK_PATH -and $env:JAVA_HOME) {
     if (Test-Path "$env:JAVA_HOME\bin\java.exe") {
         $JDK_PATH = $env:JAVA_HOME
     }
 }
 
-# Если всё равно не нашли — ищем в PATH
 if (-not $JDK_PATH) {
     $javaCmd = Get-Command java -ErrorAction SilentlyContinue
     if ($javaCmd) {
@@ -134,7 +131,7 @@ $jreSize = (Get-ChildItem "$distDir\jre" -Recurse | Measure-Object -Property Len
 Write-Host " OK (~$([math]::Round($jreSize, 1)) MB)" -ForegroundColor Green
 
 # ============================================================
-# 5. СКАЧИВАНИЕ И КОПИРОВАНИЕ JAVAFX
+# 5. СКАЧИВАНИЕ И КОПИРОВАНИЕ JAVAFX (С ПОВТОРНЫМИ ПОПЫТКАМИ)
 # ============================================================
 Write-Host "[5/6] Downloading and copying JavaFX..." -NoNewline
 
@@ -145,20 +142,55 @@ $javafxModules = @(
     "javafx-graphics"
 )
 
-# Скачиваем JavaFX SDK
 $javafxZip = "javafx-sdk.zip"
-$javafxUrl = "https://download2.gluonhq.com/openjfx/${JAVAFX_VERSION}/openjfx-${JAVAFX_VERSION}_windows-x64_bin-sdk.zip"
 $javafxTemp = "javafx-sdk-${JAVAFX_VERSION}"
 
-Write-Host "`n   Downloading JavaFX SDK from Gluon..." -ForegroundColor Gray
+# Источники для скачивания (если один не работает — пробуем другой)
+$sources = @(
+    "https://download2.gluonhq.com/openjfx/${JAVAFX_VERSION}/openjfx-${JAVAFX_VERSION}_windows-x64_bin-sdk.zip",
+    "https://download.andreschleich.de/openjfx/${JAVAFX_VERSION}/openjfx-${JAVAFX_VERSION}_windows-x64_bin-sdk.zip",
+    "https://nexus.gluonhq.com/nexus/service/local/repositories/releases/content/org/openjfx/javafx-sdk/${JAVAFX_VERSION}/javafx-sdk-${JAVAFX_VERSION}-windows-x64.zip"
+)
 
+$downloaded = $false
+
+foreach ($source in $sources) {
+    Write-Host "`n   Trying source: $source" -ForegroundColor Gray
+
+    # Повторные попытки для каждого источника
+    for ($attempt = 1; $attempt -le 3; $attempt++) {
+        try {
+            Write-Host "   Attempt $attempt/3..." -ForegroundColor Gray
+            Invoke-WebRequest -Uri $source -OutFile $javafxZip -UseBasicParsing -ErrorAction Stop -TimeoutSec 60
+            Write-Host "   Downloaded successfully!" -ForegroundColor Green
+            $downloaded = $true
+            break
+        } catch {
+            Write-Host "   Attempt $attempt failed: $_" -ForegroundColor Yellow
+            if ($attempt -lt 3) {
+                Write-Host "   Waiting 5 seconds before retry..." -ForegroundColor Gray
+                Start-Sleep -Seconds 5
+            }
+        }
+    }
+
+    if ($downloaded) {
+        break
+    }
+}
+
+if (-not $downloaded) {
+    Write-Host "`n   ERROR: Failed to download JavaFX from all sources!" -ForegroundColor Red
+    exit 1
+}
+
+# Распаковка
 try {
-    Invoke-WebRequest -Uri $javafxUrl -OutFile $javafxZip -UseBasicParsing -ErrorAction Stop
     Expand-Archive -Path $javafxZip -DestinationPath . -Force
     Remove-Item $javafxZip -Force
-    Write-Host "   JavaFX SDK downloaded and extracted" -ForegroundColor Gray
+    Write-Host "   JavaFX SDK extracted" -ForegroundColor Gray
 } catch {
-    Write-Host "   ERROR: Failed to download JavaFX!" -ForegroundColor Red
+    Write-Host "   ERROR: Failed to extract JavaFX SDK!" -ForegroundColor Red
     exit 1
 }
 
