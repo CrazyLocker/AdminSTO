@@ -1,0 +1,69 @@
+# ===== BUILD & GRADLE =====
+build/
+out/
+.gradle/
+caches/
+.tmp/
+jdks/
+daemon/
+native/
+
+# ===== JAVA =====
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# ===== IDE =====
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+*.sarif
+
+# ===== EXTERNAL SDK / JRE =====
+javafx-sdk-21.0.6/
+test_jre/
+test_jre2/
+AdminSTO_Portable/
+
+# ===== DATABASE =====
+*.db
+*.db-shm
+*.db-wal
+*.sqbpro
+
+# ===== LOGS =====
+logs/
+*.log
+app_log.txt
+
+# ===== REPORTS & TEMP =====
+report*.json
+test_output.txt
+versions.properties
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# ===== GITVERSE / CI INTERNAL =====
+.gitverse/
+.scanrc.yml
+
+# ===== DOCUMENTATION (keep README.md) =====
+docs/
+!README.md
+*.md
+!README.md
+
+# ===== BUILD SCRIPTS (if any temp artifacts) =====
+build-portable.ps1
+create-runbat.ps1
+
+# ===== BAD FOLDERS FROM YOUR STATUS =====
+backups/
+Import_export/
+config/
+wrapper/dists/
+.github/
+STO.bat

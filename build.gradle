@@ -1,0 +1,316 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'jacoco'
+    id 'org.openjfx.javafxplugin' version '0.1.0'
+    id 'com.github.spotbugs' version '5.2.5'
+    id 'checkstyle'
+    id 'com.github.ben-manes.versions' version '0.51.0'
+}
+
+group = 'com.autoservice'
+version = '1.1.0'
+
+// Загрузка версий зависимостей из versions.properties (до любых других конфигураций)
+Properties props = new Properties()
+file("$projectDir/versions.properties").withInputStream { props.load(it) }
+
+// Делаем версии доступными как свойства проекта
+props.each { k, v -> 
+    project.ext.setProperty(k.trim(), v.trim())
+}
+
+// Установка версии JavaFX (необходимо до конфигурации javafx-плагина)
+def javafxVersion = project.javafxVersion
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+application {
+    mainClass = 'com.autoservice.App'
+}
+
+// Конфигурация JavaFX: плагин автоматически подбирает platform-classifier
+// (win/linux/mac), который без Maven-профилей не резолвится в Gradle.
+javafx {
+    version = javafxVersion
+    modules = ['javafx.controls', 'javafx.fxml']
+}
+
+// Установка кодировки UTF-8 для компиляции
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+    // options.compilerArgs << '-Xlint:deprecation' << '-Xlint:unchecked'  // Отключено для чистоты сборки
+}
+
+// Настройка JavaFX JVM аргументов для выполнения
+// (--add-modules добавляется самим javafx-плагином, здесь только --add-opens)
+tasks.withType(JavaExec) {
+    jvmArgs = [
+        '--add-opens', 'javafx.controls/javafx.scene.control.skin=ALL-UNNAMED',
+        '--add-opens', 'javafx.graphics/javafx.scene=ALL-UNNAMED',
+        '--add-opens', 'javafx.graphics/javafx.scene.effect=ALL-UNNAMED',
+        '--add-opens', 'javafx.graphics/javafx.scene.shape=ALL-UNNAMED',
+        '--add-opens', 'javafx.base/com.sun.javafx.event=ALL-UNNAMED',
+        '--add-opens', 'javafx.controls/com.sun.javafx.scene.control=ALL-UNNAMED',
+        '--add-opens', 'javafx.controls/com.sun.javafx.scene.control.skin=ALL-UNNAMED',
+        '--add-opens', 'javafx.graphics/com.sun.javafx.stage=ALL-UNNAMED',
+        '--add-opens', 'javafx.base/com.sun.javafx.binding=ALL-UNNAMED',
+        '--add-opens', 'javafx.graphics/com.sun.javafx.scene=ALL-UNNAMED',
+        '--add-opens', 'javafx.controls/com.sun.javafx.scene.control.behavior=ALL-UNNAMED',
+        '--add-opens', 'javafx.base/com.sun.javafx.event=ALL-UNNAMED'
+    ]
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        url 'https://jitpack.io'
+    }
+}
+
+dependencies {
+    // ====== База данных ======
+    implementation "org.xerial:sqlite-jdbc:${sqliteJdbcVersion}"
+    implementation "com.zaxxer:HikariCP:${hikariCpVersion}"
+
+    // ====== Сериализация ======
+    implementation "com.google.code.gson:gson:${gsonVersion}"
+
+    // ====== PDF ======
+    implementation "com.itextpdf:itext7-core:${itext7CoreVersion}"
+
+    // ====== Логирование ======
+    implementation "org.slf4j:slf4j-api:${slf4jApiVersion}"
+    implementation "ch.qos.logback:logback-classic:${logbackClassicVersion}"
+    implementation "ch.qos.logback:logback-core:${logbackCoreVersion}"
+
+    // ====== ТЕСТЫ ======
+
+    // JUnit 5
+    testImplementation "org.junit.jupiter:junit-jupiter:${junitJupiterVersion}"
+
+    // AssertJ для красивых проверок
+    testImplementation "org.assertj:assertj-core:${assertjCoreVersion}"
+
+    // Mockito для моков
+    testImplementation "org.mockito:mockito-core:${mockitoCoreVersion}"
+
+    // H2 для тестов (in-memory БД)
+    testImplementation "com.h2database:h2:${h2Version}"
+
+    // TestFX для UI-тестов JavaFX
+    testImplementation "org.testfx:testfx-core:${testfxCoreVersion}"
+
+    // Monocle — headless-реализация glass-платформы JavaFX, необходимая для
+    // запуска UI-тестов без реального дисплея (CI). Используется версия,
+    // совместимая с JavaFX 21.0.6
+    testImplementation "org.testfx:openjfx-monocle:${openjfxMonocleVersion}"
+
+    // Awaitility для асинхронных ожиданий
+    testImplementation "org.awaitility:awaitility:${awaitilityVersion}"
+
+    // JUnit Pioneer для параллельного выполнения тестов
+    testImplementation "org.junit-pioneer:junit-pioneer:2.2.0"
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+
+    // Каждый тестовый класс запускается в свежей JVM — это изолирует общее
+    // статическое состояние (DataStore-синглтон, статические поля контроллеров)
+    // между классами. Без этого порядок выполнения классов в Gradle (отличный от
+    // Maven Surefire) приводит к утечке состояния и ложным падениям тестов.
+    forkEvery = 1
+
+    // Исключаем UI-тесты из общей сборки — они нестабильны в CI/CD
+    // UI-тесты запускаются отдельно через задачу uiTest
+    exclude '**/ClientViewUITest.class'
+    exclude '**/OrderViewUITest.class'
+    exclude '**/MainAppUITest.class'
+    exclude '**/BaseUITest.class'
+
+    // Для UI-тестов включаем headless режим
+    systemProperty 'prism.order', 'sw'
+    systemProperty 'prism.text', 't2k'
+    systemProperty 'javafx.headless', 'true'
+    // TestFX / Monocle headless-настройки: программный рендеринг без дисплея.
+    // monocle.platform=Headless выбирает HeadlessPlatformFactory (чистая Java,
+    // без нативных библиотек) — единственный стабильный вариант headless на
+    // Windows в окружении без X-сервера/экрана.
+    systemProperty 'testfx.robot', 'glass'
+    systemProperty 'testfx.headless', 'true'
+    systemProperty 'glass.platform', 'Monocle'
+    systemProperty 'monocle.platform', 'Headless'
+
+    // Настройки JaCoCo
+    jacoco {
+        destinationFile = file("$buildDir/jacoco/test.exec")
+    }
+
+    // JVM аргументы для headless-режима JavaFX
+    // Применяются ДО инициализации JavaFX Platform
+    jvmArgs(
+        '-Dprism.order=sw',
+        '-Dprism.text=t2k',
+        '-Djavafx.headless=true',
+        '-Dtestfx.headless=true',
+        '-Dglass.platform=Monocle',
+        '-Dmonocle.platform=Headless',
+        '--add-opens', 'javafx.controls/javafx.scene.control.skin=ALL-UNNAMED',
+        '--add-opens', 'javafx.graphics/javafx.scene=ALL-UNNAMED',
+        '--add-opens', 'javafx.graphics/javafx.scene.effect=ALL-UNNAMED',
+        '--add-opens', 'javafx.graphics/javafx.scene.shape=ALL-UNNAMED',
+        '--add-opens', 'javafx.base/com.sun.javafx.event=ALL-UNNAMED',
+        '--add-opens', 'javafx.controls/com.sun.javafx.scene.control=ALL-UNNAMED',
+        '--add-opens', 'javafx.controls/com.sun.javafx.scene.control.skin=ALL-UNNAMED',
+        '--add-opens', 'javafx.graphics/com.sun.javafx.stage=ALL-UNNAMED',
+        '--add-opens', 'javafx.base/com.sun.javafx.binding=ALL-UNNAMED',
+        '--add-opens', 'javafx.graphics/com.sun.javafx.scene=ALL-UNNAMED',
+        '--add-opens', 'javafx.controls/com.sun.javafx.scene.control.behavior=ALL-UNNAMED',
+        '--add-opens', 'javafx.base/com.sun.javafx.event=ALL-UNNAMED'
+    )
+}
+
+// ============================================================
+// ОТДЕЛЬНАЯ ЗАДАЧА ДЛЯ UI-ТЕСТОВ
+// ============================================================
+// UI-тесты нестабильны в CI/CD (зависят от дисплея, Monocle, Xvfb)
+// Запускаются вручную или в отдельном workflow
+task uiTest(type: Test) {
+    description = 'Запускает UI-тесты JavaFX'
+    group = 'verification'
+
+    useJUnitPlatform()
+
+    // UI-тесты требуют headless-режима
+    systemProperty 'javafx.headless', 'true'
+    systemProperty 'testfx.headless', 'true'
+    systemProperty 'glass.platform', 'Monocle'
+    systemProperty 'monocle.platform', 'Headless'
+
+    // JVM аргументы для JavaFX headless
+    jvmArgs(
+        '-Dprism.order=sw',
+        '-Dprism.text=t2k',
+        '-Djavafx.headless=true',
+        '-Dtestfx.headless=true',
+        '-Dglass.platform=Monocle',
+        '-Dmonocle.platform=Headless',
+        '--add-opens', 'javafx.controls/javafx.scene.control.skin=ALL-UNNAMED',
+        '--add-opens', 'javafx.graphics/javafx.scene=ALL-UNNAMED',
+        '--add-opens', 'javafx.graphics/javafx.scene.effect=ALL-UNNAMED',
+        '--add-opens', 'javafx.graphics/javafx.scene.shape=ALL-UNNAMED',
+        '--add-opens', 'javafx.base/com.sun.javafx.event=ALL-UNNAMED',
+        '--add-opens', 'javafx.controls/com.sun.javafx.scene.control=ALL-UNNAMED',
+        '--add-opens', 'javafx.controls/com.sun.javafx.scene.control.skin=ALL-UNNAMED',
+        '--add-opens', 'javafx.graphics/com.sun.javafx.stage=ALL-UNNAMED',
+        '--add-opens', 'javafx.base/com.sun.javafx.binding=ALL-UNNAMED',
+        '--add-opens', 'javafx.graphics/com.sun.javafx.scene=ALL-UNNAMED',
+        '--add-opens', 'javafx.controls/com.sun.javafx.scene.control.behavior=ALL-UNNAMED',
+        '--add-opens', 'javafx.base/com.sun.javafx.event=ALL-UNNAMED'
+    )
+
+    include '**/ClientViewUITest.class'
+    include '**/OrderViewUITest.class'
+    include '**/MainAppUITest.class'
+
+    // Каждый UI-тест в отдельной JVM
+    forkEvery = 1
+
+    maxParallelForks = 1
+}
+
+tasks.named('jar') {
+    archiveBaseName = 'autoservice-admin'
+    
+    manifest {
+        attributes(
+            'Main-Class': 'com.autoservice.App',
+            'Class-Path': configurations.runtimeClasspath.collect { it.getName() }.join(' ')
+        )
+    }
+}
+
+// Задача для копирования зависимостей в папку lib
+task copyDependencies(type: Copy) {
+    from configurations.runtimeClasspath
+    into "$buildDir/lib"
+}
+
+// Сборка fat JAR с зависимостями
+// Имя без версии и суффикса — совместимо с run.bat (java -jar autoservice-admin.jar)
+task fatJar(type: Jar) {
+    archiveBaseName = 'autoservice-admin'
+    archiveVersion = ''
+    archiveClassifier = ''
+    manifest {
+        // Launcher не наследует Application, поэтому JVM не требует JavaFX
+        // на module-path при запуске fat jar через java -jar.
+        attributes 'Main-Class': 'com.autoservice.Launcher'
+    }
+    
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+
+    // Исключаем module-info.class от JavaFX-модулей: иначе JVM воспринимает
+    // fat jar как один именованный модуль и не находит классы приложения.
+    exclude 'module-info.class'
+    exclude 'META-INF/versions/*/module-info.class'
+
+    // Исключаем файлы подписи подписанных зависимостей (BouncyCastle и др.):
+    // после слияния в fat jar подписи недействительны, и JVM отказывается
+    // загружать классы из jar с невалидной подписью.
+    exclude 'META-INF/*.SF'
+    exclude 'META-INF/*.DSA'
+    exclude 'META-INF/*.RSA'
+
+    with jar
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+// Связывание задач
+build.finalizedBy(copyDependencies)
+build.finalizedBy(fatJar)
+
+// ============================================================
+// НАСТРОЙКА SPOTBUGS
+// ============================================================
+spotbugs {
+    reportLevel = 'high'
+    ignoreFailures = false
+    showProgress = true
+}
+
+spotbugsMain {
+    reports {
+        html.enabled = true
+        xml.enabled = true
+    }
+}
+
+spotbugsTest {
+    reports {
+        html.enabled = true
+        xml.enabled = true
+    }
+}
+
+// ============================================================
+// НАСТРОЙКА CHECKSTYLE
+// ============================================================
+checkstyle {
+    toolVersion = checkstyleVersion
+    configFile = file('config/checkstyle/checkstyle.xml')
+    ignoreFailures = false
+    showViolations = true
+}
+
+// ============================================================
+// ЗАДАЧА ДЛЯ ПРОВЕРКИ ОБНОВЛЕНИЙ ЗАВИСИМОСТЕЙ
+// ============================================================
+// Использование: ./gradlew dependencyUpdates -Drevision=release
+// Отчет будет сгенерирован в build/dependency-reports/dependency-updates.html
