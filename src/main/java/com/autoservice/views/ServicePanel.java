@@ -38,7 +38,6 @@ public class ServicePanel {
 
     private static VBox createServicesPanel() {
         table = new TableView<>();
-        table.getStyleClass().add("table-view");
         table.setId("servicesTable");
 
         TableColumn<Service, String> colName = new TableColumn<>("Название услуги");
@@ -46,30 +45,24 @@ public class ServicePanel {
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
         colName.setPrefWidth(580);
         colName.setSortable(true);
-        colName.setStyle("-fx-alignment: CENTER-LEFT;");
 
         TableColumn<Service, Integer> colDuration = new TableColumn<>("Длительность (мин)");
         colDuration.setId("colDuration");
         colDuration.setCellValueFactory(new PropertyValueFactory<>("duration"));
         colDuration.setPrefWidth(120);
         colDuration.setSortable(true);
-        colDuration.getStyleClass().add("center-column");
-        colDuration.setStyle("-fx-alignment: CENTER-LEFT;");
 
         TableColumn<Service, String> colPartNumber = new TableColumn<>("Артикул");
         colPartNumber.setId("colPartNumber");
         colPartNumber.setCellValueFactory(new PropertyValueFactory<>("partNumber"));
         colPartNumber.setPrefWidth(150);
         colPartNumber.setSortable(true);
-        colPartNumber.setStyle("-fx-alignment: CENTER-LEFT;");
 
         TableColumn<Service, Double> colPrice = new TableColumn<>("Цена (руб.)");
         colPrice.setId("colPrice");
         colPrice.setCellValueFactory(new PropertyValueFactory<>("price"));
         colPrice.setPrefWidth(120);
         colPrice.setSortable(true);
-        colPrice.getStyleClass().add("price-column");
-        colPrice.setStyle("-fx-alignment: CENTER-LEFT;");
 
         table.getColumns().addAll(colName, colDuration, colPartNumber, colPrice);
         table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
@@ -79,17 +72,9 @@ public class ServicePanel {
         searchField = new TextField();
         searchField.setPromptText("Поиск по названию, артикулу, цене, длительности...");
         searchField.setPrefWidth(400);
-        searchField.getStyleClass().add("search-field");
 
         // Кнопка очистки поиска (красный крестик, как в Клиентах)
         Button clearSearchBtn = new Button("✕");
-        clearSearchBtn.setStyle(
-                "-fx-background-color: #dc3545;" +
-                        "-fx-text-fill: white;" +
-                        "-fx-font-weight: bold;" +
-                        "-fx-padding: 4 8 4 8;" +
-                        "-fx-background-radius: 4;"
-        );
         clearSearchBtn.setOnAction(e -> {
             searchField.clear();
             filterServices("");
@@ -105,11 +90,9 @@ public class ServicePanel {
 
         // ====== КНОПКИ В ХЕДЕРЕ ======
         Button addBtn = new Button("Добавить услугу");
-        addBtn.getStyleClass().add("add-button");
         addBtn.setOnAction(e -> showAddServiceDialog());
 
         Button deleteBtn = new Button("Удалить выбранную");
-        deleteBtn.getStyleClass().add("delete-button");
         deleteBtn.setOnAction(e -> deleteSelectedService());
 
         HBox headerPanel = new HBox(10, searchContainer, addBtn, deleteBtn);

@@ -51,7 +51,6 @@ public class SparePartPanel {
     private static VBox createSparePartsPanel() {
         table = new TableView<>();
         table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-        table.getStyleClass().add("table-view");
         table.setId("sparePartsTable");
 
         TableColumn<SparePart, String> colName = new TableColumn<>("Название");
@@ -59,51 +58,42 @@ public class SparePartPanel {
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
         colName.setPrefWidth(200);
         colName.setSortable(true);
-        colName.setStyle("-fx-alignment: CENTER-LEFT;");
 
         TableColumn<SparePart, String> colPartNumber = new TableColumn<>("Артикул");
         colPartNumber.setId("colSparePartNumber");
         colPartNumber.setCellValueFactory(new PropertyValueFactory<>("partNumber"));
         colPartNumber.setPrefWidth(120);
         colPartNumber.setSortable(true);
-        colPartNumber.setStyle("-fx-alignment: CENTER-LEFT;");
 
         TableColumn<SparePart, String> colManufacturer = new TableColumn<>("Производитель");
         colManufacturer.setId("colManufacturer");
         colManufacturer.setCellValueFactory(new PropertyValueFactory<>("manufacturer"));
         colManufacturer.setPrefWidth(120);
         colManufacturer.setSortable(true);
-        colManufacturer.setStyle("-fx-alignment: CENTER-LEFT;");
 
         TableColumn<SparePart, String> colCompatibleModels = new TableColumn<>("Совместимые модели");
         colCompatibleModels.setId("colCompatibleModels");
         colCompatibleModels.setCellValueFactory(new PropertyValueFactory<>("compatibleModels"));
         colCompatibleModels.setPrefWidth(180);
         colCompatibleModels.setSortable(true);
-        colCompatibleModels.setStyle("-fx-alignment: CENTER-LEFT;");
 
         TableColumn<SparePart, Double> colRetailPrice = new TableColumn<>("Розн. цена (руб.)");
         colRetailPrice.setId("colRetailPrice");
         colRetailPrice.setCellValueFactory(new PropertyValueFactory<>("retailPrice"));
         colRetailPrice.setPrefWidth(130);
         colRetailPrice.setSortable(true);
-        colRetailPrice.getStyleClass().add("price-column");
-        colRetailPrice.setStyle("-fx-alignment: CENTER-LEFT;");
 
         TableColumn<SparePart, Double> colStock = new TableColumn<>("Остаток");
         colStock.setId("colStock");
         colStock.setCellValueFactory(new PropertyValueFactory<>("stock"));
         colStock.setPrefWidth(100);
         colStock.setSortable(true);
-        colStock.getStyleClass().add("center-column");
-        colStock.setStyle("-fx-alignment: CENTER-LEFT;");
 
         TableColumn<SparePart, String> colUnitType = new TableColumn<>("Ед. изм.");
         colUnitType.setId("colUnitType");
         colUnitType.setCellValueFactory(new PropertyValueFactory<>("unitType"));
         colUnitType.setPrefWidth(80);
         colUnitType.setSortable(true);
-        colUnitType.setStyle("-fx-alignment: CENTER-LEFT;");
 
         table.getColumns().addAll(colName, colPartNumber, colManufacturer, colCompatibleModels,
                 colRetailPrice, colStock, colUnitType);
@@ -146,17 +136,9 @@ public class SparePartPanel {
         searchField = new TextField();
         searchField.setPromptText("Поиск по названию, артикулу, производителю...");
         searchField.setPrefWidth(400);
-        searchField.getStyleClass().add("search-field");
 
         // Кнопка очистки поиска (красный крестик)
         Button clearSearchBtn = new Button("✕");
-        clearSearchBtn.setStyle(
-                "-fx-background-color: #dc3545;" +
-                        "-fx-text-fill: white;" +
-                        "-fx-font-weight: bold;" +
-                        "-fx-padding: 4 8 4 8;" +
-                        "-fx-background-radius: 4;"
-        );
         clearSearchBtn.setOnAction(e -> {
             searchField.clear();
             filterSpareParts("");
@@ -169,11 +151,9 @@ public class SparePartPanel {
             filterSpareParts(newValue));
 
         Button addBtn = new Button("Добавить запчасть");
-        addBtn.getStyleClass().add("add-button");
         addBtn.setOnAction(e -> showAddSparePartDialog());
 
         deleteBtn = new Button("Удалить выбранные");
-        deleteBtn.getStyleClass().add("delete-button");
         deleteBtn.setOnAction(e -> {
             List<SparePart> selectedItems = table.getSelectionModel().getSelectedItems();
             if (selectedItems.isEmpty()) {
@@ -254,10 +234,8 @@ public class SparePartPanel {
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
-        root.getStyleClass().add("dialog-root");
 
         Label titleLabel = new Label("Новая запчасть");
-        titleLabel.getStyleClass().add("dialog-title");
 
         GridPane grid = new GridPane();
         grid.setHgap(15);
@@ -332,10 +310,8 @@ public class SparePartPanel {
         grid.add(unitTypeCombo, 1, 9);
 
         Button saveBtn = new Button("Сохранить");
-        saveBtn.getStyleClass().add("save-button");
 
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.getStyleClass().add("cancel-button");
 
         HBox btnBox = new HBox(15, saveBtn, cancelBtn);
         btnBox.setAlignment(Pos.CENTER);
@@ -444,10 +420,8 @@ public class SparePartPanel {
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
-        root.getStyleClass().add("dialog-root");
 
         Label titleLabel = new Label("Редактировать запчасть");
-        titleLabel.getStyleClass().add("dialog-title");
 
         GridPane grid = new GridPane();
         grid.setHgap(15);
@@ -507,10 +481,8 @@ public class SparePartPanel {
         grid.add(new Label("Место:"), 0, 10); grid.add(locationField, 1, 10);
 
         Button saveBtn = new Button("Сохранить");
-        saveBtn.getStyleClass().add("save-button");
 
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.getStyleClass().add("cancel-button");
 
         HBox btnBox = new HBox(15, saveBtn, cancelBtn);
         btnBox.setAlignment(Pos.CENTER);

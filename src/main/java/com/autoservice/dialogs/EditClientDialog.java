@@ -48,21 +48,17 @@ public class EditClientDialog {
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
-        root.getStyleClass().add("dialog-root");
 
         Label titleLabel = new Label(isNew ? "Новый клиент" : "Редактирование клиента");
-        titleLabel.getStyleClass().add("dialog-title");
 
         // ====== Основная информация ======
         GridPane grid = new GridPane();
         grid.setHgap(15);
         grid.setVgap(12);
         grid.setPadding(new Insets(10));
-        grid.getStyleClass().add("dialog-grid");
 
         // Фамилия
         Label lastNameLabel = new Label("Фамилия:");
-        lastNameLabel.getStyleClass().add("label");
         TextField lastNameField = new TextField(client.getLastName());
         lastNameField.setId("lastNameField");
         lastNameField.setPromptText("Фамилия");
@@ -71,7 +67,6 @@ public class EditClientDialog {
 
         // Имя
         Label nameLabel = new Label("Имя:");
-        nameLabel.getStyleClass().add("label");
         TextField nameField = new TextField(client.getName());
         nameField.setId("nameField");
         nameField.setPromptText("Имя");
@@ -80,7 +75,6 @@ public class EditClientDialog {
 
         // Телефон
         Label phoneLabel = new Label("Телефон:");
-        phoneLabel.getStyleClass().add("label");
         TextField phoneField = new TextField();
         phoneField.setId("phoneField");
         phoneField.setPromptText("Телефон");
@@ -97,7 +91,6 @@ public class EditClientDialog {
 
         // ====== Автомобили клиента ======
         Label carsSectionLabel = new Label("Автомобили клиента:");
-        carsSectionLabel.getStyleClass().add("dialog-title");
 
         VBox carsBox = new VBox(8);
         carsBox.setPadding(new Insets(5, 0, 0, 0));
@@ -117,7 +110,6 @@ public class EditClientDialog {
 
         // Кнопка "Добавить автомобиль"
         Button addCarBtn = new Button("+ Добавить автомобиль");
-        addCarBtn.getStyleClass().add("add-button");
         addCarBtn.setOnAction(e -> {
             int nextNum = carRows.size() + 1;
             addCarRow(carsBox, carRows, null, nextNum);
@@ -125,9 +117,7 @@ public class EditClientDialog {
 
         // ====== Кнопки ======
         Button saveBtn = new Button("Сохранить");
-        saveBtn.getStyleClass().add("save-btn");
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.getStyleClass().add("cancel-btn");
 
         HBox btnBox = new HBox(10, saveBtn, cancelBtn);
         btnBox.setAlignment(Pos.CENTER_RIGHT);
@@ -296,7 +286,6 @@ public class EditClientDialog {
 
         Label numLabel = new Label(rowNum + " авт:");
         numLabel.setPrefWidth(55);
-        numLabel.getStyleClass().add("label");
 
         // Марка/Модель — ComboBox с ручным вводом
         ComboBox<String> modelCombo = new ComboBox<>(FXCollections.observableArrayList(AppConstants.GWM_MODELS));
@@ -318,7 +307,6 @@ public class EditClientDialog {
 
         // Кнопка удаления
         Button deleteBtn = new Button("✕");
-        deleteBtn.getStyleClass().add("delete-button");
         deleteBtn.setPrefWidth(30);
         deleteBtn.setOnAction(e -> {
             carsBox.getChildren().remove(row);

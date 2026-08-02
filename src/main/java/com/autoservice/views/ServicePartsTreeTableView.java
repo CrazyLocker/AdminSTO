@@ -30,29 +30,23 @@ public class ServicePartsTreeTableView {
 
     public static VBox create() {
         VBox root = new VBox(10);
-        root.getStyleClass().add("main-container");
 
         HBox topPanel = new HBox(15);
         topPanel.setAlignment(Pos.CENTER_LEFT);
         topPanel.setPadding(new Insets(10));
-        topPanel.getStyleClass().add("top-panel");
 
         addBtn = new Button("Добавить связь");
-        addBtn.getStyleClass().add("add-button");
         addBtn.setOnAction(e -> onAdd());
 
         editBtn = new Button("Изменить связь");
-        editBtn.getStyleClass().add("edit-button");
         editBtn.setDisable(true);
         editBtn.setOnAction(e -> onEdit());
 
         deleteBtn = new Button("Удалить связь");
-        deleteBtn.getStyleClass().add("delete-button");
         deleteBtn.setDisable(true);
         deleteBtn.setOnAction(e -> onDelete());
 
         refreshBtn = new Button("Обновить");
-        refreshBtn.getStyleClass().add("save-button");
         refreshBtn.setOnAction(e -> refreshTree());
 
         topPanel.getChildren().addAll(addBtn, editBtn, deleteBtn, refreshBtn);
@@ -69,7 +63,6 @@ public class ServicePartsTreeTableView {
 
     private static TreeTableView<ServiceTreeItem> createTreeTable() {
         TreeTableView<ServiceTreeItem> table = new TreeTableView<>();
-        table.getStyleClass().add("table-view");
         table.setPrefHeight(600);
         table.setShowRoot(false);
 

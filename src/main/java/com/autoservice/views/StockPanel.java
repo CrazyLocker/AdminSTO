@@ -49,7 +49,6 @@ public class StockPanel {
     private static VBox createStockPanel() {
         table = new TableView<>();
         table.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
-        table.getStyleClass().add("table-view");
         table.setId("stockTable");
 
         TableColumn<SparePart, String> colName = new TableColumn<>("Название запчасти");
@@ -57,37 +56,30 @@ public class StockPanel {
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
         colName.setPrefWidth(200);
         colName.setSortable(true);
-        colName.setStyle("-fx-alignment: CENTER-LEFT;");
 
         TableColumn<SparePart, String> colPartNumber = new TableColumn<>("Артикул");
         colPartNumber.setId("colStockPartNumber");
         colPartNumber.setCellValueFactory(new PropertyValueFactory<>("partNumber"));
         colPartNumber.setPrefWidth(120);
         colPartNumber.setSortable(true);
-        colPartNumber.setStyle("-fx-alignment: CENTER-LEFT;");
 
         TableColumn<SparePart, Double> colStock = new TableColumn<>("Текущий остаток");
         colStock.setId("colCurrentStock");
         colStock.setCellValueFactory(new PropertyValueFactory<>("stock"));
         colStock.setPrefWidth(120);
         colStock.setSortable(true);
-        colStock.getStyleClass().add("center-column");
-        colStock.setStyle("-fx-alignment: CENTER-LEFT;");
 
         TableColumn<SparePart, Double> colMinStock = new TableColumn<>("Мин. остаток");
         colMinStock.setId("colMinStock");
         colMinStock.setCellValueFactory(new PropertyValueFactory<>("minStock"));
         colMinStock.setPrefWidth(100);
         colMinStock.setSortable(true);
-        colMinStock.getStyleClass().add("center-column");
-        colMinStock.setStyle("-fx-alignment: CENTER-LEFT;");
 
         TableColumn<SparePart, String> colUnitType = new TableColumn<>("Ед. изм.");
         colUnitType.setId("colStockUnitType");
         colUnitType.setCellValueFactory(new PropertyValueFactory<>("unitType"));
         colUnitType.setPrefWidth(80);
         colUnitType.setSortable(true);
-        colUnitType.setStyle("-fx-alignment: CENTER-LEFT;");
 
         table.getColumns().addAll(colName, colPartNumber, colStock, colMinStock, colUnitType);
         table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
@@ -134,21 +126,12 @@ public class StockPanel {
         searchField.textProperty().addListener((observable, oldValue, newValue) -> filterStock(newValue));
 
         Button clearBtn = new Button("✖");
-        clearBtn.setStyle(
-                "-fx-background-color: #dc3545;" +
-                "-fx-text-fill: white;" +
-                "-fx-font-weight: bold;" +
-                "-fx-padding: 4 8 4 8;" +
-                "-fx-background-radius: 4;"
-        );
-        clearBtn.getStyleClass().add("clear-button");
         clearBtn.setOnAction(e -> {
             searchField.clear();
             filterStock("");
         });
 
         stockIncomeBtn = new Button("Внести приход");
-        stockIncomeBtn.getStyleClass().add("income-button");
         stockIncomeBtn.setDisable(true);
         stockIncomeBtn.setOnAction(e -> {
             SparePart selected = table.getSelectionModel().getSelectedItem();
@@ -213,13 +196,10 @@ public class StockPanel {
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
-        root.getStyleClass().add("dialog-root");
 
         Label titleLabel = new Label("Запчасть: " + part.getName());
-        titleLabel.getStyleClass().add("dialog-title");
 
         Label currentStockLabel = new Label("Текущий остаток: " + part.getStockFormatted());
-        currentStockLabel.getStyleClass().add("info-label");
 
         GridPane grid = new GridPane();
         grid.setHgap(15);
@@ -242,10 +222,8 @@ public class StockPanel {
         grid.add(amountField, 1, 1);
 
         Button saveBtn = new Button("Применить");
-        saveBtn.getStyleClass().add("save-button");
 
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.getStyleClass().add("cancel-button");
 
         HBox btnBox = new HBox(15, saveBtn, cancelBtn);
         btnBox.setAlignment(Pos.CENTER);

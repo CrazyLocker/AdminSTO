@@ -61,12 +61,10 @@ public class OrderView {
 
     public static VBox create() {
         VBox root = new VBox(10);
-        root.getStyleClass().add("main-container");
 
         HBox topPanel = new HBox(15);
         topPanel.setAlignment(Pos.CENTER_LEFT);
         topPanel.setPadding(new Insets(10));
-        topPanel.getStyleClass().add("top-panel");
 
         HBox searchBox = createSearchPanel();
 
@@ -77,13 +75,9 @@ public class OrderView {
         createOrderBtn = createActionButton("Новый");
 
         editBtn.setId("editBtn");
-        editBtn.setStyle("-fx-background-color: #f39c12;");
         deleteBtn.setId("deleteBtn");
-        deleteBtn.setStyle("-fx-background-color: #e74c3c;");
         printBtn.setId("printBtn");
-        printBtn.setStyle("-fx-background-color: #9b59b6;");
         createOrderBtn.setId("createOrderBtn");
-        createOrderBtn.setStyle("-fx-background-color: #2ecc71;");
 
         editBtn.setOnAction(e -> onEdit());
         deleteBtn.setOnAction(e -> onDelete());
@@ -100,7 +94,6 @@ public class OrderView {
         // ========== ПАНЕЛЬ РАСШИРЕННЫХ ФИЛЬТРОВ ==========
         advancedToggleBtn = new ToggleButton("Расширенный фильтр");
         advancedToggleBtn.setId("advancedToggleBtn");
-        advancedToggleBtn.getStyleClass().add("toggle-button");
         advancedToggleBtn.setSelected(false);
 
         advancedFilterPanel = createAdvancedFilterPanel();
@@ -117,7 +110,6 @@ public class OrderView {
 
         // ========== ТАБЛИЦА ==========
         orderTable = new TableView<>();
-        orderTable.getStyleClass().add("table-view");
         orderTable.setId("orderTable");
         setupTableColumns();
 
@@ -166,24 +158,20 @@ public class OrderView {
     // Вспомогательный метод для создания разделителя
     private static Label createSeparator() {
         Label separator = new Label("|");
-        separator.getStyleClass().add("separator");
         return separator;
     }
 
     private static VBox createAdvancedFilterPanel() {
         VBox filterBox = new VBox(10);
         filterBox.setPadding(new Insets(10));
-        filterBox.getStyleClass().add("filter-panel");
 
         Label titleLabel = new Label("Фильтры");
-        titleLabel.getStyleClass().add("filter-title");
 
         // Строка 1: Статус
         HBox row1 = new HBox(15);
         row1.setAlignment(Pos.CENTER_LEFT);
 
         Label statusLabel = new Label("Статус:");
-        statusLabel.getStyleClass().add("filter-label");
         statusFilterCombo = new ComboBox<>();
         statusFilterCombo.setId("statusFilterCombo");
         statusFilterCombo.getItems().addAll("Все", WorkOrder.STATUS_NEW, WorkOrder.STATUS_IN_PROGRESS, WorkOrder.STATUS_CLOSED);
@@ -198,7 +186,6 @@ public class OrderView {
         row2.setAlignment(Pos.CENTER_LEFT);
 
         Label dateFromLabel = new Label("Дата от:");
-        dateFromLabel.getStyleClass().add("filter-label");
         dateFromPicker = new DatePicker();
         dateFromPicker.setId("dateFromPicker");
         dateFromPicker.setPromptText("дд.мм.гггг");
@@ -206,7 +193,6 @@ public class OrderView {
         dateFromPicker.setOnAction(e -> applyFilters());
 
         Label dateToLabel = new Label("Дата до:");
-        dateToLabel.getStyleClass().add("filter-label");
         dateToPicker = new DatePicker();
         dateToPicker.setId("dateToPicker");
         dateToPicker.setPromptText("дд.мм.гггг");
@@ -220,7 +206,6 @@ public class OrderView {
         row3.setAlignment(Pos.CENTER_LEFT);
 
         Label minTotalLabel = new Label("Сумма от:");
-        minTotalLabel.getStyleClass().add("filter-label");
         minTotalField = new TextField();
         minTotalField.setId("minTotalField");
         minTotalField.setPromptText("0");
@@ -228,7 +213,6 @@ public class OrderView {
         minTotalField.textProperty().addListener((obs, oldVal, newVal) -> applyFilters());
 
         Label maxTotalLabel = new Label("Сумма до:");
-        maxTotalLabel.getStyleClass().add("filter-label");
         maxTotalField = new TextField();
         maxTotalField.setId("maxTotalField");
         maxTotalField.setPromptText("100000");
@@ -404,7 +388,6 @@ public class OrderView {
     private static Button createActionButton(String text) {
         Button btn = new Button(text);
         btn.setPrefWidth(100);
-        btn.getStyleClass().add("action-button");
         return btn;
     }
 
@@ -413,26 +396,16 @@ public class OrderView {
         searchField.setId("searchField");
         searchField.setPromptText("Поиск по имени, телефону или номеру авто...");
         searchField.setPrefWidth(300);
-        searchField.getStyleClass().add("search-field");
         searchField.textProperty().addListener((obs, oldVal, newVal) -> applyFilters());
 
         Button clearBtn = new Button("✕");
         clearBtn.setId("clearSearchBtn");
-        clearBtn.setStyle(
-                "-fx-background-color: #dc3545;" +
-                        "-fx-text-fill: white;" +
-                        "-fx-font-weight: bold;" +
-                        "-fx-padding: 4 8 4 8;" +
-                        "-fx-background-radius: 4;"
-        );
-        clearBtn.getStyleClass().add("clear-button");
         clearBtn.setOnAction(e -> {
             searchField.clear();
             applyFilters();
         });
 
         resultLabel = new Label();
-        resultLabel.getStyleClass().add("result-label");
 
         HBox searchBox = new HBox(10, new Label("Поиск:"), searchField, clearBtn, resultLabel);
         searchBox.setAlignment(Pos.CENTER_LEFT);

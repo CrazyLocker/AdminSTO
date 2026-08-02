@@ -41,10 +41,8 @@ public class ImportSparePartsDialog {
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
-        root.getStyleClass().add("dialog-root");
 
         Label titleLabel = new Label("Импорт запчастей из файла");
-        titleLabel.getStyleClass().add("dialog-title");
 
         HBox fileBox = new HBox(10);
         fileBox.setAlignment(Pos.CENTER_LEFT);
@@ -53,10 +51,8 @@ public class ImportSparePartsDialog {
         fileField.setPromptText("Файл не выбран");
         fileField.setEditable(false);
         fileField.setPrefWidth(350);
-        fileField.getStyleClass().add("form-field");
 
         Button browseBtn = new Button("Обзор...");
-        browseBtn.getStyleClass().add("add-button");
         fileBox.getChildren().addAll(fileField, browseBtn);
 
         browseBtn.setOnAction(e -> {
@@ -90,22 +86,18 @@ public class ImportSparePartsDialog {
         separator1.setPrefWidth(580);
 
         Label formatLabel = new Label("Поддерживаемые форматы:");
-        formatLabel.getStyleClass().add("info-label");
 
         Label formatInfo = new Label(
                 "XML: <part><name>...</name>...</part>");
         formatInfo.setWrapText(true);
         formatInfo.setMaxWidth(580);
-        formatInfo.getStyleClass().add("info-text");
 
         Separator separator2 = new Separator();
         separator2.setPrefWidth(580);
 
         importStatusLabel = new Label("Готов к импорту");
-        importStatusLabel.getStyleClass().add("status-label");
 
         importBtn = new Button("Импортировать");
-        importBtn.getStyleClass().add("add-button");
         importBtn.setDisable(true);
 
         fileField.textProperty().addListener((obs, old, neu) -> {
@@ -134,11 +126,7 @@ public class ImportSparePartsDialog {
                     javafx.application.Platform.runLater(() -> {
                         importStatusLabel.setText(result.toString());
                         if (result.hasErrors()) {
-                            importStatusLabel.getStyleClass().add("status-label-warning");
-                        }
-
-                        errorList.clear();
-                        if (result.hasErrors()) {
+                            errorList.clear();
                             errorList.addAll(result.getErrors());
                             errorListView.setItems(errorList);
                             errorsBox.setVisible(true);
@@ -157,7 +145,6 @@ public class ImportSparePartsDialog {
                 } catch (Exception ex) {
                     javafx.application.Platform.runLater(() -> {
                         importStatusLabel.setText("Ошибка: " + ex.getMessage());
-                        importStatusLabel.getStyleClass().add("status-label-error");
                         importBtn.setDisable(false);
                         showAlert("Ошибка импорта", ex.getMessage());
                     });
@@ -168,19 +155,15 @@ public class ImportSparePartsDialog {
         errorsBox = new VBox(5);
         errorsBox.setVisible(false);
         Label errorsLabel = new Label("Ошибки импорта:");
-        errorsLabel.getStyleClass().add("errors-label");
 
         errorList = FXCollections.observableArrayList();
         errorListView = new ListView<>(errorList);
         errorListView.setMaxHeight(150);
-        errorListView.getStyleClass().add("error-list");
         VBox.setVgrow(errorListView, Priority.ALWAYS);
 
         errorsBox.getChildren().addAll(errorsLabel, errorListView);
-        errorsBox.getStyleClass().add("errors-box");
 
         Button closeBtn = new Button("Закрыть");
-        closeBtn.getStyleClass().add("cancel-button");
         closeBtn.setOnAction(e -> stage.close());
         
         stage.setOnHiding(e -> {
@@ -194,7 +177,6 @@ public class ImportSparePartsDialog {
         root.getChildren().addAll(titleLabel, centerBox, separator2, errorsBox, closeBtn);
 
         Scene scene = new Scene(root);
-        scene.getStylesheets().add(ImportSparePartsDialog.class.getResource("/styles.css").toExternalForm());
         stage.setScene(scene);
         stage.showAndWait();
     }
@@ -204,13 +186,11 @@ public class ImportSparePartsDialog {
         alert.setTitle(title);
         alert.setHeaderText(message);
         alert.setContentText("Запчасти успешно добавлены в справочник.");
-        alert.getDialogPane().getStyleClass().add("alert-dialog");
         alert.showAndWait();
     }
 
     private static void showAlert(String message) {
         Alert alert = new Alert(Alert.AlertType.WARNING, message, ButtonType.OK);
-        alert.getDialogPane().getStyleClass().add("alert-dialog");
         alert.showAndWait();
     }
 }

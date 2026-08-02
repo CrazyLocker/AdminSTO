@@ -29,13 +29,11 @@ public class OrderDetailsDialog {
         content.setPadding(new Insets(20));
 
         Label headerLabel = new Label(order.getClient().getName() + " | " + Validators.formatPhoneForDisplay(order.getClient().getPhone()));
-        headerLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
 
         Label statusLabel = new Label("Статус: " + order.getStatus());
         Label carLabel = new Label("Авто: " + order.getClient().getCarModel() + " (" + order.getClient().getCarNumber() + ")");
 
         Label servicesLabel = new Label("Услуги:");
-        servicesLabel.setStyle("-fx-font-weight: bold;");
 
         ListView<String> servicesList = new ListView<>();
         for (int i = 0; i < order.getServices().size(); i++) {
@@ -44,7 +42,6 @@ public class OrderDetailsDialog {
         servicesList.setPrefHeight(100);
 
         Label partsLabel = new Label("Запчасти:");
-        partsLabel.setStyle("-fx-font-weight: bold;");
 
         ListView<String> partsList = new ListView<>();
         for (int i = 0; i < order.getSpareParts().size(); i++) {
@@ -55,7 +52,6 @@ public class OrderDetailsDialog {
         partsList.setPrefHeight(100);
 
         Label totalLabel = new Label("Итого: " + order.getTotal() + " руб.");
-        totalLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
 
         Button closeBtn = new Button("Закрыть");
         HBox btnBox = new HBox(15, closeBtn);

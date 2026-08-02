@@ -67,7 +67,6 @@ public class DashboardView extends ScrollPane {
 
         setContent(gridPane);
         setFitToWidth(true);
-        setStyle("-fx-background-color: #f4f6f9;");
 
         doRefresh();
     }
@@ -143,21 +142,11 @@ public class DashboardView extends ScrollPane {
         card.setPrefSize(320, 140);
         card.setMinSize(320, 140);
         card.setMaxSize(320, 140);
-        card.setStyle(
-                "-fx-background-color: white;" +
-                        "-fx-border-radius: 12px;" +
-                        "-fx-background-radius: 12px;" +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 5);" +
-                        "-fx-border-width: 4px 0 0 0;" +
-                        "-fx-border-color: " + color + ";"
-        );
 
         Label titleLabel = new Label(title);
-        titleLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #7f8c8d;");
         titleLabel.setWrapText(true);
 
         Label valueLabel = new Label(value);
-        valueLabel.setStyle("-fx-font-size: 32px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
         valueLabel.setWrapText(true);
 
         card.getChildren().addAll(icon, titleLabel, valueLabel);
@@ -169,38 +158,6 @@ public class DashboardView extends ScrollPane {
     private Button createActionButton(String text, String color) {
         Button btn = new Button(text);
         btn.setPrefSize(190, 40);
-        btn.setStyle(
-                "-fx-background-color: " + color + ";" +
-                        "-fx-text-fill: white;" +
-                        "-fx-font-size: 14px;" +
-                        "-fx-font-weight: bold;" +
-                        "-fx-background-radius: 8px;" +
-                        "-fx-border-radius: 8px;" +
-                        "-fx-cursor: hand;" +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 8, 0, 0, 3);"
-        );
-
-        btn.setOnMouseEntered(e -> btn.setStyle(
-                "-fx-background-color: " + darken(color) + ";" +
-                        "-fx-text-fill: white;" +
-                        "-fx-font-size: 14px;" +
-                        "-fx-font-weight: bold;" +
-                        "-fx-background-radius: 8px;" +
-                        "-fx-border-radius: 8px;" +
-                        "-fx-cursor: hand;" +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 12, 0, 0, 4);"
-        ));
-
-        btn.setOnMouseExited(e -> btn.setStyle(
-                "-fx-background-color: " + color + ";" +
-                        "-fx-text-fill: white;" +
-                        "-fx-font-size: 14px;" +
-                        "-fx-font-weight: bold;" +
-                        "-fx-background-radius: 8px;" +
-                        "-fx-border-radius: 8px;" +
-                        "-fx-cursor: hand;" +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 8, 0, 0, 3);"
-        ));
 
         btn.setOnAction(e -> {
             String btnText = text;
@@ -216,19 +173,6 @@ public class DashboardView extends ScrollPane {
         });
 
         return btn;
-    }
-
-    private String darken(String color) {
-        return switch (color) {
-            case "#3498db" -> "#2980b9";
-            case "#2ecc71" -> "#27ae60";
-            case "#9b59b6" -> "#8e44ad";
-            case "#f39c12" -> "#e67e22";
-            case "#f1c40f" -> "#d4ac0d";
-            case "#27ae60" -> "#1e8449";
-            case "#e74c3c" -> "#c0392b";
-            default -> color;
-        };
     }
 
     // ==================== ДЕЙСТВИЯ КНОПОК ====================
@@ -348,16 +292,9 @@ public class DashboardView extends ScrollPane {
     private VBox createAppointmentsWeekBox() {
         VBox box = new VBox(10);
         box.setPadding(new Insets(20));
-        box.setStyle(
-                "-fx-background-color: white;" +
-                        "-fx-border-radius: 12px;" +
-                        "-fx-background-radius: 12px;" +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 10, 0, 0, 5);"
-        );
 
         Label header = new Label("Записи на текущую неделю");
         header.setGraphic(IconHelper.event(20, "#2c3e50"));
-        header.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2c3e50; -fx-graphic-text-gap: 8;");
         box.getChildren().add(header);
 
         // Получаем записи на текущую неделю
@@ -365,14 +302,12 @@ public class DashboardView extends ScrollPane {
 
         if (weekAppointments.isEmpty()) {
             Label empty = new Label("Нет записей на текущую неделю");
-            empty.setStyle("-fx-text-fill: #95a5a6; -fx-font-size: 14px;");
             box.getChildren().add(empty);
             return box;
         }
 
         // Создаём таблицу
         TableView<AppointmentRow> table = new TableView<>();
-        table.getStyleClass().add("table-view");
         table.setPrefHeight(300);
 
         // Отключаем автоматическое добавление колонок
@@ -457,7 +392,6 @@ public class DashboardView extends ScrollPane {
 
         // Добавляем подсказку
         Label hint = new Label("💡 Двойной клик по строке — просмотр заказа");
-        hint.setStyle("-fx-font-size: 12px; -fx-text-fill: #7f8c8d; -fx-padding: 8 0 0 0;");
 
         box.getChildren().addAll(table, hint);
         return box;

@@ -34,14 +34,11 @@ public class ExportClientsDialog {
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
-        root.getStyleClass().add("dialog-root");
 
         Label titleLabel = new Label("Экспорт клиентов в файл");
-        titleLabel.getStyleClass().add("dialog-title");
 
         // Выбор формата
         Label formatLabel = new Label("Формат файла:");
-        formatLabel.getStyleClass().add("info-label");
 
         ComboBox<String> formatCombo = new ComboBox<>();
         formatCombo.getItems().addAll(
@@ -58,10 +55,8 @@ public class ExportClientsDialog {
         fileField.setPromptText("Файл не выбран");
         fileField.setEditable(false);
         fileField.setPrefWidth(350);
-        fileField.getStyleClass().add("form-field");
 
         Button browseBtn = new Button("Обзор...");
-        browseBtn.getStyleClass().add("add-button");
         fileBox.getChildren().addAll(fileField, browseBtn);
 
         browseBtn.setOnAction(e -> {
@@ -98,17 +93,14 @@ public class ExportClientsDialog {
 
         // Статус и кнопки
         Label statusLabel = new Label("Готов к экспорту");
-        statusLabel.getStyleClass().add("status-label");
 
         HBox buttonBox = new HBox(10);
         buttonBox.setAlignment(Pos.CENTER_LEFT);
 
         Button exportBtn = new Button("Экспортировать");
-        exportBtn.getStyleClass().add("add-button");
         exportBtn.setDisable(true);
 
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.getStyleClass().add("cancel-button");
 
         buttonBox.getChildren().addAll(exportBtn, cancelBtn);
 
@@ -161,7 +153,6 @@ public class ExportClientsDialog {
         root.getChildren().addAll(titleLabel, centerBox);
 
         Scene scene = new Scene(root);
-        scene.getStylesheets().add(ExportClientsDialog.class.getResource("/styles.css").toExternalForm());
         stage.setScene(scene);
         stage.showAndWait();
     }
@@ -170,13 +161,11 @@ public class ExportClientsDialog {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);
         alert.setHeaderText(message);
-        alert.getDialogPane().getStyleClass().add("alert-dialog");
         alert.showAndWait();
     }
 
     private static void showAlert(String message) {
         Alert alert = new Alert(Alert.AlertType.WARNING, message, ButtonType.OK);
-        alert.getDialogPane().getStyleClass().add("alert-dialog");
         alert.showAndWait();
     }
 }

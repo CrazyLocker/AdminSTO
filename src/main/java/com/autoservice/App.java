@@ -76,9 +76,6 @@ public class App extends Application {
         });
 
         Scene scene = new Scene(tabPane, 1500, 1000);
-        scene.getStylesheets().add(
-                App.class.getResource("/styles.css").toExternalForm()
-        );
 
         primaryStage.setTitle("Администратор СТО");
         primaryStage.setScene(scene);

@@ -44,10 +44,8 @@ public class EditServiceDialog {
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
-        root.getStyleClass().add("dialog-root");
 
         Label titleLabel = new Label(isAdd ? "Добавление услуги" : "Редактирование услуги");
-        titleLabel.getStyleClass().add("dialog-title");
 
         GridPane grid = new GridPane();
         grid.setHgap(15);
@@ -104,10 +102,8 @@ public class EditServiceDialog {
         grid.add(partNumberField, 1, 3);
 
         Button saveBtn = new Button("Сохранить");
-        saveBtn.getStyleClass().add("save-button");
 
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.getStyleClass().add("cancel-button");
 
         HBox btnBox = new HBox(15, saveBtn, cancelBtn);
         btnBox.setAlignment(Pos.CENTER);

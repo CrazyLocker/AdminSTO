@@ -80,14 +80,11 @@ public class EditOrderDialog {
         root.setPadding(new Insets(20));
 
         Label infoLabel = new Label("Клиент: " + order.getClient().getName() + " (" + order.getCarModel() + ", " + order.getCarNumber() + ")");
-        infoLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
 
         // ==================== ПРОБЕГ ====================
         Label mileageHeader = new Label("ПРОБЕГ");
-        mileageHeader.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
 
         Label mileageDisplay = new Label("Текущий пробег: " + order.getMileage() + " км");
-        mileageDisplay.setStyle("-fx-font-size: 12px; -fx-padding: 3 0 3 0;");
 
         TextField mileageFieldLocal = new TextField(String.valueOf(order.getMileage()));
         mileageFieldLocal.setPrefWidth(150);
@@ -103,7 +100,6 @@ public class EditOrderDialog {
 
         // ==================== ЗАПИСЬ В КАЛЕНДАРЬ ====================
         Label appointmentHeader = new Label("ЗАПИСЬ В КАЛЕНДАРЬ");
-        appointmentHeader.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
 
         // Находим существующую запись для этого заказа
         Appointment existingAppointment = null;
@@ -116,7 +112,6 @@ public class EditOrderDialog {
 
         // Информация о текущей записи
         Label currentAppointmentInfo = new Label();
-        currentAppointmentInfo.setStyle("-fx-text-fill: #2E7D32; -fx-font-size: 12px; -fx-padding: 5 0 5 0;");
 
         CheckBox hasAppointmentCheck = new CheckBox("Создать/редактировать запись в календаре");
 
@@ -136,11 +131,9 @@ public class EditOrderDialog {
             } catch (Exception e) { logger.error("Error in edit order", e); }
 
             currentAppointmentInfo.setText("Текущая запись: " + formattedDate + " " + timeStr + ", мастер: " + master + ", услуга: " + service);
-            currentAppointmentInfo.setStyle("-fx-text-fill: #2196F3; -fx-font-size: 12px; -fx-padding: 5 0 5 0;");
         } else {
             hasAppointmentCheck.setSelected(false);
             currentAppointmentInfo.setText("Запись в календаре отсутствует");
-            currentAppointmentInfo.setStyle("-fx-text-fill: #FF9800; -fx-font-size: 12px; -fx-padding: 5 0 5 0;");
         }
 
         DatePicker datePicker = new DatePicker();
@@ -177,11 +170,9 @@ public class EditOrderDialog {
                 timeCombo.setValue(null);
                 masterCombo.setValue(null);
                 currentAppointmentInfo.setText("Запись будет удалена");
-                currentAppointmentInfo.setStyle("-fx-text-fill: #f44336; -fx-font-size: 12px; -fx-padding: 5 0 5 0;");
             } else {
                 datePicker.setValue(LocalDate.now());
                 currentAppointmentInfo.setText("Будет создана новая запись");
-                currentAppointmentInfo.setStyle("-fx-text-fill: #4CAF50; -fx-font-size: 12px; -fx-padding: 5 0 5 0;");
             }
         });
 
@@ -195,7 +186,6 @@ public class EditOrderDialog {
 
         // ==================== УСЛУГИ ====================
         Label servicesHeader = new Label("УСЛУГИ");
-        servicesHeader.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
 
         servicesListView = new ListView<>();
         servicesListView.setPrefHeight(120);
@@ -211,14 +201,11 @@ public class EditOrderDialog {
         serviceCombo.setPrefWidth(350);
 
         Button addServiceBtn = new Button("Добавить");
-        addServiceBtn.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold;");
         Button removeServiceBtn = new Button("Удалить");
-        removeServiceBtn.setStyle("-fx-background-color: #f44336; -fx-text-fill: white; -fx-font-weight: bold;");
         HBox serviceAddBox = new HBox(10, serviceCombo, addServiceBtn, removeServiceBtn);
 
         // ==================== ЗАПЧАСТИ ====================
         Label partsHeader = new Label("ЗАПЧАСТИ");
-        partsHeader.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
 
         partsListView = new ListView<>();
         partsListView.setPrefHeight(120);
@@ -237,14 +224,11 @@ public class EditOrderDialog {
         partCombo.setPrefWidth(350);
 
         Button addPartBtn = new Button("Добавить");
-        addPartBtn.setStyle("-fx-background-color: #2196F3; -fx-text-fill: white; -fx-font-weight: bold;");
         Button removePartBtn = new Button("Удалить");
-        removePartBtn.setStyle("-fx-background-color: #f44336; -fx-text-fill: white; -fx-font-weight: bold;");
         HBox partAddBox = new HBox(10, partCombo, addPartBtn, removePartBtn);
 
         // ==================== ИТОГО ====================
         totalLabel = new Label("ИТОГО: " + calculateTotal() + " руб.");
-        totalLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 16px; -fx-text-fill: #2E7D32;");
 
         // ==================== ЛОГИКА ДОБАВЛЕНИЯ ====================
         addServiceBtn.setOnAction(e -> {
@@ -347,9 +331,7 @@ public class EditOrderDialog {
 
         // ==================== КНОПКИ СОХРАНЕНИЯ ====================
         Button saveBtn = new Button("Сохранить изменения");
-        saveBtn.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.setStyle("-fx-background-color: #f44336; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
         HBox btnBox = new HBox(15, saveBtn, cancelBtn);
         btnBox.setAlignment(Pos.CENTER);
 
@@ -619,12 +601,10 @@ public class EditOrderDialog {
         root.setPadding(new Insets(20));
 
         Label titleLabel = new Label("Выберите запчасти, которые нужно добавить:");
-        titleLabel.getStyleClass().add("dialog-title");
 
         // VBox для чекбоксов
         VBox checkboxesVBox = new VBox(10);
         checkboxesVBox.setPadding(new Insets(10));
-        checkboxesVBox.setStyle("-fx-background-color: #f5f5f5; -fx-border-color: #cccccc;");
         checkboxesVBox.setPrefHeight(250);
 
         // Храним состояния чекбоксов
@@ -685,14 +665,11 @@ public class EditOrderDialog {
 
         // Общая стоимость
         Label totalLabel = new Label("Общая стоимость: 0 руб.");
-        totalLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
 
         // Кнопки
         Button confirmBtn = new Button("Подтвердить");
-        confirmBtn.getStyleClass().add("save-button");
 
         Button skipBtn = new Button("Пропустить");
-        skipBtn.getStyleClass().add("cancel-button");
 
         HBox btnBox = new HBox(15, confirmBtn, skipBtn);
         btnBox.setAlignment(Pos.CENTER);

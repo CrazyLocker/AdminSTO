@@ -64,17 +64,14 @@ public class AddServicePartDialog {
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
-        root.getStyleClass().add("dialog-root");
 
         Label titleLabel = new Label(isEdit ? "Редактировать связь" : "Добавить связь услуги и запчастей");
-        titleLabel.getStyleClass().add("dialog-title");
 
         // Выбор услуги
         HBox serviceRow = new HBox(10);
         serviceRow.setAlignment(Pos.CENTER_LEFT);
 
         Label serviceLabel = new Label("Услуга:");
-        serviceLabel.getStyleClass().add("label");
 
         ComboBox<String> serviceCombo = new ComboBox<>();
         serviceCombo.setPromptText("Выберите услугу");
@@ -90,10 +87,8 @@ public class AddServicePartDialog {
 
         // Таблица запчастей
         Label partsLabel = new Label("Запчасти:");
-        partsLabel.getStyleClass().add("section-title");
 
         TableView<SparePartWithQuantity> partsTable = new TableView<>();
-        partsTable.getStyleClass().add("table-view");
         partsTable.setEditable(true);
         VBox.setVgrow(partsTable, Priority.ALWAYS);
 
@@ -155,9 +150,7 @@ public class AddServicePartDialog {
 
         // Кнопки
         Button saveBtn = new Button(isEdit ? "Сохранить изменения" : "Добавить связь");
-        saveBtn.getStyleClass().add("save-button");
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.getStyleClass().add("cancel-button");
 
         HBox btnBox = new HBox(15, saveBtn, cancelBtn);
         btnBox.setAlignment(Pos.CENTER);
@@ -166,7 +159,6 @@ public class AddServicePartDialog {
         root.getChildren().addAll(titleLabel, serviceRow, partsLabel, partsTable, btnBox);
 
         Scene scene = new Scene(root);
-        scene.getStylesheets().add("com/autoservice/styles/styles.css");
         stage.setScene(scene);
 
         final int[] result = new int[1];

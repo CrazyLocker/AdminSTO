@@ -50,10 +50,8 @@ public class ClientView {
     public static VBox create() {
         VBox mainContainer = new VBox(15);
         mainContainer.setPadding(new Insets(20));
-        mainContainer.setStyle("-fx-background-color: #f5f7fa;");
 
         Label titleLabel = new Label("Управление клиентами");
-        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
 
         HBox topPanel = new HBox(15);
         topPanel.setAlignment(Pos.CENTER_LEFT);
@@ -62,12 +60,10 @@ public class ClientView {
         // ====== КНОПКИ БЕЗ ИКОНОК ======
         addBtn = new Button("Новый клиент");
         addBtn.setId("addClientBtn");
-        addBtn.getStyleClass().add("add-button");
         addBtn.setOnAction(e -> showAddClientDialog());
 
         editBtn = new Button("Изменить");
         editBtn.setId("editClientBtn");
-        editBtn.getStyleClass().add("edit-button");
         editBtn.setDisable(true);
         editBtn.setOnAction(e -> {
             Client selected = clientTable.getSelectionModel().getSelectedItem();
@@ -78,7 +74,6 @@ public class ClientView {
 
         deleteBtn = new Button("Удалить");
         deleteBtn.setId("deleteClientBtn");
-        deleteBtn.getStyleClass().add("delete-button");
         deleteBtn.setDisable(true);
         deleteBtn.setOnAction(e -> {
             Client selected = clientTable.getSelectionModel().getSelectedItem();
@@ -128,25 +123,15 @@ public class ClientView {
 
     private static HBox createSearchPanel() {
         Label searchLabel = new Label("Поиск:");
-        searchLabel.setStyle("-fx-font-weight: bold;");
 
         searchField = new TextField();
         searchField.setId("clientSearchField");
         searchField.setPromptText("Поиск по имени, фамилии, телефону...");
         searchField.setPrefWidth(350);
-        searchField.getStyleClass().add("search-field");
 
         searchField.textProperty().addListener((observable, oldValue, newValue) -> filterClients(newValue));
 
         Button clearBtn = new Button("✖");
-        clearBtn.setStyle(
-                "-fx-background-color: #dc3545;" +
-                        "-fx-text-fill: white;" +
-                        "-fx-font-weight: bold;" +
-                        "-fx-padding: 4 8 4 8;" +
-                        "-fx-background-radius: 4;"
-        );
-        clearBtn.getStyleClass().add("clear-button");
         clearBtn.setOnAction(e -> {
             searchField.clear();
             filterClients("");
@@ -159,7 +144,6 @@ public class ClientView {
 
     private static TableView<Client> createClientTable() {
         TableView<Client> table = new TableView<>();
-        table.getStyleClass().add("table-view");
         table.setId("clientTable");
 
         TableColumn<Client, String> colLastName = new TableColumn<>("Фамилия");

@@ -116,7 +116,6 @@ public class SettingsView {
 
         VBox root = create();
         Scene scene = new Scene(root);
-        scene.getStylesheets().add("com/autoservice/styles/styles.css");
         stage.setScene(scene);
         
         // Центрирование на экране
@@ -134,7 +133,6 @@ public class SettingsView {
 
     public static VBox create() {
         TabPane settingsPaneLocal = new TabPane();
-        settingsPaneLocal.getStyleClass().add("settings-tabpane");
         settingsPane = settingsPaneLocal;
 
         // Вкладка "Настройки приложения" (новая)
@@ -166,7 +164,6 @@ public class SettingsView {
 
         VBox vbox = new VBox(10);
         vbox.setPadding(new Insets(10));
-        vbox.getStyleClass().add("main-container");
         vbox.getChildren().add(settingsPane);
         VBox.setVgrow(settingsPane, Priority.ALWAYS);
 
@@ -178,10 +175,8 @@ public class SettingsView {
     private static VBox createSettingsAppPanel() {
         VBox mainContainer = new VBox(15);
         mainContainer.setPadding(new Insets(20));
-        mainContainer.setStyle("-fx-background-color: #f5f7fa;");
 
         Label titleLabel = new Label("Настройки приложения");
-        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
 
         HBox topPanel = new HBox(15);
         topPanel.setAlignment(Pos.CENTER_LEFT);
@@ -189,16 +184,13 @@ public class SettingsView {
 
         // ====== КНОПКИ ======
         addBtn = new Button("Добавить");
-        addBtn.getStyleClass().add("add-button");
         addBtn.setOnAction(e -> addSetting());
 
         editBtn = new Button("Изменить");
-        editBtn.getStyleClass().add("edit-button");
         editBtn.setDisable(true);
         editBtn.setOnAction(e -> editSetting());
 
         deleteBtn = new Button("Удалить");
-        deleteBtn.getStyleClass().add("delete-button");
         deleteBtn.setDisable(true);
         deleteBtn.setOnAction(e -> deleteSetting());
 
@@ -229,24 +221,14 @@ public class SettingsView {
 
     private static HBox createSearchPanel() {
         Label searchLabel = new Label("Поиск:");
-        searchLabel.setStyle("-fx-font-weight: bold;");
 
         searchField = new TextField();
         searchField.setPromptText("Поиск по ключу, значению...");
         searchField.setPrefWidth(350);
-        searchField.getStyleClass().add("search-field");
 
         searchField.textProperty().addListener((observable, oldValue, newValue) -> filterSettings(newValue));
 
         Button clearBtn = new Button("✖");
-        clearBtn.setStyle(
-                "-fx-background-color: #dc3545;" +
-                        "-fx-text-fill: white;" +
-                        "-fx-font-weight: bold;" +
-                        "-fx-padding: 4 8 4 8;" +
-                        "-fx-background-radius: 4;"
-        );
-        clearBtn.getStyleClass().add("clear-button");
         clearBtn.setOnAction(e -> {
             searchField.clear();
             filterSettings("");
@@ -259,7 +241,6 @@ public class SettingsView {
 
     private static TableView<Setting> createSettingsTable() {
         TableView<Setting> table = new TableView<>();
-        table.getStyleClass().add("table-view");
         table.setId("settingsTable");
 
         TableColumn<Setting, String> colKey = new TableColumn<>("Ключ");
@@ -468,7 +449,6 @@ public class SettingsView {
         VBox panel = new VBox(15);
 
         Label introLabel = new Label("Настройки автоматического добавления запчастей при выборе услуги");
-        introLabel.getStyleClass().add("intro-label");
 
         // Настройка 1: Включить/выключить автозаполнение
         HBox autoAddBox = new HBox(10);
@@ -516,7 +496,6 @@ public class SettingsView {
 
         // Кнопка сохранения
         Button saveBtn = new Button("Сохранить настройки");
-        saveBtn.getStyleClass().add("save-button");
         saveBtn.setOnAction(e -> {
             boolean autoAddEnabled = autoAddYes.isSelected();
             boolean confirmationRequired = confirmationYes.isSelected();
@@ -542,23 +521,18 @@ public class SettingsView {
         topButtons.setAlignment(Pos.CENTER_LEFT);
 
         Button addBtn = new Button("Добавить");
-        addBtn.getStyleClass().add("add-button");
         addBtn.setOnAction(e -> showAddServiceSparePartDialog());
 
         Button editBtn = new Button("Изменить");
-        editBtn.getStyleClass().add("edit-button");
         editBtn.setDisable(true);
 
         Button deleteBtn = new Button("Удалить");
-        deleteBtn.getStyleClass().add("delete-button");
         deleteBtn.setDisable(true);
 
         Button refreshBtn = new Button("Обновить список");
-        refreshBtn.getStyleClass().add("save-button");
         refreshBtn.setOnAction(e -> refreshServiceSparePartsRows());
 
         Button cleanDuplicatesBtn = new Button("Очистить дубликаты");
-        cleanDuplicatesBtn.getStyleClass().add("delete-button");
         cleanDuplicatesBtn.setOnAction(e -> {
             Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
                     "Удалить все дубликаты связей услуги-запчасти?\n\nЭто оставит по одной записи для каждой пары услуга-запчасть.",
@@ -576,7 +550,6 @@ public class SettingsView {
 
         // Таблица связей на всю ширину
         serviceSparePartsTable = new TableView<>();
-        serviceSparePartsTable.getStyleClass().add("table-view");
         serviceSparePartsTable.setId("serviceSparePartsTable");
         serviceSparePartsTable.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(serviceSparePartsTable, Priority.ALWAYS);
@@ -777,7 +750,6 @@ public class SettingsView {
         VBox panel = new VBox(10);
 
         toPartsTable = new TableView<>();
-        toPartsTable.getStyleClass().add("table-view");
         toPartsTable.setId("toPartsTable");
 
         TableColumn<ToPartsRow, String> colCarModel = new TableColumn<>("Модель авто");
@@ -828,7 +800,6 @@ public class SettingsView {
             return javafx.beans.binding.Bindings.createObjectBinding(() -> quantity);
         });
         colQuantity.setPrefWidth(80);
-        colQuantity.getStyleClass().add("center-column");
         colQuantity.setSortable(true);
 
         TableColumn<ToPartsRow, String> colUnitType = new TableColumn<>("Ед. изм.");
@@ -900,11 +871,9 @@ public class SettingsView {
         topButtons.setAlignment(Pos.CENTER_LEFT);
 
         Button addBtn = new Button("Добавить");
-        addBtn.getStyleClass().add("add-button");
         addBtn.setOnAction(e -> showAddToPartDialog());
 
         deleteBtn = new Button("Удалить");
-        deleteBtn.getStyleClass().add("delete-button");
         deleteBtn.setDisable(true);
         deleteBtn.setOnAction(e -> {
             ToPartsRow selected = toPartsTable.getSelectionModel().getSelectedItem();
@@ -916,7 +885,6 @@ public class SettingsView {
         });
 
         Button refreshBtn = new Button("Обновить список");
-        refreshBtn.getStyleClass().add("save-button");
         refreshBtn.setOnAction(e -> refreshToParts());
 
         topButtons.getChildren().addAll(addBtn, deleteBtn, refreshBtn);
@@ -1026,19 +994,15 @@ public class SettingsView {
         topButtons.setAlignment(Pos.CENTER_LEFT);
 
         Button addBtn = new Button("Добавить связь");
-        addBtn.getStyleClass().add("add-button");
         addBtn.setOnAction(e -> showAddServicePartDialog());
 
         Button editBtn = new Button("Изменить");
-        editBtn.getStyleClass().add("edit-button");
         editBtn.setDisable(true);
 
         Button deleteBtn = new Button("Удалить");
-        deleteBtn.getStyleClass().add("delete-button");
         deleteBtn.setDisable(true);
 
         Button cleanDuplicatesBtn = new Button("Очистить дубликаты");
-        cleanDuplicatesBtn.getStyleClass().add("delete-button");
         cleanDuplicatesBtn.setOnAction(e -> {
             Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
                     "Удалить все дубликаты связей услуги-запчасть?\n\nЭто оставит по одной записи для каждой пары услуга-запчасть.",
@@ -1058,7 +1022,6 @@ public class SettingsView {
 
         // Таблица связей
         servicePartsTable = new TableView<>();
-        servicePartsTable.getStyleClass().add("table-view");
         servicePartsTable.setId("servicePartsTable");
         servicePartsTable.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(servicePartsTable, Priority.ALWAYS);
@@ -1102,7 +1065,6 @@ public class SettingsView {
             return javafx.beans.binding.Bindings.createObjectBinding(() -> part.getQuantity());
         });
         colQuantity.setPrefWidth(100);
-        colQuantity.getStyleClass().add("center-column");
         colQuantity.setSortable(true);
 
         TableColumn<ServicePart, Boolean> colRequired = new TableColumn<>("Обязательная");
@@ -1200,7 +1162,6 @@ public class SettingsView {
         root.setPadding(new Insets(20));
 
         Label titleLabel = new Label("Добавить связь");
-        titleLabel.getStyleClass().add("dialog-title");
 
         // Выбор услуги
         ComboBox<Service> serviceCombo = new ComboBox<>();
@@ -1250,10 +1211,8 @@ public class SettingsView {
         buttons.setAlignment(Pos.CENTER_RIGHT);
 
         Button okBtn = new Button("Добавить");
-        okBtn.getStyleClass().add("add-button");
 
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.getStyleClass().add("cancel-button");
 
         buttons.getChildren().addAll(okBtn, cancelBtn);
 
@@ -1291,7 +1250,6 @@ public class SettingsView {
         cancelBtn.setOnAction(e -> stage.close());
 
         Scene scene = new Scene(root);
-        scene.getStylesheets().add("styles.css");
         stage.setScene(scene);
         stage.show();
     }
@@ -1307,7 +1265,6 @@ public class SettingsView {
         root.setPadding(new Insets(20));
 
         Label titleLabel = new Label("Редактировать связь");
-        titleLabel.getStyleClass().add("dialog-title");
 
         // Получаем текущие значения
         Service service = DataStore.getServiceById(part.getServiceId());
@@ -1367,10 +1324,8 @@ public class SettingsView {
         buttons.setAlignment(Pos.CENTER_RIGHT);
 
         Button okBtn = new Button("Сохранить");
-        okBtn.getStyleClass().add("edit-button");
 
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.getStyleClass().add("cancel-button");
 
         buttons.getChildren().addAll(okBtn, cancelBtn);
 
@@ -1411,7 +1366,6 @@ public class SettingsView {
         cancelBtn.setOnAction(e -> stage.close());
 
         Scene scene = new Scene(root);
-        scene.getStylesheets().add("styles.css");
         stage.setScene(scene);
         stage.show();
     }
@@ -1429,17 +1383,14 @@ public class SettingsView {
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
-        root.getStyleClass().add("dialog-root");
 
         Label titleLabel = new Label("Добавить связь услуги и запчастей");
-        titleLabel.getStyleClass().add("dialog-title");
 
         // Выбор услуги
         HBox serviceRow = new HBox(10);
         serviceRow.setAlignment(Pos.CENTER_LEFT);
 
         Label serviceLabel = new Label("Услуга:");
-        serviceLabel.getStyleClass().add("label");
 
         ComboBox<String> serviceCombo = new ComboBox<>();
         serviceCombo.setPromptText("Выберите услугу");
@@ -1450,10 +1401,8 @@ public class SettingsView {
 
         // Таблица запчастей
         Label partsLabel = new Label("Запчасти:");
-        partsLabel.getStyleClass().add("section-title");
 
         TableView<SparePartWithQuantity> partsTable = new TableView<>();
-        partsTable.getStyleClass().add("table-view");
         partsTable.setEditable(true);
         VBox.setVgrow(partsTable, Priority.ALWAYS);
 
@@ -1503,9 +1452,7 @@ public class SettingsView {
 
         // Кнопки
         Button saveBtn = new Button("Добавить связь");
-        saveBtn.getStyleClass().add("save-button");
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.getStyleClass().add("cancel-button");
 
         HBox btnBox = new HBox(15, saveBtn, cancelBtn);
         btnBox.setAlignment(Pos.CENTER);
@@ -1514,7 +1461,6 @@ public class SettingsView {
         root.getChildren().addAll(titleLabel, serviceRow, partsLabel, partsTable, btnBox);
 
         Scene scene = new Scene(root);
-        scene.getStylesheets().add("com/autoservice/styles/styles.css");
         stage.setScene(scene);
 
         saveBtn.setOnAction(e -> {
@@ -1670,29 +1616,23 @@ public class SettingsView {
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
-        root.getStyleClass().add("dialog-root");
 
         Label titleLabel = new Label("Изменить связь услуги и запчастей");
-        titleLabel.getStyleClass().add("dialog-title");
 
         // Выбор услуги (только для отображения)
         HBox serviceRow = new HBox(10);
         serviceRow.setAlignment(Pos.CENTER_LEFT);
 
         Label serviceLabel = new Label("Услуга:");
-        serviceLabel.getStyleClass().add("label");
 
         Label serviceNameLabel = new Label(row.getService().getName());
-        serviceNameLabel.getStyleClass().add("highlight-label");
 
         serviceRow.getChildren().addAll(serviceLabel, serviceNameLabel);
 
         // Таблица запчастей
         Label partsLabel = new Label("Запчасти:");
-        partsLabel.getStyleClass().add("section-title");
 
         TableView<SparePartWithQuantity> partsTable = new TableView<>();
-        partsTable.getStyleClass().add("table-view");
         partsTable.setEditable(true);
         VBox.setVgrow(partsTable, Priority.ALWAYS);
 
@@ -1758,9 +1698,7 @@ public class SettingsView {
 
         // Кнопки
         Button saveBtn = new Button("Сохранить изменения");
-        saveBtn.getStyleClass().add("save-button");
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.getStyleClass().add("cancel-button");
 
         HBox btnBox = new HBox(15, saveBtn, cancelBtn);
         btnBox.setAlignment(Pos.CENTER);
@@ -1769,7 +1707,6 @@ public class SettingsView {
         root.getChildren().addAll(titleLabel, serviceRow, partsLabel, partsTable, btnBox);
 
         Scene scene = new Scene(root);
-        scene.getStylesheets().add("com/autoservice/styles/styles.css");
         stage.setScene(scene);
 
         saveBtn.setOnAction(e -> {
@@ -1858,17 +1795,14 @@ public class SettingsView {
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
-        root.getStyleClass().add("dialog-root");
 
         Label titleLabel = new Label("Добавить расходники ТО");
-        titleLabel.getStyleClass().add("dialog-title");
 
         // Выбор модели авто
         HBox modelRow = new HBox(10);
         modelRow.setAlignment(Pos.CENTER_LEFT);
 
         Label modelLabel = new Label("Модель авто:");
-        modelLabel.getStyleClass().add("label");
 
         ComboBox<String> modelCombo = new ComboBox<>();
         modelCombo.setPromptText("Выберите или введите модель авто");
@@ -1885,7 +1819,6 @@ public class SettingsView {
         noteRow.setAlignment(Pos.CENTER_LEFT);
 
         Label noteLabel = new Label("Примечание:");
-        noteLabel.getStyleClass().add("label");
 
         TextField noteField = new TextField();
         noteField.setPromptText("Введите примечание (до 1000 символов)");
@@ -1895,10 +1828,8 @@ public class SettingsView {
 
         // Таблица запчастей
         Label partsLabel = new Label("Запчасти:");
-        partsLabel.getStyleClass().add("section-title");
 
         TableView<SparePartWithQuantity> partsTable = new TableView<>();
-        partsTable.getStyleClass().add("table-view");
         partsTable.setEditable(true);
         VBox.setVgrow(partsTable, Priority.ALWAYS);
 
@@ -1948,9 +1879,7 @@ public class SettingsView {
 
         // Кнопки
         Button saveBtn = new Button("Добавить");
-        saveBtn.getStyleClass().add("save-button");
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.getStyleClass().add("cancel-button");
 
         HBox btnBox = new HBox(15, saveBtn, cancelBtn);
         btnBox.setAlignment(Pos.CENTER);
@@ -1959,7 +1888,6 @@ public class SettingsView {
         root.getChildren().addAll(titleLabel, modelRow, noteRow, partsLabel, partsTable, btnBox);
 
         Scene scene = new Scene(root);
-        scene.getStylesheets().add("com/autoservice/styles/styles.css");
         stage.setScene(scene);
 
         saveBtn.setOnAction(e -> {
@@ -2032,29 +1960,23 @@ public class SettingsView {
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
-        root.getStyleClass().add("dialog-root");
 
         Label titleLabel = new Label("Изменить расходники ТО");
-        titleLabel.getStyleClass().add("dialog-title");
 
         // Выбор модели авто (только для отображения)
         HBox modelRow = new HBox(10);
         modelRow.setAlignment(Pos.CENTER_LEFT);
 
         Label modelLabel = new Label("Модель авто:");
-        modelLabel.getStyleClass().add("label");
 
         Label modelNameLabel = new Label(row.getCarModel());
-        modelNameLabel.getStyleClass().add("highlight-label");
 
         modelRow.getChildren().addAll(modelLabel, modelNameLabel);
 
         // Таблица запчастей
         Label partsLabel = new Label("Запчасти:");
-        partsLabel.getStyleClass().add("section-title");
 
         TableView<SparePartWithQuantity> partsTable = new TableView<>();
-        partsTable.getStyleClass().add("table-view");
         partsTable.setEditable(true);
         VBox.setVgrow(partsTable, Priority.ALWAYS);
 
@@ -2120,9 +2042,7 @@ public class SettingsView {
 
         // Кнопки
         Button saveBtn = new Button("Сохранить изменения");
-        saveBtn.getStyleClass().add("save-button");
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.getStyleClass().add("cancel-button");
 
         HBox btnBox = new HBox(15, saveBtn, cancelBtn);
         btnBox.setAlignment(Pos.CENTER);
@@ -2131,7 +2051,6 @@ public class SettingsView {
         root.getChildren().addAll(titleLabel, modelRow, partsLabel, partsTable, btnBox);
 
         Scene scene = new Scene(root);
-        scene.getStylesheets().add("com/autoservice/styles/styles.css");
         stage.setScene(scene);
 
         saveBtn.setOnAction(e -> {
@@ -2273,7 +2192,6 @@ public class SettingsView {
         panel.setPadding(new Insets(20));
 
         Label introLabel = new Label("Настройки резервного копирования");
-        introLabel.getStyleClass().add("intro-label");
 
         // Настройка 1: Включить/выключить авто-бэкап
         HBox autoBackupBox = new HBox(10);
@@ -2337,22 +2255,18 @@ public class SettingsView {
 
         // Кнопка создания бэкапа
         Button createBackupBtn = new Button("Создать резервную копию сейчас");
-        createBackupBtn.getStyleClass().add("save-button");
 
         // Кнопка восстановления
         Button restoreBackupBtn = new Button("Восстановить из...");
-        restoreBackupBtn.getStyleClass().add("add-button");
 
         // Кнопка сохранения настроек - объявляем ДО использования
         Button saveBtn = new Button("Сохранить настройки");
-        saveBtn.getStyleClass().add("save-button");
 
         // Статус - объявляем Label ДО использования
         Label backupInfoLabel = new Label();
 
         // Список доступных бэкапов
         Label backupsLabel = new Label("Доступные резервные копии:");
-        backupsLabel.getStyleClass().add("section-title");
 
         ListView<String> backupsListView = new ListView<>();
         backupsListView.setPrefHeight(150);
@@ -2363,7 +2277,6 @@ public class SettingsView {
 
         // Кнопка удаления бэкапа
         Button deleteBackupBtn = new Button("Удалить выбранную копию");
-        deleteBackupBtn.getStyleClass().add("delete-button");
         deleteBackupBtn.setDisable(true);
 
         deleteBackupBtn.setOnAction(e -> {
@@ -2510,7 +2423,6 @@ public class SettingsView {
         info += "\nВсего копий: " + backupCount;
         label.setText(info);
         label.setWrapText(true);
-        label.getStyleClass().add("label");
     }
 
     // ==================== Вкладка: Импорт/Экспорт ====================
@@ -2518,32 +2430,26 @@ public class SettingsView {
     private static VBox createImportExportPanel() {
         VBox panel = new VBox(20);
         panel.setPadding(new Insets(20));
-        panel.setStyle("-fx-background-color: #f5f7fa;");
 
         // Заголовок
         Label titleLabel = new Label("Импорт и экспорт данных");
-        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
 
         // ==================== СЕКЦИЯ: ИМПОРТ ====================
         Label importSectionTitle = new Label("Импорт данных");
-        importSectionTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #27ae60;");
 
         // Кнопки импорта
         HBox importButtons = new HBox(15);
         importButtons.setAlignment(Pos.CENTER_LEFT);
 
         Button importClientsBtn = new Button("📥 Импорт клиентов");
-        importClientsBtn.getStyleClass().add("add-button");
         importClientsBtn.setPrefWidth(200);
         importClientsBtn.setOnAction(e -> ImportClientsDialog.show());
 
         Button importServicesBtn = new Button("📥 Импорт услуг");
-        importServicesBtn.getStyleClass().add("add-button");
         importServicesBtn.setPrefWidth(200);
         importServicesBtn.setOnAction(e -> ImportServicesDialog.show());
 
         Button importSparePartsBtn = new Button("📥 Импорт запчастей");
-        importSparePartsBtn.getStyleClass().add("add-button");
         importSparePartsBtn.setPrefWidth(200);
         importSparePartsBtn.setOnAction(e -> ImportSparePartsDialog.show());
 
@@ -2551,32 +2457,26 @@ public class SettingsView {
 
         // Информация о форматах
         Label importInfoLabel = new Label("Поддерживаемые форматы: XML");
-        importInfoLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #7f8c8d;");
 
         VBox importSection = new VBox(10, importSectionTitle, importButtons, importInfoLabel);
         importSection.setPadding(new Insets(15));
-        importSection.setStyle("-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);");
 
         // ==================== СЕКЦИЯ: ЭКСПОРТ ====================
         Label exportSectionTitle = new Label("Экспорт данных");
-        exportSectionTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #2980b9;");
 
         // Кнопки экспорта
         HBox exportButtons = new HBox(15);
         exportButtons.setAlignment(Pos.CENTER_LEFT);
 
         Button exportClientsBtn = new Button("📤 Экспорт клиентов");
-        exportClientsBtn.getStyleClass().add("save-button");
         exportClientsBtn.setPrefWidth(200);
         exportClientsBtn.setOnAction(e -> ExportClientsDialog.show());
 
         Button exportServicesBtn = new Button("📤 Экспорт услуг");
-        exportServicesBtn.getStyleClass().add("save-button");
         exportServicesBtn.setPrefWidth(200);
         exportServicesBtn.setOnAction(e -> ExportServicesDialog.show());
 
         Button exportSparePartsBtn = new Button("📤 Экспорт запчастей");
-        exportSparePartsBtn.getStyleClass().add("save-button");
         exportSparePartsBtn.setPrefWidth(200);
         exportSparePartsBtn.setOnAction(e -> ExportSparePartsDialog.show());
 
@@ -2584,11 +2484,9 @@ public class SettingsView {
 
         // Информация о форматах
         Label exportInfoLabel = new Label("Поддерживаемые форматы: XML");
-        exportInfoLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #7f8c8d;");
 
         VBox exportSection = new VBox(10, exportSectionTitle, exportButtons, exportInfoLabel);
         exportSection.setPadding(new Insets(15));
-        exportSection.setStyle("-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);");
 
         panel.getChildren().addAll(titleLabel, importSection, exportSection);
 

@@ -63,7 +63,6 @@ public class CreateOrderDialog {
         // 1. КЛИЕНТ
         // ============================================================
         Label clientLabel = new Label("Клиент:");
-        clientLabel.setStyle("-fx-font-weight: bold;");
 
         ComboBox<Client> clientCombo = new ComboBox<>(FXCollections.observableArrayList(DataStore.getClients()));
         clientCombo.setPromptText("Выберите клиента");
@@ -103,7 +102,6 @@ public class CreateOrderDialog {
         // 1.1. АВТОМОБИЛЬ
         // ============================================================
         Label carLabel = new Label("Автомобиль:");
-        carLabel.setStyle("-fx-font-weight: bold;");
 
         ComboBox<Car> carCombo = new ComboBox<>();
         carCombo.setPromptText("Выберите автомобиль");
@@ -130,7 +128,6 @@ public class CreateOrderDialog {
         // 1.5. ПРОБЕГ
         // ============================================================
         Label mileageLabel = new Label("Пробег (км):");
-        mileageLabel.setStyle("-fx-font-weight: bold;");
 
         TextField mileageField = new TextField();
         mileageField.setPrefWidth(150);
@@ -147,7 +144,6 @@ public class CreateOrderDialog {
         // 2. ЗАПИСЬ
         // ============================================================
         Label appointmentLabel = new Label("Запись на сервис:");
-        appointmentLabel.setStyle("-fx-font-weight: bold;");
 
         DatePicker datePicker = new DatePicker(LocalDate.now());
         datePicker.setPrefWidth(150);
@@ -176,7 +172,6 @@ public class CreateOrderDialog {
         // 3. УСЛУГИ
         // ============================================================
         Label servicesHeader = new Label("УСЛУГИ");
-        servicesHeader.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
 
         ListView<String> servicesListView = new ListView<>();
         servicesListView.setPrefHeight(120);
@@ -186,9 +181,7 @@ public class CreateOrderDialog {
         serviceCombo.setPrefWidth(350);
 
         Button addServiceBtn = new Button("Добавить");
-        addServiceBtn.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold;");
         Button removeServiceBtn = new Button("Удалить");
-        removeServiceBtn.setStyle("-fx-background-color: #f44336; -fx-text-fill: white; -fx-font-weight: bold;");
 
         HBox serviceAddBox = new HBox(8, serviceCombo, addServiceBtn, removeServiceBtn);
         serviceAddBox.setAlignment(Pos.CENTER_LEFT);
@@ -197,7 +190,6 @@ public class CreateOrderDialog {
         // 4. ЗАПЧАСТИ
         // ============================================================
         Label partsHeader = new Label("ЗАПЧАСТИ");
-        partsHeader.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
 
         ListView<String> partsListView = new ListView<>();
         partsListView.setPrefHeight(120);
@@ -207,9 +199,7 @@ public class CreateOrderDialog {
         partCombo.setPrefWidth(350);
 
         Button addPartBtn = new Button("Добавить");
-        addPartBtn.setStyle("-fx-background-color: #2196F3; -fx-text-fill: white; -fx-font-weight: bold;");
         Button removePartBtn = new Button("Удалить");
-        removePartBtn.setStyle("-fx-background-color: #f44336; -fx-text-fill: white; -fx-font-weight: bold;");
 
         HBox partAddBox = new HBox(8, partCombo, addPartBtn, removePartBtn);
         partAddBox.setAlignment(Pos.CENTER_LEFT);
@@ -226,7 +216,6 @@ public class CreateOrderDialog {
         // 6. ИТОГО
         // ============================================================
         Label totalLabel = new Label("Итого: 0 руб.");
-        totalLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
 
         Runnable updateTotal = () -> {
             double total = 0;
@@ -330,9 +319,7 @@ public class CreateOrderDialog {
         // 8. КНОПКИ
         // ============================================================
         Button saveBtn = new Button("Создать заказ");
-        saveBtn.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px;");
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.setStyle("-fx-background-color: #f44336; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px;");
 
         HBox btnBox = new HBox(10, saveBtn, cancelBtn);
         btnBox.setAlignment(Pos.CENTER);
@@ -560,7 +547,6 @@ public class CreateOrderDialog {
         root.setPadding(new Insets(20));
 
         Label titleLabel = new Label("Выберите запчасти, которые нужно добавить:");
-        titleLabel.getStyleClass().add("dialog-title");
 
         // VBox для чекбоксов
         VBox checkboxesVBox = new VBox(10);
@@ -640,14 +626,11 @@ public class CreateOrderDialog {
 
         // Общая стоимость
         Label totalLabel = new Label("Общая стоимость: 0 руб.");
-        totalLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
 
         // Кнопки
         Button confirmBtn = new Button("Подтвердить");
-        confirmBtn.getStyleClass().add("save-button");
 
         Button skipBtn = new Button("Пропустить");
-        skipBtn.getStyleClass().add("cancel-button");
 
         HBox btnBox = new HBox(15, confirmBtn, skipBtn);
         btnBox.setAlignment(Pos.CENTER);

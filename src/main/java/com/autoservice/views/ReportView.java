@@ -62,11 +62,9 @@ public class ReportView {
 
         ScrollPane scrollPane = new ScrollPane();
         scrollPane.setFitToWidth(true);
-        scrollPane.setStyle("-fx-background-color: #f5f7fa;");
 
         root = new VBox(20);
         root.setPadding(new Insets(20));
-        root.setStyle("-fx-background-color: #f5f7fa;");
 
         // ====== ЗАГОЛОВОК ======
         HBox headerBox = new HBox(20);
@@ -74,11 +72,9 @@ public class ReportView {
 
         Label titleLabel = new Label("ОТЧЁТ АВТОСЕРВИСА");
         titleLabel.setGraphic(IconHelper.report(24, "#2c3e50"));
-        titleLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #2c3e50; -fx-graphic-text-gap: 10;");
 
         Label dateLabel = new Label("Дата генерации: " +
                 LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")));
-        dateLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #7f8c8d;");
 
         headerBox.getChildren().addAll(titleLabel, dateLabel);
 
@@ -88,13 +84,11 @@ public class ReportView {
         periodBox.setPadding(new Insets(10, 0, 10, 0));
 
         Label periodLabel = new Label("Период:");
-        periodLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
 
         ComboBox<String> periodCombo = new ComboBox<>();
         periodCombo.getItems().addAll("Последние 3 месяца", "Последние 6 месяцев", "Последние 12 месяцев", "Всё время");
         periodCombo.setValue("Последние 6 месяцев");
         periodCombo.setPrefWidth(200);
-        periodCombo.setStyle("-fx-font-size: 14px; -fx-padding: 5;");
 
         periodBox.getChildren().addAll(periodLabel, periodCombo);
 
@@ -119,7 +113,6 @@ public class ReportView {
 
         Label revenueLabel = new Label("ДИНАМИКА ВЫРУЧКИ");
         revenueLabel.setGraphic(IconHelper.report(20, "#2c3e50"));
-        revenueLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 16px; -fx-text-fill: #2c3e50; -fx-graphic-text-gap: 8;");
         revenueBox.getChildren().addAll(revenueLabel, revenueChart);
         VBox.setVgrow(revenueBox, Priority.ALWAYS);
         HBox.setHgrow(revenueBox, Priority.ALWAYS);
@@ -164,21 +157,11 @@ public class ReportView {
         });
 
         // ====== СЛУШАТЕЛЬ ИЗМЕНЕНИЯ РАЗМЕРА ======
+
         Scene scene = new Scene(scrollPane);
-        scene.widthProperty().addListener(new ChangeListener<Number>() {
-            @Override
-            public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
-                double width = newValue.doubleValue();
-                adjustFontSize(width);
-            }
-        });
 
         root.getChildren().addAll(headerBox, periodBox, cardsBox, chartsGrid);
         scrollPane.setContent(root);
-
-        scene.getStylesheets().add(
-                ReportView.class.getResource("/styles.css").toExternalForm()
-        );
 
         stage.setScene(scene);
         stage.showAndWait();
@@ -186,54 +169,6 @@ public class ReportView {
         stage.setOnHiding(e -> {
             WindowStateManager.getInstance().saveWindowState("reportDialog", stage);
         });
-    }
-
-    // ==================== АДАПТИВНЫЙ ШРИФТ ====================
-
-    private static void adjustFontSize(double width) {
-        int fontSize;
-        if (width < 900) {
-            fontSize = 12;
-        } else if (width < 1100) {
-            fontSize = 14;
-        } else if (width < 1400) {
-            fontSize = 16;
-        } else {
-            fontSize = 18;
-        }
-        applyFontSizeToAll(root, fontSize);
-    }
-
-    private static void applyFontSizeToAll(javafx.scene.Node node, int size) {
-        if (node instanceof Label) {
-            Label label = (Label) node;
-            String style = label.getStyle();
-            if (style != null && !style.isEmpty() && style.contains("-fx-font-size:")) {
-                label.setStyle(style.replaceAll("-fx-font-size: \\d+px;", "-fx-font-size: " + size + "px;"));
-            } else if (style != null && !style.isEmpty()) {
-                label.setStyle(style + " -fx-font-size: " + size + "px;");
-            } else {
-                label.setStyle("-fx-font-size: " + size + "px;");
-            }
-        }
-        if (node instanceof VBox) {
-            for (javafx.scene.Node child : ((VBox) node).getChildren()) {
-                applyFontSizeToAll(child, size);
-            }
-        }
-        if (node instanceof HBox) {
-            for (javafx.scene.Node child : ((HBox) node).getChildren()) {
-                applyFontSizeToAll(child, size);
-            }
-        }
-        if (node instanceof GridPane) {
-            for (javafx.scene.Node child : ((GridPane) node).getChildren()) {
-                applyFontSizeToAll(child, size);
-            }
-        }
-        if (node instanceof ScrollPane) {
-            applyFontSizeToAll(((ScrollPane) node).getContent(), size);
-        }
     }
 
     // ==================== ОБНОВЛЕНИЕ ОТЧЁТА ====================
@@ -317,21 +252,10 @@ public class ReportView {
         VBox card = new VBox(2);
         card.setAlignment(Pos.CENTER);
         card.setPadding(new Insets(8, 12, 8, 12));
-        card.setStyle(
-                "-fx-background-color: white;" +
-                        "-fx-border-radius: 8px;" +
-                        "-fx-background-radius: 8px;" +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 3);" +
-                        "-fx-border-width: 2px 0 0 0;" +
-                        "-fx-border-color: " + color + ";" +
-                        "-fx-min-width: 100px;"
-        );
 
         Label titleLabel = new Label(title);
-        titleLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #7f8c8d;");
 
         Label valueLabel = new Label(value);
-        valueLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
 
         card.getChildren().addAll(icon, titleLabel, valueLabel);
         return card;
@@ -399,16 +323,9 @@ public class ReportView {
 
         Label titleLabel = new Label("СТАТУСЫ ЗАКАЗОВ");
         titleLabel.setGraphic(IconHelper.assignment(20, "#2c3e50"));
-        titleLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #2c3e50; -fx-graphic-text-gap: 8;");
 
         VBox listBox = new VBox(5);
         listBox.setPadding(new Insets(8));
-        listBox.setStyle(
-                "-fx-background-color: white;" +
-                        "-fx-border-radius: 8px;" +
-                        "-fx-background-radius: 8px;" +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 6, 0, 0, 3);"
-        );
         listBox.setFillWidth(true);
 
         int totalOrders = data.totalOrders;
@@ -422,13 +339,10 @@ public class ReportView {
             row.setPadding(new Insets(2, 0, 2, 0));
 
             Label statusLabel = new Label(status);
-            statusLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #2c3e50; -fx-min-width: 100px;");
 
             Label countLabel = new Label(String.valueOf(count));
-            countLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #3498db; -fx-min-width: 40px;");
 
             Label percentLabel = new Label(String.format("(%.1f%%)", percent));
-            percentLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #7f8c8d;");
 
             Region spacer = new Region();
             HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -449,16 +363,9 @@ public class ReportView {
 
         Label titleLabel = new Label(title);
         titleLabel.setGraphic(icon);
-        titleLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #2c3e50; -fx-graphic-text-gap: 8;");
 
         VBox listBox = new VBox(5);
         listBox.setPadding(new Insets(8));
-        listBox.setStyle(
-                "-fx-background-color: white;" +
-                        "-fx-border-radius: 8px;" +
-                        "-fx-background-radius: 8px;" +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 6, 0, 0, 3);"
-        );
         listBox.setFillWidth(true);
 
         int rank = 1;
@@ -471,14 +378,11 @@ public class ReportView {
             row.setPadding(new Insets(2, 0, 2, 0));
 
             Label rankLabel = new Label(String.format("%d.", rank));
-            rankLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #7f8c8d; -fx-min-width: 25px;");
 
             Label nameLabel = new Label(name);
-            nameLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #2c3e50;");
             nameLabel.setWrapText(true);
 
             Label countLabel = new Label(String.valueOf(count));
-            countLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #3498db;");
 
             Region spacer = new Region();
             HBox.setHgrow(spacer, Priority.ALWAYS);
