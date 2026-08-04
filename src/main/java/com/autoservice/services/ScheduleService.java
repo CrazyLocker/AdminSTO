@@ -175,7 +175,17 @@ public class ScheduleService {
     public static void shutdown() {
         cancelScheduledBackup();
         if (!scheduler.isShutdown()) {
-            scheduler.shutdown();
+            scheduler.shutdownNow();
+            try {
+                if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+                    logger.warn("Планировщик не завершился за 5 секунд");
+                } else {
+                    logger.debug("Планировщик успешно остановлен");
+                }
+            } catch (InterruptedException e) {
+                logger.warn("Ожирание завершения планировщика прервано", e);
+                scheduler.shutdownNow();
+            }
         }
     }
     

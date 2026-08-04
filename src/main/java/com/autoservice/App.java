@@ -19,6 +19,7 @@ import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.shape.SVGPath;
 import javafx.stage.Stage;
+import atlantafx.base.theme.PrimerLight;
 
 public class App extends Application {
     
@@ -26,6 +27,7 @@ public class App extends Application {
 
     @Override
     public void start(Stage primaryStage) {
+        Application.setUserAgentStylesheet(new PrimerLight().getUserAgentStylesheet());
         // Инициализация логгирования
         LoggerManager.init();
         logger.info("Запуск приложения Администратор СТО");
@@ -99,9 +101,11 @@ public class App extends Application {
             TableStateManager.saveTableState(SettingsView.getServiceSparePartsTable(), "serviceSparePartsTable");
             TableStateManager.saveTableState(SettingsView.getToPartsTable(), "toPartsTable");
             
+            // Остановить планировщик до закрытия БД, чтобы избежать конфликтов
+            // при выполнении фоновых бэкапов
+            ScheduleService.shutdown();
             DataStore.save();
             Database.close();
-            ScheduleService.shutdown();
             logger.info("Приложение закрыто");
             Platform.exit();
             System.exit(0);

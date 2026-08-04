@@ -6,6 +6,7 @@ import com.autoservice.controllers.OrderController;
 import com.autoservice.dialogs.CreateOrderDialog;
 import com.autoservice.dialogs.EditClientDialog;
 import com.autoservice.dialogs.OrderDetailsDialog;
+import atlantafx.base.theme.Styles;
 import com.autoservice.utils.IconHelper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -14,8 +15,10 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
@@ -75,13 +78,26 @@ public class DashboardView extends ScrollPane {
 
     private void doRefresh() {
         gridPane.getChildren().clear();
+        gridPane.getColumnConstraints().clear();
 
-        int row = 0;
+        // ====== ДВЕ КОЛОНКИ: 70% / 30% ======
+        ColumnConstraints leftCol = new ColumnConstraints();
+        leftCol.setPercentWidth(70);
+        leftCol.setHgrow(Priority.ALWAYS);
+
+        ColumnConstraints rightCol = new ColumnConstraints();
+        rightCol.setPercentWidth(30);
+        rightCol.setHgrow(Priority.ALWAYS);
+
+        gridPane.getColumnConstraints().addAll(leftCol, rightCol);
+
+        // ====== ЛЕВАЯ КОЛОНКА ======
+        VBox leftColumn = new VBox(20);
+        leftColumn.setAlignment(Pos.TOP_CENTER);
 
         // ====== ВЕРХНИЕ КАРТОЧКИ (320x140) ======
         HBox cardsRow = new HBox(20);
         cardsRow.setAlignment(Pos.CENTER);
-        cardsRow.setPadding(new Insets(0, 0, 20, 0));
 
         cardsRow.getChildren().addAll(
                 createStatCard(IconHelper.assignment(32, "#3498db"), "Заказов",
@@ -94,13 +110,9 @@ public class DashboardView extends ScrollPane {
                         getTotalRevenue(), "#f39c12")
         );
 
-        gridPane.add(cardsRow, 0, row);
-        row++;
-
         // ====== КАРТОЧКИ СТАТУСОВ (320x140) ======
         HBox activeRow = new HBox(20);
         activeRow.setAlignment(Pos.CENTER);
-        activeRow.setPadding(new Insets(0, 0, 20, 0));
 
         activeRow.getChildren().addAll(
                 createStatCard(IconHelper.settings(32, "#f1c40f"), "В работе",
@@ -111,13 +123,10 @@ public class DashboardView extends ScrollPane {
                         String.valueOf(DataStore.getAppointments().size()), "#9b59b6")
         );
 
-        gridPane.add(activeRow, 0, row);
-        row++;
-
         // ====== КНОПКИ БЫСТРЫХ ДЕЙСТВИЙ (190x40) ======
         HBox actionsRow = new HBox(15);
         actionsRow.setAlignment(Pos.CENTER);
-        actionsRow.setPadding(new Insets(20, 0, 10, 0));
+        actionsRow.setPadding(new Insets(10, 0, 0, 0));
 
         actionsRow.getChildren().addAll(
                 createActionButton("Новый заказ", "#3498db"),
@@ -126,28 +135,35 @@ public class DashboardView extends ScrollPane {
                 createActionButton("Отчёт", "#f39c12")
         );
 
-        gridPane.add(actionsRow, 0, row);
-        row++;
-
         // ====== ЗАПИСИ НА ТЕКУЩУЮ НЕДЕЛЮ ======
         VBox appointmentsBox = createAppointmentsWeekBox();
-        gridPane.add(appointmentsBox, 0, row);
+
+        leftColumn.getChildren().addAll(cardsRow, activeRow, actionsRow, appointmentsBox);
+        gridPane.add(leftColumn, 0, 0);
+
+        // ====== ПРАВАЯ КОЛОНКА (ПРОФИЛЬ / ЗАГЛУШКА) ======
+        VBox rightColumn = createProfileBox();
+        gridPane.add(rightColumn, 1, 0);
     }
 
     // ==================== СОЗДАНИЕ КАРТОЧКИ (320x140) ====================
 
     private VBox createStatCard(Node icon, String title, String value, String color) {
-        VBox card = new VBox(5);
+        VBox card = new VBox(8);
         card.setAlignment(Pos.CENTER);
         card.setPrefSize(320, 140);
         card.setMinSize(320, 140);
         card.setMaxSize(320, 140);
+        card.setPadding(new Insets(15));
+        card.getStyleClass().addAll(Styles.BG_DEFAULT, Styles.ELEVATED_1);
 
         Label titleLabel = new Label(title);
         titleLabel.setWrapText(true);
+        titleLabel.getStyleClass().add(Styles.TEXT_MUTED);
 
         Label valueLabel = new Label(value);
         valueLabel.setWrapText(true);
+        valueLabel.getStyleClass().add(Styles.TEXT_BOLD);
 
         card.getChildren().addAll(icon, titleLabel, valueLabel);
         return card;
@@ -157,7 +173,7 @@ public class DashboardView extends ScrollPane {
 
     private Button createActionButton(String text, String color) {
         Button btn = new Button(text);
-        btn.setPrefSize(190, 40);
+        btn.getStyleClass().addAll(Styles.FLAT, Styles.ROUNDED);
 
         btn.setOnAction(e -> {
             String btnText = text;
@@ -289,12 +305,65 @@ public class DashboardView extends ScrollPane {
 
 // ==================== ЗАПИСИ НА ТЕКУЩУЮ НЕДЕЛЮ ====================
 
+    // ==================== ПРАВАЯ КОЛОНКА (ПРОФИЛЬ) ====================
+
+    private VBox createProfileBox() {
+        VBox profileBox = new VBox(15);
+        profileBox.getStyleClass().addAll(Styles.BG_DEFAULT, Styles.ELEVATED_1);
+        profileBox.setPadding(new Insets(20));
+        profileBox.setAlignment(Pos.TOP_LEFT);
+
+        Label profileTitle = new Label("Профиль пользователя");
+        profileTitle.getStyleClass().add(Styles.TEXT_BOLD);
+        profileBox.getChildren().add(profileTitle);
+
+        Separator separator = new Separator();
+        profileBox.getChildren().add(separator);
+
+        Label statsTitle = new Label("Статистика");
+        statsTitle.getStyleClass().add(Styles.TEXT_BOLD);
+        profileBox.getChildren().add(statsTitle);
+
+        Label totalOrders = new Label("Всего заказов: " + DataStore.getOrders().size());
+        totalOrders.getStyleClass().add(Styles.TEXT_MUTED);
+        profileBox.getChildren().add(totalOrders);
+
+        Label totalClients = new Label("Всего клиентов: " + DataStore.getClients().size());
+        totalClients.getStyleClass().add(Styles.TEXT_MUTED);
+        profileBox.getChildren().add(totalClients);
+
+        Label totalSpareParts = new Label("Запчастей в наличии: " + DataStore.getSpareParts().size());
+        totalSpareParts.getStyleClass().add(Styles.TEXT_MUTED);
+        profileBox.getChildren().add(totalSpareParts);
+
+        Label totalAppointments = new Label("Активных записей: " + getWeekAppointments().size());
+        totalAppointments.getStyleClass().add(Styles.TEXT_MUTED);
+        profileBox.getChildren().add(totalAppointments);
+
+        Separator separator2 = new Separator();
+        profileBox.getChildren().add(separator2);
+
+        Label revenueTitle = new Label("Финансы");
+        revenueTitle.getStyleClass().add(Styles.TEXT_BOLD);
+        profileBox.getChildren().add(revenueTitle);
+
+        Label revenueLabel = new Label("Общая выручка: " + getTotalRevenue());
+        revenueLabel.getStyleClass().add(Styles.TEXT_MUTED);
+        profileBox.getChildren().add(revenueLabel);
+
+        return profileBox;
+    }
+
+// ==================== ЗАПИСИ НА ТЕКУЩУЮ НЕДЕЛЮ ====================
+
     private VBox createAppointmentsWeekBox() {
         VBox box = new VBox(10);
-        box.setPadding(new Insets(20));
+        box.getStyleClass().add(Styles.BG_DEFAULT);
+        box.setPadding(new Insets(15));
 
         Label header = new Label("Записи на текущую неделю");
         header.setGraphic(IconHelper.event(20, "#2c3e50"));
+        header.getStyleClass().add(Styles.TEXT_BOLD);
         box.getChildren().add(header);
 
         // Получаем записи на текущую неделю
@@ -302,6 +371,7 @@ public class DashboardView extends ScrollPane {
 
         if (weekAppointments.isEmpty()) {
             Label empty = new Label("Нет записей на текущую неделю");
+            empty.getStyleClass().add(Styles.TEXT_MUTED);
             box.getChildren().add(empty);
             return box;
         }
@@ -309,6 +379,7 @@ public class DashboardView extends ScrollPane {
         // Создаём таблицу
         TableView<AppointmentRow> table = new TableView<>();
         table.setPrefHeight(300);
+        table.getStyleClass().addAll(Styles.STRIPED, Styles.BORDERED);
 
         // Отключаем автоматическое добавление колонок
         // UNCONSTRAINED_RESIZE_POLICY устарел, по умолчанию используется unconstrained resize

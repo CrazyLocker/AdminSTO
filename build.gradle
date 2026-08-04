@@ -114,6 +114,9 @@ dependencies {
 
     // JUnit Pioneer для параллельного выполнения тестов
     testImplementation "org.junit-pioneer:junit-pioneer:2.2.0"
+
+    // ======== Для оформления AtlantaFX =======
+    implementation 'io.github.mkpaz:atlantafx:2.1.0'
 }
 
 tasks.named('test') {
