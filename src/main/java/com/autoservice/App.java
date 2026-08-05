@@ -2,6 +2,7 @@ package com.autoservice;
 
 import com.autoservice.utils.ExceptionHandler;
 import com.autoservice.utils.LoggerManager;
+import com.autoservice.utils.ThemeManager;
 import com.autoservice.services.ScheduleService;
 import com.autoservice.services.TableStateManager;
 import com.autoservice.services.WindowStateManager;
@@ -78,6 +79,9 @@ public class App extends Application {
         });
 
         Scene scene = new Scene(tabPane, 1500, 1000);
+
+        // Инициализация менеджера тем + загрузка глобального CSS
+        ThemeManager.init(scene);
 
         primaryStage.setTitle("Администратор СТО");
         primaryStage.setScene(scene);

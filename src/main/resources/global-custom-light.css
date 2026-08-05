@@ -1,0 +1,317 @@
+/* =====================================================================
+   global-custom-light.css — Светлая палитра поверх AtlantaFX light тем
+   Загружается ThemeManager при выборе светлой темы
+   ===================================================================== */
+
+/* ==================== ОБЩИЙ ФОН ==================== */
+.root {
+    -fx-background-color: #F8FAFC;
+}
+
+/* ==================== КНОПКИ ==================== */
+.button {
+    -fx-background-color: #5B8DEF;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+    -fx-cursor: hand;
+}
+.button:hover {
+    -fx-background-color: #4A7ED7;
+}
+.button:pressed {
+    -fx-background-color: #3A6BC2;
+}
+.button:focused {
+    -fx-border-color: #5B8DEF;
+    -fx-border-width: 2;
+    -fx-border-style: solid;
+}
+.button:disabled {
+    -fx-background-color: #E2E8F0;
+    -fx-text-fill: #94A3B8;
+    -fx-opacity: 0.7;
+}
+
+.button.cancel,
+.button.default-cancel {
+    -fx-background-color: #E2E8F0;
+    -fx-text-fill: #475569;
+}
+.button.cancel:hover,
+.button.default-cancel:hover {
+    -fx-background-color: #CBD5E1;
+}
+
+/* ==================== ТАБЛИЦЫ ==================== */
+.table-view {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E2E8F0;
+    -fx-border-width: 1;
+}
+.table-view > .column-header-background {
+    -fx-background-color: #F1F5F9;
+}
+.table-view .column-header {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent #E2E8F0 transparent;
+    -fx-border-width: 0 0 1 0;
+}
+.table-view .column-header .label {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #475569;
+}
+.table-view .table-row-cell {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: transparent transparent #F1F5F9 transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-text-fill: #1E293B;
+}
+.table-view .table-row-cell:odd {
+    -fx-background-color: #F8FAFC;
+}
+.table-view .table-row-cell:hover {
+    -fx-background-color: rgba(91,141,239,0.06);
+}
+.table-view .table-row-cell:selected {
+    -fx-background-color: rgba(91,141,239,0.12);
+    -fx-text-fill: #1E293B;
+}
+.table-view .table-cell {
+    -fx-text-fill: #1E293B;
+    -fx-border-color: transparent;
+}
+
+/* ==================== ВКЛАДКИ (TAB PANE) ==================== */
+.tab-pane {
+    -fx-tab-min-height: 38;
+    -fx-tab-max-height: 38;
+}
+.tab-pane > .tab-header-area > .tab-header-background {
+    -fx-background-color: #F1F5F9;
+}
+.tab-pane > .tab-header-area > .headers-region > .tab {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+}
+.tab-pane > .tab-header-area > .headers-region > .tab:selected {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #5B8DEF transparent transparent transparent;
+    -fx-border-width: 2 0 0 0;
+}
+.tab-pane > .tab-header-area > .headers-region > .tab:selected .tab-label {
+    -fx-text-fill: #1E293B;
+    -fx-font-weight: bold;
+}
+.tab-pane > .tab-header-area > .headers-region > .tab .tab-label {
+    -fx-text-fill: #64748B;
+    -fx-font-weight: normal;
+}
+.tab-pane > .tab-header-area > .headers-region > .tab:hover {
+    -fx-background-color: rgba(91,141,239,0.04);
+}
+
+/* ==================== ПОЛЯ ВВОДА ==================== */
+.text-field,
+.text-area {
+    -fx-background-color: #FFFFFF;
+    -fx-text-fill: #1E293B;
+    -fx-prompt-text-fill: #94A3B8;
+    -fx-border-color: #CBD5E1;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+.text-field:focused,
+.text-area:focused {
+    -fx-border-color: #5B8DEF;
+    -fx-border-width: 2;
+}
+
+/* ==================== КОМБОБОКСЫ ==================== */
+.combo-box {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #CBD5E1;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+}
+.combo-box .list-cell {
+    -fx-background-color: #FFFFFF;
+    -fx-text-fill: #1E293B;
+}
+.combo-box:focused {
+    -fx-border-color: #5B8DEF;
+    -fx-border-width: 2;
+}
+
+.combo-box-popup > .list-view {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E2E8F0;
+    -fx-border-width: 1;
+}
+.combo-box-popup > .list-view .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #1E293B;
+}
+.combo-box-popup > .list-view .list-cell:hover {
+    -fx-background-color: rgba(91,141,239,0.06);
+}
+.combo-box-popup > .list-view .list-cell:selected {
+    -fx-background-color: rgba(91,141,239,0.12);
+    -fx-text-fill: #1E293B;
+}
+
+/* ==================== ЧЕКБОКСЫ ==================== */
+.check-box {
+    -fx-text-fill: #1E293B;
+}
+.check-box > .box {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #CBD5E1;
+    -fx-border-width: 1.5;
+    -fx-border-radius: 4;
+}
+.check-box:selected > .box {
+    -fx-background-color: #5B8DEF;
+    -fx-border-color: #5B8DEF;
+}
+.check-box:selected > .box > .mark {
+    -fx-background-color: white;
+}
+
+/* ==================== РАДИОКНОПКИ ==================== */
+.radio-button {
+    -fx-text-fill: #1E293B;
+}
+.radio-button > .radio {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #CBD5E1;
+    -fx-border-width: 1.5;
+}
+.radio-button:selected > .radio {
+    -fx-background-color: #5B8DEF;
+    -fx-border-color: #5B8DEF;
+}
+
+/* ==================== ДИАЛОГИ / АЛЕРТЫ ==================== */
+.dialog-pane {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E2E8F0;
+    -fx-border-width: 1;
+    -fx-border-radius: 12;
+}
+.dialog-pane > .content.label {
+    -fx-text-fill: #1E293B;
+}
+.dialog-pane .header-panel {
+    -fx-background-color: #F8FAFC;
+}
+.dialog-pane .header-panel .label {
+    -fx-text-fill: #1E293B;
+    -fx-font-weight: bold;
+}
+
+/* ==================== СКРОЛЛБАРЫ ==================== */
+.scroll-bar {
+    -fx-background-color: transparent;
+}
+.scroll-bar > .thumb {
+    -fx-background-color: #CBD5E1;
+    -fx-background-radius: 4;
+}
+.scroll-bar > .thumb:hover {
+    -fx-background-color: #94A3B8;
+}
+.scroll-bar > .track {
+    -fx-background-color: transparent;
+}
+.scroll-bar > .increment-button,
+.scroll-bar > .decrement-button {
+    -fx-background-color: transparent;
+    -fx-shape: "";
+}
+
+/* ==================== РАЗДЕЛИТЕЛИ ==================== */
+.separator {
+    -fx-border-color: #E2E8F0;
+}
+
+/* ==================== ЛЕЙБЛЫ ==================== */
+.label {
+    -fx-text-fill: #1E293B;
+}
+.label:disabled {
+    -fx-text-fill: #94A3B8;
+}
+
+/* ==================== ДАТАПИКЕР ==================== */
+.date-picker {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #CBD5E1;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+}
+.date-picker > .text-field {
+    -fx-background-color: transparent;
+}
+.date-picker-popup {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E2E8F0;
+}
+
+/* ==================== СПИСКИ / LIST VIEW ==================== */
+.list-view {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E2E8F0;
+    -fx-border-width: 1;
+}
+.list-view .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #1E293B;
+}
+.list-view .list-cell:hover {
+    -fx-background-color: rgba(91,141,239,0.04);
+}
+.list-view .list-cell:selected {
+    -fx-background-color: rgba(91,141,239,0.12);
+    -fx-text-fill: #1E293B;
+}
+
+/* ==================== ТОСТ / ТУЛТИПЫ ==================== */
+.tooltip {
+    -fx-background-color: #1E293B;
+    -fx-text-fill: #F1F5F9;
+    -fx-border-color: #334155;
+    -fx-border-width: 1;
+    -fx-background-radius: 6;
+}
+
+/* ==================== PROGRESS BAR ==================== */
+.progress-bar > .track {
+    -fx-background-color: #E2E8F0;
+    -fx-border-color: #CBD5E1;
+    -fx-border-width: 1;
+}
+.progress-bar > .bar {
+    -fx-background-color: #5B8DEF;
+    -fx-background-insets: 1;
+}
+
+/* ==================== HYPERLINK ==================== */
+.hyperlink {
+    -fx-text-fill: #5B8DEF;
+    -fx-border-color: transparent;
+}
+.hyperlink:hover {
+    -fx-text-fill: #4A7ED7;
+}
+
+/* ==================== SPINNER ==================== */
+.spinner {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #CBD5E1;
+    -fx-border-width: 1;
+}

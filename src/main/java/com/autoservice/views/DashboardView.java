@@ -60,9 +60,7 @@ public class DashboardView extends ScrollPane {
     private DashboardView() {
         currencyFormat = NumberFormat.getCurrencyInstance(new Locale.Builder().setLanguage("ru").setRegion("RU").build());
 
-        // Загрузка кастомного CSS для дашборда
-        String css = getClass().getResource("/dashboard-custom.css").toExternalForm();
-        getStylesheets().add(css);
+        // Dashboard CSS теперь управляется ThemeManager — не загружаем здесь
 
         gridPane = new GridPane();
         gridPane.setPadding(new Insets(24));

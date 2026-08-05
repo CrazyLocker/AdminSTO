@@ -1,5 +1,6 @@
 package com.autoservice.views;
 
+import com.autoservice.utils.ThemeManager;
 import com.autoservice.*;
 import com.autoservice.controllers.SettingsController;
 import com.autoservice.dialogs.ImportClientsDialog;
@@ -135,8 +136,13 @@ public class SettingsView {
         TabPane settingsPaneLocal = new TabPane();
         settingsPane = settingsPaneLocal;
 
+        // Вкладка "Внешний вид"
+        Tab appearanceTab = new Tab("Внешний вид");
+        appearanceTab.setClosable(false);
+        appearanceTab.setContent(createAppearancePanel());
+
         // Вкладка "Настройки приложения" (новая)
-        Tab settingsAppTab = new Tab("Настройки приложения");
+        Tab settingsAppTab = new Tab("Настройки");
         settingsAppTab.setClosable(false);
         settingsAppTab.setContent(createSettingsAppPanel());
 
@@ -160,7 +166,7 @@ public class SettingsView {
         importExportTab.setContent(createImportExportPanel());
         importExportTab.setClosable(false);
 
-        settingsPane.getTabs().addAll(settingsAppTab, autoPartsTab, serviceSparePartsTab, toPartsTab, backupTab, importExportTab);
+        settingsPane.getTabs().addAll(appearanceTab, settingsAppTab, autoPartsTab, serviceSparePartsTab, toPartsTab, backupTab, importExportTab);
 
         VBox vbox = new VBox(10);
         vbox.setPadding(new Insets(10));
@@ -217,6 +223,62 @@ public class SettingsView {
         });
 
         return mainContainer;
+    }
+
+    // ==================== Вкладка: Внешний вид ====================
+
+    private static VBox createAppearancePanel() {
+        VBox container = new VBox(20);
+        container.setPadding(new Insets(20));
+
+        Label titleLabel = new Label("Внешний вид");
+
+        // --- Секция: Тема оформления ---
+        VBox themeSection = new VBox(12);
+
+        Label themeLabel = new Label("Тема оформления");
+        themeLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+
+        Label themeDesc = new Label("Выберите цветовую тему для всего приложения. " +
+                "Тема применяется мгновенно без перезапуска.");
+        themeDesc.setWrapText(true);
+        themeDesc.setStyle("-fx-text-fill: #94A3B8;");
+
+        HBox themeRow = new HBox(12);
+        themeRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label chooseLabel = new Label("Тема:");
+
+        ComboBox<ThemeManager.AppTheme> themeCombo = new ComboBox<>();
+        themeCombo.setItems(FXCollections.observableArrayList(ThemeManager.getAvailableThemes()));
+        themeCombo.setValue(ThemeManager.getCurrentTheme());
+        themeCombo.setPrefWidth(250);
+
+        themeCombo.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null) {
+                ThemeManager.setTheme(newVal);
+            }
+        });
+
+        themeRow.getChildren().addAll(chooseLabel, themeCombo);
+
+        Label currentLabel = new Label("Текущая тема: " + ThemeManager.getCurrentTheme().displayName);
+        currentLabel.setStyle("-fx-text-fill: #94A3B8; -fx-font-size: 12px;");
+
+        themeCombo.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null) {
+                currentLabel.setText("Текущая тема: " + newVal.displayName);
+            }
+        });
+
+        themeSection.getChildren().addAll(themeLabel, themeDesc, themeRow, currentLabel);
+
+        // --- Разделитель ---
+        Separator sep = new Separator();
+
+        container.getChildren().addAll(titleLabel, themeSection, sep);
+
+        return container;
     }
 
     private static HBox createSearchPanel() {

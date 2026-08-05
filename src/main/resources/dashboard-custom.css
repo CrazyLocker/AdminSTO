@@ -1,11 +1,9 @@
 /* =====================================================================
-   dashboard-custom.css — Палитра из референса поверх PrimerDark
+   dashboard-custom.css — Только дашборд-специфичные стили
+   Глобальная палитра: global-theme.css
    ===================================================================== */
 
-/* ==================== ФОН ДАШБОРДА ==================== */
-.scroll-pane > .viewport {
-    -fx-background-color: #1E1F2E;
-}
+/* ==================== GRIDPANE КОНТЕЙНЕР ==================== */
 .grid-pane {
     -fx-background-color: #1E1F2E;
 }
@@ -24,7 +22,6 @@
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 14, 0.0, 0, 6);
 }
 
-/* Цветная полоска сверху через градиент */
 .stat-card-blue   { -fx-background-color: linear-gradient(to bottom, #5B8DEF 3%, #272838 3%); }
 .stat-card-green  { -fx-background-color: linear-gradient(to bottom, #4ADE80 3%, #272838 3%); }
 .stat-card-red    { -fx-background-color: linear-gradient(to bottom, #F43F5E 3%, #272838 3%); }
@@ -32,7 +29,6 @@
 .stat-card-purple { -fx-background-color: linear-gradient(to bottom, #7C5CE0 3%, #272838 3%); }
 .stat-card-yellow { -fx-background-color: linear-gradient(to bottom, #FBBF24 3%, #272838 3%); }
 
-/* Текст карточек */
 .stat-card-title {
     -fx-font-size: 12px;
     -fx-font-weight: normal;
@@ -44,7 +40,7 @@
     -fx-text-fill: #FFFFFF;
 }
 
-/* ==================== КНОПКИ ДЕЙСТВИЙ ==================== */
+/* ==================== КНОПКИ ДЕЙСТВИЙ (только дашборд) ==================== */
 .action-btn {
     -fx-text-fill: white;
     -fx-font-size: 13px;
@@ -78,7 +74,7 @@
 .action-btn-orange:hover  { -fx-background-color: #D97706; }
 .action-btn-orange:pressed { -fx-background-color: #B45309; }
 
-/* ==================== ТАБЛИЦА ЗАПИСЕЙ ==================== */
+/* ==================== КОНТЕЙНЕР ЗАПИСЕЙ ==================== */
 .appointments-container {
     -fx-background-color: #272838;
     -fx-background-radius: 12px;
@@ -96,6 +92,7 @@
     -fx-text-fill: #64748B;
 }
 
+/* Дашборд-таблица — перекрывает глобальную для более компактного вида */
 .table-view.appointments-table {
     -fx-border-color: transparent;
     -fx-border-width: 0;
