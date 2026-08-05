@@ -19,7 +19,7 @@ import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.shape.SVGPath;
 import javafx.stage.Stage;
-import atlantafx.base.theme.PrimerLight;
+import atlantafx.base.theme.PrimerDark;
 
 public class App extends Application {
     
@@ -27,7 +27,7 @@ public class App extends Application {
 
     @Override
     public void start(Stage primaryStage) {
-        Application.setUserAgentStylesheet(new PrimerLight().getUserAgentStylesheet());
+        Application.setUserAgentStylesheet(new PrimerDark().getUserAgentStylesheet());
         // Инициализация логгирования
         LoggerManager.init();
         logger.info("Запуск приложения Администратор СТО");

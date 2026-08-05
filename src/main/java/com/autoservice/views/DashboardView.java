@@ -6,8 +6,6 @@ import com.autoservice.controllers.OrderController;
 import com.autoservice.dialogs.CreateOrderDialog;
 import com.autoservice.dialogs.EditClientDialog;
 import com.autoservice.dialogs.OrderDetailsDialog;
-import atlantafx.base.theme.Styles;
-import com.autoservice.utils.IconHelper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -62,8 +60,12 @@ public class DashboardView extends ScrollPane {
     private DashboardView() {
         currencyFormat = NumberFormat.getCurrencyInstance(new Locale.Builder().setLanguage("ru").setRegion("RU").build());
 
+        // Загрузка кастомного CSS для дашборда
+        String css = getClass().getResource("/dashboard-custom.css").toExternalForm();
+        getStylesheets().add(css);
+
         gridPane = new GridPane();
-        gridPane.setPadding(new Insets(20));
+        gridPane.setPadding(new Insets(24));
         gridPane.setHgap(20);
         gridPane.setVgap(20);
         gridPane.setAlignment(Pos.TOP_CENTER);
@@ -96,43 +98,43 @@ public class DashboardView extends ScrollPane {
         leftColumn.setAlignment(Pos.TOP_CENTER);
 
         // ====== ВЕРХНИЕ КАРТОЧКИ (320x140) ======
-        HBox cardsRow = new HBox(20);
+        HBox cardsRow = new HBox(16);
         cardsRow.setAlignment(Pos.CENTER);
 
         cardsRow.getChildren().addAll(
-                createStatCard(IconHelper.assignment(32, "#3498db"), "Заказов",
-                        String.valueOf(DataStore.getOrders().size()), "#3498db"),
-                createStatCard(IconHelper.people(32, "#2ecc71"), "Клиентов",
-                        String.valueOf(DataStore.getClients().size()), "#2ecc71"),
-                createStatCard(IconHelper.warning(32, "#e74c3c"), "Низкие остатки запчастей",
-                        getLowStockCount(), "#e74c3c"),
-                createStatCard(IconHelper.report(32, "#f39c12"), "Выручка",
-                        getTotalRevenue(), "#f39c12")
+                createStatCard("Заказов",
+                        String.valueOf(DataStore.getOrders().size()), "blue"),
+                createStatCard("Клиентов",
+                        String.valueOf(DataStore.getClients().size()), "green"),
+                createStatCard("Низкие остатки",
+                        getLowStockCount(), "red"),
+                createStatCard("Выручка",
+                        getTotalRevenue(), "orange")
         );
 
         // ====== КАРТОЧКИ СТАТУСОВ (320x140) ======
-        HBox activeRow = new HBox(20);
+        HBox activeRow = new HBox(16);
         activeRow.setAlignment(Pos.CENTER);
 
         activeRow.getChildren().addAll(
-                createStatCard(IconHelper.settings(32, "#f1c40f"), "В работе",
-                        String.valueOf(getActiveOrdersCount()), "#f1c40f"),
-                createStatCard(IconHelper.checkCircle(32, "#27ae60"), "Выполнено",
-                        String.valueOf(getCompletedOrdersCount()), "#27ae60"),
-                createStatCard(IconHelper.event(32, "#9b59b6"), "Записей",
-                        String.valueOf(DataStore.getAppointments().size()), "#9b59b6")
+                createStatCard("В работе",
+                        String.valueOf(getActiveOrdersCount()), "yellow"),
+                createStatCard("Выполнено",
+                        String.valueOf(getCompletedOrdersCount()), "green"),
+                createStatCard("Записей",
+                        String.valueOf(DataStore.getAppointments().size()), "purple")
         );
 
-        // ====== КНОПКИ БЫСТРЫХ ДЕЙСТВИЙ (190x40) ======
-        HBox actionsRow = new HBox(15);
+        // ====== КНОПКИ БЫСТРЫХ ДЕЙСТВИЙ ======
+        HBox actionsRow = new HBox(12);
         actionsRow.setAlignment(Pos.CENTER);
-        actionsRow.setPadding(new Insets(10, 0, 0, 0));
+        actionsRow.setPadding(new Insets(8, 0, 0, 0));
 
         actionsRow.getChildren().addAll(
-                createActionButton("Новый заказ", "#3498db"),
-                createActionButton("Новый клиент", "#2ecc71"),
-                createActionButton("Запись", "#9b59b6"),
-                createActionButton("Отчёт", "#f39c12")
+                createActionButton("Новый заказ", "blue"),
+                createActionButton("Новый клиент", "green"),
+                createActionButton("Запись", "purple"),
+                createActionButton("Отчёт", "orange")
         );
 
         // ====== ЗАПИСИ НА ТЕКУЩУЮ НЕДЕЛЮ ======
@@ -141,39 +143,40 @@ public class DashboardView extends ScrollPane {
         leftColumn.getChildren().addAll(cardsRow, activeRow, actionsRow, appointmentsBox);
         gridPane.add(leftColumn, 0, 0);
 
-        // ====== ПРАВАЯ КОЛОНКА (ПРОФИЛЬ / ЗАГЛУШКА) ======
+        // ====== ПРАВАЯ КОЛОНКА (ПРОФИЛЬ) ======
         VBox rightColumn = createProfileBox();
         gridPane.add(rightColumn, 1, 0);
     }
 
-    // ==================== СОЗДАНИЕ КАРТОЧКИ (320x140) ====================
+    // ==================== СОЗДАНИЕ КАРТОЧКИ ====================
 
-    private VBox createStatCard(Node icon, String title, String value, String color) {
-        VBox card = new VBox(8);
-        card.setAlignment(Pos.CENTER);
-        card.setPrefSize(320, 140);
-        card.setMinSize(320, 140);
-        card.setMaxSize(320, 140);
-        card.setPadding(new Insets(15));
-        card.getStyleClass().addAll(Styles.BG_DEFAULT, Styles.ELEVATED_1);
+    private VBox createStatCard(String title, String value, String colorKey) {
+        VBox card = new VBox(10);
+        card.setAlignment(Pos.CENTER_LEFT);
+        card.setPrefWidth(220);
+        card.setMinHeight(100);
+        card.setPadding(new Insets(20, 18, 16, 18));
+        card.getStyleClass().addAll("stat-card", "stat-card-" + colorKey);
 
         Label titleLabel = new Label(title);
         titleLabel.setWrapText(true);
-        titleLabel.getStyleClass().add(Styles.TEXT_MUTED);
+        titleLabel.getStyleClass().add("stat-card-title");
 
         Label valueLabel = new Label(value);
         valueLabel.setWrapText(true);
-        valueLabel.getStyleClass().add(Styles.TEXT_BOLD);
+        valueLabel.getStyleClass().add("stat-card-value");
 
-        card.getChildren().addAll(icon, titleLabel, valueLabel);
+        card.getChildren().addAll(titleLabel, valueLabel);
         return card;
     }
 
-    // ==================== КНОПКИ БЫСТРЫХ ДЕЙСТВИЙ (190x40) ====================
+    // ==================== КНОПКИ БЫСТРЫХ ДЕЙСТВИЙ ====================
 
-    private Button createActionButton(String text, String color) {
+    private Button createActionButton(String text, String colorKey) {
         Button btn = new Button(text);
-        btn.getStyleClass().addAll(Styles.FLAT, Styles.ROUNDED);
+        btn.getStyleClass().add("action-btn");
+        btn.getStyleClass().add("action-btn-" + colorKey);
+        btn.setPrefHeight(38);
 
         btn.setOnAction(e -> {
             String btnText = text;
@@ -303,67 +306,64 @@ public class DashboardView extends ScrollPane {
         return count;
     }
 
-// ==================== ЗАПИСИ НА ТЕКУЩУЮ НЕДЕЛЮ ====================
-
     // ==================== ПРАВАЯ КОЛОНКА (ПРОФИЛЬ) ====================
 
     private VBox createProfileBox() {
-        VBox profileBox = new VBox(15);
-        profileBox.getStyleClass().addAll(Styles.BG_DEFAULT, Styles.ELEVATED_1);
-        profileBox.setPadding(new Insets(20));
+        VBox profileBox = new VBox(12);
+        profileBox.getStyleClass().add("profile-card");
+        profileBox.setPadding(new Insets(24));
         profileBox.setAlignment(Pos.TOP_LEFT);
 
         Label profileTitle = new Label("Профиль пользователя");
-        profileTitle.getStyleClass().add(Styles.TEXT_BOLD);
+        profileTitle.getStyleClass().add("profile-title");
         profileBox.getChildren().add(profileTitle);
 
         Separator separator = new Separator();
         profileBox.getChildren().add(separator);
 
         Label statsTitle = new Label("Статистика");
-        statsTitle.getStyleClass().add(Styles.TEXT_BOLD);
+        statsTitle.getStyleClass().add("profile-section-title");
         profileBox.getChildren().add(statsTitle);
 
         Label totalOrders = new Label("Всего заказов: " + DataStore.getOrders().size());
-        totalOrders.getStyleClass().add(Styles.TEXT_MUTED);
+        totalOrders.getStyleClass().add("profile-stat");
         profileBox.getChildren().add(totalOrders);
 
         Label totalClients = new Label("Всего клиентов: " + DataStore.getClients().size());
-        totalClients.getStyleClass().add(Styles.TEXT_MUTED);
+        totalClients.getStyleClass().add("profile-stat");
         profileBox.getChildren().add(totalClients);
 
         Label totalSpareParts = new Label("Запчастей в наличии: " + DataStore.getSpareParts().size());
-        totalSpareParts.getStyleClass().add(Styles.TEXT_MUTED);
+        totalSpareParts.getStyleClass().add("profile-stat");
         profileBox.getChildren().add(totalSpareParts);
 
         Label totalAppointments = new Label("Активных записей: " + getWeekAppointments().size());
-        totalAppointments.getStyleClass().add(Styles.TEXT_MUTED);
+        totalAppointments.getStyleClass().add("profile-stat");
         profileBox.getChildren().add(totalAppointments);
 
         Separator separator2 = new Separator();
         profileBox.getChildren().add(separator2);
 
         Label revenueTitle = new Label("Финансы");
-        revenueTitle.getStyleClass().add(Styles.TEXT_BOLD);
+        revenueTitle.getStyleClass().add("profile-section-title");
         profileBox.getChildren().add(revenueTitle);
 
         Label revenueLabel = new Label("Общая выручка: " + getTotalRevenue());
-        revenueLabel.getStyleClass().add(Styles.TEXT_MUTED);
+        revenueLabel.getStyleClass().add("profile-stat");
         profileBox.getChildren().add(revenueLabel);
 
         return profileBox;
     }
 
-// ==================== ЗАПИСИ НА ТЕКУЩУЮ НЕДЕЛЮ ====================
+    // ==================== ЗАПИСИ НА ТЕКУЩУЮ НЕДЕЛЮ ====================
 
     private VBox createAppointmentsWeekBox() {
-        VBox box = new VBox(10);
-        box.getStyleClass().add(Styles.BG_DEFAULT);
-        box.setPadding(new Insets(15));
+        VBox box = new VBox(12);
+        box.getStyleClass().add("appointments-container");
+        box.setPadding(new Insets(20));
 
         Label header = new Label("Записи на текущую неделю");
-        header.setGraphic(IconHelper.event(20, "#2c3e50"));
-        header.getStyleClass().add(Styles.TEXT_BOLD);
+        header.getStyleClass().add("appointments-header");
         box.getChildren().add(header);
 
         // Получаем записи на текущую неделю
@@ -371,7 +371,7 @@ public class DashboardView extends ScrollPane {
 
         if (weekAppointments.isEmpty()) {
             Label empty = new Label("Нет записей на текущую неделю");
-            empty.getStyleClass().add(Styles.TEXT_MUTED);
+            empty.getStyleClass().add("appointments-hint");
             box.getChildren().add(empty);
             return box;
         }
@@ -379,11 +379,7 @@ public class DashboardView extends ScrollPane {
         // Создаём таблицу
         TableView<AppointmentRow> table = new TableView<>();
         table.setPrefHeight(300);
-        table.getStyleClass().addAll(Styles.STRIPED, Styles.BORDERED);
-
-        // Отключаем автоматическое добавление колонок
-        // UNCONSTRAINED_RESIZE_POLICY устарел, по умолчанию используется unconstrained resize
-        // table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
+        table.getStyleClass().add("appointments-table");
 
         // ====== КОЛОНКА 1: ЗАКАЗ ======
         TableColumn<AppointmentRow, String> colOrder = new TableColumn<>("Заказ");
@@ -462,7 +458,8 @@ public class DashboardView extends ScrollPane {
         });
 
         // Добавляем подсказку
-        Label hint = new Label("💡 Двойной клик по строке — просмотр заказа");
+        Label hint = new Label("Двойной клик по строке — просмотр заказа");
+        hint.getStyleClass().add("appointments-hint");
 
         box.getChildren().addAll(table, hint);
         return box;

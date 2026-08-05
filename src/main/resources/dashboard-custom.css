@@ -1,0 +1,163 @@
+/* =====================================================================
+   dashboard-custom.css — Палитра из референса поверх PrimerDark
+   ===================================================================== */
+
+/* ==================== ФОН ДАШБОРДА ==================== */
+.scroll-pane > .viewport {
+    -fx-background-color: #1E1F2E;
+}
+.grid-pane {
+    -fx-background-color: #1E1F2E;
+}
+
+/* ==================== СТАТ-КАРТОЧКИ ==================== */
+.stat-card {
+    -fx-background-color: #272838;
+    -fx-background-radius: 12px;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10, 0.0, 0, 4);
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+    -fx-border-radius: 0;
+    -fx-cursor: hand;
+}
+.stat-card:hover {
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 14, 0.0, 0, 6);
+}
+
+/* Цветная полоска сверху через градиент */
+.stat-card-blue   { -fx-background-color: linear-gradient(to bottom, #5B8DEF 3%, #272838 3%); }
+.stat-card-green  { -fx-background-color: linear-gradient(to bottom, #4ADE80 3%, #272838 3%); }
+.stat-card-red    { -fx-background-color: linear-gradient(to bottom, #F43F5E 3%, #272838 3%); }
+.stat-card-orange { -fx-background-color: linear-gradient(to bottom, #F59E0B 3%, #272838 3%); }
+.stat-card-purple { -fx-background-color: linear-gradient(to bottom, #7C5CE0 3%, #272838 3%); }
+.stat-card-yellow { -fx-background-color: linear-gradient(to bottom, #FBBF24 3%, #272838 3%); }
+
+/* Текст карточек */
+.stat-card-title {
+    -fx-font-size: 12px;
+    -fx-font-weight: normal;
+    -fx-text-fill: #94A3B8;
+}
+.stat-card-value {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #FFFFFF;
+}
+
+/* ==================== КНОПКИ ДЕЙСТВИЙ ==================== */
+.action-btn {
+    -fx-text-fill: white;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-padding: 8 22 8 22;
+    -fx-cursor: hand;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+    -fx-background-color: #5B8DEF;
+}
+.action-btn:hover {
+    -fx-background-color: #4A7ED7;
+}
+.action-btn:pressed {
+    -fx-background-color: #3A6BC2;
+}
+
+.action-btn-blue  { -fx-background-color: #5B8DEF; -fx-text-fill: white; }
+.action-btn-blue:hover  { -fx-background-color: #4A7ED7; }
+.action-btn-blue:pressed { -fx-background-color: #3A6BC2; }
+
+.action-btn-green  { -fx-background-color: #4ADE80; -fx-text-fill: #1E1F2E; }
+.action-btn-green:hover  { -fx-background-color: #22C55E; }
+.action-btn-green:pressed { -fx-background-color: #16A34A; }
+
+.action-btn-purple  { -fx-background-color: #7C5CE0; -fx-text-fill: white; }
+.action-btn-purple:hover  { -fx-background-color: #6D4FD0; }
+.action-btn-purple:pressed { -fx-background-color: #5B42B8; }
+
+.action-btn-orange  { -fx-background-color: #F59E0B; -fx-text-fill: #1E1F2E; }
+.action-btn-orange:hover  { -fx-background-color: #D97706; }
+.action-btn-orange:pressed { -fx-background-color: #B45309; }
+
+/* ==================== ТАБЛИЦА ЗАПИСЕЙ ==================== */
+.appointments-container {
+    -fx-background-color: #272838;
+    -fx-background-radius: 12px;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10, 0.0, 0, 4);
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+}
+.appointments-header {
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #FFFFFF;
+}
+.appointments-hint {
+    -fx-font-size: 11px;
+    -fx-text-fill: #64748B;
+}
+
+.table-view.appointments-table {
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+    -fx-border-radius: 8px;
+    -fx-background-color: transparent;
+    -fx-effect: null;
+}
+.table-view.appointments-table > .column-header-background {
+    -fx-background-color: #2A2B3D;
+}
+.table-view.appointments-table .column-header {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent #333451 transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 8 12;
+}
+.table-view.appointments-table .column-header .label {
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #94A3B8;
+}
+.table-view.appointments-table .table-row-cell {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent #2D2E42 transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-cursor: hand;
+}
+.table-view.appointments-table .table-row-cell:odd {
+    -fx-background-color: rgba(255,255,255,0.02);
+}
+.table-view.appointments-table .table-row-cell:hover {
+    -fx-background-color: rgba(91,141,239,0.08);
+}
+.table-view.appointments-table .table-cell {
+    -fx-font-size: 12px;
+    -fx-text-fill: #E2E8F0;
+    -fx-padding: 6 12;
+    -fx-border-color: transparent;
+}
+
+/* ==================== ПРОФИЛЬ САЙДБАР ==================== */
+.profile-card {
+    -fx-background-color: #272838;
+    -fx-background-radius: 12px;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 10, 0.0, 0, 4);
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+}
+.profile-title {
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #FFFFFF;
+}
+.profile-section-title {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #FFFFFF;
+}
+.profile-stat {
+    -fx-font-size: 12px;
+    -fx-text-fill: #94A3B8;
+}
+.profile-card .separator {
+    -fx-padding: 6 0;
+}
