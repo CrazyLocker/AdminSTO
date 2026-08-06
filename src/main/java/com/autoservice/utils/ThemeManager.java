@@ -1,6 +1,7 @@
 package com.autoservice.utils;
 
 import atlantafx.base.theme.*;
+import com.autoservice.services.SettingService;
 import javafx.application.Application;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -10,10 +11,14 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Менеджер тем AtlantaFX. Позволяет переключать тему в runtime.
- * Управляет и глобальным, и дашборд-специфичным CSS.
+ * Менеджер тем AtlantaFX.
+ * - Переключает тему в runtime
+ * - Сохраняет выбор в БД через SettingService
+ * - При старте загружает сохранённую тему
  */
 public class ThemeManager {
+
+    private static final String SETTING_KEY = "app_theme";
 
     public enum AppTheme {
         PRIMER_DARK("Primer Dark", PrimerDark.class),
@@ -48,35 +53,59 @@ public class ThemeManager {
     private static final List<AppTheme> THEMES = Arrays.asList(AppTheme.values());
 
     /**
-     * Инициализация менеджера тем. Вызвать ПОСЛЕ создания Scene.
+     * Инициализация менеджера тем. Вызвать ПОСЛЕ создания Scene и инициализации БД.
+     * Загружает сохранённую тему из настроек.
      */
     public static void init(Scene scene) {
         ThemeManager.scene = scene;
-        reloadCustomCSS();
+
+        // Попробовать загрузить сохранённую тему
+        AppTheme themeToApply = currentTheme;
+        try {
+            String saved = SettingService.getSettingValue(SETTING_KEY);
+            if (saved != null) {
+                themeToApply = AppTheme.valueOf(saved);
+            }
+        } catch (Exception ignored) {}
+
+        applyTheme(themeToApply);
     }
 
     /**
-     * Установить тему по enum-значению.
+     * Переключить тему (вызывается из UI).
      */
     public static void setTheme(AppTheme theme) {
-        if (scene == null) return;
-        if (theme == currentTheme) return;
+        if (scene == null || theme == currentTheme) return;
+        applyTheme(theme);
+    }
+
+    /**
+     * Применить тему: переключить AtlantaFX, перезагрузить CSS, сохранить в БД.
+     */
+    private static void applyTheme(AppTheme theme) {
         try {
-            // 1. Устанавливаем AtlantaFX тему
             Theme instance = theme.themeClass.getDeclaredConstructor().newInstance();
             Application.setUserAgentStylesheet(instance.getUserAgentStylesheet());
             currentTheme = theme;
 
-            // 2. Удаляем ВСЕ кастомные CSS
+            // Сохранить в БД
+            try {
+                SettingService.setSettingValue(SETTING_KEY, theme.name());
+            } catch (Exception ignored) {}
+
+            // Удалить старые кастомные CSS
             scene.getStylesheets().removeIf(s ->
-                s.contains("global-custom") || s.contains("dashboard-custom")
+                    s.contains("global-custom") || s.contains("dashboard-custom")
             );
 
-            // 3. Подгружаем нужные CSS (тёмные/светлые)
-            reloadCustomCSS();
+            // Загрузить нужные CSS
+            loadCSS("/global-custom.css");
+            String dashboardCss = currentTheme.isDark()
+                    ? "/dashboard-custom.css"
+                    : "/dashboard-custom-light.css";
+            loadCSS(dashboardCss);
 
-            // 4. Принудительное обновление — пересоздаём список стилей
-            //    чтобы JavaFX пересчитал все стили для существующих нод
+            // Принудительное обновление сцены
             ObservableList<String> sheets = FXCollections.observableArrayList(scene.getStylesheets());
             scene.getStylesheets().clear();
             scene.getStylesheets().addAll(sheets);
@@ -87,28 +116,10 @@ public class ThemeManager {
         }
     }
 
-    /**
-     * Загрузить кастомные CSS в зависимости от текущей темы.
-     */
-    private static void reloadCustomCSS() {
-        if (scene == null) return;
-
-        boolean dark = currentTheme.isDark();
-        String globalCss = dark ? "/global-custom.css" : "/global-custom-light.css";
-        String dashboardCss = dark ? "/dashboard-custom.css" : "/dashboard-custom-light.css";
-
-        loadCSS(globalCss);
-        loadCSS(dashboardCss);
-    }
-
-    /**
-     * Безопасная загрузка CSS-файла из resources.
-     */
     private static void loadCSS(String path) {
         java.net.URL url = ThemeManager.class.getResource(path);
         if (url != null) {
             String externalForm = url.toExternalForm();
-            // Не добавляем дубль
             if (!scene.getStylesheets().contains(externalForm)) {
                 scene.getStylesheets().add(externalForm);
             }
