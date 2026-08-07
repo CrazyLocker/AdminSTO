@@ -491,6 +491,7 @@ public class SettingsView {
     }
 
     public static void refreshSettingsTable() {
+        // TODO: Оптимизировать TableView через FilteredList или пагинацию (при > 500 записей)
         masterDataSettings = FXCollections.observableArrayList(DataStore.getAllSettings());
         filteredSettings = new FilteredList<>(masterDataSettings, p -> true);
 

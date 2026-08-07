@@ -277,6 +277,8 @@ public class ClientView {
     }
 
     public static void refreshClientList() {
+        long start = System.currentTimeMillis();
+        // TODO: Оптимизировать TableView через FilteredList или пагинацию (при > 500 записей)
         masterData = FXCollections.observableArrayList(DataStore.getClients());
         filteredClients = new FilteredList<>(masterData, p -> true);
         
@@ -289,6 +291,11 @@ public class ClientView {
         
         if (searchField != null && searchField.getText() != null && !searchField.getText().isEmpty()) {
             filterClients(searchField.getText());
+        }
+
+        long duration = System.currentTimeMillis() - start;
+        if (duration > 300) {
+            System.out.println("⚠️ Медленная операция в ClientView.refreshClientList: " + duration + " мс");
         }
     }
 

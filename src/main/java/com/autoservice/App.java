@@ -11,6 +11,7 @@ import com.autoservice.controllers.ServicePanelController;
 import com.autoservice.controllers.SparePartPanelController;
 import com.autoservice.controllers.StockPanelController;
 import com.autoservice.utils.IconHelper;
+import com.autoservice.utils.LoadingIndicator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import javafx.application.Application;
@@ -36,8 +37,14 @@ public class App extends Application {
         try {
             Database.init();
             logger.info("База данных инициализирована");
-            DataStore.load();
-            logger.info("Данные загружены");
+            LoadingIndicator.show();
+            new Thread(() -> {
+                DataStore.load();
+                Platform.runLater(() -> {
+                    LoadingIndicator.hide();
+                    logger.info("Данные загружены");
+                });
+            }).start();
             
             // Инициализация ScheduleService и проверка авто-бэкапа
             ScheduleService.init();
@@ -71,6 +78,7 @@ public class App extends Application {
         tabPane.getTabs().addAll(dashTab, clientTab, orderTab, servicesTab, sparePartsTab, stockTab, appointmentTab, settingsTab);
 
         tabPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, tab) -> {
+            logger.info("🔄 Переключение вкладки: {} -> {}", oldTab != null ? oldTab.getText() : "null", tab != null ? tab.getText() : "null");
             if (tab == dashTab) {
                 DashboardView.refresh();
             } else if (tab == appointmentTab) {

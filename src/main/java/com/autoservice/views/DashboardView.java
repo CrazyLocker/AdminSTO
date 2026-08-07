@@ -114,6 +114,7 @@ public class DashboardView extends ScrollPane {
     // ==================== ОБНОВЛЕНИЕ ====================
 
     private void doRefresh() {
+        long start = System.currentTimeMillis();
         gridPane.getChildren().clear();
         gridPane.getColumnConstraints().clear();
         gridPane.setStyle("-fx-background-color: " + DARK_BG + ";");
@@ -193,6 +194,11 @@ public class DashboardView extends ScrollPane {
         gridPane.add(leftColumn, 0, 0);
         gridPane.add(centerColumn, 1, 0);
         gridPane.add(rightColumn, 2, 0);
+
+        long duration = System.currentTimeMillis() - start;
+        if (duration > 300) {
+            System.out.println("⚠️ Медленная операция в DashboardView.doRefresh: " + duration + " мс");
+        }
     }
 
     // ==================== КНОПКИ БЫСТРЫХ ДЕЙСТВИЙ ====================

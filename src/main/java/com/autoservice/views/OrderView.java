@@ -496,6 +496,7 @@ public class OrderView {
             filtered.add(order);
         }
 
+        // TODO: Оптимизировать TableView через FilteredList или пагинацию (при > 500 записей)
         masterData.clear();
         masterData.addAll(filtered);
         orderTable.refresh();
@@ -672,8 +673,13 @@ public class OrderView {
     }
 
     public static void refreshOrderList() {
+        long start = System.currentTimeMillis();
         if (orderTable != null) {
             applyFilters();
+        }
+        long duration = System.currentTimeMillis() - start;
+        if (duration > 300) {
+            logger.warn("⚠️ Медленная операция в OrderView.refreshOrderList: " + duration + " мс");
         }
     }
 }

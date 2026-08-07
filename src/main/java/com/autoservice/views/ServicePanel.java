@@ -170,12 +170,18 @@ public class ServicePanel {
      * Вызывается контроллером, НЕ вызывает setItems напрямую.
      */
     public static void refreshTable() {
+        long start = System.currentTimeMillis();
         if (table == null) return;
+        // TODO: Оптимизировать TableView через FilteredList или пагинацию (при > 500 записей)
         masterData = FXCollections.observableArrayList(DataStore.getServices());
         filteredData = new FilteredList<>(masterData, p -> true);
         sortedData = new SortedList<>(filteredData);
         sortedData.comparatorProperty().bind(table.comparatorProperty());
         table.setItems(sortedData);
+        long duration = System.currentTimeMillis() - start;
+        if (duration > 300) {
+            System.out.println("⚠️ Медленная операция в ServicePanel.refreshTable: " + duration + " мс");
+        }
     }
 
     private static void showAddServiceDialog() {

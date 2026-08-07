@@ -28,6 +28,25 @@ import java.util.concurrent.CountDownLatch;
  */
 public class LoadingIndicator {
 
+    private static int activeCount = 0;
+
+    /**
+     * Показывает глобальный индикатор загрузки (без привязки к конкретной панели).
+     * Используется для длительных операций на старте приложения.
+     */
+    public static void show() {
+        activeCount++;
+    }
+
+    /**
+     * Скрывает глобальный индикатор загрузки, показанный через {@link #show()}.
+     */
+    public static void hide() {
+        if (activeCount > 0) {
+            activeCount--;
+        }
+    }
+
     /**
      * Показывает индикатор загрузки для операции.
      * @param parent узел, над которым будет показан индикатор

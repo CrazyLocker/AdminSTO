@@ -174,7 +174,9 @@ public class StockPanel {
      * Вызывается контроллером, НЕ вызывает setItems напрямую.
      */
     public static void refreshTable() {
+        long start = System.currentTimeMillis();
         if (table == null) return;
+        // TODO: Оптимизировать TableView через FilteredList или пагинацию (при > 500 записей)
         masterData = FXCollections.observableArrayList(DataStore.getSpareParts());
         filteredData = new FilteredList<>(masterData, p -> true);
         sortedData = new SortedList<>(filteredData);
@@ -182,6 +184,10 @@ public class StockPanel {
         table.setItems(sortedData);
         if (searchField != null) {
             filterStock(searchField.getText());
+        }
+        long duration = System.currentTimeMillis() - start;
+        if (duration > 300) {
+            System.out.println("⚠️ Медленная операция в StockPanel.refreshTable: " + duration + " мс");
         }
     }
 
