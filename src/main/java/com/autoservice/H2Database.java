@@ -103,10 +103,9 @@ public class H2Database extends AbstractDatabase {
                 "note TEXT DEFAULT '', " +
                 "purchase_price REAL CHECK(purchase_price >= 0), " +
                 "retail_price REAL NOT NULL CHECK(retail_price >= 0), " +
-                "stock REAL DEFAULT 0 CHECK(stock >= 0), " +
+                "stock REAL DEFAULT 0, " +
                 "min_stock REAL DEFAULT 0 CHECK(min_stock >= 0), " +
                 "location TEXT DEFAULT '', " +
-                "unit_volume REAL DEFAULT 1.0, " +
                 "unit_type TEXT DEFAULT 'шт' CHECK(unit_type IN ('шт', 'л', 'компл')), " +
                 "is_liquid INTEGER DEFAULT 0 CHECK(is_liquid IN (0, 1))" +
                 ")";
@@ -382,12 +381,12 @@ public class H2Database extends AbstractDatabase {
 
     @Override
     public void updateSparePartStock(SparePart part, double newStock) {
-        String sql = "UPDATE spare_parts SET stock = ? WHERE name = ?";
+        String sql = "UPDATE spare_parts SET stock = ? WHERE id = ?";
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setDouble(1, newStock);
-            pstmt.setString(2, part.getName());
+            pstmt.setInt(2, part.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
             logger.error("Ошибка обновления остатка запчасти", e);
