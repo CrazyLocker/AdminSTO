@@ -26,6 +26,7 @@ javafx-sdk-21.0.6/
 test_jre/
 test_jre2/
 AdminSTO_Portable/
+AdminSTO_Portable.zip
 
 # ===== DATABASE =====
 *.db
