@@ -5,6 +5,7 @@ import com.autoservice.SparePart;
 import com.autoservice.controllers.SparePartPanelController;
 import com.autoservice.services.TableStateManager;
 import com.autoservice.services.WindowStateManager;
+import com.autoservice.utils.LoadingIndicator;
 import com.autoservice.utils.TooltipHelper;
 import com.autoservice.utils.ValidationErrorIndicator;
 import com.autoservice.utils.ValidationUtils;
@@ -24,6 +25,8 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
@@ -32,6 +35,8 @@ import java.util.List;
  * Автономная панель со своим контроллером.
  */
 public class SparePartPanel {
+
+    private static final Logger logger = LoggerFactory.getLogger(SparePartPanel.class);
 
     private static TableView<SparePart> table;
     private static TextField searchField;
@@ -52,6 +57,8 @@ public class SparePartPanel {
         table = new TableView<>();
         table.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         table.setId("sparePartsTable");
+        // Виртуализация: фиксированная высота строки ускоряет отрисовку больших списков
+        table.setFixedCellSize(30);
 
         TableColumn<SparePart, String> colName = new TableColumn<>("Название");
         colName.setId("colSparePartName");
@@ -126,11 +133,26 @@ public class SparePartPanel {
         });
 
         // FilteredList → SortedList → TableView
-        masterData = FXCollections.observableArrayList(DataStore.getSpareParts());
-        filteredData = new FilteredList<>(masterData, p -> true);
-        sortedData = new SortedList<>(filteredData);
-        sortedData.comparatorProperty().bind(table.comparatorProperty());
-        table.setItems(sortedData);
+        // Загрузка данных из БД выполняется в фоновом потоке, чтобы не блокировать UI
+        LoadingIndicator.show();
+        new Thread(() -> {
+            logger.info("Начало загрузки запчастей");
+            long start = System.currentTimeMillis();
+            try {
+                ObservableList<SparePart> loaded = FXCollections.observableArrayList(DataStore.getSpareParts());
+                Platform.runLater(() -> {
+                    masterData = loaded;
+                    filteredData = new FilteredList<>(masterData, p -> true);
+                    sortedData = new SortedList<>(filteredData);
+                    sortedData.comparatorProperty().bind(table.comparatorProperty());
+                    table.setItems(sortedData);
+                    long duration = System.currentTimeMillis() - start;
+                    logger.info("Загрузка запчастей завершена за {} мс", duration);
+                });
+            } finally {
+                Platform.runLater(LoadingIndicator::hide);
+            }
+        }).start();
 
         // ====== ПОЛЕ ПОИСКА И КНОПКИ В ХЕДЕРЕ ======
         searchField = new TextField();
@@ -191,23 +213,33 @@ public class SparePartPanel {
      * Вызывается контроллером, НЕ вызывает setItems напрямую.
      */
     public static void refreshTable() {
-        long start = System.currentTimeMillis();
         if (table == null) return;
         // TODO: Оптимизировать TableView через FilteredList или пагинацию (при > 500 записей)
-        masterData = FXCollections.observableArrayList(DataStore.getSpareParts());
-        filteredData = new FilteredList<>(masterData, p -> true);
-        sortedData = new SortedList<>(filteredData);
-        sortedData.comparatorProperty().bind(table.comparatorProperty());
-        table.setItems(sortedData);
+        // Загрузка данных из БД выполняется в фоновом потоке, чтобы не блокировать UI
+        LoadingIndicator.show();
+        new Thread(() -> {
+            logger.info("Начало загрузки запчастей");
+            long start = System.currentTimeMillis();
+            try {
+                ObservableList<SparePart> loaded = FXCollections.observableArrayList(DataStore.getSpareParts());
+                Platform.runLater(() -> {
+                    masterData = loaded;
+                    filteredData = new FilteredList<>(masterData, p -> true);
+                    sortedData = new SortedList<>(filteredData);
+                    sortedData.comparatorProperty().bind(table.comparatorProperty());
+                    table.setItems(sortedData);
 
-        // Повторно применяем фильтр поиска
-        if (searchField != null && searchField.getText() != null && !searchField.getText().isEmpty()) {
-            filterSpareParts(searchField.getText());
-        }
-        long duration = System.currentTimeMillis() - start;
-        if (duration > 300) {
-            System.out.println("⚠️ Медленная операция в SparePartPanel.refreshTable: " + duration + " мс");
-        }
+                    // Повторно применяем фильтр поиска
+                    if (searchField != null && searchField.getText() != null && !searchField.getText().isEmpty()) {
+                        filterSpareParts(searchField.getText());
+                    }
+                    long duration = System.currentTimeMillis() - start;
+                    logger.info("Загрузка запчастей завершена за {} мс", duration);
+                });
+            } finally {
+                Platform.runLater(LoadingIndicator::hide);
+            }
+        }).start();
     }
 
     /**

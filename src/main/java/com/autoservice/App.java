@@ -110,7 +110,9 @@ public class App extends Application {
             TableStateManager.saveTableState(SparePartPanel.getTable(), "sparePartsTable");
             TableStateManager.saveTableState(StockPanel.getTable(), "stockTable");
             TableStateManager.saveTableState(SettingsView.getSettingsTable(), "settingsTable");
-            TableStateManager.saveTableState(SettingsView.getServiceSparePartsTable(), "serviceSparePartsTable");
+            if (SettingsView.getServiceSparePartsTable() != null) {
+                TableStateManager.saveTableState(SettingsView.getServiceSparePartsTable(), "serviceSparePartsTable");
+            }
             TableStateManager.saveTableState(SettingsView.getToPartsTable(), "toPartsTable");
             
             // Остановить планировщик до закрытия БД, чтобы избежать конфликтов

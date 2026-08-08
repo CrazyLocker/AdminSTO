@@ -52,10 +52,16 @@ public abstract class AbstractDatabase implements DatabaseInterface {
      * @return сгенерированный ID
      */
     protected int getGeneratedKeyId(Connection conn, PreparedStatement stmt) throws SQLException {
-        try (ResultSet rs = stmt.getGeneratedKeys()) {
-            if (rs.next()) {
-                return rs.getInt(1);
+        // getGeneratedKeys() не поддерживается SQLite-драйвером и бросает
+        // SQLFeatureNotSupportedException — перехватываем и переходим к fallback.
+        try {
+            try (ResultSet rs = stmt.getGeneratedKeys()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
             }
+        } catch (SQLException e) {
+            logger.debug("getGeneratedKeys не поддерживается, используем fallback", e);
         }
         // Fallback для SQLite: last_insert_rowid()
         String url = conn.getMetaData().getURL();
@@ -370,11 +376,8 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setInt(9, service.getSparePartQuantity());
             pstmt.executeUpdate();
             
-            // Получаем сгенерированный id
-            ResultSet rs = pstmt.getGeneratedKeys();
-            if (rs.next()) {
-                service.setId(rs.getInt(1));
-            }
+            // Получаем сгенерированный id (защищённый хелпер с fallback для SQLite)
+            service.setId(getGeneratedKeyId(conn, pstmt));
         } catch (SQLException e) {
             logger.error("Ошибка добавления услуги", e);
         }
@@ -525,9 +528,9 @@ public abstract class AbstractDatabase implements DatabaseInterface {
 
         String ordersSql = """
             SELECT o.id as order_id, o.status, o.total, o.created_date, o.mileage,
-                    o.closed_date, o.notes,
+                    o.closed_date, o.notes, o.car_model as o_car_model, o.car_number as o_car_number,
                     c.id as client_id, c.name, c.last_name, c.phone, 
-                    c.car_model, c.car_number, c.last_repair_date
+                    c.car_model as c_car_model, c.car_number as c_car_number, c.last_repair_date
             FROM orders o
             LEFT JOIN clients c ON o.client_id = c.id
             ORDER BY o.created_date DESC
@@ -544,10 +547,12 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                         rs.getString("name") != null ? rs.getString("name") : "",
                         rs.getString("last_name") != null ? rs.getString("last_name") : "",
                         rs.getString("phone") != null ? rs.getString("phone") : "",
-                        rs.getString("car_model") != null ? rs.getString("car_model") : "",
-                        rs.getString("car_number") != null ? rs.getString("car_number") : "",
+                        rs.getString("c_car_model") != null ? rs.getString("c_car_model") : "",
+                        rs.getString("c_car_number") != null ? rs.getString("c_car_number") : "",
                         rs.getString("last_repair_date") != null ? rs.getString("last_repair_date") : ""
                 );
+                // Заполняем список автомобилей клиента (актуальные машины из client_cars)
+                client.setCars(getCarsByClientId(client.getId()));
 
                 WorkOrder order = new WorkOrder(
                         rs.getString("order_id"),
@@ -559,6 +564,9 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                 order.setMileage(rs.getInt("mileage"));
                 order.setClosedDate(rs.getString("closed_date") != null ? rs.getString("closed_date") : "");
                 order.setNotes(rs.getString("notes") != null ? rs.getString("notes") : "");
+                // Автомобиль, зафиксированный в наряд-заказе
+                order.setCarModel(rs.getString("o_car_model") != null ? rs.getString("o_car_model") : "");
+                order.setCarNumber(rs.getString("o_car_number") != null ? rs.getString("o_car_number") : "");
                 orderMap.put(rs.getString("order_id"), order);
             }
         } catch (SQLException e) {
@@ -1344,11 +1352,8 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setInt(6, part.isActive() ? 1 : 0);
             pstmt.executeUpdate();
             
-            // Получаем сгенерированный id
-            ResultSet rs = pstmt.getGeneratedKeys();
-            if (rs.next()) {
-                part.setId(rs.getInt(1));
-            }
+            // Получаем сгенерированный id (защищённый хелпер с fallback для SQLite)
+            part.setId(getGeneratedKeyId(conn, pstmt));
         } catch (SQLException e) {
             logger.error("Ошибка добавления расходника TO", e);
         }
@@ -1442,12 +1447,12 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setString(2, setting.getValue());
             pstmt.setString(3, setting.getDescription());
             pstmt.executeUpdate();
-            
-            // Получаем сгенерированный id
-            ResultSet rs = pstmt.getGeneratedKeys();
-            if (rs.next()) {
-                setting.setId(rs.getInt(1));
-            }
+
+            // Получаем сгенерированный id.
+            // getGeneratedKeys() не поддерживается SQLite-драйвером
+            // (SQLFeatureNotSupportedException), поэтому используем
+            // защищённый хелпер с fallback на last_insert_rowid().
+            setting.setId(getGeneratedKeyId(conn, pstmt));
         } catch (SQLException e) {
             logger.error("Ошибка добавления настройки", e);
         }

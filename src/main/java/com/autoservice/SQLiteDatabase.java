@@ -114,6 +114,8 @@ public class SQLiteDatabase extends AbstractDatabase {
                 "mileage INTEGER DEFAULT 0 CHECK(mileage >= 0), " +
                 "closed_date TEXT DEFAULT '', " +
                 "notes TEXT DEFAULT '', " +
+                "car_model TEXT DEFAULT '', " +
+                "car_number TEXT DEFAULT '', " +
                 "FOREIGN KEY (client_id) REFERENCES clients(id)" +
                 ")";
 
@@ -364,11 +366,8 @@ public class SQLiteDatabase extends AbstractDatabase {
             pstmt.setInt(9, service.getSparePartQuantity());
             pstmt.executeUpdate();
             
-            // Получаем сгенерированный id
-            ResultSet rs = pstmt.getGeneratedKeys();
-            if (rs.next()) {
-                service.setId(rs.getInt(1));
-            }
+            // Получаем сгенерированный id (защищённый хелпер с fallback для SQLite)
+            service.setId(getGeneratedKeyId(conn, pstmt));
         } catch (SQLException e) {
             logger.error("Ошибка добавления услуги", e);
         }
@@ -540,7 +539,7 @@ public class SQLiteDatabase extends AbstractDatabase {
 
             conn.setAutoCommit(false);
 
-            String sql = "INSERT INTO orders (id, client_id, status, total, created_date, closed_date, notes) VALUES (?, ?, ?, ?, ?, ?, ?)";
+            String sql = "INSERT INTO orders (id, client_id, status, total, created_date, closed_date, notes, car_model, car_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 pstmt.setString(1, orderId);
                 pstmt.setInt(2, clientId);
@@ -549,6 +548,8 @@ public class SQLiteDatabase extends AbstractDatabase {
                 pstmt.setString(5, currentDate);
                 pstmt.setString(6, order.getClosedDate() != null ? order.getClosedDate() : "");
                 pstmt.setString(7, order.getNotes() != null ? order.getNotes() : "");
+                pstmt.setString(8, order.getCarModel() != null ? order.getCarModel() : "");
+                pstmt.setString(9, order.getCarNumber() != null ? order.getCarNumber() : "");
                 pstmt.executeUpdate();
             }
 
@@ -858,6 +859,14 @@ public class SQLiteDatabase extends AbstractDatabase {
             }
         }
         
+        // Добавляем колонку service_id в order_services, если её нет
+        if (!columnExists(conn, "order_services", "service_id")) {
+            try (PreparedStatement stmt = conn.prepareStatement("ALTER TABLE order_services ADD COLUMN service_id INTEGER DEFAULT 0")) {
+                stmt.execute();
+                logger.info("Добавлена колонка service_id в order_services");
+            }
+        }
+        
         // Добавляем колонку service_id в appointments, если её нет
         if (!columnExists(conn, "appointments", "service_id")) {
             try (PreparedStatement stmt = conn.prepareStatement("ALTER TABLE appointments ADD COLUMN service_id INTEGER DEFAULT 0")) {
@@ -922,6 +931,22 @@ public class SQLiteDatabase extends AbstractDatabase {
             }
         }
         
+        // Добавляем колонку car_model в orders, если её нет
+        if (!columnExists(conn, "orders", "car_model")) {
+            try (PreparedStatement stmt = conn.prepareStatement("ALTER TABLE orders ADD COLUMN car_model TEXT DEFAULT ''")) {
+                stmt.execute();
+                logger.info("Добавлена колонка car_model в orders");
+            }
+        }
+        
+        // Добавляем колонку car_number в orders, если её нет
+        if (!columnExists(conn, "orders", "car_number")) {
+            try (PreparedStatement stmt = conn.prepareStatement("ALTER TABLE orders ADD COLUMN car_number TEXT DEFAULT ''")) {
+                stmt.execute();
+                logger.info("Добавлена колонка car_number в orders");
+            }
+        }
+        
         // Создаем таблицу client_cars, если её нет
         if (!tableExists(conn, "client_cars")) {
             try (PreparedStatement stmt = conn.prepareStatement("CREATE TABLE client_cars (" +
@@ -939,6 +964,19 @@ public class SQLiteDatabase extends AbstractDatabase {
                 stmt.execute();
             }
             logger.info("Создан индекс для client_cars");
+            
+            // Переносим данные из clients в client_cars, если client_cars пустая
+            try (PreparedStatement checkStmt = conn.prepareStatement("SELECT COUNT(*) FROM client_cars")) {
+                ResultSet rs = checkStmt.executeQuery();
+                if (rs.next() && rs.getInt(1) == 0) {
+                    try (PreparedStatement insertStmt = conn.prepareStatement(
+                            "INSERT INTO client_cars (client_id, car_model, car_number, mileage) " +
+                            "SELECT id, car_model, car_number, 0 FROM clients WHERE car_model != '' OR car_number != ''")) {
+                        insertStmt.execute();
+                        logger.info("Перенесены данные из clients в client_cars");
+                    }
+                }
+            }
         }
         
         // Миграция: убираем CHECK constraints с car_model/car_number в clients (они могут быть пустыми при создании без авто)

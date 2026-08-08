@@ -31,7 +31,16 @@ public class OrderDetailsDialog {
         Label headerLabel = new Label(order.getClient().getName() + " | " + Validators.formatPhoneForDisplay(order.getClient().getPhone()));
 
         Label statusLabel = new Label("Статус: " + order.getStatus());
-        Label carLabel = new Label("Авто: " + order.getClient().getCarModel() + " (" + order.getClient().getCarNumber() + ")");
+        // Автомобиль: приоритет — автомобиль из заказа, иначе автомобили клиента
+        String carDisplay;
+        if (order.getCarModel() != null && !order.getCarModel().isEmpty()) {
+            carDisplay = order.getCarModel() + (order.getCarNumber() != null && !order.getCarNumber().isEmpty() ? " (" + order.getCarNumber() + ")" : "");
+        } else if (order.getClient() != null) {
+            carDisplay = order.getClient().getCarDisplay();
+        } else {
+            carDisplay = "";
+        }
+        Label carLabel = new Label("Авто: " + carDisplay);
 
         Label servicesLabel = new Label("Услуги:");
 

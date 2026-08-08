@@ -119,6 +119,8 @@ public class H2Database extends AbstractDatabase {
                 "mileage INTEGER DEFAULT 0 CHECK(mileage >= 0), " +
                 "closed_date TEXT DEFAULT '', " +
                 "notes TEXT DEFAULT '', " +
+                "car_model TEXT DEFAULT '', " +
+                "car_number TEXT DEFAULT '', " +
                 "FOREIGN KEY (client_id) REFERENCES clients(id)" +
                 ")";
 
@@ -227,6 +229,11 @@ public class H2Database extends AbstractDatabase {
         try (PreparedStatement ps = conn.prepareStatement(createServiceSparePartsLists)) { ps.execute(); }
         try (PreparedStatement ps = conn.prepareStatement(createServiceSparePartsListItems)) { ps.execute(); }
         try (PreparedStatement ps = conn.prepareStatement(createServiceParts)) { ps.execute(); }
+        // ====== МИГРАЦИЯ: добавляем car_model/car_number в orders, если их нет ======
+        try (PreparedStatement ps = conn.prepareStatement("ALTER TABLE orders ADD COLUMN car_model TEXT DEFAULT ''")) { ps.execute(); }
+        catch (SQLException e) { /* колонка уже существует */ }
+        try (PreparedStatement ps = conn.prepareStatement("ALTER TABLE orders ADD COLUMN car_number TEXT DEFAULT ''")) { ps.execute(); }
+        catch (SQLException e) { /* колонка уже существует */ }
         createIndexes(conn);
         logger.info("Таблицы и индексы созданы/проверены");
     }
@@ -424,7 +431,7 @@ public class H2Database extends AbstractDatabase {
 
             conn.setAutoCommit(false);
 
-            String sql = "INSERT INTO orders (id, client_id, status, total, created_date, mileage, closed_date, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+            String sql = "INSERT INTO orders (id, client_id, status, total, created_date, mileage, closed_date, notes, car_model, car_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 pstmt.setString(1, orderId);
                 pstmt.setInt(2, clientId);
@@ -434,6 +441,8 @@ public class H2Database extends AbstractDatabase {
                 pstmt.setInt(6, order.getMileage());
                 pstmt.setString(7, order.getClosedDate() != null ? order.getClosedDate() : "");
                 pstmt.setString(8, order.getNotes() != null ? order.getNotes() : "");
+                pstmt.setString(9, order.getCarModel() != null ? order.getCarModel() : "");
+                pstmt.setString(10, order.getCarNumber() != null ? order.getCarNumber() : "");
                 pstmt.executeUpdate();
             }
 

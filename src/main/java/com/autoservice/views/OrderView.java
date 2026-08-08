@@ -4,6 +4,7 @@ import com.autoservice.DataStore;
 import com.autoservice.DateUtils;
 import com.autoservice.Validators;
 import com.autoservice.WorkOrder;
+import com.autoservice.Client;
 import com.autoservice.Appointment;
 import com.autoservice.controllers.OrderController;
 import com.autoservice.dialogs.PrintOrderDialog;
@@ -289,9 +290,21 @@ public class OrderView {
         TableColumn<WorkOrder, String> colCar = new TableColumn<>("Автомобиль");
         colCar.setId("colCar");
         colCar.setCellValueFactory(cellData -> {
-            String model = cellData.getValue().getClient().getCarModel();
-            String number = cellData.getValue().getClient().getCarNumber();
-            return new SimpleStringProperty(model + " (" + number + ")");
+            WorkOrder order = cellData.getValue();
+            // Приоритет: автомобиль, записанный в заказ (если задан)
+            if (order.getCarModel() != null && !order.getCarModel().isEmpty()) {
+                String number = order.getCarNumber();
+                return new SimpleStringProperty(order.getCarModel() + (number != null && !number.isEmpty() ? " (" + number + ")" : ""));
+            }
+            // Иначе: автомобили клиента (актуальные из client_cars, fallback — старые поля клиента)
+            Client client = order.getClient();
+            if (client != null) {
+                String display = client.getCarDisplay();
+                if (display != null && !display.isEmpty()) {
+                    return new SimpleStringProperty(display);
+                }
+            }
+            return new SimpleStringProperty("");
         });
         colCar.setPrefWidth(200);
         colCar.setSortable(true);
@@ -465,7 +478,7 @@ public class OrderView {
                     boolean match = (order.getClient().getName() != null && order.getClient().getName().toLowerCase().contains(lowerFilter)) ||
                             (order.getClient().getLastName() != null && order.getClient().getLastName().toLowerCase().contains(lowerFilter)) ||
                             (order.getClient().getPhone() != null && Validators.formatPhoneForDisplay(order.getClient().getPhone()).toLowerCase().contains(lowerFilter)) ||
-                            (order.getClient().getCarNumber() != null && order.getClient().getCarNumber().toLowerCase().contains(lowerFilter));
+                            (order.getCarNumber() != null && order.getCarNumber().toLowerCase().contains(lowerFilter));
                     if (!match) continue;
                 } else continue;
             }

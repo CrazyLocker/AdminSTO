@@ -79,7 +79,16 @@ public class EditOrderDialog {
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
 
-        Label infoLabel = new Label("Клиент: " + order.getClient().getName() + " (" + order.getCarModel() + ", " + order.getCarNumber() + ")");
+        // Автомобиль: приоритет — из заказа, иначе автомобили клиента
+        String carDisplay;
+        if (order.getCarModel() != null && !order.getCarModel().isEmpty()) {
+            carDisplay = order.getCarModel() + (order.getCarNumber() != null && !order.getCarNumber().isEmpty() ? " (" + order.getCarNumber() + ")" : "");
+        } else if (order.getClient() != null) {
+            carDisplay = order.getClient().getCarDisplay();
+        } else {
+            carDisplay = "";
+        }
+        Label infoLabel = new Label("Клиент: " + order.getClient().getName() + " (" + carDisplay + ")");
 
         // ==================== ПРОБЕГ ====================
         Label mileageHeader = new Label("ПРОБЕГ");
