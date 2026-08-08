@@ -295,50 +295,38 @@ public class SQLiteDatabase extends AbstractDatabase {
     @Override
     protected String generateOrderId(Connection conn) {
         LocalDate today = LocalDate.now();
+        String yearSuffix = String.format("%02d", today.getYear() % 100);
         
-        // Ищем максимальный порядковый номер среди ВСЕХ заказов (сквозная нумерация)
-        // Формат ID: ZAK-ДД/ММ/ГГ-0001
-        String sql = "SELECT MAX(id) as max_id FROM orders WHERE id LIKE 'ZAK-%-%'";
-        String lastOrderId = null;
+        // Сквозная нумерация с начала года: ищем максимальный порядковый номер (численно)
+        // среди заказов текущего года. Формат ID: ZAK-ДД/ММ/ГГ-NNNN
+        String sql = "SELECT MAX(CAST(SUBSTR(id, LENGTH(id) - 3) AS INTEGER)) as max_num " +
+                     "FROM orders WHERE id LIKE 'ZAK-%/" + yearSuffix + "-%'";
+        int newNumber = 1;
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
-                    lastOrderId = rs.getString("max_id");
+                    int maxNum = rs.getInt("max_num");
+                    if (maxNum > 0) {
+                        newNumber = maxNum + 1;
+                    }
                 }
             }
         } catch (SQLException e) {
             logger.error("Ошибка генерации ID", e);
         }
 
-        int newNumber = 1;
-        if (lastOrderId != null) {
-            try {
-                // Извлекаем номер после последнего дефиса
-                String[] parts = lastOrderId.split("-");
-                if (parts.length >= 2) {
-                    newNumber = Integer.parseInt(parts[parts.length - 1]) + 1;
-                } else {
-                    logger.warn("Неожиданный формат ID: {}", lastOrderId);
-                }
-            } catch (NumberFormatException e) {
-                logger.error("Ошибка парсинга ID: {}", lastOrderId, e);
-            }
-        } else {
-            logger.debug("Нет существующих заказов");
-        }
-
-        // Обработка переполнения (максимум 9999 заказов)
+        // Обработка переполнения (максимум 9999 заказов в год)
         if (newNumber > 9999) {
             logger.warn("Переполнение порядкового номера, сброс в 1");
             newNumber = 1;
         }
         
-        // Генерируем формат даты для ID: dd/MM/yy (с косыми чертами, как в существующих данных)
+        // Генерируем формат даты для ID: dd/MM/yy
         String date = today.format(DateTimeFormatter.ofPattern("dd/MM/yy"));
         String orderId = String.format("ZAK-%s-%04d", date, newNumber);
         
-        logger.debug("Сгенерирован ID заказа: {} (последний: {}, номер: {})", orderId, lastOrderId, newNumber);
+        logger.debug("Сгенерирован ID заказа: {} (макс. номер: {}, новый: {})", orderId, newNumber - 1, newNumber);
         
         return orderId;
     }
