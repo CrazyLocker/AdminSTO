@@ -13,8 +13,32 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
+/**
+ * Модальный диалог просмотра деталей заказа.
+ * 
+ * Ответственность: отображение полной информации о заказе — клиент, телефон,
+ * автомобиль, список услуг с ценами, список запчастей с количеством и итоговая
+ * сумма. Диалог доступен только для просмотра (редактирование не предусмотрено).
+ * 
+ * Зависимости: JavaFX (Stage, Scene, ListView), WorkOrder, Client, SparePart,
+ * DateUtils, Validators, WindowStateManager (сохранение размера и позиции окна).
+ * 
+ * Особенности: состояние окна (размер, позиция) восстанавливается при открытии
+ * и сохраняется при закрытии через {@link WindowStateManager}.
+ * 
+ * @author AdminSTO Team
+ * @since 1.0
+ * @see WorkOrder
+ * @see WindowStateManager
+ */
 public class OrderDetailsDialog {
 
+    /**
+     * Открывает модальный диалог с деталями заказа и ожидает его закрытия.
+     * 
+     * @param order заказ, детали которого нужно показать
+     * @throws NullPointerException если order или order.getClient() == null
+     */
     public static void show(WorkOrder order) {
         Stage stage = new Stage();
         stage.setTitle("Заказ " + order.getId());

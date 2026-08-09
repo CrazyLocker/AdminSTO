@@ -50,6 +50,25 @@ import java.util.List;
 
 /**
  * Представление для управления настройками приложения.
+ * 
+ * Ответственность: управление настройками приложения (таблица настроек),
+ * связями «услуги-запчасти», справочником расходников ТО, а также
+ * импортом/экспортом данных (клиенты, услуги, запчасти) и резервным
+ * копированием.
+ * 
+ * Зависимости: JavaFX (TableView, TabPane, FilteredList, SortedList), DataStore,
+ * Setting, ServiceSparePart, ServiceSparePartsList, ServicePart, ToPart,
+ * SettingsController, SettingService, BackupService, ScheduleService,
+ * TableStateManager, WindowStateManager, ThemeManager, диалоги импорта/экспорта.
+ * 
+ * Особенности: содержит несколько таблиц (настройки, связи услуг-запчастей,
+ * расходники ТО), состояния которых сохраняются через TableStateManager.
+ * 
+ * @author AdminSTO Team
+ * @since 1.0
+ * @see DataStore
+ * @see SettingService
+ * @see BackupService
  */
 public class SettingsView {
 

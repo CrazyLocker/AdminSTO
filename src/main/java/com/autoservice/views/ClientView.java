@@ -28,14 +28,44 @@ import javafx.scene.layout.VBox;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * Экран управления клиентами СТО.
+ * 
+ * Ответственность: отображение списка клиентов в таблице, поиск и фильтрация,
+ * а также операции добавления, редактирования и удаления клиентов.
+ * 
+ * Зависимости: JavaFX (TableView, FilteredList, SortedList), DataStore, Client,
+ * Car, ClientController, EditClientDialog, TableStateManager, Validators.
+ * 
+ * Особенности: поиск реализован через {@link FilteredList} поверх единого
+ * источника {@code masterData}; состояние таблицы сохраняется через
+ * {@link TableStateManager}.
+ * 
+ * @author AdminSTO Team
+ * @since 1.0
+ * @see DataStore
+ * @see Client
+ * @see ClientController
+ */
 public class ClientView {
 
+    /** Таблица клиентов (общий доступ для сохранения состояния). */
     private static TableView<Client> clientTable;
+    /** Фильтрованный список клиентов для поиска. */
     private static FilteredList<Client> filteredClients;
+    /** Сортированный список клиентов для таблицы. */
     private static SortedList<Client> sortedClients;
+    /** Поле текстового поиска. */
     private static TextField searchField;
+    /** Единый источник данных о клиентах. */
     private static ObservableList<Client> masterData;
 
+    /**
+     * Возвращает таблицу клиентов для внешнего использования
+     * (например, сохранение состояния таблицы).
+     * 
+     * @return таблица клиентов {@link TableView}
+     */
     // Getter для получения таблицы извне
     public static TableView<Client> getTable() {
         return clientTable;
@@ -47,6 +77,11 @@ public class ClientView {
 
     // GWM_MODELS перенесены в AppConstants
 
+    /**
+     * Строит главный экран клиентов: заголовок, панель кнопок и таблицу.
+     * 
+     * @return корневой контейнер VBox с интерфейсом клиентов
+     */
     public static VBox create() {
         VBox mainContainer = new VBox(15);
         mainContainer.setPadding(new Insets(20));

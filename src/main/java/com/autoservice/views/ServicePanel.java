@@ -19,18 +19,48 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
+/**
+ * Экран управления услугами СТО.
+ * 
+ * Ответственность: отображение списка услуг в таблице, поиск и фильтрация,
+ * а также операции добавления, редактирования и удаления услуг.
+ * 
+ * Зависимости: JavaFX (TableView, FilteredList, SortedList), DataStore, Service,
+ * ServicePanelController, EditServiceDialog, TableStateManager.
+ * 
+ * @author AdminSTO Team
+ * @since 1.0
+ * @see DataStore
+ * @see Service
+ * @see ServicePanelController
+ */
 public class ServicePanel {
 
+    /** Таблица услуг (общий доступ для сохранения состояния). */
     private static TableView<Service> table;
+    /** Единый источник данных об услугах. */
     private static ObservableList<Service> masterData;
+    /** Фильтрованный список услуг для поиска. */
     private static FilteredList<Service> filteredData;
+    /** Сортированный список услуг для таблицы. */
     private static SortedList<Service> sortedData;
+    /** Поле текстового поиска. */
     private static TextField searchField;
 
+    /**
+     * Возвращает таблицу услуг для внешнего использования.
+     * 
+     * @return таблица услуг {@link TableView}
+     */
     public static TableView<Service> getTable() {
         return table;
     }
 
+    /**
+     * Создаёт экран услуг.
+     * 
+     * @return корневой контейнер VBox
+     */
     public static VBox create() {
         VBox panel = createServicesPanel();
         return panel;

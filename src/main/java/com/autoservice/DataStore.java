@@ -14,6 +14,29 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Центральное хранилище данных приложения (in-memory кэш над БД).
+ * 
+ * Ответственность: хранение актуальных копий всех сущностей (клиенты,
+ * заказы, услуги, запчасти, записи, настройки и др.) в памяти, загрузка их
+ * из БД, сохранение изменённых объектов обратно в БД, а также предоставление
+ * CRUD-методов для работы с данными.
+ * 
+ * Зависимости: Database/DatabaseFactory, модели (Client, WorkOrder, Service,
+ * SparePart, Appointment, ServiceSparePart, ServiceSparePartsList, ToPart,
+ * Setting, ServicePart), AutoAddSparePartService.
+ * 
+ * ВАЖНО (известная проблема): часть методов может возвращать null-данные
+ * или несинхронизированный кэш. Не полагайтесь на то, что коллекции всегда
+ * заполнены — защищайтесь от null перед использованием (TODO: устранить
+ * источники null-данных).
+ * 
+ * @author AdminSTO Team
+ * @since 1.0
+ * @see Database
+ * @see WorkOrder
+ * @see Client
+ */
 public class DataStore {
     private static final Logger logger = LoggerFactory.getLogger(DataStore.class);
     
@@ -29,11 +52,20 @@ public class DataStore {
     private static List<ToPart> toParts = new ArrayList<>();
     private static List<Setting> settings = new ArrayList<>();
 
+    /** Флаг наличия несохранённых изменений (dirty-флаг всего хранилища). */
     private static boolean isDirty = false;
     
     // Мьютекс для синхронизации операций сохранения (защита от race condition)
     private static final Object saveLock = new Object();
 
+    /**
+     * Полностью перезагружает все коллекции данных из БД. Вызывается при
+     * запуске приложения (в фоновом потоке) и после крупных изменений.
+     * 
+     * ВАЖНО: если БД пуста или данные повреждены, некоторые списки могут
+     * остаться пустыми. TODO: добавить защиту от null при обращении к
+     * элементам (например, order.getClient() может быть null).
+     */
     public static void load() {
         clients = DatabaseFactory.getDatabase().getAllClients();
         services = DatabaseFactory.getDatabase().getAllServices();
@@ -56,6 +88,12 @@ public class DataStore {
                 serviceSpareParts.size(), toParts.size(), settings.size());
     }
 
+    /**
+     * Сохраняет все изменённые (dirty) объекты в БД. Операция синхронизирована
+     * мьютексом {@code saveLock} для защиты от гонок данных при параллельных
+     * вызовах (например, фоновый бэкап и закрытие приложения).
+     * Если изменений нет — метод завершается без обращений к БД.
+     */
     public static void save() {
         // Синхронизация для предотвращения race condition при параллельных вызовах
         synchronized (saveLock) {
@@ -149,12 +187,18 @@ public class DataStore {
         }
     }
 
+    /**
+     * Помечает хранилище как содержащее несохранённые изменения.
+     * Должен вызываться при любом изменении данных, чтобы {@link #save()}
+     * выполнил запись в БД.
+     */
     public static void markDirty() {
         isDirty = true;
     }
 
     // ==================== CLIENTS ====================
 
+    /** @return список всех клиентов в кэше */
     public static List<Client> getClients() { return clients; }
 
     /**
@@ -165,12 +209,22 @@ public class DataStore {
         return DatabaseFactory.getDatabase().getAllClients();
     }
 
+    /**
+     * Добавляет нового клиента в БД и обновляет кэш.
+     * 
+     * @param c клиент для добавления
+     */
     public static void addClient(Client c) {
         DatabaseFactory.getDatabase().addClient(c);
         clients = DatabaseFactory.getDatabase().getAllClients();
         isDirty = true;
     }
 
+    /**
+     * Обновляет данные существующего клиента в БД и кэше.
+     * 
+     * @param client клиент с обновлёнными данными
+     */
     public static void updateClient(Client client) {
         client.setDirty(true);
         DatabaseFactory.getDatabase().updateClient(client);
@@ -178,12 +232,23 @@ public class DataStore {
         isDirty = true;
     }
 
+    /**
+     * Удаляет клиента из БД и обновляет кэш.
+     * 
+     * @param c удаляемый клиент
+     */
     public static void removeClient(Client c) {
         DatabaseFactory.getDatabase().deleteClient(c);
         clients = DatabaseFactory.getDatabase().getAllClients();
         isDirty = true;
     }
 
+    /**
+     * Удаляет клиента вместе со всеми его заказами. Сначала находятся и
+     * удаляются все заказы клиента, затем сам клиент.
+     * 
+     * @param client удаляемый клиент
+     */
     public static void deleteClient(Client client) {
         List<WorkOrder> ordersToDelete = new ArrayList<>();
         for (WorkOrder order : orders) {
@@ -235,8 +300,14 @@ public class DataStore {
 
     // ==================== ORDERS ====================
 
+    /** @return список всех заказов в кэше */
     public static List<WorkOrder> getOrders() { return orders; }
 
+    /**
+     * Добавляет заказ в БД и обновляет кэш заказов.
+     * 
+     * @param o заказ для добавления
+     */
     public static void addOrder(WorkOrder o) {
         logger.debug("=== DataStore.addOrder вызван для заказа {} ===", o.getId());
         logger.debug("Услуг в заказе: {}", o.getServices().size());
@@ -249,6 +320,11 @@ public class DataStore {
         logger.debug("Заказов после добавления: {}", orders.size());
     }
 
+    /**
+     * Обновляет существующий заказ в БД.
+     * 
+     * @param o заказ с обновлёнными данными
+     */
     public static void updateOrder(WorkOrder o) {
         logger.debug("=== DataStore.updateOrder вызван для заказа {} ===", o.getId());
         logger.debug("Услуг в заказе: {}", o.getServices().size());
@@ -260,6 +336,12 @@ public class DataStore {
         isDirty = true;
     }
 
+    /**
+     * Удаляет заказ из БД и кэша. Если идентификатор заказа пуст — операция
+     * отклоняется с ошибкой в логе.
+     * 
+     * @param order удаляемый заказ
+     */
     public static void deleteOrder(WorkOrder order) {
         String orderId = order.getId();
         if (orderId != null && !orderId.isEmpty()) {
@@ -271,6 +353,11 @@ public class DataStore {
         }
     }
 
+    /**
+     * Подсчитывает количество активных заказов (статус не «Закрыт»).
+     * 
+     * @return количество активных заказов
+     */
     public static int getActiveOrdersCount() {
         int count = 0;
         for (WorkOrder order : orders) {
@@ -283,8 +370,14 @@ public class DataStore {
 
     // ==================== SERVICES ====================
 
+    /** @return список всех услуг в кэше */
     public static List<Service> getServices() { return services; }
 
+    /**
+     * Добавляет услугу в БД и обновляет кэш.
+     * 
+     * @param s услуга для добавления
+     */
     public static void addService(Service s) {
         DatabaseFactory.getDatabase().addService(s);
         services = DatabaseFactory.getDatabase().getAllServices();
@@ -326,8 +419,14 @@ public class DataStore {
 
     // ==================== SPARE PARTS ====================
 
+    /** @return список всех запчастей в кэше */
     public static List<SparePart> getSpareParts() { return spareParts; }
 
+    /**
+     * Добавляет запчасть в БД и обновляет кэш.
+     * 
+     * @param sp запчасть для добавления
+     */
     public static void addSparePart(SparePart sp) {
         DatabaseFactory.getDatabase().addSparePart(sp);
         spareParts = DatabaseFactory.getDatabase().getAllSpareParts();
@@ -355,6 +454,14 @@ public class DataStore {
         isDirty = true;
     }
 
+    /**
+     * Списывает количество запчастей со склада по имени услуги. Использует
+     * {@link AutoAddSparePartService} для определения связанных запчастей и
+     * уменьшает остаток первой найденной.
+     * 
+     * @param serviceName название услуги
+     * @param qty         количество, которое нужно списать
+     */
     public static void updateSparePartStock(String serviceName, int qty) {
         // Получаем запчасти, связанные с услугой
         List<AutoAddSparePartService.SparePartWithQuantity> parts = AutoAddSparePartService.getSparePartsByService(serviceName);
@@ -369,14 +476,27 @@ public class DataStore {
 
     // ==================== APPOINTMENTS ====================
 
+    /** @return список всех записей в кэше */
     public static List<Appointment> getAppointments() {
         return appointments;
     }
 
+    /**
+     * Возвращает записи на указанную дату.
+     * 
+     * @param date дата в строковом представлении
+     * @return список записей на дату
+     */
     public static List<Appointment> getAppointmentsByDate(String date) {
         return Database.getAppointmentsByDate(date);
     }
 
+    /**
+     * Ищет запись по идентификатору связанного заказа.
+     * 
+     * @param orderId идентификатор заказа
+     * @return найденная запись или null, если заказ не передан/не найден
+     */
     public static Appointment getAppointmentByOrderId(String orderId) {
         if (orderId == null || orderId.isEmpty()) return null;
         for (Appointment a : appointments) {

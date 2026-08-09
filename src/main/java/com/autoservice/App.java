@@ -23,10 +23,41 @@ import javafx.scene.shape.SVGPath;
 import javafx.stage.Stage;
 import atlantafx.base.theme.PrimerDark;
 
+/**
+ * Точка входа в приложение «Администратор СТО» (JavaFX).
+ * 
+ * Ответственность: инициализация инфраструктуры приложения (база данных,
+ * логгирование, планировщик бэкапов, тема оформления), создание главного
+ * окна с набором вкладок и управление жизненным циклом приложения
+ * (корректное сохранение данных и состояния при закрытии).
+ * 
+ * Зависимости: JavaFX, Database, DataStore, ScheduleService, ThemeManager,
+ * WindowStateManager, TableStateManager, все View-классы (ClientView,
+ * OrderView, ServicePanel, SparePartPanel, StockPanel, SettingsView,
+ * AppointmentView) и их контроллеры.
+ * 
+ * Особенности: загрузка данных выполняется в фоновом потоке с индикатором
+ * LoadingIndicator; состояние главного окна и всех таблиц сохраняется при
+ * закрытии приложения.
+ * 
+ * @author AdminSTO Team
+ * @since 1.0
+ * @see Database
+ * @see DataStore
+ * @see ScheduleService
+ * @see DashboardView
+ */
 public class App extends Application {
     
     private static final Logger logger = LoggerFactory.getLogger(App.class);
 
+    /**
+     * Точка входа JavaFX-приложения. Выполняет инициализацию стилей,
+     * логгирования, базы данных и фоновую загрузку данных, затем строит
+     * главное окно с вкладками и настраивает обработчики закрытия.
+     * 
+     * @param primaryStage главная сцена приложения, предоставляемая JavaFX
+     */
     @Override
     public void start(Stage primaryStage) {
         Application.setUserAgentStylesheet(new PrimerDark().getUserAgentStylesheet());
@@ -136,6 +167,13 @@ public class App extends Application {
         StockPanelController.refreshTable();
     }
 
+    /**
+     * Создаёт не закрываемую вкладку с заданным заголовком и иконкой.
+     * 
+     * @param title текст заголовка вкладки
+     * @param icon  SVG-иконка, отображаемая рядом с заголовком
+     * @return настроенная вкладка {@link Tab}
+     */
     private static Tab createTab(String title, SVGPath icon) {
         Tab tab = new Tab(title);
         tab.setClosable(false);
@@ -143,6 +181,12 @@ public class App extends Application {
         return tab;
     }
 
+    /**
+     * Основной метод запуска приложения. Делегирует управление
+     * методу {@code launch} базового класса {@link Application}.
+     * 
+     * @param args аргументы командной строки (не используются)
+     */
     public static void main(String[] args) {
         launch(args);
     }

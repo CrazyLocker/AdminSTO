@@ -2,6 +2,7 @@ package com.autoservice.dialogs;
 
 import com.autoservice.AppConstants;
 import com.autoservice.Client;
+import com.autoservice.Car;
 import com.autoservice.Service;
 import com.autoservice.SparePart;
 import com.autoservice.WorkOrder;
@@ -25,6 +26,7 @@ import javafx.scene.control.*;
 import javafx.scene.control.TextFormatter;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.control.ScrollPane;
 import javafx.stage.Stage;
 import java.time.LocalDate;
@@ -41,6 +43,8 @@ public class EditOrderDialog {
     private static ListView<String> partsListView;
     private static Label totalLabel;
     private static ComboBox<SparePart> partCombo;
+    private static ComboBox<Client> clientCombo;
+    private static ComboBox<Car> carCombo;
     private static Stage currentStage;
     private static TextField mileageField;
     
@@ -80,24 +84,67 @@ public class EditOrderDialog {
         root.setPadding(new Insets(20));
         root.setStyle("-fx-font-size: 12px;");
 
-        // Автомобиль: приоритет — из заказа, иначе автомобили клиента
-        String carDisplay;
-        if (order.getCarModel() != null && !order.getCarModel().isEmpty()) {
-            carDisplay = order.getCarModel() + (order.getCarNumber() != null && !order.getCarNumber().isEmpty() ? " (" + order.getCarNumber() + ")" : "");
-        } else if (order.getClient() != null) {
-            carDisplay = order.getClient().getCarDisplay();
-        } else {
-            carDisplay = "";
-        }
-        Label infoLabel = new Label("Клиент: " + order.getClient().getName() + " (" + carDisplay + ")");
+        // ==================== КЛИЕНТ, АВТОМОБИЛЬ, ПРОБЕГ (в одной строке) ====================
 
-        // ==================== ПРОБЕГ ====================
-        Label mileageHeader = new Label("ПРОБЕГ");
+        // ComboBox выбора клиента
+        clientCombo = new ComboBox<>(FXCollections.observableArrayList(DataStore.getClients()));
+        clientCombo.setPromptText("Выберите клиента");
+        clientCombo.setPrefWidth(250);
+        clientCombo.setCellFactory(lv -> new ListCell<Client>() {
+            @Override
+            protected void updateItem(Client item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText((item.getLastName() != null && !item.getLastName().isEmpty()
+                            ? item.getLastName() + " " + item.getName() : item.getName()));
+                }
+            }
+        });
+        clientCombo.setButtonCell(new ListCell<Client>() {
+            @Override
+            protected void updateItem(Client item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText((item.getLastName() != null && !item.getLastName().isEmpty()
+                            ? item.getLastName() + " " + item.getName() : item.getName()));
+                }
+            }
+        });
 
-        Label mileageDisplay = new Label("Текущий пробег: " + order.getMileage() + " км");
+        // ComboBox выбора автомобиля (зависит от клиента)
+        carCombo = new ComboBox<>();
+        carCombo.setPromptText("Выберите автомобиль");
+        carCombo.setPrefWidth(220);
+        carCombo.setCellFactory(lv -> new ListCell<Car>() {
+            @Override
+            protected void updateItem(Car item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(item.getDisplayName());
+                }
+            }
+        });
+        carCombo.setButtonCell(new ListCell<Car>() {
+            @Override
+            protected void updateItem(Car item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(item.getDisplayName());
+                }
+            }
+        });
 
+        // Пробег — загружается из заказа, компактная ширина
         TextField mileageFieldLocal = new TextField(String.valueOf(order.getMileage()));
-        mileageFieldLocal.setPrefWidth(150);
+        mileageFieldLocal.setPrefWidth(120);
         mileageFieldLocal.setTextFormatter(new TextFormatter<>(change -> {
             String text = change.getText();
             if (text.isEmpty()) return change;
@@ -107,6 +154,61 @@ public class EditOrderDialog {
             return change;
         }));
         mileageField = mileageFieldLocal;
+
+        // Начальное значение клиента — из заказа
+        Client orderClient = order.getClient();
+        if (orderClient != null) {
+            // Находим клиента в списке DataStore по ID (гарантируем актуальный объект)
+            Client freshClient = DataStore.getClients().stream()
+                    .filter(c -> c.getId() == orderClient.getId())
+                    .findFirst().orElse(orderClient);
+            clientCombo.setValue(freshClient);
+
+            // Заполняем список авто выбранного клиента
+            if (freshClient.getCars() != null && !freshClient.getCars().isEmpty()) {
+                carCombo.getItems().setAll(freshClient.getCars());
+                carCombo.setDisable(false);
+                // Пытаемся выбрать авто из заказа по модели и номеру
+                Car matchingCar = null;
+                for (Car c : freshClient.getCars()) {
+                    if (c.getCarModel() != null && c.getCarModel().equals(order.getCarModel())
+                            && c.getCarNumber() != null && c.getCarNumber().equals(order.getCarNumber())) {
+                        matchingCar = c;
+                        break;
+                    }
+                }
+                if (matchingCar != null) {
+                    carCombo.setValue(matchingCar);
+                }
+            } else {
+                carCombo.setDisable(true);
+            }
+        } else {
+            carCombo.setDisable(true);
+        }
+
+        // При смене клиента — обновляем список авто
+        clientCombo.setOnAction(e -> {
+            Client selectedClient = clientCombo.getValue();
+            if (selectedClient != null && selectedClient.getCars() != null && !selectedClient.getCars().isEmpty()) {
+                carCombo.getItems().setAll(selectedClient.getCars());
+                carCombo.setDisable(false);
+                carCombo.setValue(null);
+            } else {
+                carCombo.getItems().clear();
+                carCombo.setDisable(true);
+                carCombo.setValue(null);
+            }
+        });
+
+        // Компактная строка: Клиент | Авто | Пробег
+        HBox clientCarMileageRow = new HBox(10,
+                new Label("Клиент:"), clientCombo,
+                new Label("Авто:"), carCombo,
+                new Label("Пробег:"), mileageFieldLocal);
+        clientCarMileageRow.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(clientCombo, Priority.ALWAYS);
+        HBox.setHgrow(carCombo, Priority.ALWAYS);
 
         // ==================== ЗАПИСЬ В КАЛЕНДАРЬ ====================
         Label appointmentHeader = new Label("ЗАПИСЬ В КАЛЕНДАРЬ");
@@ -198,7 +300,10 @@ public class EditOrderDialog {
         Label servicesHeader = new Label("УСЛУГИ");
 
         servicesListView = new ListView<>();
-        servicesListView.setPrefHeight(120);
+        servicesListView.setMinHeight(90);
+        servicesListView.setPrefHeight(100);
+        servicesListView.setMaxHeight(Double.MAX_VALUE);
+        VBox.setVgrow(servicesListView, Priority.ALWAYS);
 
         tempServices.addAll(order.getServices());
         tempServicePrices.addAll(order.getServicePrices());
@@ -218,7 +323,10 @@ public class EditOrderDialog {
         Label partsHeader = new Label("ЗАПЧАСТИ");
 
         partsListView = new ListView<>();
-        partsListView.setPrefHeight(120);
+        partsListView.setMinHeight(90);
+        partsListView.setPrefHeight(100);
+        partsListView.setMaxHeight(Double.MAX_VALUE);
+        VBox.setVgrow(partsListView, Priority.ALWAYS);
 
         tempParts.addAll(order.getSpareParts());
         tempPartQuantities.addAll(order.getSparePartQuantities().stream().map(Double::valueOf).collect(java.util.stream.Collectors.toList()));
@@ -345,16 +453,22 @@ public class EditOrderDialog {
         HBox btnBox = new HBox(15, saveBtn, cancelBtn);
         btnBox.setAlignment(Pos.CENTER);
 
+        // Секции услуг и запчастей в отдельных VBox для равного роста
+        VBox servicesSection = new VBox(8, servicesHeader, servicesListView, serviceAddBox);
+        VBox.setVgrow(servicesListView, Priority.ALWAYS);
+
+        VBox partsSection = new VBox(8, partsHeader, partsListView, partAddBox);
+        VBox.setVgrow(partsListView, Priority.ALWAYS);
+
         // Сборка интерфейса
         root.getChildren().addAll(
-                infoLabel,
-                mileageHeader, mileageDisplay, mileageField,
+                clientCarMileageRow,
                 new Separator(),
                 appointmentSection,
                 new Separator(),
-                servicesHeader, servicesListView, serviceAddBox,
+                servicesSection,
                 new Separator(),
-                partsHeader, partsListView, partAddBox,
+                partsSection,
                 new Separator(),
                 totalLabel, btnBox
         );
@@ -480,6 +594,23 @@ public class EditOrderDialog {
         logger.info("=== СОХРАНЕНИЕ ИЗМЕНЕНИЙ ЗАКАЗА ===");
         logger.info("Услуг: {}", tempServices.size());
         logger.info("Запчастей: {}", tempParts.size());
+
+        // ====== СОХРАНЯЕМ КЛИЕНТА ======
+        Client selectedClient = clientCombo.getValue();
+        if (selectedClient != null) {
+            order.setClient(selectedClient);
+            order.setClientId(selectedClient.getId());
+        }
+
+        // ====== СОХРАНЯЕМ АВТОМОБИЛЬ ======
+        Car selectedCar = carCombo.getValue();
+        if (selectedCar != null) {
+            order.setCarModel(selectedCar.getCarModel());
+            order.setCarNumber(selectedCar.getCarNumber());
+        } else if (selectedClient != null && selectedClient.getCars() != null && !selectedClient.getCars().isEmpty()) {
+            order.setCarModel(selectedClient.getCars().get(0).getCarModel());
+            order.setCarNumber(selectedClient.getCars().get(0).getCarNumber());
+        }
 
         // ====== ОЧИЩАЕМ СТАРЫЕ УСЛУГИ ======
         while (order.getServices().size() > 0) {

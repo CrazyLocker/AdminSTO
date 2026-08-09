@@ -53,6 +53,28 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * Экран записи клиентов на сервис (расписание).
+ * 
+ * Ответственность: отображение сетки расписания в двух режимах (неделя/месяц),
+ * навигация по датам, создание записи клиента на конкретное время и услугу,
+ * привязка записей к заказам, а также перетаскивание (drag & drop) записей.
+ * 
+ * Зависимости: JavaFX (GridPane, ScrollPane, DatePicker, RadioButton, TableView),
+ * DataStore, Appointment, Client, Service, WorkOrder, CreateOrderDialog,
+ * EditClientDialog, EditOrderDialog, PrintOrderDialog, WindowStateManager,
+ * TableStateManager, TooltipHelper.
+ * 
+ * Особенности: списки временных слотов и мастеров вынесены в AppConstants;
+ * используется переключатель вида «Неделя/Месяц»; записи перетаскиваются
+ * перетаскиванием (drag & drop) между слотами.
+ * 
+ * @author AdminSTO Team
+ * @since 1.0
+ * @see DataStore
+ * @see Appointment
+ * @see AppConstants
+ */
 public class AppointmentView {
 
     // TIME_SLOTS и MASTERS перенесены в AppConstants
@@ -68,6 +90,12 @@ public class AppointmentView {
     private static final DateTimeFormatter HEADER_FORMATTER = DateTimeFormatter.ofPattern("d MMMM yyyy 'г.'", new java.util.Locale.Builder().setLanguage("ru").build());
     private static final DateTimeFormatter WEEK_FORMATTER = DateTimeFormatter.ofPattern("d MMM", new java.util.Locale.Builder().setLanguage("ru").build());
 
+    /**
+     * Строит главный экран записи: верхнюю панель с переключателем вида и
+     * датой, а также сетку расписания.
+     * 
+     * @return корневой контейнер VBox с интерфейсом записи
+     */
     public static VBox create() {
         SERVICES = DataStore.getServices().stream()
                 .map(Service::getName)

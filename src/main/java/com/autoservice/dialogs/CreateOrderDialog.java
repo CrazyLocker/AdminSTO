@@ -22,6 +22,7 @@ import javafx.scene.control.TextFormatter;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.control.ScrollPane;
 import javafx.stage.Stage;
 
@@ -126,10 +127,8 @@ public class CreateOrderDialog {
         TooltipHelper.setToolTip(carCombo, "Выберите автомобиль клиента");
 
         // ============================================================
-        // 1.5. ПРОБЕГ
+        // 1.5. ПРОБЕГ (в основной строке, после автомобиля)
         // ============================================================
-        Label mileageLabel = new Label("Пробег (км):");
-
         TextField mileageField = new TextField();
         mileageField.setPrefWidth(150);
         mileageField.setTextFormatter(new TextFormatter<>(change -> {
@@ -140,6 +139,9 @@ public class CreateOrderDialog {
             if (newText.length() > 6) return null;
             return change;
         }));
+
+        HBox mileageBox = new HBox(10, new Label("Пробег (км):"), mileageField);
+        mileageBox.setAlignment(Pos.CENTER_LEFT);
 
         // ============================================================
         // 2. ЗАПИСЬ
@@ -175,7 +177,10 @@ public class CreateOrderDialog {
         Label servicesHeader = new Label("УСЛУГИ");
 
         ListView<String> servicesListView = new ListView<>();
-        servicesListView.setPrefHeight(120);
+        servicesListView.setMinHeight(90);
+        servicesListView.setPrefHeight(100);
+        servicesListView.setMaxHeight(Double.MAX_VALUE);
+        VBox.setVgrow(servicesListView, Priority.ALWAYS);
 
         ComboBox<Service> serviceCombo = new ComboBox<>(FXCollections.observableArrayList(DataStore.getServices()));
         serviceCombo.setPromptText("Выберите услугу");
@@ -193,7 +198,10 @@ public class CreateOrderDialog {
         Label partsHeader = new Label("ЗАПЧАСТИ");
 
         ListView<String> partsListView = new ListView<>();
-        partsListView.setPrefHeight(120);
+        partsListView.setMinHeight(90);
+        partsListView.setPrefHeight(100);
+        partsListView.setMaxHeight(Double.MAX_VALUE);
+        VBox.setVgrow(partsListView, Priority.ALWAYS);
 
         ComboBox<SparePart> partCombo = new ComboBox<>(FXCollections.observableArrayList(DataStore.getSpareParts()));
         partCombo.setPromptText("Выберите запчасть");
@@ -328,16 +336,24 @@ public class CreateOrderDialog {
         // ============================================================
         // 9. СБОРКА ИНТЕРФЕЙСА
         // ============================================================
+
+        // Секции услуг и запчастей в отдельных VBox для равного роста
+        VBox servicesSection = new VBox(8, servicesHeader, servicesListView, serviceAddBox);
+        VBox.setVgrow(servicesListView, Priority.ALWAYS);
+
+        VBox partsSection = new VBox(8, partsHeader, partsListView, partAddBox);
+        VBox.setVgrow(partsListView, Priority.ALWAYS);
+
         root.getChildren().addAll(
                 clientLabel, clientCombo,
                 carLabel, carCombo,
-                mileageLabel, mileageField,
+                mileageBox,
                 new Separator(),
                 appointmentLabel, appointmentBox, createAppointmentCheck,
                 new Separator(),
-                servicesHeader, servicesListView, serviceAddBox,
+                servicesSection,
                 new Separator(),
-                partsHeader, partsListView, partAddBox,
+                partsSection,
                 new Separator(),
                 totalLabel, btnBox
         );

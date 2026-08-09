@@ -35,27 +35,74 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * Главный экран (дашборд) панели администратора СТО.
+ * 
+ * Ответственность: агрегированное отображение ключевых метрик работы СТО —
+ * выручки (круговая диаграмма), динамики выручки за 6 месяцев (линейный
+ * график), статусов заказов, статистики по клиентам и заказам, а также
+ * календаря записей на сервис.
+ * 
+ * Зависимости: JavaFX (Canvas, GridPane, VBox, HBox, StackPane), DataStore,
+ * WorkOrder, Appointment, DateUtils, ClientController, OrderController,
+ * CreateOrderDialog, EditClientDialog, OrderDetailsDialog, ReportView.
+ * 
+ * Особенности: реализует паттерн «одиночка» (singleton) через статические
+ * методы {@code create()} / {@code refresh()}; использует адаптивную верстку
+ * на GridPane с колонками 30% / 40% / 30%; диаграммы рисуются вручную на
+ * Canvas (без сторонних библиотек); Canvas привязан к ширине контейнера через
+ * {@code bind} для адаптивности.
+ * 
+ * @author AdminSTO Team
+ * @since 1.0
+ * @see DataStore
+ * @see WorkOrder
+ * @see Appointment
+ * @see DateUtils
+ */
 public class DashboardView extends ScrollPane {
 
+    /** Единственный экземпляр дашборда (singleton). */
     private static DashboardView instance;
+
+    /** Корневая сетка дашборда, в которую помещаются три колонки виджетов. */
     private final GridPane gridPane;
+
+    /** Форматтер валюты (рубли, локаль ru-RU) для отображения выручки. */
     private final NumberFormat currencyFormat;
+
+    /** Ссылка на главное окно приложения (используется для навигации). */
     private Stage primaryStage;
 
     // ==================== СТИЛИ (CSS) ====================
 
+    /** Цвет фона дашборда. */
     private static final String DARK_BG = "#15172A";
+    /** Цвет фона карточек-виджетов. */
     private static final String CARD_BG = "#1E2139";
+    /** Основной цвет текста (белый). */
     private static final String TEXT_WHITE = "#FFFFFF";
+    /** Приглушённый серый цвет для второстепенного текста. */
     private static final String TEXT_GRAY = "#9CA3AF";
+    /** Акцентный синий цвет. */
     private static final String ACCENT_BLUE = "#3B82F6";
+    /** Акцентный голубой (циановый) цвет. */
     private static final String ACCENT_CYAN = "#22D3EE";
+    /** Акцентный розовый цвет (статус «В работе»). */
     private static final String ACCENT_PINK = "#F472B6";
+    /** Акцентный оранжевый цвет. */
     private static final String ACCENT_ORANGE = "#FB923C";
 
+    /**
+     * Применяет тёмную тему (цвет фона и скругление) к карточкам VBox/HBox.
+     * 
+     * @param node узел, к которому применяется стиль карточки
+     */
     private void applyDarkTheme(Node node) {
         if (node instanceof VBox) {
             ((VBox) node).setStyle("-fx-background-color: " + CARD_BG + "; -fx-background-radius: 16px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 4);");
@@ -64,6 +111,15 @@ public class DashboardView extends ScrollPane {
         }
     }
 
+    /**
+     * Создаёт подпись с заданным текстом, цветом, размером и жирностью шрифта.
+     * 
+     * @param text   отображаемый текст
+     * @param color  цвет текста в hex-формате (например, "#FFFFFF")
+     * @param fontSize размер шрифта в пунктах
+     * @param bold   признак жирного начертания
+     * @return настроенная метка {@link Label} с переносом текста
+     */
     private Label styledLabel(String text, String color, double fontSize, boolean bold) {
         Label label = new Label(text);
         label.setTextFill(javafx.scene.paint.Color.web(color));
@@ -74,6 +130,12 @@ public class DashboardView extends ScrollPane {
 
     // ==================== СТАТИЧЕСКИЕ МЕТОДЫ ====================
 
+    /**
+     * Возвращает единственный экземпляр дашборда, создавая его при первом
+     * обращении (ленивая инициализация).
+     * 
+     * @return экземпляр {@link DashboardView}
+     */
     public static DashboardView create() {
         if (instance == null) {
             instance = new DashboardView();
@@ -81,12 +143,21 @@ public class DashboardView extends ScrollPane {
         return instance;
     }
 
+    /**
+     * Обновляет содержимое дашборда, если он уже создан. Вызывается при
+     * переключении на вкладку «Дашборд» и после изменения данных.
+     */
     public static void refresh() {
         if (instance != null) {
             instance.doRefresh();
         }
     }
 
+    /**
+     * Задаёт ссылку на главное окно приложения для навигации.
+     * 
+     * @param stage главная сцена приложения
+     */
     public static void setStage(Stage stage) {
         if (instance != null) {
             instance.primaryStage = stage;
@@ -95,6 +166,10 @@ public class DashboardView extends ScrollPane {
 
     // ==================== КОНСТРУКТОР ====================
 
+    /**
+     * Приватный конструктор (singleton). Настраивает корневую сетку,
+     * валютный формат и выполняет первичную отрисовку дашборда.
+     */
     private DashboardView() {
         currencyFormat = NumberFormat.getCurrencyInstance(new Locale.Builder().setLanguage("ru").setRegion("RU").build());
 
@@ -121,6 +196,12 @@ public class DashboardView extends ScrollPane {
 
     // ==================== ОБНОВЛЕНИЕ ====================
 
+    /**
+     * Перестраивает всё содержимое дашборда: очищает сетку и заново
+     * формирует три колонки (левая — выручка и календарь, центральная —
+     * график выручки и статистика, правая — статусы и общая выручка).
+     * Колонки настраиваются адаптивно в пропорции 30% / 40% / 30%.
+     */
     private void doRefresh() {
         long start = System.currentTimeMillis();
         gridPane.getChildren().clear();
@@ -207,6 +288,8 @@ public class DashboardView extends ScrollPane {
 
         long duration = System.currentTimeMillis() - start;
         if (duration > 300) {
+            // TODO: операция перерисовки занимает >300 мс — рассмотреть кэширование
+            // графиков и отложенную отрисовку тяжелых виджетов
             System.out.println("⚠️ Медленная операция в DashboardView.doRefresh: " + duration + " мс");
         }
     }
@@ -306,6 +389,11 @@ public class DashboardView extends ScrollPane {
 
     // ==================== СТАТИСТИКА ====================
 
+    /**
+     * Подсчитывает количество запчастей с остатком ниже минимального уровня.
+     * 
+     * @return строковое представление количества «низких» остатков
+     */
     private String getLowStockCount() {
         int count = 0;
         for (SparePart part : DataStore.getSpareParts()) {
@@ -316,35 +404,73 @@ public class DashboardView extends ScrollPane {
         return String.valueOf(count);
     }
 
+    /**
+     * Преобразует строку с числом валюты (например, "12 345,00 ₽") в число
+     * типа {@code double}. При ошибке парсинга возвращает 0.
+     * 
+     * @param revenueStr строка с суммой, возможно с форматированием
+     * @return числовое значение суммы или 0.0 при неудачном разборе
+     */
     private double parseRevenue(String revenueStr) {
         try {
-            String cleaned = revenueStr.replaceAll("[^\\d.,]", "").replace(",", ".");
+            String cleaned = revenueStr.replaceAll("[^0-9.,]", "").replace(",", ".");
             return Double.parseDouble(cleaned);
         } catch (Exception e) {
             return 0.0;
         }
     }
 
+    /**
+     * Вычисляет динамику выручки за последние 6 месяцев (текущий и 5
+     * предыдущих). Учитываются только заказы со статусом «Закрыт».
+     * 
+     * Алгоритм: все закрытые заказы группируются по месяцу (YearMonth),
+     * суммы суммируются; затем формируется список из 6 значений, где для
+     * месяцев без закрытых заказов подставляется 0.
+     * 
+     * @return список из 6 значений выручки по месяцам (от старых к новым)
+     */
     private List<Double> getMonthlyRevenueData() {
-        List<Double> monthlyRevenue = new ArrayList<>();
-        // Заполняем последние 6 месяцев
-        for (int i = 5; i >= 0; i--) {
-            LocalDate monthStart = LocalDate.now().minusMonths(i).withDayOfMonth(1);
-            LocalDate monthEnd = monthStart.plusMonths(1).minusDays(1);
+        // Замена 1: лог общего числа заказов
+        System.out.println("🔍 Всего заказов в БД: " + DataStore.getOrders().size());
 
-            double total = 0;
-            for (WorkOrder order : DataStore.getOrders()) {
-                if (WorkOrder.STATUS_CLOSED.equals(order.getStatus())) {
-                    try {
-                        LocalDate orderDate = DateUtils.parseDate(order.getCreatedDate());
-                        if (orderDate != null && !orderDate.isBefore(monthStart) && !orderDate.isAfter(monthEnd)) {
-                            total += order.getTotal();
-                        }
-                    } catch (Exception ignored) {}
-                }
+        // Группируем ВСЕ закрытые заказы по месяцу (YearMonth) — независимо от давности
+        HashMap<YearMonth, Double> revenueByMonth = new HashMap<>();
+        int totalClosed = 0;
+
+        for (WorkOrder order : DataStore.getOrders()) {
+            if (!WorkOrder.STATUS_CLOSED.equals(order.getStatus())) {
+                continue;
             }
-            monthlyRevenue.add(total);
+            totalClosed++;
+
+            // Замена 2: защита от null/пустой даты
+            String createdDate = order.getCreatedDate();
+            if (createdDate == null || createdDate.trim().isEmpty()) {
+                System.out.println("⚠️ Пропущен заказ без даты: " + order.getId());
+                continue;
+            }
+
+            LocalDate orderDate = DateUtils.parseDate(createdDate);
+            if (orderDate == null) {
+                System.out.println("⚠️ Пропущен заказ (дата не распарсилась): " + order.getId());
+                continue; // дата не распарсилась — пропускаем
+            }
+            YearMonth ym = YearMonth.from(orderDate);
+            revenueByMonth.merge(ym, order.getTotal(), Double::sum);
         }
+
+        // Замена 3: формируем результат за последние 6 месяцев.
+        // Если закрытых заказов нет — по всем месяцам будут нули (ровная линия на 0).
+        List<Double> monthlyRevenue = new ArrayList<>();
+        YearMonth current = YearMonth.now();
+        for (int i = 5; i >= 0; i--) {
+            monthlyRevenue.add(revenueByMonth.getOrDefault(current.minusMonths(i), 0.0));
+        }
+
+        // Замена 4: итоговый лог
+        System.out.println("📊 Итоговый массив выручки: " + Arrays.toString(monthlyRevenue.toArray()));
+        System.out.println("📊 Всего закрытых заказов учтено: " + totalClosed);
         return monthlyRevenue;
     }
 
@@ -386,6 +512,11 @@ public class DashboardView extends ScrollPane {
         return currencyFormat.format(total);
     }
 
+    /**
+     * Подсчитывает количество заказов со статусом «В работе».
+     * 
+     * @return количество активных заказов
+     */
     private int getActiveOrdersCount() {
         int count = 0;
         for (WorkOrder order : DataStore.getOrders()) {
@@ -396,6 +527,11 @@ public class DashboardView extends ScrollPane {
         return count;
     }
 
+    /**
+     * Подсчитывает количество заказов со статусом «Закрыт».
+     * 
+     * @return количество закрытых заказов
+     */
     private int getCompletedOrdersCount() {
         int count = 0;
         for (WorkOrder order : DataStore.getOrders()) {
@@ -410,6 +546,14 @@ public class DashboardView extends ScrollPane {
 
     // ==================== ВИДЖЕТ: КРУГОВАЯ ДИАГРАММА ====================
 
+    /**
+     * Создаёт карточку-круговую диаграмму «Выручка» с градиентной дугой
+     * прогресса (потрачено относительно бюджета) и подписью суммы.
+     * 
+     * @param spent текущая выручка
+     * @param total бюджет (целевая сумма), от которого считается прогресс
+     * @return карточка VBox с диаграммой
+     */
     private VBox createBudgetDonutChart(double spent, double total) {
         VBox card = new VBox(10);
         card.setAlignment(Pos.CENTER);
@@ -448,12 +592,16 @@ public class DashboardView extends ScrollPane {
         gc.fillText("Общий доход", cx, cy + 20);
 
         card.getChildren().addAll(title, subtitle, canvas);
-        // Фиксированная высота — плитка "Выручка" совпадает по высоте с календарём
-        card.setMinHeight(330);
-        card.setPrefHeight(330);
         return card;
     }
 
+    /**
+     * Создаёт круговую диаграмму распределения заказов по статусам
+     * («В работе» — розовый, «Закрыт» — голубой, «Новый» — серый фон)
+     * с легендой и общим количеством заказов в центре.
+     * 
+     * @return карточка VBox с диаграммой статусов и легендой
+     */
     private VBox createStatusDonutChart() {
         VBox card = new VBox(10);
         card.setAlignment(Pos.CENTER);
@@ -531,6 +679,13 @@ public class DashboardView extends ScrollPane {
         return row;
     }
 
+    /**
+     * Создаёт мини-карточку «Общая выручка» с декоративным круговым
+     * индикатором (заполненная на ~270° дуга с градиентом).
+     * 
+     * @param revenue сумма выручки для отображения
+     * @return карточка VBox с общей выручкой
+     */
     private VBox createRevenueMiniCard(double revenue) {
         VBox card = new VBox(8);
         card.setAlignment(Pos.CENTER);
@@ -561,9 +716,6 @@ public class DashboardView extends ScrollPane {
         gc.strokeArc(cx - radius, cy - radius, radius * 2, radius * 2, 90, -270, javafx.scene.shape.ArcType.OPEN);
 
         card.getChildren().addAll(title, amount, line, miniCanvas);
-        // Высота совпадает с календарём (330)
-        card.setMinHeight(330);
-        card.setPrefHeight(330);
         return card;
     }
 
@@ -612,6 +764,17 @@ public class DashboardView extends ScrollPane {
 
     // ==================== ВИДЖЕТ: ГРАФИК ВЫРУЧКИ (ЛИНЕЙНЫЙ) ====================
 
+    /**
+     * Создаёт карточку линейного графика выручки. График адаптивен: Canvas
+     * привязан к ширине карточки через {@code bind} (widthProperty), а высота
+     * вычисляется как 55% от ширины. Сверху есть переключатель месяца
+     * (кнопки ← / →), при нажатии которых график перерисовывается для
+     * выбранного месяца.
+     * 
+     * @param titleText заголовок карточки
+     * @param data      исходные данные для первичной отрисовки
+     * @return карточка VBox с графиком
+     */
     private VBox createLineChart(String titleText, List<Double> data) {
         VBox card = new VBox(12);
         card.setAlignment(Pos.CENTER);
@@ -629,20 +792,37 @@ public class DashboardView extends ScrollPane {
         monthLabel.setMinWidth(120);
         monthLabel.setAlignment(Pos.CENTER);
 
+        // Инлайн-стиль для кнопок навигации по месяцам (CSS-файл отсутствует)
+        String btnStyle = "-fx-background-color: #2A2F4F; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 4 10 4 10; -fx-background-radius: 8px; -fx-cursor: hand;";
+        String btnHoverStyle = "-fx-background-color: #3B82F6; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 4 10 4 10; -fx-background-radius: 8px; -fx-cursor: hand;";
+
         Button leftBtn = new Button("←");
-        leftBtn.getStyleClass().add("action-btn");
-        leftBtn.setStyle("-fx-background-color: " + ACCENT_BLUE + "; -fx-text-fill: white; -fx-background-radius: 8; -fx-font-size: 14; -fx-cursor: hand;");
+        leftBtn.setStyle(btnStyle);
         leftBtn.setPrefSize(36, 30);
+        leftBtn.setOnMouseEntered(e -> leftBtn.setStyle(btnHoverStyle));
+        leftBtn.setOnMouseExited(e -> leftBtn.setStyle(btnStyle));
 
         Button rightBtn = new Button("→");
-        rightBtn.getStyleClass().add("action-btn");
-        rightBtn.setStyle("-fx-background-color: " + ACCENT_BLUE + "; -fx-text-fill: white; -fx-background-radius: 8; -fx-font-size: 14; -fx-cursor: hand;");
+        rightBtn.setStyle(btnStyle);
         rightBtn.setPrefSize(36, 30);
+        rightBtn.setOnMouseEntered(e -> rightBtn.setStyle(btnHoverStyle));
+        rightBtn.setOnMouseExited(e -> rightBtn.setStyle(btnStyle));
 
-        HBox topControls = new HBox(10, leftBtn, monthLabel, rightBtn);
+        // Кнопка создания тестового заказа для проверки графика выручки
+        Button testOrderBtn = new Button("Создать тестовый заказ");
+        testOrderBtn.setStyle("-fx-background-color: #22D3EE; -fx-text-fill: #15172A; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 4 10 4 10; -fx-background-radius: 8px; -fx-cursor: hand;");
+        testOrderBtn.setOnMouseEntered(e -> testOrderBtn.setStyle("-fx-background-color: #3B82F6; -fx-text-fill: white; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 4 10 4 10; -fx-background-radius: 8px; -fx-cursor: hand;"));
+        testOrderBtn.setOnMouseExited(e -> testOrderBtn.setStyle("-fx-background-color: #22D3EE; -fx-text-fill: #15172A; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 4 10 4 10; -fx-background-radius: 8px; -fx-cursor: hand;"));
+        testOrderBtn.setOnAction(e -> createTestOrder());
+
+        HBox topControls = new HBox(10, leftBtn, monthLabel, rightBtn, testOrderBtn);
         topControls.setAlignment(Pos.CENTER);
 
-        Canvas canvas = new Canvas(400, 200);
+        // Адаптивный Canvas: растягивается по ширине и высоте плитки
+        Canvas canvas = new Canvas();
+        VBox.setVgrow(canvas, Priority.ALWAYS);
+        canvas.widthProperty().bind(card.widthProperty().subtract(32));
+        canvas.heightProperty().bind(canvas.widthProperty().multiply(0.55));
 
         // Лямбда перерисовки графика для выбранного месяца
         Runnable redraw = () -> {
@@ -668,9 +848,52 @@ public class DashboardView extends ScrollPane {
     }
 
     /**
+     * Создаёт тестовый заказ со статусом «Закрыт», сегодняшней датой и
+     * суммой 5000 руб. для проверки отображения графика выручки.
+     * Используется первый клиент из DataStore; если клиентов нет — заказ
+     * не создаётся.
+     */
+    private void createTestOrder() {
+        try {
+            List<Client> clients = DataStore.getClients();
+            if (clients == null || clients.isEmpty()) {
+                showErrorAlert("Нет клиентов", "Создайте хотя бы одного клиента перед тестовым заказом.");
+                return;
+            }
+            Client client = clients.get(0);
+
+            WorkOrder testOrder = new WorkOrder();
+            testOrder.setClient(client);
+            testOrder.setClientId(client.getId());
+            testOrder.setStatus(WorkOrder.STATUS_CLOSED);
+            testOrder.setCreatedDate(DateUtils.formatDateForDB(LocalDate.now()));
+            testOrder.setClosedDate(DateUtils.formatDateForDB(LocalDate.now()));
+            testOrder.setTotal(5000);
+            testOrder.setNotes("Тестовый заказ для проверки графика выручки");
+
+            DataStore.addOrder(testOrder);
+            DataStore.save();
+            refresh();
+        } catch (Exception ex) {
+            showErrorAlert("Ошибка", "Не удалось создать тестовый заказ: " + ex.getMessage());
+        }
+    }
+
+    /**
      * Отрисовка линейного графика выручки на переданном Canvas.
      */
     private void drawLineChartCanvas(Canvas canvas, List<Double> data) {
+        // Защита от отрисовки при нулевом размере Canvas
+        if (canvas.getWidth() <= 0 || canvas.getHeight() <= 0) return;
+
+        // Отладочный вывод данных графика
+        if (data != null) {
+            System.out.println("График: количество точек = " + data.size());
+            for (int i = 0; i < data.size(); i++) {
+                System.out.println("  Точка " + i + ": " + data.get(i));
+            }
+        }
+
         GraphicsContext gc = canvas.getGraphicsContext2D();
         gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
 
@@ -679,6 +902,16 @@ public class DashboardView extends ScrollPane {
             gc.setFont(javafx.scene.text.Font.font(13));
             gc.setTextAlign(javafx.scene.text.TextAlignment.CENTER);
             gc.fillText("Нет данных", canvas.getWidth() / 2, canvas.getHeight() / 2);
+            return;
+        }
+
+        // Если все значения равны 0.0 — нет закрытых заказов за период
+        boolean allZero = data.stream().allMatch(v -> v == 0.0);
+        if (allZero) {
+            gc.setFill(javafx.scene.paint.Color.web(TEXT_GRAY));
+            gc.setFont(javafx.scene.text.Font.font("Segoe UI", 14));
+            gc.setTextAlign(javafx.scene.text.TextAlignment.CENTER);
+            gc.fillText("Нет закрытых заказов", canvas.getWidth() / 2, canvas.getHeight() / 2);
             return;
         }
 
@@ -753,6 +986,14 @@ public class DashboardView extends ScrollPane {
 
     // ==================== ВИДЖЕТ: КАЛЕНДАРЬ ====================
 
+    /**
+     * Создаёт календарь записей на текущий месяц. Дни с записями выделяются
+     * розовым кружком с голубой цифрой. Клик по любому дню открывает вкладку
+     * «Запись».
+     * 
+     * @param currentMonth месяц, для которого строится календарь
+     * @return карточка VBox с сеткой календаря
+     */
     private VBox createAppointmentCalendar(LocalDate currentMonth) {
         VBox card = new VBox(10);
         card.setAlignment(Pos.CENTER);
@@ -817,9 +1058,6 @@ public class DashboardView extends ScrollPane {
         }
 
         card.getChildren().add(grid);
-        // Фиксированная высота — календарь совпадает по высоте с плиткой "Выручка"
-        card.setMinHeight(330);
-        card.setPrefHeight(330);
         return card;
     }
 
@@ -905,14 +1143,34 @@ public class DashboardView extends ScrollPane {
 
     // ==================== ВНУТРЕННИЙ КЛАСС ДЛЯ ТАБЛИЦЫ ====================
 
+    /**
+     * Модель строки таблицы записей (Appointment). Содержит отображаемые
+     * поля записи и ссылку на связанный заказ (если есть).
+     */
     public static class AppointmentRow {
+        /** Идентификатор записи (заказа). */
         private final String orderId;
+        /** Имя клиента. */
         private final String clientName;
+        /** Модель автомобиля. */
         private final String carModel;
+        /** Название услуги. */
         private final String serviceName;
+        /** Дата и время записи. */
         private final String dateTime;
+        /** Связанный заказ (может быть null, если запись не привязана к заказу). */
         private final WorkOrder linkedOrder;
 
+        /**
+         * Создаёт строку таблицы записей.
+         * 
+         * @param orderId    идентификатор записи
+         * @param clientName имя клиента
+         * @param carModel   модель автомобиля
+         * @param serviceName название услуги
+         * @param dateTime   дата и время
+         * @param linkedOrder связанный заказ (или null)
+         */
         public AppointmentRow(String orderId, String clientName, String carModel,
                               String serviceName, String dateTime, WorkOrder linkedOrder) {
             this.orderId = orderId;
@@ -923,11 +1181,17 @@ public class DashboardView extends ScrollPane {
             this.linkedOrder = linkedOrder;
         }
 
+        /** @return идентификатор записи */
         public String getOrderId() { return orderId; }
+        /** @return имя клиента */
         public String getClientName() { return clientName; }
+        /** @return модель автомобиля */
         public String getCarModel() { return carModel; }
+        /** @return название услуги */
         public String getServiceName() { return serviceName; }
+        /** @return дата и время записи */
         public String getDateTime() { return dateTime; }
+        /** @return связанный заказ (может быть null) */
         public WorkOrder getLinkedOrder() { return linkedOrder; }
     }
 }

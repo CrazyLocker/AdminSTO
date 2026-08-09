@@ -28,6 +28,20 @@ import javafx.stage.Stage;
 /**
  * Панель управления складом.
  * Автономная панель со своим контроллером.
+ * 
+ * Ответственность: отображение остатков запчастей на складе в таблице, поиск
+ * и фильтрация, операции прихода товара на склад, редактирования и удаления
+ * позиций склада.
+ * 
+ * Зависимости: JavaFX (TableView, FilteredList, SortedList, GridPane), DataStore,
+ * SparePart, StockPanelController, TableStateManager, WindowStateManager,
+ * ValidationUtils, TooltipHelper.
+ * 
+ * @author AdminSTO Team
+ * @since 1.0
+ * @see DataStore
+ * @see SparePart
+ * @see StockPanelController
  */
 public class StockPanel {
 

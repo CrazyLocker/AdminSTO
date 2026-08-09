@@ -30,13 +30,44 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Экран управления заказами СТО.
+ * 
+ * Ответственность: отображение списка заказов в таблице, поиск по заказам,
+ * расширенный фильтр (по статусу, диапазону дат и суммы), а также операции
+ * создания, редактирования, удаления и печати заказа.
+ * 
+ * Зависимости: JavaFX (TableView, ComboBox, DatePicker, ToggleButton),
+ * DataStore, WorkOrder, Client, Appointment, OrderController, PrintOrderDialog,
+ * TableStateManager (сохранение состояния таблицы), Validators, DateUtils.
+ * 
+ * Особенности: реализован как набор статических методов (singleton-подход без
+ * экземпляра); использует единый источник данных {@code masterData}
+ * (ObservableList) с обёрткой {@code SortedList} для сортировки таблицы; панель
+ * расширенного фильтра скрывается/показывается через {@code setManaged}.
+ * 
+ * @author AdminSTO Team
+ * @since 1.0
+ * @see DataStore
+ * @see WorkOrder
+ * @see OrderController
+ */
 @SuppressWarnings({"unchecked", "deprecation"})
 public class OrderView {
 
+    /** Таблица заказов (общий доступ для сохранения состояния). */
     private static TableView<WorkOrder> orderTable;
+    /** Поле текстового поиска по заказам. */
     private static TextField searchField;
+    /** Метка с количеством найденных результатов. */
     private static Label resultLabel;
 
+    /**
+     * Возвращает таблицу заказов для внешнего использования
+     * (например, сохранение состояния таблицы).
+     * 
+     * @return таблица заказов {@link TableView}
+     */
     // Getter для получения таблицы извне
     public static TableView<WorkOrder> getTable() {
         return orderTable;
@@ -60,6 +91,12 @@ public class OrderView {
 
     private static final Logger logger = LoggerFactory.getLogger(OrderView.class);
 
+    /**
+     * Строит главный экран заказов: верхнюю панель с поиском и кнопками
+     * действий, панель расширенного фильтра и таблицу заказов.
+     * 
+     * @return корневой контейнер VBox с интерфейсом заказов
+     */
     public static VBox create() {
         VBox root = new VBox(10);
 

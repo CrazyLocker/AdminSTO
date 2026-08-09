@@ -33,6 +33,20 @@ import java.util.List;
 /**
  * Панель управления запчастями.
  * Автономная панель со своим контроллером.
+ * 
+ * Ответственность: отображение каталога запчастей в таблице, поиск и
+ * фильтрация, а также операции добавления, редактирования и удаления запчастей
+ * (включая справочники поставщиков и нормы расхода).
+ * 
+ * Зависимости: JavaFX (TableView, FilteredList, SortedList, GridPane), DataStore,
+ * SparePart, SparePartPanelController, TableStateManager, WindowStateManager,
+ * ValidationUtils, TooltipHelper.
+ * 
+ * @author AdminSTO Team
+ * @since 1.0
+ * @see DataStore
+ * @see SparePart
+ * @see SparePartPanelController
  */
 public class SparePartPanel {
 

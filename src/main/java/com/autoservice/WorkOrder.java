@@ -3,31 +3,72 @@ package com.autoservice;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Модель заказа на выполнение работ в СТО.
+ * 
+ * Ответственность: хранение данных заказа (клиент, статус, услуги с ценами,
+ * запчасти с количеством, даты, пробег, примечания) и автоматический
+ * пересчёт общей стоимости при изменении состава услуг и запчастей.
+ * 
+ * Зависимости: Client, SparePart.
+ * 
+ * Особенности: заказ может содержать несколько услуг (списки {@code services}
+ * и {@code servicePrices}) и несколько запчастей с количеством; общая сумма
+ * пересчитывается методом {@link #recalculateTotal()}. Содержит dirty-флаг для
+ * отслеживания изменений перед сохранением в БД.
+ * 
+ * @author AdminSTO Team
+ * @since 1.0
+ * @see Client
+ * @see SparePart
+ * @see DataStore
+ */
 public class WorkOrder {
+    /** Статус: новый заказ. */
     public static final String STATUS_NEW = "Новый";
+    /** Статус: заказ в работе. */
     public static final String STATUS_IN_PROGRESS = "В работе";
+    /** Статус: заказ закрыт (выполнен). */
     public static final String STATUS_CLOSED = "Закрыт";
 
+    /** Идентификатор заказа (строка). */
     private String id;
+    /** Клиент, оформивший заказ. */
     private Client client;
+    /** Текущий статус заказа (см. константы STATUS_*). */
     private String status;
+    /** Общая стоимость заказа (услуги + запчасти). */
     private double total;
+    /** Дата создания заказа (строка). */
     private String createdDate;
+    /** Названия услуг в заказе. */
     private List<String> services = new ArrayList<>();
+    /** Цены услуг (соответствует {@link #services}). */
     private List<Double> servicePrices = new ArrayList<>();
+    /** Запчасти в заказе. */
     private List<SparePart> spareParts = new ArrayList<>();
+    /** Количество каждой запчасти (соответствует {@link #spareParts}). */
     private List<Double> sparePartQuantities = new ArrayList<>();
+    /** Идентификаторы услуг (0, если услуга не привязана к каталогу). */
     private List<Integer> serviceIds = new ArrayList<>();
+    /** Дата закрытия заказа (пустая, если не закрыт). */
     private String closedDate = "";
+    /** Примечания к заказу. */
     private String notes = "";
+    /** Пробег автомобиля на момент заказа. */
     private int mileage = 0;
+    /** Идентификатор клиента. */
     private int clientId = 0;
+    /** Модель автомобиля. */
     private String carModel = "";
+    /** Госномер автомобиля. */
     private String carNumber = "";
+    /** Флаг наличия несохранённых изменений. */
     private boolean dirty = false;
 
     // ==================== КОНСТРУКТОРЫ ====================
 
+    /** Создаёт пустой заказ со статусом «Новый» и признаком изменения. */
     public WorkOrder() {
         this.id = "";
         this.client = null;
@@ -37,12 +78,26 @@ public class WorkOrder {
         this.dirty = true;
     }
 
+    /**
+     * Создаёт заказ для указанного клиента.
+     * 
+     * @param client клиент, оформляющий заказ
+     */
     public WorkOrder(Client client) {
         this();
         this.client = client;
         this.clientId = client.getId();
     }
 
+    /**
+     * Полный конструктор заказа (обычно используется при загрузке из БД).
+     * 
+     * @param id          идентификатор заказа
+     * @param client      клиент
+     * @param status      статус заказа
+     * @param total       общая стоимость
+     * @param createdDate дата создания
+     */
     public WorkOrder(String id, Client client, String status, double total, String createdDate) {
         this.id = id;
         this.client = client;
@@ -135,6 +190,13 @@ public class WorkOrder {
 
     // ==================== МЕТОДЫ ====================
 
+    /**
+     * Добавляет услугу в заказ по названию и цене (без привязки к каталогу
+     * услуг — id услуги = 0). После добавления пересчитывается общая сумма.
+     * 
+     * @param name  название услуги
+     * @param price цена услуги
+     */
     public void addService(String name, double price) {
         this.services.add(name);
         this.servicePrices.add(price);
@@ -143,6 +205,13 @@ public class WorkOrder {
         recalculateTotal();
     }
 
+    /**
+     * Добавляет услугу в заказ с привязкой к каталогу услуг.
+     * 
+     * @param serviceId идентификатор услуги в каталоге
+     * @param name      название услуги
+     * @param price     цена услуги
+     */
     public void addService(int serviceId, String name, double price) {
         this.services.add(name);
         this.servicePrices.add(price);
@@ -151,6 +220,11 @@ public class WorkOrder {
         recalculateTotal();
     }
 
+    /**
+     * Удаляет услугу из заказа по индексу и пересчитывает сумму.
+     * 
+     * @param index индекс услуги в списке
+     */
     public void removeService(int index) {
         if (index >= 0 && index < services.size()) {
             services.remove(index);
@@ -161,6 +235,12 @@ public class WorkOrder {
         }
     }
 
+    /**
+     * Добавляет запчасть в заказ с указанным количеством и пересчитывает сумму.
+     * 
+     * @param part     запчасть
+     * @param quantity количество
+     */
     public void addSparePart(SparePart part, double quantity) {
         this.spareParts.add(part);
         this.sparePartQuantities.add(quantity);
@@ -168,6 +248,11 @@ public class WorkOrder {
         recalculateTotal();
     }
 
+    /**
+     * Удаляет запчасть из заказа по индексу и пересчитывает сумму.
+     * 
+     * @param index индекс запчасти в списке
+     */
     public void removeSparePart(int index) {
         if (index >= 0 && index < spareParts.size()) {
             spareParts.remove(index);
@@ -177,6 +262,11 @@ public class WorkOrder {
         }
     }
 
+    /**
+     * Пересчитывает общую стоимость заказа как сумму цен услуг и стоимости
+     * запчастей (розничная цена × количество). Если сумма изменилась — заказ
+     * помечается как изменённый.
+     */
     public void recalculateTotal() {
         double newTotal = 0;
         for (Double price : servicePrices) {
@@ -191,6 +281,10 @@ public class WorkOrder {
         }
     }
 
+    /**
+     * Снимает флаг изменения с заказа и всех его запчастей. Вызывается после
+     * успешного сохранения в БД.
+     */
     public void markClean() {
         this.dirty = false;
         for (SparePart part : spareParts) {
@@ -198,6 +292,12 @@ public class WorkOrder {
         }
     }
 
+    /**
+     * Возвращает строковое представление заказа «id - ФИО клиента (статус)».
+     * 
+     * @return строка с данными заказа
+     * @throws NullPointerException если клиент не задан (client == null)
+     */
     @Override
     public String toString() {
         return id + " - " + client.getFullName() + " (" + status + ")";

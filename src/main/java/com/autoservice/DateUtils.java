@@ -8,11 +8,24 @@ import java.util.Locale;
 /**
  * Утилитарный класс для форматирования и парсинга дат.
  * Поддерживает русский формат для отображения и ISO/dd/MM/yyyy для хранения в БД.
+ * 
+ * Ответственность: преобразование дат между строковым представлением
+ * (русский формат для UI, ISO/dd/MM/yyyy для БД) и типом {@link LocalDate},
+ * а также проверка выходных дней.
+ * 
+ * Зависимости: java.time (LocalDate, DayOfWeek, DateTimeFormatter).
+ * 
+ * @author AdminSTO Team
+ * @since 1.0
+ * @see LocalDate
  */
 public class DateUtils {
 
+    /** Русская локаль для форматирования дат. */
     private static final Locale RUSSIAN_LOCALE = new Locale.Builder().setLanguage("ru").build();
+    /** Формат отображения даты для UI (например, «15 июля 2026 г.»). */
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("d MMMM yyyy 'г.'", RUSSIAN_LOCALE);
+    /** Формат хранения даты в БД (dd/MM/yyyy). */
     private static final DateTimeFormatter DB_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     /**
