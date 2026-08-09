@@ -78,6 +78,7 @@ public class EditOrderDialog {
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
+        root.setStyle("-fx-font-size: 12px;");
 
         // Автомобиль: приоритет — из заказа, иначе автомобили клиента
         String carDisplay;
@@ -608,6 +609,7 @@ public class EditOrderDialog {
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
+        root.setStyle("-fx-font-size: 12px;");
 
         Label titleLabel = new Label("Выберите запчасти, которые нужно добавить:");
 

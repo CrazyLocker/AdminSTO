@@ -257,7 +257,6 @@ public class DataStore {
         }
         o.setDirty(true);
         DatabaseFactory.getDatabase().updateOrder(o);
-        orders = DatabaseFactory.getDatabase().getAllOrders();
         isDirty = true;
     }
 

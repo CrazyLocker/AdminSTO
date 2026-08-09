@@ -615,6 +615,11 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             logger.error("Ошибка загрузки запчастей заказа", e);
         }
 
+        // Сбрасываем флаг dirty — заказ только что загружен из БД, изменений нет
+        for (WorkOrder order : orderMap.values()) {
+            order.setDirty(false);
+        }
+
         return new ArrayList<>(orderMap.values());
     }
     

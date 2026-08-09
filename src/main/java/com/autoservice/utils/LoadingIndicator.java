@@ -125,7 +125,7 @@ public class LoadingIndicator {
         
         // Текстовая метка
         Label label = new Label(message);
-        label.setStyle("-fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;");
+        label.setStyle("-fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: bold;");
         
         // Анимация вращения
         Timeline timeline = new Timeline();

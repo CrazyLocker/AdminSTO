@@ -32,6 +32,7 @@ import javafx.stage.Stage;
 
 import java.text.NumberFormat;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -104,9 +105,16 @@ public class DashboardView extends ScrollPane {
         gridPane.setHgap(20);
         gridPane.setVgap(20);
         gridPane.setAlignment(Pos.TOP_CENTER);
+        // Фон на весь контейнер
+        gridPane.setStyle("-fx-background-color: " + DARK_BG + "; -fx-background-insets: 0; -fx-padding: 24;");
+        gridPane.setBackground(new javafx.scene.layout.Background(
+                new javafx.scene.layout.BackgroundFill(javafx.scene.paint.Color.web(DARK_BG), null, null)));
 
         setContent(gridPane);
         setFitToWidth(true);
+        setFitToHeight(true);
+        // Фон самого ScrollPane тоже тёмный, чтобы не было светлых полос
+        setStyle("-fx-background-color: " + DARK_BG + "; -fx-background-insets: 0; -fx-padding: 0;");
 
         doRefresh();
     }
@@ -117,7 +125,9 @@ public class DashboardView extends ScrollPane {
         long start = System.currentTimeMillis();
         gridPane.getChildren().clear();
         gridPane.getColumnConstraints().clear();
-        gridPane.setStyle("-fx-background-color: " + DARK_BG + ";");
+        gridPane.setStyle("-fx-background-color: " + DARK_BG + "; -fx-background-insets: 0; -fx-padding: 24;");
+        gridPane.setBackground(new javafx.scene.layout.Background(
+                new javafx.scene.layout.BackgroundFill(javafx.scene.paint.Color.web(DARK_BG), null, null)));
 
         // ====== АДАПТИВНЫЕ КОЛОНКИ: 30% / 40% / 30% ======
         ColumnConstraints colLeft = new ColumnConstraints();
@@ -165,7 +175,7 @@ public class DashboardView extends ScrollPane {
         extraInfo.setPadding(new Insets(10));
         extraInfo.setStyle("-fx-background-color: " + CARD_BG + "; -fx-background-radius: 12px; -fx-padding: 16;");
 
-        Label infoTitle = styledLabel("Общая статистика", TEXT_WHITE, 14, true);
+        Label infoTitle = styledLabel("Общая статистика", TEXT_WHITE, 13, true);
         extraInfo.getChildren().add(infoTitle);
 
         HBox statsRow = new HBox(20);
@@ -338,6 +348,33 @@ public class DashboardView extends ScrollPane {
         return monthlyRevenue;
     }
 
+    /**
+     * Возвращает динамику выручки за 6 месяцев: выбранный месяц и 5 предыдущих.
+     * Каждый элемент — суммарная выручка закрытых заказов за соответствующий месяц.
+     */
+    private List<Double> getMonthlyRevenueDataForMonth(YearMonth yearMonth) {
+        List<Double> monthlyRevenue = new ArrayList<>();
+        for (int i = 5; i >= 0; i--) {
+            YearMonth ym = yearMonth.minusMonths(i);
+            LocalDate monthStart = ym.atDay(1);
+            LocalDate monthEnd = ym.atEndOfMonth();
+
+            double total = 0;
+            for (WorkOrder order : DataStore.getOrders()) {
+                if (WorkOrder.STATUS_CLOSED.equals(order.getStatus())) {
+                    try {
+                        LocalDate orderDate = DateUtils.parseDate(order.getCreatedDate());
+                        if (orderDate != null && !orderDate.isBefore(monthStart) && !orderDate.isAfter(monthEnd)) {
+                            total += order.getTotal();
+                        }
+                    } catch (Exception ignored) {}
+                }
+            }
+            monthlyRevenue.add(total);
+        }
+        return monthlyRevenue;
+    }
+
     private String getTotalRevenue() {
         double total = 0;
         for (WorkOrder order : DataStore.getOrders()) {
@@ -382,15 +419,15 @@ public class DashboardView extends ScrollPane {
         Label title = styledLabel("Выручка", TEXT_WHITE, 14, true);
         Label subtitle = styledLabel("Потрачено / Бюджет", TEXT_GRAY, 11, false);
 
-        Canvas canvas = new Canvas(160, 160);
+        Canvas canvas = new Canvas(180, 180);
         GraphicsContext gc = canvas.getGraphicsContext2D();
 
-        double cx = 80, cy = 80, radius = 58;
+        double cx = 90, cy = 90, radius = 66;
         double progress = Math.min(spent / total, 1.0);
         double angle = 360 * progress;
 
         gc.setStroke(javafx.scene.paint.Color.web("#2A2F4F"));
-        gc.setLineWidth(14);
+        gc.setLineWidth(16);
         gc.strokeArc(cx - radius, cy - radius, radius * 2, radius * 2, 90, 360, javafx.scene.shape.ArcType.OPEN);
 
         // Градиент для выручки (зелёно-синий)
@@ -402,15 +439,18 @@ public class DashboardView extends ScrollPane {
         gc.strokeArc(cx - radius, cy - radius, radius * 2, radius * 2, 90, -angle, javafx.scene.shape.ArcType.OPEN);
 
         gc.setFill(javafx.scene.paint.Color.web(TEXT_WHITE));
-        gc.setFont(javafx.scene.text.Font.font("Segoe UI", javafx.scene.text.FontWeight.BOLD, 22));
+        gc.setFont(javafx.scene.text.Font.font("Segoe UI", javafx.scene.text.FontWeight.BOLD, 23));
         gc.setTextAlign(javafx.scene.text.TextAlignment.CENTER);
         gc.fillText(String.format("%,.0f ₽", spent), cx, cy - 6);
 
         gc.setFill(javafx.scene.paint.Color.web(TEXT_GRAY));
         gc.setFont(javafx.scene.text.Font.font("Segoe UI", 12));
-        gc.fillText("Общий доход", cx, cy + 18);
+        gc.fillText("Общий доход", cx, cy + 20);
 
         card.getChildren().addAll(title, subtitle, canvas);
+        // Фиксированная высота — плитка "Выручка" совпадает по высоте с календарём
+        card.setMinHeight(330);
+        card.setPrefHeight(330);
         return card;
     }
 
@@ -420,7 +460,7 @@ public class DashboardView extends ScrollPane {
         card.setPadding(new Insets(12));
         card.setStyle("-fx-background-color: " + CARD_BG + "; -fx-background-radius: 16px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 4);");
 
-        Label title = styledLabel("Статусы заказов", TEXT_WHITE, 14, true);
+        Label title = styledLabel("Статусы заказов", TEXT_WHITE, 13, true);
 
         Canvas canvas = new Canvas(160, 160);
         GraphicsContext gc = canvas.getGraphicsContext2D();
@@ -450,16 +490,45 @@ public class DashboardView extends ScrollPane {
         }
 
         gc.setFill(javafx.scene.paint.Color.web(TEXT_WHITE));
-        gc.setFont(javafx.scene.text.Font.font("Segoe UI", javafx.scene.text.FontWeight.BOLD, 20));
+        gc.setFont(javafx.scene.text.Font.font("Segoe UI", javafx.scene.text.FontWeight.BOLD, 19));
         gc.setTextAlign(javafx.scene.text.TextAlignment.CENTER);
         gc.fillText(String.valueOf(total), cx, cy - 6);
 
         gc.setFill(javafx.scene.paint.Color.web(TEXT_GRAY));
-        gc.setFont(javafx.scene.text.Font.font("Segoe UI", 11));
+        gc.setFont(javafx.scene.text.Font.font("Segoe UI", 10));
         gc.fillText("Всего заказов", cx, cy + 18);
 
-        card.getChildren().addAll(title, canvas);
+        // ====== Легенда ======
+        int newCount = Math.max(total - active - closed, 0);
+
+        VBox legendBox = new VBox(6);
+        legendBox.setAlignment(Pos.CENTER_LEFT);
+        legendBox.setPadding(new Insets(4, 0, 0, 0));
+
+        legendBox.getChildren().addAll(
+                createLegendRow(ACCENT_PINK, "В работе: " + active),
+                createLegendRow(ACCENT_CYAN, "Закрыт: " + closed),
+                createLegendRow("#2A2F4F", "Новый: " + newCount)
+        );
+
+        HBox chartWithLegend = new HBox(12, canvas, legendBox);
+        chartWithLegend.setAlignment(Pos.CENTER);
+
+        card.getChildren().addAll(title, chartWithLegend);
         return card;
+    }
+
+    /**
+     * Строка легенды: цветной кружок + текст.
+     */
+    private HBox createLegendRow(String color, String text) {
+        HBox row = new HBox(8);
+        row.setAlignment(Pos.CENTER_LEFT);
+        javafx.scene.shape.Circle dot = new javafx.scene.shape.Circle(6);
+        dot.setFill(javafx.scene.paint.Color.web(color));
+        Label lbl = styledLabel(text, TEXT_GRAY, 11, false);
+        row.getChildren().addAll(dot, lbl);
+        return row;
     }
 
     private VBox createRevenueMiniCard(double revenue) {
@@ -468,15 +537,33 @@ public class DashboardView extends ScrollPane {
         card.setPadding(new Insets(16));
         card.setStyle("-fx-background-color: " + CARD_BG + "; -fx-background-radius: 16px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 4);");
 
-        Label title = styledLabel("Общая выручка", TEXT_WHITE, 14, true);
-        Label amount = styledLabel(String.format("%,.0f ₽", revenue), ACCENT_CYAN, 22, true);
+        Label title = styledLabel("Общая выручка", TEXT_WHITE, 13, true);
+        Label amount = styledLabel(String.format("%,.0f ₽", revenue), ACCENT_CYAN, 21, true);
 
         // Маленькая декоративная линия (просто красоты ради)
         javafx.scene.shape.Line line = new javafx.scene.shape.Line(0, 0, 80, 0);
         line.setStroke(javafx.scene.paint.Color.web(ACCENT_CYAN));
         line.setStrokeWidth(2);
 
-        card.getChildren().addAll(title, amount, line);
+        // Декоративный Canvas-индикатор, чтобы плитка визуально совпадала по высоте с календарём
+        Canvas miniCanvas = new Canvas(120, 120);
+        GraphicsContext gc = miniCanvas.getGraphicsContext2D();
+        double cx = 60, cy = 60, radius = 44;
+        gc.setStroke(javafx.scene.paint.Color.web("#2A2F4F"));
+        gc.setLineWidth(12);
+        gc.strokeArc(cx - radius, cy - radius, radius * 2, radius * 2, 90, 360, javafx.scene.shape.ArcType.OPEN);
+        javafx.scene.paint.LinearGradient grad = new javafx.scene.paint.LinearGradient(0, 0, 1, 1, true,
+                javafx.scene.paint.CycleMethod.NO_CYCLE,
+                new javafx.scene.paint.Stop(0, javafx.scene.paint.Color.web(ACCENT_CYAN)),
+                new javafx.scene.paint.Stop(1, javafx.scene.paint.Color.web(ACCENT_BLUE)));
+        gc.setStroke(grad);
+        gc.setLineWidth(12);
+        gc.strokeArc(cx - radius, cy - radius, radius * 2, radius * 2, 90, -270, javafx.scene.shape.ArcType.OPEN);
+
+        card.getChildren().addAll(title, amount, line, miniCanvas);
+        // Высота совпадает с календарём (330)
+        card.setMinHeight(330);
+        card.setPrefHeight(330);
         return card;
     }
 
@@ -484,8 +571,8 @@ public class DashboardView extends ScrollPane {
     private VBox createStatColumn(String label, String value, String color) {
         VBox v = new VBox(2);
         v.setAlignment(Pos.CENTER);
-        Label val = styledLabel(value, color, 20, true);
-        Label lbl = styledLabel(label, TEXT_GRAY, 11, false);
+        Label val = styledLabel(value, color, 19, true);
+        Label lbl = styledLabel(label, TEXT_GRAY, 10, false);
         v.getChildren().addAll(val, lbl);
         return v;
     }
@@ -498,7 +585,7 @@ public class DashboardView extends ScrollPane {
         card.setPadding(new Insets(16));
         card.setStyle("-fx-background-color: " + CARD_BG + "; -fx-background-radius: 16px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 4);");
 
-        Label title = styledLabel("Статистика", TEXT_WHITE, 14, true);
+        Label title = styledLabel("Статистика", TEXT_WHITE, 13, true);
 
         VBox stats = new VBox(6);
         stats.getChildren().addAll(
@@ -516,8 +603,8 @@ public class DashboardView extends ScrollPane {
         row.setAlignment(Pos.CENTER_LEFT);
         row.setPadding(new Insets(4, 0, 4, 0));
 
-        Label lbl = styledLabel(label, TEXT_GRAY, 13, false);
-        Label val = styledLabel(value, color, 14, true);
+        Label lbl = styledLabel(label, TEXT_GRAY, 12, false);
+        Label val = styledLabel(value, color, 13, true);
 
         row.getChildren().addAll(lbl, new javafx.scene.layout.Pane(), val);
         return row;
@@ -531,18 +618,68 @@ public class DashboardView extends ScrollPane {
         card.setPadding(new Insets(16));
         card.setStyle("-fx-background-color: " + CARD_BG + "; -fx-background-radius: 16px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 4);");
 
-        Label title = styledLabel(titleText, TEXT_WHITE, 14, true);
+        Label title = styledLabel(titleText, TEXT_WHITE, 13, true);
+
+        // ====== Переключатель месяца ======
+        java.time.YearMonth currentMonth = java.time.YearMonth.now();
+        java.time.YearMonth[] selectedMonth = {currentMonth};
+
+        DateTimeFormatter monthFmt = DateTimeFormatter.ofPattern("LLLL yyyy", new Locale("ru"));
+        Label monthLabel = styledLabel(selectedMonth[0].format(monthFmt), TEXT_WHITE, 13, true);
+        monthLabel.setMinWidth(120);
+        monthLabel.setAlignment(Pos.CENTER);
+
+        Button leftBtn = new Button("←");
+        leftBtn.getStyleClass().add("action-btn");
+        leftBtn.setStyle("-fx-background-color: " + ACCENT_BLUE + "; -fx-text-fill: white; -fx-background-radius: 8; -fx-font-size: 14; -fx-cursor: hand;");
+        leftBtn.setPrefSize(36, 30);
+
+        Button rightBtn = new Button("→");
+        rightBtn.getStyleClass().add("action-btn");
+        rightBtn.setStyle("-fx-background-color: " + ACCENT_BLUE + "; -fx-text-fill: white; -fx-background-radius: 8; -fx-font-size: 14; -fx-cursor: hand;");
+        rightBtn.setPrefSize(36, 30);
+
+        HBox topControls = new HBox(10, leftBtn, monthLabel, rightBtn);
+        topControls.setAlignment(Pos.CENTER);
 
         Canvas canvas = new Canvas(400, 200);
+
+        // Лямбда перерисовки графика для выбранного месяца
+        Runnable redraw = () -> {
+            List<Double> monthData = getMonthlyRevenueDataForMonth(selectedMonth[0]);
+            monthLabel.setText(selectedMonth[0].format(monthFmt));
+            drawLineChartCanvas(canvas, monthData);
+        };
+
+        leftBtn.setOnAction(e -> {
+            selectedMonth[0] = selectedMonth[0].minusMonths(1);
+            redraw.run();
+        });
+        rightBtn.setOnAction(e -> {
+            selectedMonth[0] = selectedMonth[0].plusMonths(1);
+            redraw.run();
+        });
+
+        // Первичная отрисовка
+        drawLineChartCanvas(canvas, data);
+
+        card.getChildren().addAll(title, topControls, canvas);
+        return card;
+    }
+
+    /**
+     * Отрисовка линейного графика выручки на переданном Canvas.
+     */
+    private void drawLineChartCanvas(Canvas canvas, List<Double> data) {
         GraphicsContext gc = canvas.getGraphicsContext2D();
+        gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
 
         if (data == null || data.isEmpty()) {
             gc.setFill(javafx.scene.paint.Color.web(TEXT_GRAY));
-            gc.setFont(javafx.scene.text.Font.font(14));
+            gc.setFont(javafx.scene.text.Font.font(13));
             gc.setTextAlign(javafx.scene.text.TextAlignment.CENTER);
-            gc.fillText("Нет данных", 200, 100);
-            card.getChildren().addAll(title, canvas);
-            return card;
+            gc.fillText("Нет данных", canvas.getWidth() / 2, canvas.getHeight() / 2);
+            return;
         }
 
         double max = data.stream().mapToDouble(Double::doubleValue).max().orElse(1.0);
@@ -612,9 +749,6 @@ public class DashboardView extends ScrollPane {
             double y = padding + (graphH / 4) * i;
             gc.strokeLine(padding, y, canvas.getWidth() - padding, y);
         }
-
-        card.getChildren().addAll(title, canvas);
-        return card;
     }
 
     // ==================== ВИДЖЕТ: КАЛЕНДАРЬ ====================
@@ -633,11 +767,12 @@ public class DashboardView extends ScrollPane {
         grid.setVgap(6);
         grid.setAlignment(Pos.CENTER);
 
-        // Шрифт дней недели +2 пункта
+        // Шрифт дней недели
         String[] days = {"Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"};
         for (int i = 0; i < 7; i++) {
-            Label dayLabel = styledLabel(days[i], TEXT_GRAY, 11, true); // было 9, стало 11
+            Label dayLabel = styledLabel(days[i], TEXT_GRAY, 11, true);
             dayLabel.setAlignment(Pos.CENTER);
+            dayLabel.setPrefSize(34, 24);
             grid.add(dayLabel, i, 0);
         }
 
@@ -660,27 +795,31 @@ public class DashboardView extends ScrollPane {
             boolean hasAppointment = appointmentDates.contains(date);
 
             StackPane cell = new StackPane();
-            cell.setPrefSize(32, 32); // увеличили размер плиток
+            cell.setPrefSize(34, 34); // увеличили размер плиток
             cell.setAlignment(Pos.CENTER);
 
-            // Шрифт чисел тоже увеличили +2 пункта
-            Label dayNum = styledLabel(String.valueOf(day), hasAppointment ? ACCENT_CYAN : TEXT_GRAY, 12, hasAppointment); // было 10, стало 12
+            // Шрифт чисел тоже увеличили
+            Label dayNum = styledLabel(String.valueOf(day), hasAppointment ? ACCENT_CYAN : TEXT_GRAY, 12, hasAppointment);
 
             if (hasAppointment) {
-                javafx.scene.shape.Circle circle = new javafx.scene.shape.Circle(12);
+                javafx.scene.shape.Circle circle = new javafx.scene.shape.Circle(13);
                 circle.setFill(javafx.scene.paint.Color.web(ACCENT_PINK));
                 cell.getChildren().addAll(circle, dayNum);
             } else {
                 cell.getChildren().add(dayNum);
             }
 
-            // НЕ кликабельный
+            // Кликом по любой ячейке открываем вкладку "Запись"
+            cell.setOnMouseClicked(e -> openAppointmentView());
             grid.add(cell, col, row);
             col++;
             if (col >= 7) { col = 0; row++; }
         }
 
         card.getChildren().add(grid);
+        // Фиксированная высота — календарь совпадает по высоте с плиткой "Выручка"
+        card.setMinHeight(330);
+        card.setPrefHeight(330);
         return card;
     }
 
@@ -692,11 +831,11 @@ public class DashboardView extends ScrollPane {
         card.setPadding(new Insets(16));
         card.setStyle("-fx-background-color: " + CARD_BG + "; -fx-background-radius: 16px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 4);");
 
-        Label title = styledLabel("Прибыль в этом месяце", TEXT_WHITE, 14, true);
+        Label title = styledLabel("Прибыль в этом месяце", TEXT_WHITE, 13, true);
 
         // Парсим выручку для отображения
         double revenue = parseRevenue(getTotalRevenue());
-        Label amount = styledLabel("$" + String.format("%,.0f", revenue), ACCENT_CYAN, 22, true);
+        Label amount = styledLabel("$" + String.format("%,.0f", revenue), ACCENT_CYAN, 21, true);
         card.getChildren().addAll(title, amount);
 
         // Маленькая линия (можно использовать заготовку графика)

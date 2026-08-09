@@ -237,7 +237,7 @@ public class SettingsView {
         VBox themeSection = new VBox(12);
 
         Label themeLabel = new Label("Тема оформления");
-        themeLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+        themeLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
 
         Label themeDesc = new Label("Выберите цветовую тему для всего приложения. " +
                 "Тема применяется мгновенно без перезапуска.");
@@ -263,7 +263,7 @@ public class SettingsView {
         themeRow.getChildren().addAll(chooseLabel, themeCombo);
 
         Label currentLabel = new Label("Текущая тема: " + ThemeManager.getCurrentTheme().displayName);
-        currentLabel.setStyle("-fx-text-fill: #94A3B8; -fx-font-size: 12px;");
+        currentLabel.setStyle("-fx-text-fill: #94A3B8; -fx-font-size: 11px;");
 
         themeCombo.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {

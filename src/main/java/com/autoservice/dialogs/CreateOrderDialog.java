@@ -58,6 +58,7 @@ public class CreateOrderDialog {
 
         VBox root = new VBox(12);
         root.setPadding(new Insets(20));
+        root.setStyle("-fx-font-size: 12px;");
 
         // ============================================================
         // 1. КЛИЕНТ
@@ -545,6 +546,7 @@ public class CreateOrderDialog {
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
+        root.setStyle("-fx-font-size: 12px;");
 
         Label titleLabel = new Label("Выберите запчасти, которые нужно добавить:");
 

@@ -371,11 +371,12 @@ public class OrderView {
         colStatus.setSortable(true);
         colStatus.setCellFactory(col -> new TableCell<WorkOrder, String>() {
             private final ComboBox<String> comboBox = new ComboBox<>(FXCollections.observableArrayList("Новый", "В работе", "Закрыт"));
+            private boolean updating = false;
             {
                 comboBox.setOnAction(e -> {
+                    if (updating) return;
                     WorkOrder order = getTableView().getItems().get(getIndex());
                     if (order != null) {
-                        order.setStatus(comboBox.getValue());
                         OrderController.changeOrderStatus(order, comboBox.getValue());
                     }
                 });
@@ -384,7 +385,13 @@ public class OrderView {
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || item == null) { setGraphic(null); setText(null); }
-                else { comboBox.setValue(item); setGraphic(comboBox); setText(null); }
+                else {
+                    updating = true;
+                    comboBox.setValue(item);
+                    updating = false;
+                    setGraphic(comboBox);
+                    setText(null);
+                }
             }
         });
 

@@ -30,12 +30,12 @@
 .stat-card-yellow { -fx-background-color: linear-gradient(to bottom, #FBBF24 3%, #272838 3%); }
 
 .stat-card-title {
-    -fx-font-size: 12px;
+    -fx-font-size: 11px;
     -fx-font-weight: normal;
     -fx-text-fill: #94A3B8;
 }
 .stat-card-value {
-    -fx-font-size: 24px;
+    -fx-font-size: 23px;
     -fx-font-weight: bold;
     -fx-text-fill: #FFFFFF;
 }
@@ -43,7 +43,7 @@
 /* ==================== КНОПКИ ДЕЙСТВИЙ (только дашборд) ==================== */
 .action-btn {
     -fx-text-fill: white;
-    -fx-font-size: 13px;
+    -fx-font-size: 12px;
     -fx-font-weight: bold;
     -fx-padding: 8 22 8 22;
     -fx-cursor: hand;
@@ -83,12 +83,12 @@
     -fx-border-width: 0;
 }
 .appointments-header {
-    -fx-font-size: 15px;
+    -fx-font-size: 14px;
     -fx-font-weight: bold;
     -fx-text-fill: #FFFFFF;
 }
 .appointments-hint {
-    -fx-font-size: 11px;
+    -fx-font-size: 10px;
     -fx-text-fill: #64748B;
 }
 
@@ -110,7 +110,7 @@
     -fx-padding: 8 12;
 }
 .table-view.appointments-table .column-header .label {
-    -fx-font-size: 11px;
+    -fx-font-size: 10px;
     -fx-font-weight: bold;
     -fx-text-fill: #94A3B8;
 }
@@ -127,7 +127,7 @@
     -fx-background-color: rgba(91,141,239,0.08);
 }
 .table-view.appointments-table .table-cell {
-    -fx-font-size: 12px;
+    -fx-font-size: 11px;
     -fx-text-fill: #E2E8F0;
     -fx-padding: 6 12;
     -fx-border-color: transparent;
@@ -142,17 +142,17 @@
     -fx-border-width: 0;
 }
 .profile-title {
-    -fx-font-size: 15px;
+    -fx-font-size: 14px;
     -fx-font-weight: bold;
     -fx-text-fill: #FFFFFF;
 }
 .profile-section-title {
-    -fx-font-size: 12px;
+    -fx-font-size: 11px;
     -fx-font-weight: bold;
     -fx-text-fill: #FFFFFF;
 }
 .profile-stat {
-    -fx-font-size: 12px;
+    -fx-font-size: 11px;
     -fx-text-fill: #94A3B8;
 }
 .profile-card .separator {
