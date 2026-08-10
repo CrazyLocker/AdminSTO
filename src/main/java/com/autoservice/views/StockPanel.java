@@ -19,6 +19,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.KeyCode;
+import javafx.scene.input.MouseButton;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -80,8 +81,23 @@ public class StockPanel {
         TableColumn<SparePart, Double> colStock = new TableColumn<>("Текущий остаток");
         colStock.setId("colCurrentStock");
         colStock.setCellValueFactory(new PropertyValueFactory<>("stock"));
-        colStock.setPrefWidth(120);
+        colStock.setPrefWidth(100);
         colStock.setSortable(true);
+
+        TableColumn<SparePart, Double> colReserved = new TableColumn<>("Зарезервировано");
+        colReserved.setId("colReserved");
+        colReserved.setCellValueFactory(new PropertyValueFactory<>("reserved"));
+        colReserved.setPrefWidth(120);
+        colReserved.setSortable(true);
+
+        TableColumn<SparePart, Double> colAvailable = new TableColumn<>("Доступно");
+        colAvailable.setId("colAvailable");
+        colAvailable.setCellValueFactory(cellData -> {
+            SparePart part = cellData.getValue();
+            return new javafx.beans.property.SimpleDoubleProperty(part.getAvailableStock()).asObject();
+        });
+        colAvailable.setPrefWidth(100);
+        colAvailable.setSortable(true);
 
         TableColumn<SparePart, Double> colMinStock = new TableColumn<>("Мин. остаток");
         colMinStock.setId("colMinStock");
@@ -95,7 +111,7 @@ public class StockPanel {
         colUnitType.setPrefWidth(80);
         colUnitType.setSortable(true);
 
-        table.getColumns().addAll(colName, colPartNumber, colStock, colMinStock, colUnitType);
+        table.getColumns().addAll(colName, colPartNumber, colStock, colReserved, colAvailable, colMinStock, colUnitType);
         table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(table, Priority.ALWAYS);
 
@@ -107,7 +123,8 @@ public class StockPanel {
         table.setItems(sortedData);
 
         table.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
-            if (stockIncomeBtn != null) stockIncomeBtn.setDisable(newVal == null);
+            boolean hasSelection = newVal != null;
+            if (stockIncomeBtn != null) stockIncomeBtn.setDisable(!hasSelection);
         });
 
         // ========== ГОЯЧИЕ КЛАВИШИ ==========
@@ -125,9 +142,35 @@ public class StockPanel {
         table.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
                 SparePart selected = table.getSelectionModel().getSelectedItem();
-                if (selected != null) editStockDialog(selected);
+                if (selected != null) {
+                    StockOperationDialog.show(selected, "ПРИХОД");
+                }
             }
         });
+        
+        // Контекстное меню для таблицы
+        ContextMenu contextMenu = new ContextMenu();
+        MenuItem incomeMenuItem = new MenuItem("Приход");
+        MenuItem expenseMenuItem = new MenuItem("Списание");
+        MenuItem editMenuItem = new MenuItem("Редактировать");
+        
+        incomeMenuItem.setOnAction(e -> {
+            SparePart selected = table.getSelectionModel().getSelectedItem();
+            if (selected != null) StockOperationDialog.show(selected, "ПРИХОД");
+        });
+        
+        expenseMenuItem.setOnAction(e -> {
+            SparePart selected = table.getSelectionModel().getSelectedItem();
+            if (selected != null) StockOperationDialog.show(selected, "СПИСАНИЕ");
+        });
+        
+        editMenuItem.setOnAction(e -> {
+            SparePart selected = table.getSelectionModel().getSelectedItem();
+            if (selected != null) SparePartPanel.showEditSparePartDialog(selected);
+        });
+        
+        contextMenu.getItems().addAll(incomeMenuItem, expenseMenuItem, editMenuItem);
+        table.setContextMenu(contextMenu);
 
         // ========== ВЕРХНЯЯ ПАНЕЛЬ С КНОПКАМИ И ПОИСКОМ ==========
         HBox topPanel = new HBox(10);
@@ -149,10 +192,17 @@ public class StockPanel {
         stockIncomeBtn.setDisable(true);
         stockIncomeBtn.setOnAction(e -> {
             SparePart selected = table.getSelectionModel().getSelectedItem();
-            if (selected != null) editStockDialog(selected);
+            if (selected != null) StockOperationDialog.show(selected, "ПРИХОД");
         });
 
-        topPanel.getChildren().addAll(searchField, clearBtn, stockIncomeBtn);
+        Button expenseBtn = new Button("Списание");
+        expenseBtn.setDisable(true);
+        expenseBtn.setOnAction(e -> {
+            SparePart selected = table.getSelectionModel().getSelectedItem();
+            if (selected != null) StockOperationDialog.show(selected, "СПИСАНИЕ");
+        });
+
+        topPanel.getChildren().addAll(searchField, clearBtn, stockIncomeBtn, expenseBtn);
 
         // Создаем панель с верхней панелью и таблицей
         VBox panel = new VBox(10, topPanel, table);

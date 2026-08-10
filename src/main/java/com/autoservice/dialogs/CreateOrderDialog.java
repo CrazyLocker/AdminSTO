@@ -248,6 +248,8 @@ public class CreateOrderDialog {
                 serviceCombo.setValue(null);
 
                 // ====== ВЫБОР ЗАПЧАСТЕЙ ЧЕРЕЗ ДИАЛОГ ======
+                // Запчасти НЕ списываются здесь — они будут проверены и списаны
+                // ТОЛЬКО при создании заказа (в saveBtn.setOnAction)
                 List<AutoAddSparePartService.SparePartWithQuantity> relatedParts = AutoAddSparePartService.getSparePartsByService(svc.getName());
                 
                 if (!relatedParts.isEmpty()) {
@@ -258,14 +260,11 @@ public class CreateOrderDialog {
                             SparePart part = partInfo.getSparePart();
                             double qty = partInfo.getQuantity();
                             
-                        if (qty > 0 && qty <= part.getStock()) {
-                            partsListView.getItems().add(part.getName() + " x" + (int)qty);
-                            tempParts.add(part);
-                            tempPartQuantities.add(qty);
-                            DataStore.updateSparePartStock(part, part.getStock() - qty);
-                            updateTotal.run();
-                        } else {
-                                showAlert("Недостаточно запчастей на складе: " + part.getName());
+                            if (qty > 0) {
+                                partsListView.getItems().add(part.getName() + " x" + (int)qty);
+                                tempParts.add(part);
+                                tempPartQuantities.add(qty);
+                                updateTotal.run();
                             }
                         }
                     }
@@ -276,9 +275,26 @@ public class CreateOrderDialog {
         removeServiceBtn.setOnAction(e -> {
             int idx = servicesListView.getSelectionModel().getSelectedIndex();
             if (idx >= 0) {
-                servicesListView.getItems().remove(idx);
-                tempServices.remove(idx);
+                String removedService = tempServices.remove(idx);
                 tempServicePrices.remove(idx);
+                
+                // При удалении услуги удаляем также связанные запчасти
+                Service removedSvc = DataStore.getServiceByName(removedService);
+                if (removedSvc != null) {
+                    List<AutoAddSparePartService.SparePartWithQuantity> relatedParts = 
+                            AutoAddSparePartService.getSparePartsByService(removedSvc.getName());
+                    for (AutoAddSparePartService.SparePartWithQuantity relPart : relatedParts) {
+                        SparePart toRemove = relPart.getSparePart();
+                        for (int i = tempParts.size() - 1; i >= 0; i--) {
+                            if (tempParts.get(i).getId() == toRemove.getId()) {
+                                tempParts.remove(i);
+                                tempPartQuantities.remove(i);
+                            }
+                        }
+                    }
+                }
+                
+                servicesListView.getItems().remove(idx);
                 updateTotal.run();
             }
         });
@@ -375,24 +391,33 @@ public class CreateOrderDialog {
                 isValid = false;
             }
 
-            // ====== ПОВТОРНАЯ ПРОВЕРКА ОСТАТКА ПЕРЕД СОХРАНЕНИЕМ ======
-            boolean hasStockIssue = false;
+            // ====== ПРОВЕРКА ДОСТАТОЧНОСТИ ВСЕХ ЗАПЧАСТЕЙ ======
+            // Создаём временный заказ для проверки через DataStore.checkSparePartsAvailability
+            WorkOrder tempOrder = new WorkOrder();
+            Client tempClient = clientCombo.getValue();
+            tempOrder.setClient(tempClient != null ? tempClient : new Client());
+            for (int i = 0; i < tempServices.size(); i++) {
+                String svcName = tempServices.get(i);
+                Service svc = DataStore.getServiceByName(svcName);
+                int svcId = (svc != null) ? svc.getId() : 0;
+                tempOrder.addService(svcId, svcName, tempServicePrices.get(i));
+            }
             for (int i = 0; i < tempParts.size(); i++) {
-                SparePart part = tempParts.get(i);
-                double qty = tempPartQuantities.get(i);
-                int currentStock = (int)DataStore.getSparePartById(part.getId()).getStock();
-                
-                if (qty > currentStock) {
-                    hasStockIssue = true;
-                    showAlert("Недостаточно запчастей на складе: " + part.getName() + " (в наличии: " + currentStock + ")");
-                    break;
+                tempOrder.addSparePart(tempParts.get(i), tempPartQuantities.get(i));
+            }
+            
+            List<String> missingParts = DataStore.checkSparePartsAvailability(tempOrder);
+            if (!missingParts.isEmpty()) {
+                StringBuilder msg = new StringBuilder("Недостаточно запчастей на складе:\n\n");
+                for (String part : missingParts) {
+                    msg.append("  • ").append(part).append("\n");
                 }
+                Alert stockAlert = new Alert(Alert.AlertType.WARNING, msg.toString(), ButtonType.OK);
+                stockAlert.setTitle("Недостаточно запчастей");
+                stockAlert.showAndWait();
+                isValid = false;
             }
-            
-            if (hasStockIssue) {
-                return;
-            }
-            
+
             if (!isValid) {
                 return;
             }
@@ -468,13 +493,22 @@ public class CreateOrderDialog {
                 order.addService(svcId, svcName, tempServicePrices.get(i));
             }
 
-            // ====== ДОБАВЛЯЕМ РУЧНЫЕ ЗАПЧАСТИ ======
+            // ====== ДОБАВЛЯЕМ ЗАПЧАСТИ ======
             for (int i = 0; i < tempParts.size(); i++) {
                 order.addSparePart(tempParts.get(i), tempPartQuantities.get(i));
             }
 
             // ====== СОХРАНЯЕМ ЗАКАЗ ======
             DataStore.addOrder(order);
+
+            // ====== РЕЗЕРВИРУЕМ ЗАПЧАСТИ ======
+            if (!DataStore.reserveSpareParts(order)) {
+                showAlert("Не удалось зарезервировать запчасти для заказа");
+                return;
+            }
+
+            // Проверяем минимальные остатки
+            DataStore.checkMinStockLevels();
 
             // ====== ЗАПИСЬ В КАЛЕНДАРЬ ======
             if (createAppointmentCheck.isSelected()) {
@@ -521,12 +555,8 @@ public class CreateOrderDialog {
         });
 
         cancelBtn.setOnAction(e -> {
-            // Восстановление остатков запчастей
-            for (int i = 0; i < tempParts.size(); i++) {
-                SparePart part = tempParts.get(i);
-                double qty = tempPartQuantities.get(i);
-                DataStore.updateSparePartStock(part, part.getStock() + qty);
-            }
+            // При отмене диалога запчасти НЕ списывались, поэтому возвращать ничего не нужно.
+            // Списание происходит только при нажатии «Создать заказ».
             stage.close();
             future.complete(new DialogResult(DialogResult.Action.CANCEL));
         });
@@ -582,7 +612,7 @@ public class CreateOrderDialog {
             HBox hBox = new HBox(10);
             hBox.setAlignment(Pos.CENTER_LEFT);
             
-            CheckBox checkBox = new CheckBox(part.getName() + " (в наличии: " + (int)part.getStock() + ")");
+            CheckBox checkBox = new CheckBox(part.getName() + " (доступно: " + (int)part.getAvailableStock() + " / всего: " + (int)part.getStock() + ")");
             checkBox.setSelected(true); // По умолчанию выбрано
             
             // Поле для ввода количества
@@ -594,7 +624,7 @@ public class CreateOrderDialog {
             qtyField.textProperty().addListener((obs, oldValue, newValue) -> {
                 try {
                     int qty = Integer.parseInt(newValue);
-                    int maxQty = (int)part.getStock();
+                    int maxQty = (int)part.getAvailableStock();
                     if (qty < 1) {
                         qtyField.setText("1");
                     } else if (qty > maxQty) {
@@ -624,7 +654,7 @@ public class CreateOrderDialog {
             plusBtn.setOnAction(e -> {
                 try {
                     int currentQty = Integer.parseInt(qtyField.getText());
-                    if (currentQty < (int)part.getStock()) {
+                    if (currentQty < (int)part.getAvailableStock()) {
                         qtyField.setText(String.valueOf(currentQty + 1));
                     }
                 } catch (NumberFormatException ex) { logger.error("Invalid number format", ex); }

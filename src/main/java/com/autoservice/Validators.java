@@ -2,7 +2,10 @@ package com.autoservice;
 
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextFormatter;
+import javafx.scene.layout.Region;
 
+import java.time.Year;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 public class Validators {
@@ -12,6 +15,18 @@ public class Validators {
     
     // Паттерн для кириллицы
     private static final Pattern CYRILLIC_PATTERN = Pattern.compile("^[\\u0400-\\u04FF]+$");
+    
+    // Паттерн для имени/фамилии (кириллица, пробел, дефис, апостроф)
+    private static final Pattern NAME_PATTERN = Pattern.compile("^[\\u0400-\\u04FF\\s'-]+$");
+    
+    // Паттерн для email
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[\\w.-]+@[\\w.-]+\\.[a-zA-Z]{2,}$");
+    
+    // Допустимые буквы в VIN (без I, O, Q)
+    private static final String VIN_ALLOWED_CHARS = "ABCDEFGHJKLMNPRSTUVWXYZ0123456789";
+    
+    // Паттерн госномера: А000АА00 или А000АА000
+    private static final Pattern CAR_NUMBER_PATTERN = Pattern.compile("^[" + ALLOWED_LETTERS + "]\\d{3}[" + ALLOWED_LETTERS + "]{2}\\d{2,3}$");
 
     /**
      * Настройка поля телефона с маской +7 (не редактируемая)
@@ -21,6 +36,8 @@ public class Validators {
      * REQ-VD-010: Запрет любых символов кроме цифр
      */
     public static void setupPhoneField(TextField phoneField) {
+        phoneField.setPromptText("+7 (900) 123-45-67");
+        
         // Если поле пустое — инициализируем нулевым номером
         if (phoneField.getText() == null || phoneField.getText().trim().isEmpty()) {
             phoneField.setText("+7");
@@ -69,6 +86,13 @@ public class Validators {
                 e.consume();
             }
         });
+        
+        // Защита от вставки через Ctrl+V
+        phoneField.textProperty().addListener((obs, oldVal, newVal) -> {
+            if (!newVal.matches("\\+?7\\d{10}")) {
+                phoneField.setText(oldVal);
+            }
+        });
     }
 
     /**
@@ -76,6 +100,8 @@ public class Validators {
      * Запрещает латиницу и специальные символы
      */
     public static void setupCarNumberField(TextField carNumberField) {
+        carNumberField.setPromptText("А000АА00");
+        
         // Создаем форматтер для госномера
         TextFormatter<String> formatter = new TextFormatter<>(change -> {
             String text = change.getText();
@@ -114,7 +140,7 @@ public class Validators {
     }
 
     /**
-     * Настройка поля имени (только кириллица)
+     * Настройка поля имени (только кириллица, пробел, дефис, апостроф)
      */
     public static void setupNameField(TextField nameField) {
         TextFormatter<String> formatter = new TextFormatter<>(change -> {
@@ -125,8 +151,8 @@ public class Validators {
                 return change;
             }
             
-            // Разрешаем только кириллические символы
-            if (text.matches("^[\\u0400-\\u04FF]+$")) {
+            // Разрешаем кириллицу, пробел, дефис, апостроф
+            if (text.matches("^[\\u0400-\\u04FF\\s'-]+$")) {
                 return change;
             }
             
@@ -137,7 +163,7 @@ public class Validators {
     }
 
     /**
-     * Настройка поля фамилии (только кириллица)
+     * Настройка поля фамилии (только кириллица, пробел, дефис, апостроф)
      */
     public static void setupLastNameField(TextField lastNameField) {
         TextFormatter<String> formatter = new TextFormatter<>(change -> {
@@ -148,8 +174,8 @@ public class Validators {
                 return change;
             }
             
-            // Разрешаем только кириллические символы
-            if (text.matches("^[\\u0400-\\u04FF]+$")) {
+            // Разрешаем кириллицу, пробел, дефис, апостроф
+            if (text.matches("^[\\u0400-\\u04FF\\s'-]+$")) {
                 return change;
             }
             
@@ -164,10 +190,7 @@ public class Validators {
      */
     public static boolean isValidCarNumber(String number) {
         if (number == null || number.isEmpty()) return false;
-
-        // Паттерн: буква + 3 цифры + 2 буквы + 2-3 цифры
-        String pattern = "^[" + ALLOWED_LETTERS + "]\\d{3}[" + ALLOWED_LETTERS + "]{2}\\d{2,3}$";
-        return number.matches(pattern);
+        return CAR_NUMBER_PATTERN.matcher(number).matches();
     }
 
     /**
@@ -226,9 +249,158 @@ public class Validators {
 
     /**
      * Приведение госномера к стандартному виду (верхний регистр)
+     * Удаляет пробелы, дефисы и другие спецсимволы
      */
     public static String normalizeCarNumber(String number) {
         if (number == null) return "";
-        return number.toUpperCase().replaceAll("[^АВЕКМНОРСТУХ0-9]", "");
+        return number.toUpperCase().replaceAll("[\\s-]", "").replaceAll("[^АВЕКМНОРСТУХ0-9]", "");
+    }
+
+    // ==================== НОВЫЕ МЕТОДЫ ВАЛИДАЦИИ ====================
+
+    /**
+     * Проверка на непустую строку (не null и не пустая)
+     */
+    public static boolean isNotBlank(String str) {
+        return str != null && !str.trim().isEmpty();
+    }
+
+    /**
+     * Проверка на положительное число (> 0)
+     */
+    public static boolean isPositiveNumber(double value) {
+        return value > 0;
+    }
+
+    /**
+     * Проверка на неотрицательное число (>= 0)
+     */
+    public static boolean isNonNegativeNumber(double value) {
+        return value >= 0;
+    }
+
+    /**
+     * Проверка email (формат: user@domain.ru)
+     */
+    public static boolean isValidEmail(String email) {
+        return email != null && EMAIL_PATTERN.matcher(email).matches();
+    }
+
+    /**
+     * Проверка пробега (неотрицательное целое число)
+     */
+    public static boolean isValidMileage(String mileage) {
+        if (mileage == null || mileage.trim().isEmpty()) return false;
+        try {
+            int value = Integer.parseInt(mileage.trim());
+            return value >= 0;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Проверка цены (положительное число)
+     */
+    public static boolean isValidPrice(String price) {
+        if (price == null || price.trim().isEmpty()) return false;
+        try {
+            double value = Double.parseDouble(price.trim());
+            return value > 0;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Проверка года (от 1900 до текущего года)
+     */
+    public static boolean isValidYear(String year) {
+        if (year == null || year.trim().isEmpty()) return false;
+        try {
+            int value = Integer.parseInt(year.trim());
+            int currentYear = Year.now().getValue();
+            return value >= 1900 && value <= currentYear;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Проверка VIN (17 символов, без I, O, Q)
+     */
+    public static boolean isValidVIN(String vin) {
+        if (vin == null || vin.length() != 17) return false;
+        String upper = vin.toUpperCase();
+        for (char c : upper.toCharArray()) {
+            if (VIN_ALLOWED_CHARS.indexOf(c) < 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================
+
+    /**
+     * Подсветка ошибки на поле
+     */
+    public static void showError(TextField control, String message) {
+        if (control != null) {
+            control.setStyle("-fx-border-color: red; -fx-border-width: 2;");
+            control.setPromptText(message);
+        }
+    }
+
+    /**
+     * Очистка подсветки ошибки
+     */
+    public static void clearError(TextField control) {
+        if (control != null) {
+            control.setStyle("");
+        }
+    }
+
+    /**
+     * Очистка всех ошибок в форме
+     */
+    public static void clearAllErrors(Region root) {
+        if (root == null) return;
+        root.lookupAll(".text-input").forEach(node -> {
+            if (node instanceof TextField) {
+                ((TextField) node).setStyle("");
+            }
+        });
+    }
+
+    // ==================== МАССОВАЯ ПРОВЕРКА ====================
+
+    /**
+     * Массовая проверка всех полей формы
+     * @param validations карта: поле -> сообщение об ошибке
+     * @return true если все поля валидны, false если есть ошибки
+     */
+    public static boolean validateAll(Map<TextField, String> validations) {
+        boolean allValid = true;
+        
+        for (Map.Entry<TextField, String> entry : validations.entrySet()) {
+            TextField field = entry.getKey();
+            String errorMessage = entry.getValue();
+            
+            if (field == null) {
+                continue;
+            }
+            
+            String text = field.getText();
+            
+            if (text == null || text.trim().isEmpty()) {
+                showError(field, errorMessage);
+                allValid = false;
+            } else {
+                clearError(field);
+            }
+        }
+        
+        return allValid;
     }
 }

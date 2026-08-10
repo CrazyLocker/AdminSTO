@@ -42,9 +42,9 @@ public class ServicePartHelper {
                 logger.warn("Запчасть с id={} не найдена для услуги id={}", sp.getSparePartId(), serviceId);
                 return false;
             }
-            if (sparePart.getStock() < sp.getQuantity()) {
+            if (sparePart.getAvailableStock() < sp.getQuantity()) {
                 logger.warn("Недостаточно запчасти {} для услуги id={}: нужно={}, есть={}", 
-                        sparePart.getName(), serviceId, sp.getQuantity(), sparePart.getStock());
+                        sparePart.getName(), serviceId, sp.getQuantity(), sparePart.getAvailableStock());
                 return false;
             }
         }
@@ -118,9 +118,9 @@ public class ServicePartHelper {
             }
 
             // Проверяем наличие на складе
-            if (sparePart.getStock() < sp.getQuantity()) {
+            if (sparePart.getAvailableStock() < sp.getQuantity()) {
                 logger.error("Недостаточно {} для услуги id={}: нужно={}, есть={}", 
-                        sparePart.getName(), serviceId, sp.getQuantity(), sparePart.getStock());
+                        sparePart.getName(), serviceId, sp.getQuantity(), sparePart.getAvailableStock());
                 continue;
             }
 
@@ -205,8 +205,8 @@ public class ServicePartHelper {
                 missing.append("Запчасть id=").append(sp.getSparePartId());
                 continue;
             }
-            if (sparePart.getStock() < sp.getQuantity()) {
-                double needed = sp.getQuantity() - sparePart.getStock();
+            if (sparePart.getAvailableStock() < sp.getQuantity()) {
+                double needed = sp.getQuantity() - sparePart.getAvailableStock();
                 if (missing.length() > 0) missing.append(", ");
                 missing.append(sparePart.getName()).append(" (нужно ещё ").append(String.format("%.2f", needed)).append(" ").append(sparePart.getUnitType()).append(")");
             }

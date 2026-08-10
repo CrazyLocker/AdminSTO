@@ -34,7 +34,9 @@ import java.time.format.DateTimeFormatter;
 
 import com.autoservice.DateUtils;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class EditOrderDialog {
     
@@ -364,18 +366,15 @@ public class EditOrderDialog {
                 List<AutoAddSparePartService.SparePartWithQuantity> selectedParts = showServiceSparePartsDialog(selected.getName(), relatedParts);
                 
                 if (selectedParts != null) {
-                    // Добавляем выбранные запчасти
+                    // Добавляем выбранные запчасти (НЕ списываем сразу — списание при сохранении)
                     for (AutoAddSparePartService.SparePartWithQuantity partInfo : selectedParts) {
                         SparePart part = partInfo.getSparePart();
                         double qty = partInfo.getQuantity();
                         
-                        if (qty > 0 && qty <= part.getStock()) {
+                        if (qty > 0) {
                             tempParts.add(part);
                             tempPartQuantities.add(qty);
-                            DataStore.updateSparePartStock(part, part.getStock() - qty);
                             partsListView.getItems().add(tempParts.size() + ". " + part.getName() + " — " + part.getRetailPrice() + " руб. x " + (int)qty + " = " + (part.getRetailPrice() * qty) + " руб.");
-                        } else {
-                            showAlert("Недостаточно запчастей на складе: " + part.getName());
                         }
                     }
                 }
@@ -395,17 +394,9 @@ public class EditOrderDialog {
                 return;
             }
 
-            // ====== ВАЛИДАЦИЯ ОСТАТКА ======
-            double requestedQty = 1.0;
-            if (requestedQty > selected.getStock()) {
-                showAlert("Недостаточно запчастей на складе: " + selected.getName() + " (в наличии: " + (int)selected.getStock() + ")");
-                return;
-            }
-
             tempParts.add(selected);
-            tempPartQuantities.add(requestedQty);
-            selected.setStock(selected.getStock() - requestedQty);
-            partsListView.getItems().add(tempParts.size() + ". " + selected.getName() + " — " + selected.getRetailPrice() + " руб. x " + (int)requestedQty + " = " + selected.getRetailPrice() + " руб.");
+            tempPartQuantities.add(1.0);
+            partsListView.getItems().add(tempParts.size() + ". " + selected.getName() + " — " + selected.getRetailPrice() + " руб. x 1 = " + selected.getRetailPrice() + " руб.");
             partCombo.setValue(null);
             updateTotalLabel();
         });
@@ -414,8 +405,25 @@ public class EditOrderDialog {
         removeServiceBtn.setOnAction(e -> {
             int idx = servicesListView.getSelectionModel().getSelectedIndex();
             if (idx >= 0 && idx < tempServices.size()) {
-                tempServices.remove(idx);
+                String removedService = tempServices.remove(idx);
                 tempServicePrices.remove(idx);
+                
+                // При удалении услуги удаляем также связанные запчасти из tempParts
+                Service removedSvc = DataStore.getServiceByName(removedService);
+                if (removedSvc != null) {
+                    List<AutoAddSparePartService.SparePartWithQuantity> relatedParts = 
+                            AutoAddSparePartService.getSparePartsByService(removedSvc.getName());
+                    for (AutoAddSparePartService.SparePartWithQuantity relPart : relatedParts) {
+                        SparePart toRemove = relPart.getSparePart();
+                        for (int i = tempParts.size() - 1; i >= 0; i--) {
+                            if (tempParts.get(i).getId() == toRemove.getId()) {
+                                tempParts.remove(i);
+                                tempPartQuantities.remove(i);
+                            }
+                        }
+                    }
+                }
+                
                 servicesListView.getItems().clear();
                 for (int i = 0; i < tempServices.size(); i++) {
                     servicesListView.getItems().add((i+1) + ". " + tempServices.get(i) + " — " + tempServicePrices.get(i) + " руб.");
@@ -429,9 +437,6 @@ public class EditOrderDialog {
         removePartBtn.setOnAction(e -> {
             int idx = partsListView.getSelectionModel().getSelectedIndex();
             if (idx >= 0 && idx < tempParts.size()) {
-                SparePart part = tempParts.get(idx);
-                double qty = tempPartQuantities.get(idx);
-                DataStore.updateSparePartStock(part, part.getStock() + qty);
                 tempParts.remove(idx);
                 tempPartQuantities.remove(idx);
                 partsListView.getItems().clear();
@@ -510,25 +515,28 @@ public class EditOrderDialog {
             isValid = false;
         }
 
-        // ====== ПОВТОРНАЯ ПРОВЕРКА ОСТАТКА ПЕРЕД СОХРАНЕНИЕМ ======
-        boolean hasStockIssue = false;
-        for (int i = 0; i < tempParts.size(); i++) {
-            SparePart part = tempParts.get(i);
-            double qty = tempPartQuantities.get(i);
-            SparePart currentPart = DataStore.getSparePartById(part.getId());
-            if (currentPart == null) {
-                hasStockIssue = true;
-                showAlert("Запчасть не найдена в базе: " + part.getName());
-                continue;
-            }
-            int currentStock = (int)currentPart.getStock();
-            
-            if (qty > currentStock) {
-                hasStockIssue = true;
-                showAlert("Недостаточно запчастей на складе: " + part.getName() + " (в наличии: " + currentStock + ")");
-            }
+        // ====== ПРОВЕРКА ДОСТАТОЧНОСТИ ВСЕХ ЗАПЧАСТЕЙ ======
+        // Создаём временный заказ для проверки через DataStore
+        WorkOrder tempOrder = new WorkOrder();
+        for (int i = 0; i < tempServices.size(); i++) {
+            String svcName = tempServices.get(i);
+            Service svc = DataStore.getServiceByName(svcName);
+            int svcId = (svc != null) ? svc.getId() : 0;
+            tempOrder.addService(svcId, svcName, tempServicePrices.get(i));
         }
-        if (hasStockIssue) {
+        for (int i = 0; i < tempParts.size(); i++) {
+            tempOrder.addSparePart(tempParts.get(i), tempPartQuantities.get(i));
+        }
+        
+        List<String> missingParts = DataStore.checkSparePartsAvailability(tempOrder);
+        if (!missingParts.isEmpty()) {
+            StringBuilder msg = new StringBuilder("Недостаточно запчастей на складе:\n\n");
+            for (String part : missingParts) {
+                msg.append("  • ").append(part).append("\n");
+            }
+            Alert stockAlert = new Alert(Alert.AlertType.WARNING, msg.toString(), ButtonType.OK);
+            stockAlert.setTitle("Недостаточно запчастей");
+            stockAlert.showAndWait();
             isValid = false;
         }
         
@@ -595,6 +603,82 @@ public class EditOrderDialog {
         logger.info("Услуг: {}", tempServices.size());
         logger.info("Запчастей: {}", tempParts.size());
 
+        // ====== РАСЧЁТ РАЗНИЦЫ ЗАПЧАСТЕЙ ======
+        // Корректно обрабатываем 3 случая:
+        // 1. Запчасть НОВАЯ (не была в заказе) → списать
+        // 2. Запчасть УДАЛЕНА (была в заказе, но нет в temp) → вернуть
+        // 3. Запчасть ИЗМЕНЕНА (количество изменилось) → скорректировать разницу
+        List<SparePartWithQuantity> addedParts = new ArrayList<>();
+        List<SparePartWithQuantity> removedParts = new ArrayList<>();
+        
+        // Строим карту оригинальных запчастей по ID
+        Map<Integer, Double> originalQtyMap = new HashMap<>();
+        for (int i = 0; i < order.getSpareParts().size(); i++) {
+            SparePart part = order.getSpareParts().get(i);
+            double qty = order.getSparePartQuantities().get(i);
+            originalQtyMap.put(part.getId(), qty);
+        }
+        
+        // Строим карту новых запчастей по ID
+        Map<Integer, Double> newQtyMap = new HashMap<>();
+        for (int i = 0; i < tempParts.size(); i++) {
+            SparePart part = tempParts.get(i);
+            double qty = tempPartQuantities.get(i);
+            newQtyMap.put(part.getId(), qty);
+        }
+        
+        // Находим добавленные и изменённые запчасти
+        for (Map.Entry<Integer, Double> entry : newQtyMap.entrySet()) {
+            int partId = entry.getKey();
+            double newQty = entry.getValue();
+            
+            if (!originalQtyMap.containsKey(partId)) {
+                // НОВАЯ запчасть — списать
+                SparePart part = tempParts.stream()
+                    .filter(p -> p.getId() == partId)
+                    .findFirst().orElse(null);
+                if (part != null) {
+                    addedParts.add(new SparePartWithQuantity(part, newQty));
+                }
+            } else {
+                // Запчасть была в заказе — проверяем изменение количества
+                double origQty = originalQtyMap.get(partId);
+                double diff = newQty - origQty;
+                if (diff > 0) {
+                    // Количество увеличилось — списать разницу
+                    SparePart part = tempParts.stream()
+                        .filter(p -> p.getId() == partId)
+                        .findFirst().orElse(null);
+                    if (part != null) {
+                        addedParts.add(new SparePartWithQuantity(part, diff));
+                    }
+                } else if (diff < 0) {
+                    // Количество уменьшилось — вернуть разницу
+                    SparePart part = tempParts.stream()
+                        .filter(p -> p.getId() == partId)
+                        .findFirst().orElse(null);
+                    if (part != null) {
+                        removedParts.add(new SparePartWithQuantity(part, Math.abs(diff)));
+                    }
+                }
+                // Если diff == 0 — изменений нет, ничего не делаем
+            }
+        }
+        
+        // Находим полностью удалённые запчасти
+        for (Map.Entry<Integer, Double> entry : originalQtyMap.entrySet()) {
+            int partId = entry.getKey();
+            if (!newQtyMap.containsKey(partId)) {
+                // Полностью удалена — вернуть весь объём
+                SparePart part = order.getSpareParts().stream()
+                    .filter(p -> p.getId() == partId)
+                    .findFirst().orElse(null);
+                if (part != null) {
+                    removedParts.add(new SparePartWithQuantity(part, entry.getValue()));
+                }
+            }
+        }
+        
         // ====== СОХРАНЯЕМ КЛИЕНТА ======
         Client selectedClient = clientCombo.getValue();
         if (selectedClient != null) {
@@ -628,7 +712,7 @@ public class EditOrderDialog {
             order.removeSparePart(0);
         }
 
-        // ====== ДОБАВЛЯЕМ РУЧНЫЕ ЗАПЧАСТИ ======
+        // ====== ДОБАВЛЯЕМ НОВЫЕ ЗАПЧАСТИ ======
         for (int i = 0; i < tempParts.size(); i++) {
             order.addSparePart(tempParts.get(i), tempPartQuantities.get(i));
         }
@@ -637,6 +721,36 @@ public class EditOrderDialog {
         String mileageText = mileageField.getText().trim();
         int mileage = mileageText.isEmpty() ? 0 : Integer.parseInt(mileageText);
         order.setMileage(mileage);
+
+        // ====== ОБРАБОТКА ЗАПЧАСТЕЙ (РЕЗЕРВИРОВАНИЕ) ======
+        // 1. Снимаем резерв с удалённых запчастей
+        for (SparePartWithQuantity spw : removedParts) {
+            SparePart part = spw.part;
+            double qty = spw.quantity;
+            SparePart current = DataStore.getSparePartById(part.getId());
+            if (current != null) {
+                current.unreserve(qty);
+                logger.info("Снят резерв (удаление из заказа): {} -{}", part.getName(), qty);
+            }
+        }
+        
+        // 2. Резервируем добавленные запчасти
+        for (SparePartWithQuantity spw : addedParts) {
+            SparePart part = spw.part;
+            double qty = spw.quantity;
+            SparePart current = DataStore.getSparePartById(part.getId());
+            if (current != null) {
+                if (current.reserve(qty)) {
+                    logger.info("Резервирование (добавление в заказ): {} +{}", part.getName(), qty);
+                } else {
+                    logger.warn("Не удалось зарезервировать «{}» для заказа {}: нужно {}, доступно {}", 
+                            part.getName(), order.getId(), qty, current.getAvailableStock());
+                }
+            }
+        }
+        
+        // 3. Проверяем минимальные остатки
+        DataStore.checkMinStockLevels();
 
         // ====== СОХРАНЯЕМ ЗАКАЗ ======
         DataStore.updateOrder(order);
@@ -690,15 +804,22 @@ public class EditOrderDialog {
         currentStage.close();
     }
 
-    private static void cancelChanges() {
-        for (int i = 0; i < tempParts.size(); i++) {
-            SparePart part = tempParts.get(i);
-            double originalQty = tempPartQuantities.get(i);
-            SparePart original = DataStore.getSparePartById(part.getId());
-            if (original != null) {
-                DataStore.updateSparePartStock(original, original.getStock() + originalQty);
-            }
+    /**
+     * Внутренний класс для хранения запчасти с количеством.
+     */
+    private static class SparePartWithQuantity {
+        SparePart part;
+        double quantity;
+        
+        SparePartWithQuantity(SparePart part, double quantity) {
+            this.part = part;
+            this.quantity = quantity;
         }
+    }
+
+    private static void cancelChanges() {
+        // При отмене не нужно ничего возвращать — запчасти не списывались при редактировании.
+        // Списание/возврат происходит только при сохранении.
         currentStage.close();
     }
 
@@ -760,7 +881,7 @@ public class EditOrderDialog {
             HBox hBox = new HBox(10);
             hBox.setAlignment(Pos.CENTER_LEFT);
             
-            CheckBox checkBox = new CheckBox(part.getName() + " (в наличии: " + (int)part.getStock() + ")");
+            CheckBox checkBox = new CheckBox(part.getName() + " (доступно: " + (int)part.getAvailableStock() + " / всего: " + (int)part.getStock() + ")");
             checkBox.setSelected(false); // По умолчанию не выбрано
             
             // Поле для ввода количества
@@ -787,7 +908,7 @@ public class EditOrderDialog {
             plusBtn.setOnAction(evt -> {
                 try {
                     int currentQty = Integer.parseInt(qtyField.getText());
-                    if (currentQty < (int)part.getStock()) {
+                    if (currentQty < (int)part.getAvailableStock()) {
                         qtyField.setText(String.valueOf(currentQty + 1));
                     }
                 } catch (NumberFormatException ex) { logger.error("Invalid number format", ex); }

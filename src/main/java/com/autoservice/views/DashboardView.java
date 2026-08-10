@@ -397,7 +397,7 @@ public class DashboardView extends ScrollPane {
     private String getLowStockCount() {
         int count = 0;
         for (SparePart part : DataStore.getSpareParts()) {
-            if (part.getStock() < part.getMinStock()) {
+            if (part.getAvailableStock() < part.getMinStock()) {
                 count++;
             }
         }

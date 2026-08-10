@@ -23,7 +23,7 @@ public class OilHelper {
         if (oil == null) return false;
 
         double neededLiters = service.getOilVolume();
-        return oil.getStock() >= neededLiters;
+        return oil.getAvailableStock() >= neededLiters;
     }
 
     /**
@@ -129,7 +129,7 @@ public class OilHelper {
                 }
 
                 if (!oil.deductStock(neededLiters)) {
-                    String errorMsg = String.format("Недостаточно масла! Нужно: %.2f л, Доступно: %.2f л", neededLiters, oil.getStock());
+                    String errorMsg = String.format("Недостаточно масла! Нужно: %.2f л, Доступно: %.2f л", neededLiters, oil.getAvailableStock());
                     logger.error(errorMsg);
                     continue;
                 }
@@ -146,7 +146,7 @@ public class OilHelper {
                     if (part.deductStock(quantity)) {
                         order.addSparePart(part, quantity);
                     } else {
-                        String errorMsg = String.format("Недостаточно %s! Нужно: %d, Доступно: %.2f", part.getName(), quantity, part.getStock());
+                        String errorMsg = String.format("Недостаточно %s! Нужно: %d, Доступно: %.2f", part.getName(), quantity, part.getAvailableStock());
                         logger.error(errorMsg);
                     }
                 }

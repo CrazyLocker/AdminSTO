@@ -107,8 +107,23 @@ public class SparePartPanel {
         TableColumn<SparePart, Double> colStock = new TableColumn<>("Остаток");
         colStock.setId("colStock");
         colStock.setCellValueFactory(new PropertyValueFactory<>("stock"));
-        colStock.setPrefWidth(100);
+        colStock.setPrefWidth(90);
         colStock.setSortable(true);
+
+        TableColumn<SparePart, Double> colReserved = new TableColumn<>("Резерв");
+        colReserved.setId("colReserved");
+        colReserved.setCellValueFactory(new PropertyValueFactory<>("reserved"));
+        colReserved.setPrefWidth(90);
+        colReserved.setSortable(true);
+
+        TableColumn<SparePart, Double> colAvailable = new TableColumn<>("Доступно");
+        colAvailable.setId("colAvailable");
+        colAvailable.setCellValueFactory(cellData -> {
+            SparePart part = cellData.getValue();
+            return new javafx.beans.property.SimpleDoubleProperty(part.getAvailableStock()).asObject();
+        });
+        colAvailable.setPrefWidth(90);
+        colAvailable.setSortable(true);
 
         TableColumn<SparePart, String> colUnitType = new TableColumn<>("Ед. изм.");
         colUnitType.setId("colUnitType");
@@ -117,16 +132,47 @@ public class SparePartPanel {
         colUnitType.setSortable(true);
 
         table.getColumns().addAll(colName, colPartNumber, colManufacturer, colCompatibleModels,
-                colRetailPrice, colStock, colUnitType);
+                colRetailPrice, colStock, colReserved, colAvailable, colUnitType);
         table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(table, Priority.ALWAYS);
 
         table.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
                 SparePart selected = table.getSelectionModel().getSelectedItem();
-                if (selected != null) editSparePartDialog(selected);
+                if (selected != null) {
+                    StockOperationDialog.show(selected, "ПРИХОД");
+                }
             }
         });
+        
+        // Контекстное меню для таблицы
+        ContextMenu contextMenu = new ContextMenu();
+        MenuItem incomeMenuItem = new MenuItem("Приход");
+        MenuItem expenseMenuItem = new MenuItem("Списание");
+        MenuItem editMenuItem = new MenuItem("Редактировать");
+        MenuItem deleteMenuItem = new MenuItem("Удалить");
+        
+        incomeMenuItem.setOnAction(e -> {
+            SparePart selected = table.getSelectionModel().getSelectedItem();
+            if (selected != null) StockOperationDialog.show(selected, "ПРИХОД");
+        });
+        
+        expenseMenuItem.setOnAction(e -> {
+            SparePart selected = table.getSelectionModel().getSelectedItem();
+            if (selected != null) StockOperationDialog.show(selected, "СПИСАНИЕ");
+        });
+        
+        editMenuItem.setOnAction(e -> {
+            SparePart selected = table.getSelectionModel().getSelectedItem();
+            if (selected != null) showEditSparePartDialog(selected);
+        });
+        
+        deleteMenuItem.setOnAction(e -> {
+            deleteBtn.fire();
+        });
+        
+        contextMenu.getItems().addAll(incomeMenuItem, expenseMenuItem, editMenuItem, deleteMenuItem);
+        table.setContextMenu(contextMenu);
 
         // ========== ГОЯЧИЕ КЛАВИШИ ==========
         table.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> {
@@ -458,6 +504,10 @@ public class SparePartPanel {
         });
 
         stage.showAndWait();
+    }
+
+    public static void showEditSparePartDialog(SparePart part) {
+        editSparePartDialog(part);
     }
 
     private static void editSparePartDialog(SparePart part) {

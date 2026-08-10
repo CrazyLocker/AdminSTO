@@ -564,15 +564,16 @@ public class SQLiteDatabase extends AbstractDatabase {
             conn.setAutoCommit(false);
             
             // Update order header
-            String orderSql = "UPDATE orders SET client_id = ?, status = ?, total = ?, closed_date = ?, notes = ? WHERE id = ?";
+            String orderSql = "UPDATE orders SET client_id = ?, status = ?, total = ?, mileage = ?, closed_date = ?, notes = ? WHERE id = ?";
             try (PreparedStatement pstmt = conn.prepareStatement(orderSql)) {
                 int clientId = getClientId(order.getClient());
                 pstmt.setInt(1, clientId);
                 pstmt.setString(2, order.getStatus());
                 pstmt.setDouble(3, order.getTotal());
-                pstmt.setString(4, order.getClosedDate() != null ? order.getClosedDate() : "");
-                pstmt.setString(5, order.getNotes() != null ? order.getNotes() : "");
-                pstmt.setString(6, order.getId());
+                pstmt.setInt(4, order.getMileage());
+                pstmt.setString(5, order.getClosedDate() != null ? order.getClosedDate() : "");
+                pstmt.setString(6, order.getNotes() != null ? order.getNotes() : "");
+                pstmt.setString(7, order.getId());
                 pstmt.executeUpdate();
             }
             

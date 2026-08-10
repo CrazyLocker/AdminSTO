@@ -71,6 +71,11 @@ public class OrderController {
     public static void changeOrderStatus(WorkOrder order, String newStatus) {
         if (order == null) return;
         if (newStatus != null && !newStatus.equals(order.getStatus())) {
+            // При закрытии заказа — списываем запчасти
+            if (WorkOrder.STATUS_CLOSED.equals(newStatus)) {
+                DataStore.deductSpareParts(order);
+            }
+            
             order.setStatus(newStatus);
             DataStore.updateOrder(order);
             refreshTable();
@@ -99,25 +104,14 @@ public class OrderController {
 
         confirm.showAndWait().ifPresent(response -> {
             if (response == ButtonType.YES) {
-                returnSparePartsToStock(order);
+                // Снимаем резерв с запчастей
+                DataStore.unreserveSpareParts(order);
                 deleteAssociatedAppointment(order);
                 DataStore.deleteOrder(order);
                 refreshTable();
                 showAlert("Заказ " + order.getId() + " удалён", Alert.AlertType.INFORMATION);
             }
         });
-    }
-
-    private static void returnSparePartsToStock(WorkOrder order) {
-        for (int i = 0; i < order.getSpareParts().size(); i++) {
-            SparePart part = order.getSpareParts().get(i);
-            double quantity = order.getSparePartQuantities().get(i);
-
-            // Используем double для расчёта нового остатка
-            double newStock = part.getStock() + quantity;
-            DataStore.updateSparePartStock(part, newStock);
-            logger.debug("Возвращено на склад: {} +{}", part.getName(), quantity);
-        }
     }
 
     private static void deleteAssociatedAppointment(WorkOrder order) {
