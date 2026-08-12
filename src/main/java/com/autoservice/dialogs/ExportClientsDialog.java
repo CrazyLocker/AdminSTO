@@ -142,7 +142,7 @@ public class ExportClientsDialog {
 
         cancelBtn.setOnAction(e -> stage.close());
         
-        stage.setOnHiding(e -> {
+        stage.setOnHidden(e -> {
             // Сохранение состояния диалога при закрытии
             WindowStateManager.getInstance().saveWindowState("exportClientsDialog", stage);
         });

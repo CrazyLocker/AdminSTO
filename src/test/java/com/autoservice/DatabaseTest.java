@@ -15,7 +15,7 @@ class DatabaseTest extends BaseTest {
     @Test
     @Order(1)
     void testCreateTables() {
-        Database.initForTest();
+        DatabaseFactory.initForTest();
         assertThat(true).isTrue();
     }
 

@@ -166,7 +166,7 @@ public class ReportView {
         stage.setScene(scene);
         stage.showAndWait();
         
-        stage.setOnHiding(e -> {
+        stage.setOnHidden(e -> {
             WindowStateManager.getInstance().saveWindowState("reportDialog", stage);
         });
     }

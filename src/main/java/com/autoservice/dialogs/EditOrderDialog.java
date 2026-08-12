@@ -493,7 +493,7 @@ public class EditOrderDialog {
             currentStage.close();
         });
         
-        currentStage.setOnHiding(e -> {
+        currentStage.setOnHidden(e -> {
             WindowStateManager.getInstance().saveWindowState("editOrderDialog", currentStage);
         });
 
@@ -858,6 +858,8 @@ public class EditOrderDialog {
         stage.setMinWidth(600);
         stage.setMinHeight(500);
         stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+        
+        WindowStateManager.getInstance().restoreWindowState("editOrderServicePartsDialog", stage);
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
@@ -1009,6 +1011,9 @@ public class EditOrderDialog {
         });
 
         updateTotal.run();
+        stage.setOnHidden(e -> {
+            WindowStateManager.getInstance().saveWindowState("editOrderServicePartsDialog", stage);
+        });
         stage.showAndWait();
 
         return result[0]; // Возвращаем результат

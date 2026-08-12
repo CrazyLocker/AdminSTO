@@ -145,6 +145,26 @@ public class ClientView {
 
         refreshClientList();
 
+        // ========== ГОРЯЧИЕ КЛАВИШИ НА ROOT КОНТЕЙНЕРЕ ==========
+        // Работают независимо от того, где сейчас фокус (таблица, поиск, кнопки)
+        mainContainer.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> {
+            if (e.isControlDown() && e.getCode() == KeyCode.N) {
+                e.consume();
+                showAddClientDialog();
+            } else if (e.isControlDown() && e.getCode() == KeyCode.S) {
+                e.consume();
+                Client selected = clientTable.getSelectionModel().getSelectedItem();
+                if (selected != null) showEditClientDialog(selected);
+            } else if (e.getCode() == javafx.scene.input.KeyCode.DELETE) {
+                e.consume();
+                Client selected = clientTable.getSelectionModel().getSelectedItem();
+                if (selected != null) deleteBtn.fire();
+            } else if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
+                e.consume();
+                searchField.clear();
+            }
+        });
+
         // Загружаем состояние таблицы ПОСЛЕ отрисовки — иначе setAll() и setPrefWidth()
         // сбрасываются при первом layout pass
         Platform.runLater(() -> {

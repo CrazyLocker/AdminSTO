@@ -163,7 +163,7 @@ public class ImportClientsDialog {
         Button closeBtn = new Button("Закрыть");
         closeBtn.setOnAction(e -> stage.close());
         
-        stage.setOnHiding(e -> {
+        stage.setOnHidden(e -> {
             WindowStateManager.getInstance().saveWindowState("importClientsDialog", stage);
         });
 

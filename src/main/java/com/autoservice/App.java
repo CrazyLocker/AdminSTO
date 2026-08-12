@@ -1,5 +1,6 @@
 package com.autoservice;
 
+import com.autoservice.config.SettingsManager;
 import com.autoservice.utils.ExceptionHandler;
 import com.autoservice.utils.LoggerManager;
 import com.autoservice.utils.ThemeManager;
@@ -21,7 +22,6 @@ import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.shape.SVGPath;
 import javafx.stage.Stage;
-import atlantafx.base.theme.PrimerDark;
 
 /**
  * Точка входа в приложение «Администратор СТО» (JavaFX).
@@ -60,14 +60,16 @@ public class App extends Application {
      */
     @Override
     public void start(Stage primaryStage) {
-        Application.setUserAgentStylesheet(new PrimerDark().getUserAgentStylesheet());
-        // Инициализация логгирования
-        LoggerManager.init();
+        // 1. Загрузка настроек из JSON (независимо от БД)
+        SettingsManager.load();
         logger.info("Запуск приложения Администратор СТО");
-        
+
         try {
+            // 2. Инициализация БД (бизнес-данные)
             Database.init();
             logger.info("База данных инициализирована");
+
+            // 3. Загрузка данных в кэш (в фоновом потоке)
             LoadingIndicator.show();
             new Thread(() -> {
                 DataStore.load();
@@ -111,9 +113,11 @@ public class App extends Application {
         tabPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, tab) -> {
             logger.info("🔄 Переключение вкладки: {} -> {}", oldTab != null ? oldTab.getText() : "null", tab != null ? tab.getText() : "null");
             if (tab == dashTab) {
-                DashboardView.refresh();
+                // Отложенный refresh — не блокирует переключение вкладки
+                Platform.runLater(() -> DashboardView.refresh());
             } else if (tab == appointmentTab) {
-                AppointmentView.refresh();
+                // Отложенный refresh — не блокирует переключение вкладки
+                Platform.runLater(() -> AppointmentView.refresh());
             }
         });
 

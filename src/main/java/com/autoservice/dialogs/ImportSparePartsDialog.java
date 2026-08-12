@@ -166,7 +166,7 @@ public class ImportSparePartsDialog {
         Button closeBtn = new Button("Закрыть");
         closeBtn.setOnAction(e -> stage.close());
         
-        stage.setOnHiding(e -> {
+        stage.setOnHidden(e -> {
             WindowStateManager.getInstance().saveWindowState("importSparePartsDialog", stage);
         });
 

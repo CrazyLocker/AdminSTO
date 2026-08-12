@@ -527,7 +527,7 @@ public class SQLiteDatabase extends AbstractDatabase {
 
             conn.setAutoCommit(false);
 
-            String sql = "INSERT INTO orders (id, client_id, status, total, created_date, closed_date, notes, car_model, car_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            String sql = "INSERT INTO orders (id, client_id, status, total, created_date, closed_date, notes, car_model, car_number, mileage) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 pstmt.setString(1, orderId);
                 pstmt.setInt(2, clientId);
@@ -538,6 +538,7 @@ public class SQLiteDatabase extends AbstractDatabase {
                 pstmt.setString(7, order.getNotes() != null ? order.getNotes() : "");
                 pstmt.setString(8, order.getCarModel() != null ? order.getCarModel() : "");
                 pstmt.setString(9, order.getCarNumber() != null ? order.getCarNumber() : "");
+                pstmt.setInt(10, order.getMileage());
                 pstmt.executeUpdate();
             }
 

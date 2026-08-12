@@ -180,6 +180,24 @@ public class OrderView {
             }
         });
 
+        // ========== ГОРЯЧИЕ КЛАВИШИ НА ROOT КОНТЕЙНЕРЕ ==========
+        // Работают независимо от того, где сейчас фокус (таблица, поиск, фильтры)
+        root.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> {
+            if (e.isControlDown() && e.getCode() == javafx.scene.input.KeyCode.S) {
+                e.consume();
+                onEdit();
+            } else if (e.isControlDown() && e.getCode() == KeyCode.N) {
+                e.consume();
+                OrderController.createOrder();
+            } else if (e.getCode() == javafx.scene.input.KeyCode.DELETE) {
+                e.consume();
+                onDelete();
+            } else if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
+                e.consume();
+                searchField.clear();
+            }
+        });
+
         root.getChildren().addAll(topPanel, advancedToggleBtn, advancedFilterPanel, orderTable);
         VBox.setVgrow(orderTable, Priority.ALWAYS);
 

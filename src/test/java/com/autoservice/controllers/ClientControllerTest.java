@@ -9,7 +9,11 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 /**
- * Тесты для ClientController
+ * Тесты для ClientController.
+ * 
+ * <p>Проверяют базовую функциональность управления клиентами: добавление,
+ * обновление, валидацию данных. Некоторые тесты отмечены как @Disabled,
+ * так как требуют инициализации JavaFX.</p>
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Tag(TestTags.CONTROLLER)

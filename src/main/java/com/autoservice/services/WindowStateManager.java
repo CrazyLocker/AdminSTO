@@ -62,19 +62,30 @@ public class WindowStateManager {
             }
             logger.debug("Window state saved: {} -> {}", windowId, state);
         } catch (IOException e) {
-            logger.error("ERROR saving state for window {}: {}", windowId, e.getMessage());
+            logger.error("ERROR saving state for window {}: {}", windowId, e.getMessage(), e);
+        } catch (Exception e) {
+            logger.error("ERROR unexpected saving state for window {}: {}", windowId, e.getMessage(), e);
         }
     }
     
     /**
-     * Сохраняет состояние окна изjavafx.stage.Stage
+     * Сохраняет состояние окна из javafx.stage.Stage.
+     * Использует try-catch, чтобы ошибка записи не блокировала закрытие окна.
      */
     public void saveWindowState(String windowId, javafx.stage.Stage stage) {
         if (stage == null) {
             logger.error("ERROR: stage is null for {}", windowId);
             return;
         }
-        saveWindowState(windowId, stage.getX(), stage.getY(), stage.getWidth(), stage.getHeight());
+        try {
+            double x = stage.getX();
+            double y = stage.getY();
+            double width = stage.getWidth();
+            double height = stage.getHeight();
+            saveWindowState(windowId, x, y, width, height);
+        } catch (Exception e) {
+            logger.error("ERROR reading stage properties for window {}: {}", windowId, e.getMessage(), e);
+        }
     }
     
     /**

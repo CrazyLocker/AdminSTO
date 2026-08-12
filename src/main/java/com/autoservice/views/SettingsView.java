@@ -1,5 +1,6 @@
 package com.autoservice.views;
 
+import com.autoservice.config.SettingsManager;
 import com.autoservice.utils.ThemeManager;
 import com.autoservice.*;
 import com.autoservice.controllers.SettingsController;
@@ -15,7 +16,6 @@ import com.autoservice.model.ServiceSparePartsListItem;
 import com.autoservice.model.ServicePart;
 import com.autoservice.model.Setting;
 import com.autoservice.model.ToPart;
-import com.autoservice.services.SettingService;
 import com.autoservice.services.BackupService;
 import com.autoservice.services.ScheduleService;
 import com.autoservice.services.TableStateManager;
@@ -58,8 +58,8 @@ import java.util.List;
  * 
  * Зависимости: JavaFX (TableView, TabPane, FilteredList, SortedList), DataStore,
  * Setting, ServiceSparePart, ServiceSparePartsList, ServicePart, ToPart,
- * SettingsController, SettingService, BackupService, ScheduleService,
- * TableStateManager, WindowStateManager, ThemeManager, диалоги импорта/экспорта.
+ * SettingsController, BackupService, ScheduleService,
+ * TableStateManager, WindowStateManager, ThemeManager, SettingsManager, диалоги импорта/экспорта.
  * 
  * Особенности: содержит несколько таблиц (настройки, связи услуг-запчастей,
  * расходники ТО), состояния которых сохраняются через TableStateManager.
@@ -67,7 +67,7 @@ import java.util.List;
  * @author AdminSTO Team
  * @since 1.0
  * @see DataStore
- * @see SettingService
+ * @see SettingsManager
  * @see BackupService
  */
 public class SettingsView {
@@ -144,7 +144,7 @@ public class SettingsView {
         stage.setX((bounds.getWidth() - 1100) / 2);
         stage.setY((bounds.getHeight() - 750) / 2);
         
-        stage.setOnHiding(e -> {
+        stage.setOnHidden(e -> {
             WindowStateManager.getInstance().saveWindowState("settingsDialog", stage);
         });
         
@@ -546,7 +546,7 @@ public class SettingsView {
         autoAddYes.setToggleGroup(autoAddGroup);
         autoAddNo.setToggleGroup(autoAddGroup);
 
-        if (SettingService.isAutoAddSparePartsEnabled()) {
+        if (SettingsManager.isAutoAddSpareParts()) {
             autoAddYes.setSelected(true);
         } else {
             autoAddNo.setSelected(true);
@@ -568,7 +568,7 @@ public class SettingsView {
         confirmationYes.setToggleGroup(confirmationGroup);
         confirmationNo.setToggleGroup(confirmationGroup);
 
-        if (SettingService.isSparePartConfirmationRequired()) {
+        if (SettingsManager.isSparePartConfirmation()) {
             confirmationYes.setSelected(true);
         } else {
             confirmationNo.setSelected(true);
@@ -582,8 +582,8 @@ public class SettingsView {
             boolean autoAddEnabled = autoAddYes.isSelected();
             boolean confirmationRequired = confirmationYes.isSelected();
 
-            SettingService.setAutoAddSparePartsEnabled(autoAddEnabled);
-            SettingService.setSparePartConfirmationRequired(confirmationRequired);
+            SettingsManager.setAutoAddSpareParts(autoAddEnabled);
+            SettingsManager.setSparePartConfirmation(confirmationRequired);
 
             showAlert("Настройки сохранены", Alert.AlertType.INFORMATION);
         });
@@ -2289,10 +2289,10 @@ public class SettingsView {
         autoBackupYes.setToggleGroup(autoBackupGroup);
         autoBackupNo.setToggleGroup(autoBackupGroup);
 
-        // Загрузить текущие настройки из SettingService
-        boolean backupEnabled = SettingService.isAutoBackupEnabled();
-        String currentBackupTime = SettingService.getBackupTime();
-        int backupRetention = SettingService.getBackupRetention();
+        // Загрузить текущие настройки из SettingsManager (JSON)
+        boolean backupEnabled = SettingsManager.isBackupEnabled();
+        String currentBackupTime = SettingsManager.getBackupTime();
+        int backupRetention = SettingsManager.getBackupRetention();
         if (backupEnabled) {
             autoBackupYes.setSelected(true);
         } else {

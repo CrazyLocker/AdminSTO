@@ -207,6 +207,19 @@ public class StockPanel {
         // Создаем панель с верхней панелью и таблицей
         VBox panel = new VBox(10, topPanel, table);
 
+        // ========== ГОРЯЧИЕ КЛАВИШИ НА ROOT КОНТЕЙНЕРЕ ==========
+        // Работают независимо от того, где сейчас фокус (таблица, поиск)
+        panel.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> {
+            if (e.isControlDown() && e.getCode() == KeyCode.S) {
+                e.consume();
+                SparePart selected = table.getSelectionModel().getSelectedItem();
+                if (selected != null) editStockDialog(selected);
+            } else if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
+                e.consume();
+                if (searchField != null) searchField.clear();
+            }
+        });
+
         // Загружаем состояние таблицы ПОСЛЕ отрисовки
         Platform.runLater(() -> {
             if (table != null) {
@@ -347,7 +360,7 @@ public class StockPanel {
         });
 
         cancelBtn.setOnAction(e -> stage.close());
-        stage.setOnHiding(e -> WindowStateManager.getInstance().saveWindowState("editStockDialog", stage));
+        stage.setOnHidden(e -> WindowStateManager.getInstance().saveWindowState("editStockDialog", stage));
         stage.showAndWait();
     }
 

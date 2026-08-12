@@ -258,6 +258,25 @@ public class SparePartPanel {
 
         VBox panel = new VBox(10, headerPanel, table);
 
+        // ========== ГОРЯЧИЕ КЛАВИШИ НА ROOT КОНТЕЙНЕРЕ ==========
+        // Работают независимо от того, где сейчас фокус (таблица, поиск)
+        panel.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> {
+            if (e.isControlDown() && e.getCode() == KeyCode.N) {
+                e.consume();
+                showAddSparePartDialog();
+            } else if (e.isControlDown() && e.getCode() == KeyCode.S) {
+                e.consume();
+                SparePart selected = table.getSelectionModel().getSelectedItem();
+                if (selected != null) editSparePartDialog(selected);
+            } else if (e.getCode() == javafx.scene.input.KeyCode.DELETE) {
+                e.consume();
+                deleteBtn.fire();
+            } else if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
+                e.consume();
+                searchField.clear();
+            }
+        });
+
         // Загружаем состояние таблицы ПОСЛЕ отрисовки
         Platform.runLater(() -> {
             if (table != null) {
@@ -499,7 +518,7 @@ public class SparePartPanel {
         });
         cancelBtn.setOnAction(e -> stage.close());
         
-        stage.setOnHiding(e -> {
+        stage.setOnHidden(e -> {
             WindowStateManager.getInstance().saveWindowState("addSparePartDialog", stage);
         });
 
@@ -674,7 +693,7 @@ public class SparePartPanel {
 
         cancelBtn.setOnAction(e -> stage.close());
         
-        stage.setOnHiding(e -> {
+        stage.setOnHidden(e -> {
             WindowStateManager.getInstance().saveWindowState("editSparePartDialog", stage);
         });
 

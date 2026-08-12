@@ -601,7 +601,7 @@ public class AppointmentView {
 
         Scene scene = new Scene(root);
         stage.setScene(scene);
-        stage.setOnHiding(e -> WindowStateManager.getInstance().saveWindowState("appointmentDetails", stage));
+        stage.setOnHidden(e -> WindowStateManager.getInstance().saveWindowState("appointmentDetails", stage));
         stage.showAndWait();
     }
 
@@ -754,7 +754,7 @@ public class AppointmentView {
 
         Scene scene = new Scene(root);
         stage.setScene(scene);
-        stage.setOnHiding(e -> WindowStateManager.getInstance().saveWindowState("appointmentInfoOnly", stage));
+        stage.setOnHidden(e -> WindowStateManager.getInstance().saveWindowState("appointmentInfoOnly", stage));
         stage.showAndWait();
     }
 
@@ -937,7 +937,7 @@ public class AppointmentView {
 
         cancelBtn.setOnAction(e -> stage.close());
 
-        stage.setOnHiding(e -> WindowStateManager.getInstance().saveWindowState("editAppointmentDialog", stage));
+        stage.setOnHidden(e -> WindowStateManager.getInstance().saveWindowState("editAppointmentDialog", stage));
         stage.showAndWait();
     }
 
@@ -1082,7 +1082,7 @@ public class AppointmentView {
 
         cancelBtn.setOnAction(e -> stage.close());
 
-        stage.setOnHiding(e -> WindowStateManager.getInstance().saveWindowState("editAppointmentDialog", stage));
+        stage.setOnHidden(e -> WindowStateManager.getInstance().saveWindowState("editAppointmentDialog", stage));
         stage.showAndWait();
     }
 

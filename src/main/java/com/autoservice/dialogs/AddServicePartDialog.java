@@ -29,6 +29,8 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
+import com.autoservice.services.WindowStateManager;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -61,6 +63,8 @@ public class AddServicePartDialog {
         boolean isEdit = existingParts != null && !existingParts.isEmpty();
         stage.setTitle(isEdit ? "Редактировать связь услуги и запчастей" : "Добавить связь услуги и запчастей");
         stage.initModality(Modality.APPLICATION_MODAL);
+        
+        WindowStateManager.getInstance().restoreWindowState("addServicePartDialog", stage);
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
@@ -236,6 +240,10 @@ public class AddServicePartDialog {
         });
 
         cancelBtn.setOnAction(e -> stage.close());
+
+        stage.setOnHidden(e -> {
+            WindowStateManager.getInstance().saveWindowState("addServicePartDialog", stage);
+        });
 
         stage.sizeToScene();
         stage.showAndWait();

@@ -92,7 +92,7 @@ public class OrderDetailsDialog {
         
         closeBtn.setOnAction(e -> stage.close());
         
-        stage.setOnHiding(e -> {
+        stage.setOnHidden(e -> {
             WindowStateManager.getInstance().saveWindowState("orderDetailsDialog", stage);
         });
 

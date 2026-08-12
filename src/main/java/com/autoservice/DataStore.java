@@ -12,7 +12,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Центральное хранилище данных приложения (in-memory кэш над БД).
@@ -455,21 +457,186 @@ public class DataStore {
     }
 
     /**
-     * Списывает количество запчастей со склада по имени услуги. Использует
-     * {@link AutoAddSparePartService} для определения связанных запчастей и
-     * уменьшает остаток первой найденной.
+     * Списывает количество запчастей со склада по имени услуги.
+     * Списывает ВСЕ запчасти, связанные с услугой, а не только первую.
      * 
      * @param serviceName название услуги
      * @param qty         количество, которое нужно списать
      */
     public static void updateSparePartStock(String serviceName, int qty) {
-        // Получаем запчасти, связанные с услугой
-        List<AutoAddSparePartService.SparePartWithQuantity> parts = AutoAddSparePartService.getSparePartsByService(serviceName);
-        if (!parts.isEmpty()) {
-            SparePart part = parts.get(0).getSparePart();
+        List<AutoAddSparePartService.SparePartWithQuantity> parts =
+                AutoAddSparePartService.getSparePartsByService(serviceName);
+        
+        for (AutoAddSparePartService.SparePartWithQuantity partInfo : parts) {
+            SparePart part = partInfo.getSparePart();
             if (part != null) {
-                part.setStock(part.getStock() - qty);
-                DataStore.updateSparePartStock(part, part.getStock());
+                double newStock = part.getStock() - partInfo.getQuantity() * qty;
+                DataStore.updateSparePartStock(part, newStock);
+                logger.debug("Списано: {} qty={} newStock={}", part.getName(), qty, newStock);
+            }
+        }
+    }
+
+    // ==================== СКЛАД: ПРОВЕРКИ И УПРАВЛЕНИЕ ====================
+
+    /**
+     * Проверяет, достаточно ли запчастей на складе для данного заказа.
+     * Использует доступный остаток (stock - reserved).
+     * 
+     * @param order заказ для проверки
+     * @return список строк с описанием недостающих запчастей (пустой, если всё в наличии)
+     */
+    public static List<String> checkSparePartsAvailability(WorkOrder order) {
+        List<String> missing = new ArrayList<>();
+        
+        for (int i = 0; i < order.getSpareParts().size(); i++) {
+            SparePart part = order.getSpareParts().get(i);
+            double qty = order.getSparePartQuantities().get(i);
+            SparePart current = getSparePartById(part.getId());
+            
+            if (current != null) {
+                double available = current.getAvailableStock();
+                if (qty > available) {
+                    missing.add(String.format(
+                        "«%s»: нужно %.0f %s, доступно %.0f %s (всего: %.0f, резерв: %.0f)",
+                        part.getName(), qty, current.getUnitType(), available, current.getUnitType(), current.getStock(), current.getReserved()
+                    ));
+                }
+            } else {
+                missing.add(String.format(
+                    "«%s»: запчасть не найдена в справочнике",
+                    part.getName()
+                ));
+            }
+        }
+        
+        return missing;
+    }
+
+    /**
+     * Резервирует запчасти для заказа.
+     * 
+     * @param order заказ, для которого резервируются запчасти
+     * @return true, если все запчасти удалось зарезервировать
+     */
+    public static boolean reserveSpareParts(WorkOrder order) {
+        for (int i = 0; i < order.getSpareParts().size(); i++) {
+            SparePart part = order.getSpareParts().get(i);
+            double qty = order.getSparePartQuantities().get(i);
+            
+            SparePart current = getSparePartById(part.getId());
+            if (current != null) {
+                if (!current.reserve(qty)) {
+                    logger.warn("Не удалось зарезервировать: {} (нужно {}, доступно {})", 
+                            part.getName(), qty, current.getAvailableStock());
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Снимает резерв с запчастей заказа (при отмене/удалении).
+     * 
+     * @param order заказ, для которого снимается резерв
+     */
+    public static void unreserveSpareParts(WorkOrder order) {
+        for (int i = 0; i < order.getSpareParts().size(); i++) {
+            SparePart part = order.getSpareParts().get(i);
+            double qty = order.getSparePartQuantities().get(i);
+            
+            SparePart current = getSparePartById(part.getId());
+            if (current != null) {
+                current.unreserve(qty);
+                logger.info("Снят резерв: {} -{} (остаток резерва: {})", part.getName(), qty, current.getReserved());
+            }
+        }
+    }
+
+    /**
+     * Списывает запчасти со склада при закрытии заказа.
+     * Уменьшает stock и снимает резерв.
+     * 
+     * @param order заказ, запчасти которого нужно списать
+     */
+    public static void deductSpareParts(WorkOrder order) {
+        for (int i = 0; i < order.getSpareParts().size(); i++) {
+            SparePart part = order.getSpareParts().get(i);
+            double qty = order.getSparePartQuantities().get(i);
+            
+            SparePart current = getSparePartById(part.getId());
+            if (current != null) {
+                if (current.deduct(qty)) {
+                    logger.info("Списано со склада: {} -{} (остаток: {})", part.getName(), qty, current.getStock());
+                } else {
+                    logger.warn("Не удалось списать: {} (нужно {}, в наличии {})", part.getName(), qty, current.getStock());
+                }
+            }
+        }
+    }
+
+    /**
+     * Возвращает запчасти на склад при отмене/удалении заказа (устаревший метод, используйте unreserveSpareParts).
+     * 
+     * @param order заказ, запчасти которого нужно вернуть
+     * @deprecated Используйте {@link #unreserveSpareParts(WorkOrder)}
+     */
+    @Deprecated
+    public static void restoreSpareParts(WorkOrder order) {
+        unreserveSpareParts(order);
+    }
+
+    /**
+     * Проверяет все запчасти на предмет падения ниже минимального остатка.
+     * Логирует предупреждения для каждой запчасти, где stock < minStock.
+     */
+    public static void checkMinStockLevels() {
+        List<String> lowStock = new ArrayList<>();
+        
+        for (SparePart part : getSpareParts()) {
+            if (part.getMinStock() > 0 && part.getStock() < part.getMinStock()) {
+                lowStock.add(String.format(
+                    "«%s»: %.0f %s (мин. %s %.0f %s)",
+                    part.getName(),
+                    part.getStock(), part.getUnitType(),
+                    part.getUnitType(), part.getMinStock(), part.getUnitType()
+                ));
+            }
+        }
+        
+        if (!lowStock.isEmpty()) {
+            logger.warn("⚠️ Запчасти с низким остатком ({}):", lowStock.size());
+            for (String msg : lowStock) {
+                logger.warn("  - {}", msg);
+            }
+        }
+    }
+
+    /**
+     * Списывает запчасти для всех услуг в заказе (автоматически добавленные).
+     * Использует {@link AutoAddSparePartService} для определения запчастей по услугам.
+     * 
+     * @param order заказ, для которого нужно списать запчасти
+     */
+    public static void deductServiceSpareParts(WorkOrder order) {
+        for (int i = 0; i < order.getServices().size(); i++) {
+            String serviceName = order.getServices().get(i);
+            List<AutoAddSparePartService.SparePartWithQuantity> parts =
+                    AutoAddSparePartService.getSparePartsByService(serviceName);
+            
+            for (AutoAddSparePartService.SparePartWithQuantity partInfo : parts) {
+                SparePart part = partInfo.getSparePart();
+                if (part != null) {
+                    double qtyToDeduct = partInfo.getQuantity();
+                    if (part.deductStock(qtyToDeduct)) {
+                        logger.debug("Списано из услуги «{}»: {} -{}", 
+                                serviceName, part.getName(), qtyToDeduct);
+                    } else {
+                        logger.warn("Не хватило «{}» для услуги «{}»: доступно {}", 
+                                part.getName(), serviceName, part.getStock());
+                    }
+                }
             }
         }
     }

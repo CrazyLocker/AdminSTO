@@ -14,7 +14,11 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * Тесты для CreateOrderDialog
+ * Тесты для CreateOrderDialog.
+ * 
+ * <p>Проверяют базовую функциональность работы с заказами: добавление услуг,
+ * запчастей, пересчёт общей стоимости, валидацию данных клиента и времени
+ * записи. Тесты не зависят от JavaFX и могут запускаться без инициализации UI.</p>
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Tag(TestTags.UI)

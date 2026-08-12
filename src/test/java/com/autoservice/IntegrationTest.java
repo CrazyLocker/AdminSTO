@@ -10,6 +10,7 @@ import java.util.List;
  * Проверяют полный цикл работы: клиент → заказ → запись → статус → отчёт.
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@Tag(TestTags.INTEGRATION)
 class IntegrationTest extends BaseTest {
 
     @Test

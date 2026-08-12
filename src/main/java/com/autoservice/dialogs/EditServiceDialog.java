@@ -176,7 +176,7 @@ public class EditServiceDialog {
 
         cancelBtn.setOnAction(e -> stage.close());
         
-        stage.setOnHiding(e -> {
+        stage.setOnHidden(e -> {
             WindowStateManager.getInstance().saveWindowState("editServiceDialog", stage);
         });
         stage.showAndWait();

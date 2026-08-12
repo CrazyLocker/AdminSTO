@@ -561,6 +561,10 @@ public class CreateOrderDialog {
             future.complete(new DialogResult(DialogResult.Action.CANCEL));
         });
 
+        stage.setOnHidden(e -> {
+            WindowStateManager.getInstance().saveWindowState("createOrderDialog", stage);
+        });
+
         stage.showAndWait(); // Используем showAndWait вместо show + join()
         return future;
     }
@@ -589,6 +593,8 @@ public class CreateOrderDialog {
         stage.setMinWidth(600);
         stage.setMinHeight(500);
         stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+        
+        WindowStateManager.getInstance().restoreWindowState("createOrderServicePartsDialog", stage);
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
@@ -764,6 +770,9 @@ public class CreateOrderDialog {
         });
 
         updateTotal.run();
+        stage.setOnHidden(e -> {
+            WindowStateManager.getInstance().saveWindowState("createOrderServicePartsDialog", stage);
+        });
         stage.showAndWait();
 
         return result[0]; // Возвращаем результат

@@ -7,7 +7,11 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * Тесты для SparePartPanelController
+ * Тесты для SparePartPanelController.
+ * 
+ * <p>Проверяют базовую функциональность управления запчастями: добавление,
+ * обновление, удаление запчастей, обновление таблицы. Тесты не зависят
+ * от JavaFX и могут запускаться без инициализации UI.</p>
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Tag(TestTags.CONTROLLER)

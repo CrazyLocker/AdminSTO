@@ -1,10 +1,8 @@
 package com.autoservice.utils;
 
 import atlantafx.base.theme.*;
-import com.autoservice.services.SettingService;
+import com.autoservice.config.SettingsManager;
 import javafx.application.Application;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.scene.Scene;
 
 import java.util.Arrays;
@@ -13,12 +11,10 @@ import java.util.List;
 /**
  * Менеджер тем AtlantaFX.
  * - Переключает тему в runtime
- * - Сохраняет выбор в БД через SettingService
- * - При старте загружает сохранённую тему
+ * - Сохраняет выбор в JSON через SettingsManager (НЕ в БД)
+ * - При старте загружает тему из SettingsManager
  */
 public class ThemeManager {
-
-    private static final String SETTING_KEY = "app_theme";
 
     public enum AppTheme {
         PRIMER_DARK("Primer Dark", PrimerDark.class),
@@ -53,20 +49,20 @@ public class ThemeManager {
     private static final List<AppTheme> THEMES = Arrays.asList(AppTheme.values());
 
     /**
-     * Инициализация менеджера тем. Вызвать ПОСЛЕ создания Scene и инициализации БД.
-     * Загружает сохранённую тему из настроек.
+     * Инициализация менеджера тем. Вызвать ПОСЛЕ создания Scene.
+     * Загружает тему из SettingsManager (JSON), НЕ из БД.
      */
     public static void init(Scene scene) {
         ThemeManager.scene = scene;
 
-        // Попробовать загрузить сохранённую тему
+        // Загрузить тему из JSON-конфига
         AppTheme themeToApply = currentTheme;
         try {
-            String saved = SettingService.getSettingValue(SETTING_KEY);
-            if (saved != null) {
-                themeToApply = AppTheme.valueOf(saved);
-            }
-        } catch (Exception ignored) {}
+            String saved = SettingsManager.getTheme();
+            themeToApply = AppTheme.valueOf(saved);
+        } catch (Exception e) {
+            System.err.println("Тема '" + SettingsManager.getTheme() + "' не найдена, используется PRIMER_DARK");
+        }
 
         applyTheme(themeToApply);
     }
@@ -80,39 +76,46 @@ public class ThemeManager {
     }
 
     /**
-     * Применить тему: переключить AtlantaFX, перезагрузить CSS, сохранить в БД.
+     * Применить тему: сохранить в JSON и загрузить CSS.
      */
     private static void applyTheme(AppTheme theme) {
         try {
             Theme instance = theme.themeClass.getDeclaredConstructor().newInstance();
-            Application.setUserAgentStylesheet(instance.getUserAgentStylesheet());
+            String themeCssUrl = instance.getUserAgentStylesheet();
             currentTheme = theme;
 
-            // Сохранить в БД
-            try {
-                SettingService.setSettingValue(SETTING_KEY, theme.name());
-            } catch (Exception ignored) {}
+            // Сохранить тему в JSON (НЕ в БД)
+            SettingsManager.setTheme(theme.name());
 
-            // Удалить старые кастомные CSS
-            scene.getStylesheets().removeIf(s ->
-                    s.contains("global-custom") || s.contains("dashboard-custom")
-            );
+            // 1. Глобальная загрузка темы (user-agent stylesheet).
+            //    Применяется ко ВСЕМ окнам: главная сцена, Alert'ы, диалоги.
+            Application.setUserAgentStylesheet(themeCssUrl);
 
-            // Загрузить нужные CSS
+            // 2. Author-level загрузка для главной Scene.
+            scene.getStylesheets().clear();
+            scene.getStylesheets().add(themeCssUrl);
+
+            // 3. Кастомные стили поверх темы
             loadCSS("/global-custom.css");
             String dashboardCss = currentTheme.isDark()
                     ? "/dashboard-custom.css"
                     : "/dashboard-custom-light.css";
             loadCSS(dashboardCss);
 
-            // Принудительное обновление сцены
-            ObservableList<String> sheets = FXCollections.observableArrayList(scene.getStylesheets());
-            scene.getStylesheets().clear();
-            scene.getStylesheets().addAll(sheets);
-
         } catch (Exception e) {
+            System.err.println("Ошибка загрузки темы " + theme.displayName + ": " + e.getMessage());
             e.printStackTrace();
-            System.err.println("Ошибка переключения темы: " + e.getMessage());
+
+            // Fallback: стандартная тема JavaFX (Modena)
+            try {
+                Application.setUserAgentStylesheet(Application.STYLESHEET_MODENA);
+                scene.getStylesheets().clear();
+                loadCSS("/global-custom.css");
+                loadCSS("/dashboard-custom.css");
+                System.err.println("Загружена fallback-тема (Modena)");
+            } catch (Exception fallbackErr) {
+                System.err.println("Fallback-тема недоступна: " + fallbackErr.getMessage());
+            }
         }
     }
 

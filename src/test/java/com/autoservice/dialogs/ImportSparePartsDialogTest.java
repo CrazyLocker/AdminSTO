@@ -8,7 +8,10 @@ import org.junit.jupiter.api.*;
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * Тесты для ImportSparePartsDialog
+ * Тесты для ImportSparePartsDialog.
+ * 
+ * <p>Проверяют базовую функциональность импорта запчастей из XML-файлов.
+ * Тесты не зависят от JavaFX и могут запускаться без инициализации UI.</p>
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Tag(TestTags.UI)

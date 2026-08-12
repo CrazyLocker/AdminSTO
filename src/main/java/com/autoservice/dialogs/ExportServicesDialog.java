@@ -142,7 +142,7 @@ public class ExportServicesDialog {
 
         cancelBtn.setOnAction(e -> stage.close());
         
-        stage.setOnHiding(e -> {
+        stage.setOnHidden(e -> {
             // Сохранение состояния диалога при закрытии
             WindowStateManager.getInstance().saveWindowState("exportServicesDialog", stage);
         });

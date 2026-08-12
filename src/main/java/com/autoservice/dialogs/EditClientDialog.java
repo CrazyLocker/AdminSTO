@@ -273,6 +273,11 @@ public class EditClientDialog {
 
         Scene scene = new Scene(root);
         stage.setScene(scene);
+        
+        stage.setOnHidden(e -> {
+            WindowStateManager.getInstance().saveWindowState("editClientDialog", stage);
+        });
+        
         stage.showAndWait();
         return future;
     }

@@ -14,6 +14,8 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
+import com.autoservice.services.WindowStateManager;
+
 /**
  * Диалог выбора операции со складом (приход/списание).
  */
@@ -30,6 +32,8 @@ public class StockOperationDialog {
         stage.setMinWidth(450);
         stage.setMinHeight(300);
         stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
+        
+        WindowStateManager.getInstance().restoreWindowState("stockOperationDialog", stage);
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
@@ -181,6 +185,11 @@ public class StockOperationDialog {
         });
 
         cancelBtn.setOnAction(e -> stage.close());
+        
+        stage.setOnHidden(e -> {
+            WindowStateManager.getInstance().saveWindowState("stockOperationDialog", stage);
+        });
+
         stage.showAndWait();
     }
 
