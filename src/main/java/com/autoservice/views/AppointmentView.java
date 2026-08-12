@@ -39,8 +39,13 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.layout.StackPane;
 import javafx.scene.shape.SVGPath;
 import javafx.scene.shape.Circle;
+import javafx.scene.shape.Rectangle;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import javafx.stage.Modality;
 import javafx.scene.Scene;
@@ -55,20 +60,20 @@ import java.util.List;
 
 /**
  * Экран записи клиентов на сервис (расписание).
- * 
+ *
  * Ответственность: отображение сетки расписания в двух режимах (неделя/месяц),
  * навигация по датам, создание записи клиента на конкретное время и услугу,
  * привязка записей к заказам, а также перетаскивание (drag & drop) записей.
- * 
+ *
  * Зависимости: JavaFX (GridPane, ScrollPane, DatePicker, RadioButton, TableView),
  * DataStore, Appointment, Client, Service, WorkOrder, CreateOrderDialog,
  * EditClientDialog, EditOrderDialog, PrintOrderDialog, WindowStateManager,
  * TableStateManager, TooltipHelper.
- * 
+ *
  * Особенности: списки временных слотов и мастеров вынесены в AppConstants;
  * используется переключатель вида «Неделя/Месяц»; записи перетаскиваются
  * перетаскиванием (drag & drop) между слотами.
- * 
+ *
  * @author AdminSTO Team
  * @since 1.0
  * @see DataStore
@@ -87,13 +92,21 @@ public class AppointmentView {
     private static ToggleGroup viewToggle;
     private static String currentView = "week";
 
+    // Цвета для календаря
+    private static final String CELL_EMPTY_COLOR = "#1E2139";
+    private static final String CELL_HOVER_COLOR = "#2A2F4F";
+    private static final String CELL_BOOKED_COLOR = "#FB923C";
+    private static final String CELL_BOOKED_ALPHA = "0.7";
+    private static final String CELL_TEXT_COLOR = "#9CA3AF";
+    private static final String CELL_TEXT_BOOKED_COLOR = "#FFFFFF";
+
     private static final DateTimeFormatter HEADER_FORMATTER = DateTimeFormatter.ofPattern("d MMMM yyyy 'г.'", new java.util.Locale.Builder().setLanguage("ru").build());
     private static final DateTimeFormatter WEEK_FORMATTER = DateTimeFormatter.ofPattern("d MMM", new java.util.Locale.Builder().setLanguage("ru").build());
 
     /**
      * Строит главный экран записи: верхнюю панель с переключателем вида и
      * датой, а также сетку расписания.
-     * 
+     *
      * @return корневой контейнер VBox с интерфейсом записи
      */
     public static VBox create() {
@@ -194,6 +207,154 @@ public class AppointmentView {
         refreshView();
     }
 
+    /**
+     * Создает визуальную ячейку календаря для недельного режима.
+     */
+    private static StackPane createWeekCell(LocalDate day, String time, Appointment appointment) {
+        StackPane cell = new StackPane();
+        cell.setPrefSize(120, 70);
+        cell.setMinSize(100, 60);
+
+        // Фон ячейки
+        Rectangle background = new Rectangle();
+        background.setWidth(120);
+        background.setHeight(70);
+        background.setArcWidth(8);
+        background.setArcHeight(8);
+
+        if (appointment != null) {
+            // Есть запись - оранжевый полупрозрачный
+            background.setFill(Color.web(CELL_BOOKED_COLOR, Double.parseDouble(CELL_BOOKED_ALPHA)));
+        } else {
+            // Свободно - темный цвет темы
+            background.setFill(Color.web(CELL_EMPTY_COLOR));
+        }
+
+        cell.getChildren().add(background);
+
+        // Информация о записи
+        if (appointment != null) {
+            VBox infoBox = new VBox(3);
+            infoBox.setAlignment(Pos.CENTER_LEFT);
+            infoBox.setPadding(new Insets(8));
+
+            Client client = appointment.getClient();
+            String fullName = (client.getLastName() != null && !client.getLastName().isEmpty())
+                    ? client.getLastName() + " " + client.getName()
+                    : client.getName();
+
+            Label nameLabel = new Label(fullName);
+            nameLabel.setStyle("-fx-text-fill: " + CELL_TEXT_BOOKED_COLOR + "; -fx-font-size: 12px; -fx-font-weight: bold;");
+            nameLabel.setWrapText(true);
+
+            Label carLabel = new Label(client.getCarModel() + " (" + client.getCarNumber() + ")");
+            carLabel.setStyle("-fx-text-fill: " + CELL_TEXT_BOOKED_COLOR + "; -fx-font-size: 10px;");
+            carLabel.setWrapText(true);
+
+            Label serviceLabel = new Label(appointment.getServiceName());
+            serviceLabel.setStyle("-fx-text-fill: " + CELL_TEXT_BOOKED_COLOR + "; -fx-font-size: 10px;");
+            serviceLabel.setWrapText(true);
+
+            infoBox.getChildren().addAll(nameLabel, carLabel, serviceLabel);
+            cell.getChildren().add(infoBox);
+
+            // Drag and Drop для существующей записи
+            cell.setOnDragDetected(e -> {
+                if (appointment != null) {
+                    Dragboard db = cell.startDragAndDrop(TransferMode.MOVE);
+                    ClipboardContent content = new ClipboardContent();
+                    String contentStr = "appointment_id:" + appointment.getId() + "|" +
+                            "original_date:" + appointment.getDate() + "|" +
+                            "original_time:" + appointment.getTime() + "|" +
+                            "original_master:" + appointment.getMasterName();
+                    content.putString(contentStr);
+                    db.setContent(content);
+                    e.consume();
+                }
+            });
+
+            cell.setOnMouseClicked(event -> {
+                if (event.getClickCount() == 2) {
+                    showAppointmentDetails(appointment);
+                }
+            });
+
+        } else {
+            // Свободная ячейка
+            Label freeLabel = new Label("свободно");
+            freeLabel.setStyle("-fx-text-fill: " + CELL_TEXT_COLOR + "; -fx-font-size: 11px;");
+            cell.getChildren().add(freeLabel);
+
+            cell.setOnMouseClicked(event -> {
+                if (event.getClickCount() == 2) {
+                    datePicker.setValue(day);
+                    showAddAppointmentWithOrderDialog(time);
+                }
+            });
+        }
+
+        // Hover эффект
+        cell.setOnMouseEntered(e -> {
+            if (appointment == null) {
+                background.setFill(Color.web(CELL_HOVER_COLOR));
+            }
+        });
+        cell.setOnMouseExited(e -> {
+            if (appointment == null) {
+                background.setFill(Color.web(CELL_EMPTY_COLOR));
+            } else {
+                background.setFill(Color.web(CELL_BOOKED_COLOR, Double.parseDouble(CELL_BOOKED_ALPHA)));
+            }
+        });
+
+        // Drag and Drop для всех ячеек
+        final LocalDate cellDate = day;
+        final String cellTime = time;
+
+        cell.setOnDragOver(e -> {
+            if (e.getDragboard().hasContent(javafx.scene.input.DataFormat.PLAIN_TEXT)) {
+                e.acceptTransferModes(TransferMode.MOVE);
+                e.consume();
+            }
+        });
+
+        cell.setOnDragDropped(e -> {
+            Dragboard db = e.getDragboard();
+            if (db.hasContent(javafx.scene.input.DataFormat.PLAIN_TEXT)) {
+                String content = db.getString();
+
+                String appointmentId = null;
+                String originalDate = null;
+                String originalTime = null;
+                String originalMaster = null;
+
+                String[] parts = content.split("\\|");
+                for (String part : parts) {
+                    if (part.startsWith("appointment_id:")) {
+                        appointmentId = part.substring("appointment_id:".length());
+                    } else if (part.startsWith("original_date:")) {
+                        originalDate = part.substring("original_date:".length());
+                    } else if (part.startsWith("original_time:")) {
+                        originalTime = part.substring("original_time:".length());
+                    } else if (part.startsWith("original_master:")) {
+                        originalMaster = part.substring("original_master:".length());
+                    }
+                }
+
+                if (appointmentId != null && originalDate != null && originalTime != null && originalMaster != null) {
+                    showEditAppointmentDialog(appointmentId, originalDate, originalTime, originalMaster, cellDate, cellTime);
+                }
+
+                e.setDropCompleted(true);
+            } else {
+                e.setDropCompleted(false);
+            }
+            e.consume();
+        });
+
+        return cell;
+    }
+
     private static void loadWeekView() {
         LocalDate startDate = datePicker.getValue();
         if (startDate == null) return;
@@ -207,16 +368,30 @@ public class AppointmentView {
 
         // Заголовок времени
         Label timeHeader = new Label("Время");
+        timeHeader.setStyle("-fx-text-fill: " + CELL_TEXT_COLOR + "; -fx-font-size: 13px; -fx-font-weight: bold;");
+        timeHeader.setAlignment(Pos.CENTER);
+        timeHeader.setPrefWidth(80);
         scheduleGrid.add(timeHeader, 0, 0);
 
         for (int i = 0; i < 7; i++) {
             LocalDate day = startDate.plusDays(i);
             String dayOfWeek = day.format(DateTimeFormatter.ofPattern("EEEE", new java.util.Locale.Builder().setLanguage("ru").build()));
             String dayOfMonth = day.format(DateTimeFormatter.ofPattern("d MMMM", new java.util.Locale.Builder().setLanguage("ru").build()));
-            Label dayHeader = new Label(dayOfWeek + "\n" + dayOfMonth);
-            dayHeader.setWrapText(true);
-            dayHeader.setAlignment(Pos.CENTER);
-            scheduleGrid.add(dayHeader, i + 1, 0);
+
+            VBox dayHeaderBox = new VBox(2);
+            dayHeaderBox.setAlignment(Pos.CENTER);
+            dayHeaderBox.setPadding(new Insets(5));
+
+            Label dayOfWeekLabel = new Label(dayOfWeek);
+            dayOfWeekLabel.setStyle("-fx-text-fill: " + CELL_TEXT_COLOR + "; -fx-font-size: 12px;");
+            dayOfWeekLabel.setAlignment(Pos.CENTER);
+
+            Label dayOfMonthLabel = new Label(dayOfMonth);
+            dayOfMonthLabel.setStyle("-fx-text-fill: " + CELL_TEXT_BOOKED_COLOR + "; -fx-font-size: 13px; -fx-font-weight: bold;");
+            dayOfMonthLabel.setAlignment(Pos.CENTER);
+
+            dayHeaderBox.getChildren().addAll(dayOfWeekLabel, dayOfMonthLabel);
+            scheduleGrid.add(dayHeaderBox, i + 1, 0);
         }
 
         for (int i = 0; i < AppConstants.TIME_SLOTS.length; i++) {
@@ -224,6 +399,9 @@ public class AppointmentView {
             int row = i + 1;
 
             Label timeLabel = new Label(time);
+            timeLabel.setStyle("-fx-text-fill: " + CELL_TEXT_COLOR + "; -fx-font-size: 12px;");
+            timeLabel.setAlignment(Pos.CENTER);
+            timeLabel.setPrefWidth(80);
             scheduleGrid.add(timeLabel, 0, row);
 
             for (int j = 0; j < 7; j++) {
@@ -231,105 +409,7 @@ public class AppointmentView {
                 List<Appointment> dayAppointments = DataStore.getAppointmentsByDate(DateUtils.formatDateForDB(day));
                 Appointment appointment = findAppointmentByTimeInList(dayAppointments, time);
 
-                VBox cell = new VBox(5);
-
-                if (appointment != null) {
-                    Client client = appointment.getClient();
-                    String fullName = (client.getLastName() != null && !client.getLastName().isEmpty())
-                            ? client.getLastName() + " " + client.getName()
-                            : client.getName();
-                    String carInfo = client.getCarModel() + " (" + client.getCarNumber() + ")";
-
-                    Label nameLabel = new Label(fullName);
-                    nameLabel.setWrapText(true);
-                    Label carLabel = new Label(carInfo);
-                    carLabel.setWrapText(true);
-                    Label serviceLabel = new Label(appointment.getServiceName());
-                    serviceLabel.setWrapText(true);
-                    cell.getChildren().addAll(nameLabel, carLabel, serviceLabel);
-
-                    // ====== DRAG AND DROP ДЛЯ СУЩЕСТВУЮЩЕЙ ЗАПИСИ ======
-                    cell.setOnDragDetected(e -> {
-                        if (appointment != null) {
-                            // Создаём Dragboard с ID записи
-                            Dragboard db = cell.startDragAndDrop(TransferMode.MOVE);
-                            ClipboardContent content = new ClipboardContent();
-                            String contentStr = "appointment_id:" + appointment.getId() + "|" +
-                                            "original_date:" + appointment.getDate() + "|" +
-                                            "original_time:" + appointment.getTime() + "|" +
-                                            "original_master:" + appointment.getMasterName();
-                            content.putString(contentStr);
-                            db.setContent(content);
-                            e.consume();
-                        }
-                    });
-
-                    cell.setOnMouseClicked(event -> {
-                        if (event.getClickCount() == 2) {
-                            showAppointmentDetails(appointment);
-                        }
-                    });
-                } else {
-                    Label freeLabel = new Label("свободно");
-                    cell.getChildren().add(freeLabel);
-
-                    final LocalDate finalDay = day;
-                    final String finalTime = time;
-                    cell.setOnMouseClicked(event -> {
-                        if (event.getClickCount() == 2) {
-                            datePicker.setValue(finalDay);
-                            showAddAppointmentWithOrderDialog(finalTime);
-                        }
-                    });
-                }
-
-                // ====== ОБРАБОТКА DRAG AND DROP ДЛЯ ВСЕХ ЯЧЕЕК ======
-                final LocalDate cellDate = day;
-                final String cellTime = time;
-                
-                cell.setOnDragOver(e -> {
-                    if (e.getDragboard().hasContent(javafx.scene.input.DataFormat.PLAIN_TEXT)) {
-                        e.acceptTransferModes(TransferMode.MOVE);
-                        e.consume();
-                    }
-                });
-                
-                cell.setOnDragDropped(e -> {
-                    Dragboard db = e.getDragboard();
-                    if (db.hasContent(javafx.scene.input.DataFormat.PLAIN_TEXT)) {
-                        String content = db.getString();
-                        
-                        // Извлекаем данные из Dragboard
-                        String appointmentId = null;
-                        String originalDate = null;
-                        String originalTime = null;
-                        String originalMaster = null;
-                        
-                        String[] parts = content.split("\\|");
-                        for (String part : parts) {
-                            if (part.startsWith("appointment_id:")) {
-                                appointmentId = part.substring("appointment_id:".length());
-                            } else if (part.startsWith("original_date:")) {
-                                originalDate = part.substring("original_date:".length());
-                            } else if (part.startsWith("original_time:")) {
-                                originalTime = part.substring("original_time:".length());
-                            } else if (part.startsWith("original_master:")) {
-                                originalMaster = part.substring("original_master:".length());
-                            }
-                        }
-                        
-                        if (appointmentId != null && originalDate != null && originalTime != null && originalMaster != null) {
-                            // Показываем диалог редактирования с новой датой и временем
-                            showEditAppointmentDialog(appointmentId, originalDate, originalTime, originalMaster, cellDate, cellTime);
-                        }
-                        
-                        e.setDropCompleted(true);
-                    } else {
-                        e.setDropCompleted(false);
-                    }
-                    e.consume();
-                });
-                
+                StackPane cell = createWeekCell(day, time, appointment);
                 scheduleGrid.add(cell, j + 1, row);
             }
         }
@@ -347,7 +427,9 @@ public class AppointmentView {
         String[] weekDays = {"Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"};
         for (int i = 0; i < 7; i++) {
             Label dayHeader = new Label(weekDays[i]);
+            dayHeader.setStyle("-fx-text-fill: " + CELL_TEXT_COLOR + "; -fx-font-size: 12px; -fx-font-weight: bold;");
             dayHeader.setAlignment(Pos.CENTER);
+            dayHeader.setPrefWidth(120);
             scheduleGrid.add(dayHeader, i, 0);
         }
 
@@ -360,64 +442,92 @@ public class AppointmentView {
                 LocalDate cellDate = startDate.plusDays(row * 7 + col);
                 boolean isCurrentMonth = cellDate.getMonth() == currentDate.getMonth();
 
-                VBox cell = new VBox(5);
+                VBox cellBox = new VBox(5);
+                cellBox.setAlignment(Pos.TOP_CENTER);
+                cellBox.setPadding(new Insets(8));
+                cellBox.setPrefHeight(100);
+                cellBox.setMinHeight(80);
+
+                // Фон ячейки
+                Rectangle background = new Rectangle();
+                background.setWidth(120);
+                background.setHeight(100);
+                background.setArcWidth(8);
+                background.setArcHeight(8);
 
                 if (!isCurrentMonth) {
+                    background.setFill(Color.web("#15172A"));
+                } else {
+                    background.setFill(Color.web(CELL_EMPTY_COLOR));
                 }
+                cellBox.getChildren().add(background);
 
+                // Дата
                 Label dateLabel = new Label(String.valueOf(cellDate.getDayOfMonth()));
-                cell.getChildren().add(dateLabel);
+                dateLabel.setStyle("-fx-text-fill: " + (isCurrentMonth ? CELL_TEXT_BOOKED_COLOR : CELL_TEXT_COLOR) +
+                        "; -fx-font-size: 14px; -fx-font-weight: bold;");
+                StackPane datePane = new StackPane(dateLabel);
+                datePane.setAlignment(Pos.TOP_LEFT);
+                datePane.setPadding(new Insets(5));
+                cellBox.getChildren().add(datePane);
 
-                List<Appointment> dayAppointments = DataStore.getAppointmentsByDate(DateUtils.formatDateForDB(cellDate));
+                if (isCurrentMonth) {
+                    List<Appointment> dayAppointments = DataStore.getAppointmentsByDate(DateUtils.formatDateForDB(cellDate));
 
-                if (!dayAppointments.isEmpty()) {
-                    int count = 0;
-                    for (Appointment a : dayAppointments) {
-                        if (count >= 2) {
-                            Label moreLabel = new Label("... и ещё " + (dayAppointments.size() - 2));
-                            cell.getChildren().add(moreLabel);
-                            break;
+                    if (!dayAppointments.isEmpty()) {
+                        int count = 0;
+                        for (Appointment a : dayAppointments) {
+                            if (count >= 2) {
+                                Label moreLabel = new Label("... и ещё " + (dayAppointments.size() - 2));
+                                moreLabel.setStyle("-fx-text-fill: " + CELL_TEXT_COLOR + "; -fx-font-size: 10px;");
+                                cellBox.getChildren().add(moreLabel);
+                                break;
+                            }
+                            Client client = a.getClient();
+                            String fullName = (client.getLastName() != null && !client.getLastName().isEmpty())
+                                    ? client.getLastName() + " " + client.getName()
+                                    : client.getName();
+
+                            HBox appBox = new HBox(4);
+                            appBox.setAlignment(Pos.CENTER_LEFT);
+
+                            // Цветной индикатор статуса
+                            String statusColor = getOrderStatusColor(a);
+                            Circle statusDot = new Circle(4);
+                            statusDot.setFill(Color.web(statusColor));
+
+                            Label appLabel = new Label(a.getTime() + " - " + fullName);
+                            appLabel.setStyle("-fx-text-fill: " + CELL_TEXT_BOOKED_COLOR + "; -fx-font-size: 10px;");
+                            appLabel.setWrapText(true);
+
+                            appBox.getChildren().addAll(statusDot, appLabel);
+
+                            final Appointment currentAppointment = a;
+                            appLabel.setOnMouseClicked(event -> {
+                                if (event.getClickCount() == 2) {
+                                    showAppointmentInfoOnly(currentAppointment);
+                                }
+                            });
+
+                            cellBox.getChildren().add(appBox);
+                            count++;
                         }
-                        Client client = a.getClient();
-                        String fullName = (client.getLastName() != null && !client.getLastName().isEmpty())
-                                ? client.getLastName() + " " + client.getName()
-                                : client.getName();
+                    } else {
+                        Label freeLabel = new Label("свободно");
+                        freeLabel.setStyle("-fx-text-fill: " + CELL_TEXT_COLOR + "; -fx-font-size: 10px;");
+                        cellBox.getChildren().add(freeLabel);
 
-                        Label appLabel = new Label(a.getTime() + " - " + fullName);
-                        appLabel.setWrapText(true);
-
-                        // Цветной индикатор статуса
-                        String statusColor = getOrderStatusColor(a);
-                        Circle statusDot = new Circle(3);
-                        statusDot.setFill(javafx.scene.paint.Color.web(statusColor));
-
-                        HBox appBox = new HBox(4, statusDot, appLabel);
-                        appBox.setAlignment(Pos.CENTER_LEFT);
-
-                        final Appointment currentAppointment = a;
-                        appLabel.setOnMouseClicked(event -> {
+                        final LocalDate finalCellDate = cellDate;
+                        cellBox.setOnMouseClicked(event -> {
                             if (event.getClickCount() == 2) {
-                                showAppointmentInfoOnly(currentAppointment);
+                                datePicker.setValue(finalCellDate);
+                                showAddAppointmentWithOrderDialog(null);
                             }
                         });
-
-                        cell.getChildren().add(appBox);
-                        count++;
                     }
-                } else if (isCurrentMonth) {
-                    Label freeLabel = new Label("свободно");
-                    cell.getChildren().add(freeLabel);
-                    
-                    final LocalDate finalCellDate = cellDate;
-                    cell.setOnMouseClicked(event -> {
-                        if (event.getClickCount() == 2) {
-                            datePicker.setValue(finalCellDate);
-                            showAddAppointmentWithOrderDialog(null);
-                        }
-                    });
                 }
 
-                scheduleGrid.add(cell, col, row + 1);
+                scheduleGrid.add(cellBox, col, row + 1);
             }
         }
     }
@@ -436,16 +546,16 @@ public class AppointmentView {
         if (orderId == null || orderId.isEmpty()) {
             return "#95a5a6"; // серый - нет заказа
         }
-        
+
         for (WorkOrder order : DataStore.getOrders()) {
             if (order.getId().equals(orderId)) {
                 String status = order.getStatus();
                 if (WorkOrder.STATUS_CLOSED.equals(status)) {
-                    return "#27ae60"; // зелёный - сделано
+                    return "#34D399"; // зеленый - сделано
                 } else if (WorkOrder.STATUS_IN_PROGRESS.equals(status)) {
-                    return "#f39c12"; // оранжевый - в работе
+                    return "#FB923C"; // оранжевый - в работе
                 } else {
-                    return "#3498db"; // синий - запланировано
+                    return "#60A5FA"; // синий - запланировано
                 }
             }
         }
@@ -577,7 +687,7 @@ public class AppointmentView {
         closeBtn.setOnAction(e -> stage.close());
 
         btnBox.getChildren().add(closeBtn);
-        
+
         // Кнопка удаления записи (всегда доступна)
         Button deleteBtn = new Button("Удалить запись");
         deleteBtn.setOnAction(e -> {
@@ -586,7 +696,7 @@ public class AppointmentView {
                             "Это действие нельзя отменить.",
                     ButtonType.YES, ButtonType.NO);
             confirm.setTitle("Подтверждение удаления");
-            
+
             confirm.showAndWait().ifPresent(response -> {
                 if (response == ButtonType.YES) {
                     DataStore.deleteAppointment(appointment.getId());
@@ -730,7 +840,7 @@ public class AppointmentView {
         closeBtn.setOnAction(e -> stage.close());
 
         btnBox.getChildren().add(closeBtn);
-        
+
         // Кнопка удаления записи (всегда доступна)
         Button deleteBtn = new Button("Удалить запись");
         deleteBtn.setOnAction(e -> {
@@ -739,7 +849,7 @@ public class AppointmentView {
                             "Это действие нельзя отменить.",
                     ButtonType.YES, ButtonType.NO);
             confirm.setTitle("Подтверждение удаления");
-            
+
             confirm.showAndWait().ifPresent(response -> {
                 if (response == ButtonType.YES) {
                     DataStore.deleteAppointment(appointment.getId());
@@ -783,11 +893,11 @@ public class AppointmentView {
                 activeOrders.add(order);
             }
         }
-        
+
         ComboBox<WorkOrder> orderCombo = new ComboBox<>(FXCollections.observableArrayList(activeOrders));
         orderCombo.setPromptText("Выберите заказ");
         orderCombo.setPrefWidth(300);
-        
+
         // Форматирование отображения заказа
         orderCombo.setCellFactory(listView -> new ListCell<WorkOrder>() {
             @Override
@@ -796,16 +906,16 @@ public class AppointmentView {
                 if (empty || item == null) {
                     setText(null);
                 } else {
-                    String clientName = item.getClient() != null 
+                    String clientName = item.getClient() != null
                             ? (item.getClient().getLastName() != null && !item.getClient().getLastName().isEmpty()
-                                ? item.getClient().getLastName() + " " + item.getClient().getName()
-                                : item.getClient().getName())
+                            ? item.getClient().getLastName() + " " + item.getClient().getName()
+                            : item.getClient().getName())
                             : "Без клиента";
                     setText(item.getId() + " — " + clientName);
                 }
             }
         });
-        
+
         orderCombo.setButtonCell(new ListCell<WorkOrder>() {
             @Override
             protected void updateItem(WorkOrder item, boolean empty) {
@@ -813,10 +923,10 @@ public class AppointmentView {
                 if (empty || item == null) {
                     setText(null);
                 } else {
-                    String clientName = item.getClient() != null 
+                    String clientName = item.getClient() != null
                             ? (item.getClient().getLastName() != null && !item.getClient().getLastName().isEmpty()
-                                ? item.getClient().getLastName() + " " + item.getClient().getName()
-                                : item.getClient().getName())
+                            ? item.getClient().getLastName() + " " + item.getClient().getName()
+                            : item.getClient().getName())
                             : "Без клиента";
                     setText(item.getId() + " — " + clientName);
                 }
@@ -864,7 +974,7 @@ public class AppointmentView {
 
         saveBtn.setOnAction(e -> {
             boolean isValid = true;
-            
+
             if (orderCombo.getValue() == null) {
                 showAlert("Выберите заказ");
                 isValid = false;
@@ -881,7 +991,7 @@ public class AppointmentView {
                 showAlert("Выберите дату");
                 isValid = false;
             }
-            
+
             if (!isValid) {
                 return;
             }
@@ -893,7 +1003,7 @@ public class AppointmentView {
                 weekendAlert.setHeaderText("Выбран выходной день!");
                 weekendAlert.setContentText("Запись в выходной день (" + datePickerLocal.getValue().format(java.time.format.DateTimeFormatter.ofPattern("EEEE", new java.util.Locale.Builder().setLanguage("ru").build())) + ") может быть ограничена.\n\nПродолжить?");
                 weekendAlert.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
-                
+
                 if (weekendAlert.showAndWait().orElse(ButtonType.NO) == ButtonType.NO) {
                     return; // Отмена при нажатии "Нет"
                 }
@@ -901,8 +1011,8 @@ public class AppointmentView {
 
             WorkOrder selectedOrder = orderCombo.getValue();
             Client orderClient = selectedOrder.getClient();
-            String selectedServiceName = selectedOrder.getServices().isEmpty() 
-                    ? "Консультация" 
+            String selectedServiceName = selectedOrder.getServices().isEmpty()
+                    ? "Консультация"
                     : selectedOrder.getServices().get(0);
 
             String dateStr = DateUtils.formatDateForDB(datePickerLocal.getValue());
@@ -942,8 +1052,8 @@ public class AppointmentView {
     }
 
     // ====== МЕТОД РЕДАКТИРОВАНИЯ ЗАПИСИ ПОСЛЕ DRAG AND DROP ======
-    private static void showEditAppointmentDialog(String appointmentId, String originalDate, String originalTime, 
-                                                    String originalMaster, LocalDate newDate, String newTime) {
+    private static void showEditAppointmentDialog(String appointmentId, String originalDate, String originalTime,
+                                                  String originalMaster, LocalDate newDate, String newTime) {
         Stage stage = new Stage();
         stage.setTitle("Переместить запись");
         stage.setMinWidth(500);
@@ -961,9 +1071,9 @@ public class AppointmentView {
         GridPane infoGrid = new GridPane();
         infoGrid.setHgap(15);
         infoGrid.setVgap(8);
-        
+
         Appointment existingAppointment = DataStore.getAppointmentById(Integer.parseInt(appointmentId));
-        
+
         if (existingAppointment != null) {
             Client client = existingAppointment.getClient();
             String fullName = (client.getLastName() != null && !client.getLastName().isEmpty())
@@ -1049,7 +1159,7 @@ public class AppointmentView {
                 weekendAlert.setHeaderText("Выбран выходной день!");
                 weekendAlert.setContentText("Запись в выходной день (" + datePickerLocal.getValue().format(java.time.format.DateTimeFormatter.ofPattern("EEEE", new java.util.Locale.Builder().setLanguage("ru").build())) + ") может быть ограничена.\n\nПродолжить?");
                 weekendAlert.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
-                
+
                 if (weekendAlert.showAndWait().orElse(ButtonType.NO) == ButtonType.NO) {
                     return;
                 }

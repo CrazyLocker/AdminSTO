@@ -98,6 +98,26 @@ public class StockOperationDialog {
         grid.setPadding(new Insets(10));
         grid.add(new Label("Количество:"), 0, 0);
         grid.add(amountField, 1, 0);
+        
+        // Поле минимального остатка
+        TextField minStockField = new TextField(String.valueOf((int) part.getMinStock()));
+        minStockField.setPromptText("Мин. остаток");
+        minStockField.setPrefWidth(150);
+        minStockField.setPrefHeight(30);
+        
+        TooltipHelper.setToolTip(minStockField, "Минимальный остаток для уведомления о необходимости пополнения");
+        
+        // Валидация ввода минимального остатка
+        minStockField.textProperty().addListener((obs, oldVal, newVal) -> {
+            if (!newVal.isEmpty() && !newVal.matches("[0-9]*\\.?[0-9]*")) {
+                minStockField.setStyle("-fx-border-color: red;");
+            } else {
+                minStockField.setStyle("");
+            }
+        });
+        
+        grid.add(new Label("Минимальный остаток:"), 0, 1);
+        grid.add(minStockField, 1, 1);
 
         // Предупреждение о текущем остатке
         Label warningLabel = new Label();
@@ -130,54 +150,88 @@ public class StockOperationDialog {
             ValidationErrorIndicator.clearAllErrors(root);
             
             String amountText = amountField.getText().trim();
-            if (amountText.isEmpty()) {
-                ValidationErrorIndicator.showError(amountField, "Введите количество");
+            String minStockText = minStockField.getText().trim();
+            
+            // Проверяем, что пользователь ввёл хотя бы одно из полей
+            if (amountText.isEmpty() && minStockText.isEmpty()) {
+                ValidationErrorIndicator.showError(amountField, "Введите количество или минимальный остаток");
                 return;
             }
             
-            double amount;
-            try {
-                amount = Double.parseDouble(amountText);
-            } catch (NumberFormatException ex) {
-                ValidationErrorIndicator.showError(amountField, "Некорректное число");
-                return;
-            }
-            
-            if (amount <= 0) {
-                ValidationErrorIndicator.showError(amountField, "Количество должно быть больше нуля");
-                return;
-            }
-            
-            boolean isIncome = incomeRadio.isSelected();
-            
-            if (isIncome) {
-                // Приход
-                double newStock = part.getStock() + amount;
-                part.setStock(newStock);
-                DataStore.updateSparePart(part);
-                StockPanelController.refreshTable();
-                DashboardView.refresh();
-                
-                showAlert(String.format("Приход выполнен: %s +%.0f = %.0f %s", 
-                    part.getName(), amount, newStock, part.getUnitType()), 
-                    Alert.AlertType.INFORMATION);
-            } else {
-                // Списание
-                if (amount > part.getStock()) {
-                    ValidationErrorIndicator.showError(amountField, 
-                        String.format("Недостаточно запчастей! Доступно: %.0f %s", 
-                            part.getStock(), part.getUnitType()));
+            // Валидация количества, если оно введено
+            boolean hasAmount = !amountText.isEmpty();
+            double amount = 0;
+            if (hasAmount) {
+                try {
+                    amount = Double.parseDouble(amountText);
+                } catch (NumberFormatException ex) {
+                    ValidationErrorIndicator.showError(amountField, "Некорректное число");
                     return;
                 }
                 
-                double newStock = part.getStock() - amount;
-                part.setStock(newStock);
+                if (amount <= 0) {
+                    ValidationErrorIndicator.showError(amountField, "Количество должно быть больше нуля");
+                    return;
+                }
+            }
+            
+            // Валидация минимального остатка, если он введён
+            boolean hasMinStock = !minStockText.isEmpty();
+            if (hasMinStock) {
+                try {
+                    double newMinStock = Double.parseDouble(minStockText);
+                    if (newMinStock < 0) {
+                        ValidationErrorIndicator.showError(minStockField, "Минимальный остаток не может быть отрицательным");
+                        return;
+                    }
+                    part.setMinStock(newMinStock);
+                } catch (NumberFormatException ex) {
+                    ValidationErrorIndicator.showError(minStockField, "Некорректное значение минимального остатка");
+                    return;
+                }
+            }
+            
+            // Если введено только количество — выполняем операцию
+            if (hasAmount) {
+                boolean isIncome = incomeRadio.isSelected();
+                
+                if (isIncome) {
+                    // Приход
+                    double newStock = part.getStock() + amount;
+                    part.setStock(newStock);
+                    DataStore.updateSparePart(part);
+                    StockPanelController.refreshTable();
+                    DashboardView.refresh();
+                    
+                    showAlert(String.format("Приход выполнен: %s +%.0f = %.0f %s", 
+                        part.getName(), amount, newStock, part.getUnitType()), 
+                        Alert.AlertType.INFORMATION);
+                } else {
+                    // Списание
+                    if (amount > part.getStock()) {
+                        ValidationErrorIndicator.showError(amountField, 
+                            String.format("Недостаточно запчастей! Доступно: %.0f %s", 
+                                part.getStock(), part.getUnitType()));
+                        return;
+                    }
+                    
+                    double newStock = part.getStock() - amount;
+                    part.setStock(newStock);
+                    DataStore.updateSparePart(part);
+                    StockPanelController.refreshTable();
+                    DashboardView.refresh();
+                    
+                    showAlert(String.format("Списание выполнено: %s -%.0f = %.0f %s", 
+                        part.getName(), amount, newStock, part.getUnitType()), 
+                        Alert.AlertType.INFORMATION);
+                }
+            } else if (hasMinStock) {
+                // Изменён только минимальный остаток
                 DataStore.updateSparePart(part);
                 StockPanelController.refreshTable();
                 DashboardView.refresh();
                 
-                showAlert(String.format("Списание выполнено: %s -%.0f = %.0f %s", 
-                    part.getName(), amount, newStock, part.getUnitType()), 
+                showAlert("Минимальный остаток обновлён: " + (int) part.getMinStock() + " " + part.getUnitType(),
                     Alert.AlertType.INFORMATION);
             }
             

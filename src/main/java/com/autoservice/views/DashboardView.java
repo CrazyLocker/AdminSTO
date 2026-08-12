@@ -26,6 +26,7 @@ import javafx.scene.shape.Circle;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.LinearGradient;
 import javafx.scene.paint.Stop;
+import javafx.scene.paint.CycleMethod;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.TextAlignment;
@@ -38,28 +39,32 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.Comparator;
+import java.util.stream.Collectors;
 
 /**
  * Главный экран (дашборд) панели администратора СТО.
- * 
+ *
  * Ответственность: агрегированное отображение ключевых метрик работы СТО —
  * выручки (круговая диаграмма), динамики выручки за 6 месяцев (линейный
  * график), статусов заказов, статистики по клиентам и заказам, а также
  * календаря записей на сервис.
- * 
+ *
  * Зависимости: JavaFX (Canvas, GridPane, VBox, HBox, StackPane), DataStore,
  * WorkOrder, Appointment, DateUtils, ClientController, OrderController,
  * CreateOrderDialog, EditClientDialog, OrderDetailsDialog, ReportView.
- * 
+ *
  * Особенности: реализует паттерн «одиночка» (singleton) через статические
  * методы {@code create()} / {@code refresh()}; использует адаптивную верстку
  * на GridPane с колонками 30% / 40% / 30%; диаграммы рисуются вручную на
  * Canvas (без сторонних библиотек); Canvas привязан к ширине контейнера через
  * {@code bind} для адаптивности.
- * 
+ *
  * @author AdminSTO Team
  * @since 1.0
  * @see DataStore
@@ -99,10 +104,14 @@ public class DashboardView extends ScrollPane {
     private static final String ACCENT_PINK = "#F472B6";
     /** Акцентный оранжевый цвет. */
     private static final String ACCENT_ORANGE = "#FB923C";
+    /** Акцентный зеленый цвет. */
+    private static final String ACCENT_GREEN = "#34D399";
+    /** Акцентный фиолетовый цвет. */
+    private static final String ACCENT_PURPLE = "#A78BFA";
 
     /**
      * Применяет тёмную тему (цвет фона и скругление) к карточкам VBox/HBox.
-     * 
+     *
      * @param node узел, к которому применяется стиль карточки
      */
     private void applyDarkTheme(Node node) {
@@ -115,7 +124,7 @@ public class DashboardView extends ScrollPane {
 
     /**
      * Создаёт подпись с заданным текстом, цветом, размером и жирностью шрифта.
-     * 
+     *
      * @param text   отображаемый текст
      * @param color  цвет текста в hex-формате (например, "#FFFFFF")
      * @param fontSize размер шрифта в пунктах
@@ -135,7 +144,7 @@ public class DashboardView extends ScrollPane {
     /**
      * Возвращает единственный экземпляр дашборда, создавая его при первом
      * обращении (ленивая инициализация).
-     * 
+     *
      * @return экземпляр {@link DashboardView}
      */
     public static DashboardView create() {
@@ -183,7 +192,7 @@ public class DashboardView extends ScrollPane {
 
     /**
      * Задаёт ссылку на главное окно приложения для навигации.
-     * 
+     *
      * @param stage главная сцена приложения
      */
     public static void setStage(Stage stage) {
@@ -243,9 +252,23 @@ public class DashboardView extends ScrollPane {
         int totalAppointments = appointments.size();
         String formattedTotalRevenue = currencyFormat.format(totalRevenue);
 
+        // Новые вычисления
+        Map<String, Integer> topServices = calculateTopServices(orders);
+        List<SparePart> lowStockParts = calculateLowStockParts(spareParts);
+        double averageCheck = calculateAverageCheck(orders, completedOrders);
+        Map<String, Integer> masterLoad = calculateMasterLoad(appointments);
+        int todayAppointments = calculateTodayAppointments(appointments);
+        Map<String, Integer> ordersByDayOfWeek = calculateOrdersByDayOfWeek(orders);
+        double monthForecast = calculateMonthForecast(orders);
+        int newClientsThisMonth = calculateNewClientsThisMonth(clients);
+        String topClient = calculateTopClient(orders);
+
         return new DashboardData(orders, clients, appointments, spareParts,
                 totalRevenue, monthlyRevenue, activeOrders, completedOrders,
-                totalOrders, totalClients, totalAppointments, formattedTotalRevenue);
+                totalOrders, totalClients, totalAppointments, formattedTotalRevenue,
+                topServices, lowStockParts, averageCheck, masterLoad,
+                todayAppointments, ordersByDayOfWeek, monthForecast,
+                newClientsThisMonth, topClient);
     }
 
     /**
@@ -286,20 +309,32 @@ public class DashboardView extends ScrollPane {
         VBox donutCard = createBudgetDonutChart(data.totalRevenue, data.totalRevenue * 1.3);
         leftColumn.getChildren().add(donutCard);
 
-        // 2. Календарь (с уменьшенным размером, перенесён в левую колонку)
+        // 2. Записей на сегодня
+        VBox todayWidget = createTodayAppointmentsWidget(data.todayAppointments);
+        leftColumn.getChildren().add(todayWidget);
+
+        // 3. Календарь
         VBox calendarCard = createAppointmentCalendar(LocalDate.now(), data.appointments);
-        calendarCard.setMaxWidth(280); // Ограничиваем ширину
+        calendarCard.setMaxWidth(280);
         leftColumn.getChildren().add(calendarCard);
+
+        // 4. Загрузка мастеров
+        VBox masterChart = createMasterLoadChart(data.masterLoad);
+        leftColumn.getChildren().add(masterChart);
 
         // ====== ЦЕНТРАЛЬНАЯ КОЛОНКА ======
         VBox centerColumn = new VBox(16);
         centerColumn.setAlignment(Pos.TOP_CENTER);
 
-        // 1. График выручки (Cashflow)
+        // 1. График выручки
         VBox lineCard = createLineChart("Динамика выручки", data.monthlyRevenue);
         centerColumn.getChildren().add(lineCard);
 
-        // 2. Дополнительная информация (нижняя часть центра)
+        // 2. ТОП-5 услуг
+        VBox topServicesCard = createTopServicesChart(data.topServices);
+        centerColumn.getChildren().add(topServicesCard);
+
+        // 3. Общая статистика
         VBox extraInfo = new VBox(10);
         extraInfo.setAlignment(Pos.CENTER_LEFT);
         extraInfo.setPadding(new Insets(10));
@@ -316,19 +351,48 @@ public class DashboardView extends ScrollPane {
                 createStatColumn("В работе", String.valueOf(data.activeOrders), ACCENT_PINK)
         );
         extraInfo.getChildren().add(statsRow);
+
+        // 4. Средний чек и прогноз
+        HBox statsRow2 = new HBox(20);
+        statsRow2.setAlignment(Pos.CENTER);
+        statsRow2.getChildren().addAll(
+                createStatColumn("Средний чек", String.format("%,.0f ₽", data.averageCheck), ACCENT_GREEN),
+                createStatColumn("Новых клиентов", String.valueOf(data.newClientsThisMonth), ACCENT_ORANGE),
+                createStatColumn("Прогноз на месяц", String.format("%,.0f ₽", data.monthForecast), ACCENT_PURPLE)
+        );
+        extraInfo.getChildren().add(statsRow2);
+
+        // 5. Лучший клиент
+        if (data.topClient != null && !data.topClient.isEmpty()) {
+            HBox topClientRow = new HBox(10);
+            topClientRow.setAlignment(Pos.CENTER_LEFT);
+            topClientRow.setPadding(new Insets(4, 0, 0, 0));
+            Label topClientLabel = styledLabel("🏆 Лучший клиент: " + data.topClient, ACCENT_ORANGE, 12, true);
+            topClientRow.getChildren().add(topClientLabel);
+            extraInfo.getChildren().add(topClientRow);
+        }
+
         centerColumn.getChildren().add(extraInfo);
 
         // ====== ПРАВАЯ КОЛОНКА ======
         VBox rightColumn = new VBox(16);
         rightColumn.setAlignment(Pos.TOP_CENTER);
 
-        // 1. Диаграмма статусов (разноцветная)
+        // 1. Диаграмма статусов
         VBox statusDonut = createStatusDonutChart(data.activeOrders, data.completedOrders, data.totalOrders);
         rightColumn.getChildren().add(statusDonut);
 
-        // 2. Круговой индикатор "Общая выручка" (вместо кнопок)
+        // 2. Общая выручка
         VBox revenueMiniCard = createRevenueMiniCard(data.totalRevenue);
         rightColumn.getChildren().add(revenueMiniCard);
+
+        // 3. Запчасти с низким остатком
+        VBox lowStockCard = createLowStockWidget(data.lowStockParts);
+        rightColumn.getChildren().add(lowStockCard);
+
+        // 4. Динамика по дням недели
+        VBox dayOfWeekCard = createOrdersByDayOfWeekChart(data.ordersByDayOfWeek);
+        rightColumn.getChildren().add(dayOfWeekCard);
 
         gridPane.add(leftColumn, 0, 0);
         gridPane.add(centerColumn, 1, 0);
@@ -510,165 +574,142 @@ public class DashboardView extends ScrollPane {
     }
 
     /**
-     * Вычисляет выручку за конкретный месяц.
+     * Вычисляет ТОП-5 услуг по частоте заказов.
      */
-    private static List<Double> calculateMonthlyRevenueForMonth(List<WorkOrder> orders, YearMonth yearMonth) {
-        List<Double> monthlyRevenue = new ArrayList<>();
-        for (int i = 5; i >= 0; i--) {
-            YearMonth ym = yearMonth.minusMonths(i);
-            LocalDate monthStart = ym.atDay(1);
-            LocalDate monthEnd = ym.atEndOfMonth();
-
-            double total = 0;
-            for (WorkOrder order : orders) {
-                if (WorkOrder.STATUS_CLOSED.equals(order.getStatus())) {
-                    try {
-                        LocalDate orderDate = DateUtils.parseDate(order.getCreatedDate());
-                        if (orderDate != null && !orderDate.isBefore(monthStart) && !orderDate.isAfter(monthEnd)) {
-                            total += order.getTotal();
-                        }
-                    } catch (Exception ignored) {}
-                }
+    private static Map<String, Integer> calculateTopServices(List<WorkOrder> orders) {
+        Map<String, Integer> serviceCount = new HashMap<>();
+        for (WorkOrder order : orders) {
+            for (String service : order.getServices()) {
+                serviceCount.merge(service, 1, Integer::sum);
             }
-            monthlyRevenue.add(total);
         }
-        return monthlyRevenue;
+        return serviceCount.entrySet().stream()
+                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+                .limit(5)
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue,
+                        (e1, e2) -> e1,
+                        LinkedHashMap::new
+                ));
     }
 
-    // ==================== СТАТИСТИКА ====================
+    /**
+     * Вычисляет запчасти с низким остатком.
+     */
+    private static List<SparePart> calculateLowStockParts(List<SparePart> spareParts) {
+        return spareParts.stream()
+                .filter(p -> p.getStock() < p.getMinStock())
+                .sorted(Comparator.comparingDouble(SparePart::getStock))
+                .limit(5)
+                .collect(Collectors.toList());
+    }
 
     /**
-     * Подсчитывает количество запчастей с остатком ниже минимального уровня.
-     * 
-     * @return строковое представление количества «низких» остатков
+     * Вычисляет средний чек.
      */
-    private String getLowStockCount() {
+    private static double calculateAverageCheck(List<WorkOrder> orders, int completedOrders) {
+        if (completedOrders == 0) return 0;
+        double total = calculateTotalRevenue(orders);
+        return total / completedOrders;
+    }
+
+    /**
+     * Вычисляет загрузку мастеров.
+     */
+    private static Map<String, Integer> calculateMasterLoad(List<Appointment> appointments) {
+        Map<String, Integer> masterCount = new HashMap<>();
+        for (Appointment a : appointments) {
+            String master = a.getMasterName();
+            if (master != null && !master.isEmpty()) {
+                masterCount.merge(master, 1, Integer::sum);
+            }
+        }
+        return masterCount;
+    }
+
+    /**
+     * Вычисляет количество записей на сегодня.
+     */
+    private static int calculateTodayAppointments(List<Appointment> appointments) {
+        String today = DateUtils.formatDateForDB(LocalDate.now());
         int count = 0;
-        for (SparePart part : DataStore.getSpareParts()) {
-            if (part.getAvailableStock() < part.getMinStock()) {
+        for (Appointment a : appointments) {
+            if (today.equals(a.getDate())) {
                 count++;
             }
         }
-        return String.valueOf(count);
+        return count;
     }
 
     /**
-     * Преобразует строку с числом валюты (например, "12 345,00 ₽") в число
-     * типа {@code double}. При ошибке парсинга возвращает 0.
-     * 
-     * @param revenueStr строка с суммой, возможно с форматированием
-     * @return числовое значение суммы или 0.0 при неудачном разборе
+     * Вычисляет распределение заказов по дням недели.
      */
-    private double parseRevenue(String revenueStr) {
-        try {
-            String cleaned = revenueStr.replaceAll("[^0-9.,]", "").replace(",", ".");
-            return Double.parseDouble(cleaned);
-        } catch (Exception e) {
-            return 0.0;
+    private static Map<String, Integer> calculateOrdersByDayOfWeek(List<WorkOrder> orders) {
+        Map<String, Integer> dayCount = new HashMap<>();
+        String[] days = {"Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"};
+        for (String day : days) {
+            dayCount.put(day, 0);
         }
+
+        for (WorkOrder order : orders) {
+            String createdDate = order.getCreatedDate();
+            if (createdDate == null || createdDate.trim().isEmpty()) {
+                continue;
+            }
+            LocalDate date = DateUtils.parseDate(createdDate);
+            if (date != null) {
+                int dayOfWeek = date.getDayOfWeek().getValue() - 1; // 0 = Пн
+                String dayName = days[dayOfWeek];
+                dayCount.merge(dayName, 1, Integer::sum);
+            }
+        }
+        return dayCount;
     }
 
     /**
-     * Вычисляет динамику выручки за последние 6 месяцев (текущий и 5
-     * предыдущих). Учитываются только заказы со статусом «Закрыт».
-     * 
-     * Алгоритм: все закрытые заказы группируются по месяцу (YearMonth),
-     * суммы суммируются; затем формируется список из 6 значений, где для
-     * месяцев без закрытых заказов подставляется 0.
-     * 
-     * @return список из 6 значений выручки по месяцам (от старых к новым)
+     * Вычисляет прогноз выручки на месяц.
      */
-    private List<Double> getMonthlyRevenueData() {
-        // Замена 1: лог общего числа заказов
-        System.out.println("🔍 Всего заказов в БД: " + DataStore.getOrders().size());
+    private static double calculateMonthForecast(List<WorkOrder> orders) {
+        YearMonth currentMonth = YearMonth.now();
+        LocalDate monthStart = currentMonth.atDay(1);
+        LocalDate today = LocalDate.now();
+        int daysInMonth = currentMonth.lengthOfMonth();
+        int daysPassed = today.getDayOfMonth();
 
-        // Группируем ВСЕ закрытые заказы по месяцу (YearMonth) — независимо от давности
-        HashMap<YearMonth, Double> revenueByMonth = new HashMap<>();
-        int totalClosed = 0;
-
-        for (WorkOrder order : DataStore.getOrders()) {
+        double monthRevenue = 0;
+        for (WorkOrder order : orders) {
             if (!WorkOrder.STATUS_CLOSED.equals(order.getStatus())) {
                 continue;
             }
-            totalClosed++;
-
-            // Замена 2: защита от null/пустой даты
             String createdDate = order.getCreatedDate();
             if (createdDate == null || createdDate.trim().isEmpty()) {
-                System.out.println("⚠️ Пропущен заказ без даты: " + order.getId());
                 continue;
             }
-
-            LocalDate orderDate = DateUtils.parseDate(createdDate);
-            if (orderDate == null) {
-                System.out.println("⚠️ Пропущен заказ (дата не распарсилась): " + order.getId());
-                continue; // дата не распарсилась — пропускаем
+            LocalDate date = DateUtils.parseDate(createdDate);
+            if (date != null && !date.isBefore(monthStart) && !date.isAfter(today)) {
+                monthRevenue += order.getTotal();
             }
-            YearMonth ym = YearMonth.from(orderDate);
-            revenueByMonth.merge(ym, order.getTotal(), Double::sum);
         }
 
-        // Замена 3: формируем результат за последние 6 месяцев.
-        // Если закрытых заказов нет — по всем месяцам будут нули (ровная линия на 0).
-        List<Double> monthlyRevenue = new ArrayList<>();
-        YearMonth current = YearMonth.now();
-        for (int i = 5; i >= 0; i--) {
-            monthlyRevenue.add(revenueByMonth.getOrDefault(current.minusMonths(i), 0.0));
-        }
-
-        // Замена 4: итоговый лог
-        System.out.println("📊 Итоговый массив выручки: " + Arrays.toString(monthlyRevenue.toArray()));
-        System.out.println("📊 Всего закрытых заказов учтено: " + totalClosed);
-        return monthlyRevenue;
+        if (daysPassed == 0) return 0;
+        double dailyAverage = monthRevenue / daysPassed;
+        return dailyAverage * daysInMonth;
     }
 
     /**
-     * Возвращает динамику выручки за 6 месяцев: выбранный месяц и 5 предыдущих.
-     * Каждый элемент — суммарная выручка закрытых заказов за соответствующий месяц.
+     * Вычисляет количество новых клиентов в текущем месяце.
      */
-    private List<Double> getMonthlyRevenueDataForMonth(YearMonth yearMonth) {
-        List<Double> monthlyRevenue = new ArrayList<>();
-        for (int i = 5; i >= 0; i--) {
-            YearMonth ym = yearMonth.minusMonths(i);
-            LocalDate monthStart = ym.atDay(1);
-            LocalDate monthEnd = ym.atEndOfMonth();
-
-            double total = 0;
-            for (WorkOrder order : DataStore.getOrders()) {
-                if (WorkOrder.STATUS_CLOSED.equals(order.getStatus())) {
-                    try {
-                        LocalDate orderDate = DateUtils.parseDate(order.getCreatedDate());
-                        if (orderDate != null && !orderDate.isBefore(monthStart) && !orderDate.isAfter(monthEnd)) {
-                            total += order.getTotal();
-                        }
-                    } catch (Exception ignored) {}
-                }
-            }
-            monthlyRevenue.add(total);
-        }
-        return monthlyRevenue;
-    }
-
-    private String getTotalRevenue() {
-        double total = 0;
-        for (WorkOrder order : DataStore.getOrders()) {
-            String status = order.getStatus();
-            if (WorkOrder.STATUS_CLOSED.equals(status)) {
-                total += order.getTotal();
-            }
-        }
-        return currencyFormat.format(total);
-    }
-
-    /**
-     * Подсчитывает количество заказов со статусом «В работе».
-     * 
-     * @return количество активных заказов
-     */
-    private int getActiveOrdersCount() {
+    private static int calculateNewClientsThisMonth(List<Client> clients) {
+        YearMonth currentMonth = YearMonth.now();
         int count = 0;
-        for (WorkOrder order : DataStore.getOrders()) {
-            if (WorkOrder.STATUS_IN_PROGRESS.equals(order.getStatus())) {
+        for (Client client : clients) {
+            String createdDate = client.getCreatedDate();
+            if (createdDate == null || createdDate.trim().isEmpty()) {
+                continue;
+            }
+            LocalDate date = DateUtils.parseDate(createdDate);
+            if (date != null && YearMonth.from(date).equals(currentMonth)) {
                 count++;
             }
         }
@@ -676,28 +717,324 @@ public class DashboardView extends ScrollPane {
     }
 
     /**
-     * Подсчитывает количество заказов со статусом «Закрыт».
-     * 
-     * @return количество закрытых заказов
+     * Вычисляет самого доходного клиента.
      */
-    private int getCompletedOrdersCount() {
-        int count = 0;
-        for (WorkOrder order : DataStore.getOrders()) {
-            if (WorkOrder.STATUS_CLOSED.equals(order.getStatus())) {
-                count++;
+    private static String calculateTopClient(List<WorkOrder> orders) {
+        Map<Integer, Double> clientRevenue = new HashMap<>();
+        Map<Integer, String> clientNames = new HashMap<>();
+
+        for (WorkOrder order : orders) {
+            if (!WorkOrder.STATUS_CLOSED.equals(order.getStatus())) {
+                continue;
             }
+            Client client = order.getClient();
+            if (client == null) continue;
+            int clientId = client.getId();
+            String fullName = (client.getLastName() != null && !client.getLastName().isEmpty())
+                    ? client.getLastName() + " " + client.getName()
+                    : client.getName();
+            clientNames.put(clientId, fullName);
+            clientRevenue.merge(clientId, order.getTotal(), Double::sum);
         }
-        return count;
+
+        return clientRevenue.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(entry -> clientNames.get(entry.getKey()) + " (" + String.format("%,.0f ₽", entry.getValue()) + ")")
+                .orElse(null);
     }
 
-    // ==================== ПРАВАЯ КОЛОНКА (ПРОФИЛЬ) ====================
+    // ==================== ВИДЖЕТЫ ====================
 
-    // ==================== ВИДЖЕТ: КРУГОВАЯ ДИАГРАММА ====================
+    /**
+     * Создаёт виджет "Записей на сегодня".
+     */
+    private VBox createTodayAppointmentsWidget(int count) {
+        VBox card = new VBox(5);
+        card.setAlignment(Pos.CENTER);
+        card.setPadding(new Insets(12));
+        card.setStyle("-fx-background-color: " + CARD_BG + "; -fx-background-radius: 16px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 4);");
+
+        Label title = styledLabel("Записей на сегодня", TEXT_GRAY, 11, false);
+        Label value = styledLabel(String.valueOf(count), ACCENT_CYAN, 28, true);
+
+        card.getChildren().addAll(title, value);
+        return card;
+    }
+
+    /**
+     * Создаёт виджет "Загрузка мастеров" (кольцевая диаграмма).
+     */
+    private VBox createMasterLoadChart(Map<String, Integer> masterLoad) {
+        VBox card = new VBox(10);
+        card.setAlignment(Pos.CENTER);
+        card.setPadding(new Insets(12));
+        card.setStyle("-fx-background-color: " + CARD_BG + "; -fx-background-radius: 16px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 4);");
+
+        Label title = styledLabel("Загрузка мастеров", TEXT_WHITE, 13, true);
+
+        Canvas canvas = new Canvas(160, 160);
+        GraphicsContext gc = canvas.getGraphicsContext2D();
+
+        if (masterLoad.isEmpty()) {
+            gc.setFill(Color.web(TEXT_GRAY));
+            gc.setFont(Font.font("Segoe UI", 13));
+            gc.setTextAlign(TextAlignment.CENTER);
+            gc.fillText("Нет данных", 80, 85);
+            card.getChildren().addAll(title, canvas);
+            return card;
+        }
+
+        double total = masterLoad.values().stream().mapToInt(Integer::intValue).sum();
+        if (total == 0) {
+            gc.setFill(Color.web(TEXT_GRAY));
+            gc.setFont(Font.font("Segoe UI", 13));
+            gc.setTextAlign(TextAlignment.CENTER);
+            gc.fillText("Нет данных", 80, 85);
+            card.getChildren().addAll(title, canvas);
+            return card;
+        }
+
+        double cx = 80, cy = 80, radius = 56;
+        double startAngle = 90;
+
+        Color[] colors = {
+                Color.web(ACCENT_CYAN),
+                Color.web(ACCENT_PINK),
+                Color.web(ACCENT_ORANGE),
+                Color.web(ACCENT_GREEN),
+                Color.web(ACCENT_PURPLE),
+                Color.web(ACCENT_BLUE)
+        };
+
+        int colorIndex = 0;
+        List<Map.Entry<String, Integer>> entries = new ArrayList<>(masterLoad.entrySet());
+        entries.sort(Map.Entry.<String, Integer>comparingByValue().reversed());
+
+        VBox legendBox = new VBox(4);
+        legendBox.setAlignment(Pos.CENTER_LEFT);
+
+        for (Map.Entry<String, Integer> entry : entries) {
+            double percentage = (entry.getValue() / total) * 360;
+            Color color = colors[colorIndex % colors.length];
+            gc.setStroke(color);
+            gc.setLineWidth(12);
+            gc.strokeArc(cx - radius, cy - radius, radius * 2, radius * 2, startAngle, -percentage, javafx.scene.shape.ArcType.OPEN);
+            startAngle -= percentage;
+
+            // Легенда
+            HBox legendRow = new HBox(8);
+            legendRow.setAlignment(Pos.CENTER_LEFT);
+            Circle dot = new Circle(5);
+            dot.setFill(color);
+            Label legendLabel = styledLabel(entry.getKey() + " (" + entry.getValue() + ")", TEXT_GRAY, 10, false);
+            legendRow.getChildren().addAll(dot, legendLabel);
+            legendBox.getChildren().add(legendRow);
+
+            colorIndex++;
+        }
+
+        // Центр
+        gc.setFill(Color.web(TEXT_WHITE));
+        gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 18));
+        gc.setTextAlign(TextAlignment.CENTER);
+        gc.fillText(String.valueOf((int) total), cx, cy - 4);
+
+        gc.setFill(Color.web(TEXT_GRAY));
+        gc.setFont(Font.font("Segoe UI", 10));
+        gc.fillText("всего записей", cx, cy + 18);
+
+        HBox chartWithLegend = new HBox(12, canvas, legendBox);
+        chartWithLegend.setAlignment(Pos.CENTER);
+
+        card.getChildren().addAll(title, chartWithLegend);
+        return card;
+    }
+
+    /**
+     * Создаёт виджет "ТОП-5 услуг" (горизонтальная гистограмма).
+     */
+    private VBox createTopServicesChart(Map<String, Integer> topServices) {
+        VBox card = new VBox(10);
+        card.setAlignment(Pos.CENTER);
+        card.setPadding(new Insets(12));
+        card.setStyle("-fx-background-color: " + CARD_BG + "; -fx-background-radius: 16px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 4);");
+
+        Label title = styledLabel("ТОП-5 услуг", TEXT_WHITE, 13, true);
+        card.getChildren().add(title);
+
+        if (topServices.isEmpty()) {
+            Label empty = styledLabel("Нет данных", TEXT_GRAY, 12, false);
+            card.getChildren().add(empty);
+            return card;
+        }
+
+        int maxCount = topServices.values().stream().max(Integer::compareTo).orElse(1);
+
+        VBox barsBox = new VBox(6);
+        barsBox.setAlignment(Pos.CENTER_LEFT);
+
+        int index = 0;
+        Color[] barColors = {
+                Color.web(ACCENT_CYAN),
+                Color.web(ACCENT_BLUE),
+                Color.web(ACCENT_PURPLE),
+                Color.web(ACCENT_PINK),
+                Color.web(ACCENT_ORANGE)
+        };
+
+        for (Map.Entry<String, Integer> entry : topServices.entrySet()) {
+            HBox barRow = new HBox(8);
+            barRow.setAlignment(Pos.CENTER_LEFT);
+
+            String serviceName = entry.getKey();
+            if (serviceName.length() > 20) {
+                serviceName = serviceName.substring(0, 18) + "...";
+            }
+            Label nameLabel = styledLabel(serviceName, TEXT_WHITE, 11, false);
+            nameLabel.setPrefWidth(100);
+
+            int count = entry.getValue();
+            double barWidth = (count / (double) maxCount) * 120;
+
+            StackPane barContainer = new StackPane();
+            barContainer.setPrefWidth(120);
+            barContainer.setPrefHeight(14);
+
+            javafx.scene.shape.Rectangle bar = new javafx.scene.shape.Rectangle(barWidth, 14);
+            bar.setFill(barColors[index % barColors.length]);
+            bar.setArcWidth(6);
+            bar.setArcHeight(6);
+
+            Label countLabel = styledLabel(String.valueOf(count), TEXT_GRAY, 10, false);
+            countLabel.setPrefWidth(25);
+
+            barContainer.getChildren().add(bar);
+            barRow.getChildren().addAll(nameLabel, barContainer, countLabel);
+            barsBox.getChildren().add(barRow);
+            index++;
+        }
+
+        card.getChildren().add(barsBox);
+        return card;
+    }
+
+    /**
+     * Создаёт виджет "Запчасти с низким остатком".
+     */
+    private VBox createLowStockWidget(List<SparePart> lowStockParts) {
+        VBox card = new VBox(10);
+        card.setAlignment(Pos.CENTER);
+        card.setPadding(new Insets(12));
+        card.setStyle("-fx-background-color: " + CARD_BG + "; -fx-background-radius: 16px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 4);");
+
+        Label title = styledLabel("⚠️ Низкий остаток запчастей", ACCENT_ORANGE, 13, true);
+        card.getChildren().add(title);
+
+        if (lowStockParts.isEmpty()) {
+            Label empty = styledLabel("✅ Все запчасти в норме", ACCENT_GREEN, 12, false);
+            card.getChildren().add(empty);
+            return card;
+        }
+
+        VBox listBox = new VBox(4);
+        listBox.setAlignment(Pos.CENTER_LEFT);
+
+        for (SparePart part : lowStockParts) {
+            HBox row = new HBox(8);
+            row.setAlignment(Pos.CENTER_LEFT);
+
+            String color = part.getStock() < part.getMinStock() * 0.5 ? "#EF4444" : ACCENT_ORANGE;
+            Circle indicator = new Circle(4);
+            indicator.setFill(Color.web(color));
+
+            String text = part.getName() + " (" + String.format("%.0f", part.getStock()) + "/" + String.format("%.0f", part.getMinStock()) + " " + part.getUnitType() + ")";
+            Label label = styledLabel(text, TEXT_GRAY, 11, false);
+            row.getChildren().addAll(indicator, label);
+            listBox.getChildren().add(row);
+        }
+
+        card.getChildren().add(listBox);
+        return card;
+    }
+
+    /**
+     * Создаёт виджет "Динамика по дням недели".
+     */
+    private VBox createOrdersByDayOfWeekChart(Map<String, Integer> dayData) {
+        VBox card = new VBox(10);
+        card.setAlignment(Pos.CENTER);
+        card.setPadding(new Insets(12));
+        card.setStyle("-fx-background-color: " + CARD_BG + "; -fx-background-radius: 16px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 4);");
+
+        Label title = styledLabel("Заказы по дням недели", TEXT_WHITE, 13, true);
+        card.getChildren().add(title);
+
+        Canvas canvas = new Canvas(200, 140);
+        canvas.widthProperty().bind(card.widthProperty().subtract(32));
+        canvas.heightProperty().bind(canvas.widthProperty().multiply(0.6));
+
+        drawDayOfWeekChart(canvas, dayData);
+
+        card.getChildren().add(canvas);
+        return card;
+    }
+
+    /**
+     * Рисует столбчатую диаграмму по дням недели.
+     */
+    private void drawDayOfWeekChart(Canvas canvas, Map<String, Integer> dayData) {
+        if (canvas.getWidth() <= 0 || canvas.getHeight() <= 0) return;
+
+        GraphicsContext gc = canvas.getGraphicsContext2D();
+        gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
+
+        String[] days = {"Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"};
+        int max = dayData.values().stream().max(Integer::compareTo).orElse(1);
+        if (max == 0) max = 1;
+
+        double width = canvas.getWidth();
+        double height = canvas.getHeight();
+        double padding = 20;
+        double chartW = width - padding * 2;
+        double chartH = height - padding * 2;
+        double barWidth = chartW / days.length * 0.6;
+        double gap = chartW / days.length;
+
+        for (int i = 0; i < days.length; i++) {
+            int count = dayData.getOrDefault(days[i], 0);
+            double barHeight = (count / (double) max) * chartH;
+            double x = padding + i * gap + (gap - barWidth) / 2;
+            double y = padding + chartH - barHeight;
+
+            // Бар
+            LinearGradient gradient = new LinearGradient(0, 0, 0, 1, true,
+                    CycleMethod.NO_CYCLE,
+                    new Stop(0, Color.web(ACCENT_CYAN)),
+                    new Stop(1, Color.web(ACCENT_BLUE)));
+            gc.setFill(gradient);
+            gc.fillRoundRect(x, y, barWidth, barHeight, 4, 4);
+
+            // Подпись дня
+            gc.setFill(Color.web(TEXT_GRAY));
+            gc.setFont(Font.font("Segoe UI", 10));
+            gc.setTextAlign(TextAlignment.CENTER);
+            gc.fillText(days[i], x + barWidth / 2, padding + chartH + 16);
+
+            // Значение
+            if (count > 0) {
+                gc.setFill(Color.web(TEXT_WHITE));
+                gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 10));
+                gc.fillText(String.valueOf(count), x + barWidth / 2, y - 6);
+            }
+        }
+    }
+
+    // ==================== СУЩЕСТВУЮЩИЕ ВИДЖЕТЫ (С ИЗМЕНЕНИЯМИ) ====================
 
     /**
      * Создаёт карточку-круговую диаграмму «Выручка» с градиентной дугой
      * прогресса (потрачено относительно бюджета) и подписью суммы.
-     * 
+     *
      * @param spent текущая выручка
      * @param total бюджет (целевая сумма), от которого считается прогресс
      * @return карточка VBox с диаграммой
@@ -726,7 +1063,7 @@ public class DashboardView extends ScrollPane {
         javafx.scene.paint.Color startColor = javafx.scene.paint.Color.web("#22D3EE");
         javafx.scene.paint.Color endColor = javafx.scene.paint.Color.web("#3B82F6");
         javafx.scene.paint.Stop[] stops = {new javafx.scene.paint.Stop(0, startColor), new javafx.scene.paint.Stop(1, endColor)};
-        javafx.scene.paint.LinearGradient gradient = new javafx.scene.paint.LinearGradient(0, 0, 1, 0, true, javafx.scene.paint.CycleMethod.NO_CYCLE, stops);
+        javafx.scene.paint.LinearGradient gradient = new javafx.scene.paint.LinearGradient(0, 0, 1, 0, true, CycleMethod.NO_CYCLE, stops);
         gc.setStroke(gradient);
         gc.strokeArc(cx - radius, cy - radius, radius * 2, radius * 2, 90, -angle, javafx.scene.shape.ArcType.OPEN);
 
@@ -745,7 +1082,7 @@ public class DashboardView extends ScrollPane {
 
     /**
      * Создаёт круговую диаграмму распределения заказов по статусам.
-     * 
+     *
      * @param active количество активных заказов
      * @param closed количество закрытых заказов
      * @param total общее количество заказов
@@ -827,7 +1164,7 @@ public class DashboardView extends ScrollPane {
     /**
      * Создаёт мини-карточку «Общая выручка» с декоративным круговым
      * индикатором (заполненная на ~270° дуга с градиентом).
-     * 
+     *
      * @param revenue сумма выручки для отображения
      * @return карточка VBox с общей выручкой
      */
@@ -853,7 +1190,7 @@ public class DashboardView extends ScrollPane {
         gc.setLineWidth(12);
         gc.strokeArc(cx - radius, cy - radius, radius * 2, radius * 2, 90, 360, javafx.scene.shape.ArcType.OPEN);
         javafx.scene.paint.LinearGradient grad = new javafx.scene.paint.LinearGradient(0, 0, 1, 1, true,
-                javafx.scene.paint.CycleMethod.NO_CYCLE,
+                CycleMethod.NO_CYCLE,
                 new javafx.scene.paint.Stop(0, javafx.scene.paint.Color.web(ACCENT_CYAN)),
                 new javafx.scene.paint.Stop(1, javafx.scene.paint.Color.web(ACCENT_BLUE)));
         gc.setStroke(grad);
@@ -874,39 +1211,6 @@ public class DashboardView extends ScrollPane {
         return v;
     }
 
-    // ==================== ВИДЖЕТ: СТАТУСЫ ====================
-
-    private VBox createStatusCard() {
-        VBox card = new VBox(12);
-        card.setAlignment(Pos.CENTER_LEFT);
-        card.setPadding(new Insets(16));
-        card.setStyle("-fx-background-color: " + CARD_BG + "; -fx-background-radius: 16px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 4);");
-
-        Label title = styledLabel("Статистика", TEXT_WHITE, 13, true);
-
-        VBox stats = new VBox(6);
-        stats.getChildren().addAll(
-                createStatRow("В работе", String.valueOf(getActiveOrdersCount()), ACCENT_CYAN),
-                createStatRow("Выполнено", String.valueOf(getCompletedOrdersCount()), ACCENT_BLUE),
-                createStatRow("Записей", String.valueOf(DataStore.getAppointments().size()), ACCENT_PINK)
-        );
-
-        card.getChildren().addAll(title, stats);
-        return card;
-    }
-
-    private HBox createStatRow(String label, String value, String color) {
-        HBox row = new HBox(8);
-        row.setAlignment(Pos.CENTER_LEFT);
-        row.setPadding(new Insets(4, 0, 4, 0));
-
-        Label lbl = styledLabel(label, TEXT_GRAY, 12, false);
-        Label val = styledLabel(value, color, 13, true);
-
-        row.getChildren().addAll(lbl, new javafx.scene.layout.Pane(), val);
-        return row;
-    }
-
     // ==================== ВИДЖЕТ: ГРАФИК ВЫРУЧКИ (ЛИНЕЙНЫЙ) ====================
 
     /**
@@ -915,7 +1219,7 @@ public class DashboardView extends ScrollPane {
      * вычисляется как 55% от ширины. Сверху есть переключатель месяца
      * (кнопки ← / →), при нажатии которых график перерисовывается для
      * выбранного месяца.
-     * 
+     *
      * @param titleText заголовок карточки
      * @param data      исходные данные для первичной отрисовки
      * @return карточка VBox с графиком
@@ -1088,7 +1392,7 @@ public class DashboardView extends ScrollPane {
                 new javafx.scene.paint.Stop(0.5, areaTop.deriveColor(0, 0.7, 0.8, 0.5)),
                 new javafx.scene.paint.Stop(1, areaBottom)
         };
-        javafx.scene.paint.LinearGradient areaGradient = new javafx.scene.paint.LinearGradient(0, 0, 0, 1, true, javafx.scene.paint.CycleMethod.NO_CYCLE, stops);
+        javafx.scene.paint.LinearGradient areaGradient = new javafx.scene.paint.LinearGradient(0, 0, 0, 1, true, CycleMethod.NO_CYCLE, stops);
 
         gc.setFill(areaGradient);
         gc.beginPath();
@@ -1133,7 +1437,7 @@ public class DashboardView extends ScrollPane {
 
     /**
      * Создаёт календарь записей на текущий месяц.
-     * 
+     *
      * @param currentMonth месяц, для которого строится календарь
      * @param appointments список всех записей (фильтрация внутри метода)
      * @return карточка VBox с сеткой календаря
@@ -1204,84 +1508,185 @@ public class DashboardView extends ScrollPane {
         return card;
     }
 
-    // ==================== ВИДЖЕТ: EARNINGS ====================
+    // ==================== УСТАРЕВШИЕ МЕТОДЫ (для совместимости) ====================
 
-    private VBox createEarningsCard() {
-        VBox card = new VBox(12);
-        card.setAlignment(Pos.CENTER_LEFT);
-        card.setPadding(new Insets(16));
-        card.setStyle("-fx-background-color: " + CARD_BG + "; -fx-background-radius: 16px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 4);");
-
-        Label title = styledLabel("Прибыль в этом месяце", TEXT_WHITE, 13, true);
-
-        // Парсим выручку для отображения
-        double revenue = parseRevenue(getTotalRevenue());
-        Label amount = styledLabel("$" + String.format("%,.0f", revenue), ACCENT_CYAN, 21, true);
-        card.getChildren().addAll(title, amount);
-
-        // Маленькая линия (можно использовать заготовку графика)
-        List<Double> dummyData = new ArrayList<>();
-        for (int i = 0; i < 7; i++) {
-            dummyData.add(Math.random() * revenue * 0.1 + revenue * 0.8);
+    /**
+     * Подсчитывает количество запчастей с остатком ниже минимального уровня.
+     *
+     * @return строковое представление количества «низких» остатков
+     */
+    private String getLowStockCount() {
+        int count = 0;
+        for (SparePart part : DataStore.getSpareParts()) {
+            if (part.getAvailableStock() < part.getMinStock()) {
+                count++;
+            }
         }
-        VBox miniChart = createLineChart("", dummyData);
-        miniChart.setStyle("-fx-background-color: transparent; -fx-effect: none;");
-        card.getChildren().add(miniChart);
-
-        return card;
+        return String.valueOf(count);
     }
 
     /**
-     * Возвращает список записей на текущую неделю (с понедельника по воскресенье)
-     * Только активные записи (не закрытые и не выполненные)
+     * Преобразует строку с числом валюты (например, "12 345,00 ₽") в число
+     * типа {@code double}. При ошибке парсинга возвращает 0.
+     *
+     * @param revenueStr строка с суммой, возможно с форматированием
+     * @return числовое значение суммы или 0.0 при неудачном разборе
      */
-    private List<Appointment> getWeekAppointments() {
-        List<Appointment> result = new ArrayList<>();
-        LocalDate today = LocalDate.now();
-
-        // Определяем понедельник текущей недели
-        LocalDate monday = today;
-        while (monday.getDayOfWeek().getValue() != 1) {
-            monday = monday.minusDays(1);
+    private double parseRevenue(String revenueStr) {
+        try {
+            String cleaned = revenueStr.replaceAll("[^0-9.,]", "").replace(",", ".");
+            return Double.parseDouble(cleaned);
+        } catch (Exception e) {
+            return 0.0;
         }
-        // Воскресенье
-        LocalDate sunday = monday.plusDays(6);
+    }
 
-        for (Appointment a : DataStore.getAppointments()) {
-            try {
-                LocalDate appointmentDate = DateUtils.parseDate(a.getDate());
+    /**
+     * Вычисляет динамику выручки за последние 6 месяцев (текущий и 5
+     * предыдущих). Учитываются только заказы со статусом «Закрыт».
+     *
+     * Алгоритм: все закрытые заказы группируются по месяцу (YearMonth),
+     * суммы суммируются; затем формируется список из 6 значений, где для
+     * месяцев без закрытых заказов подставляется 0.
+     *
+     * @return список из 6 значений выручки по месяцам (от старых к новым)
+     */
+    private List<Double> getMonthlyRevenueData() {
+        // Замена 1: лог общего числа заказов
+        System.out.println("🔍 Всего заказов в БД: " + DataStore.getOrders().size());
 
-                // Проверяем, что запись в пределах недели
-                if (appointmentDate.isBefore(monday) || appointmentDate.isAfter(sunday)) {
-                    continue;
+        // Группируем ВСЕ закрытые заказы по месяцу (YearMonth) — независимо от давности
+        HashMap<YearMonth, Double> revenueByMonth = new HashMap<>();
+        int totalClosed = 0;
+
+        for (WorkOrder order : DataStore.getOrders()) {
+            if (!WorkOrder.STATUS_CLOSED.equals(order.getStatus())) {
+                continue;
+            }
+            totalClosed++;
+
+            // Замена 2: защита от null/пустой даты
+            String createdDate = order.getCreatedDate();
+            if (createdDate == null || createdDate.trim().isEmpty()) {
+                System.out.println("⚠️ Пропущен заказ без даты: " + order.getId());
+                continue;
+            }
+
+            LocalDate orderDate = DateUtils.parseDate(createdDate);
+            if (orderDate == null) {
+                System.out.println("⚠️ Пропущен заказ (дата не распарсилась): " + order.getId());
+                continue; // дата не распарсилась — пропускаем
+            }
+            YearMonth ym = YearMonth.from(orderDate);
+            revenueByMonth.merge(ym, order.getTotal(), Double::sum);
+        }
+
+        // Замена 3: формируем результат за последние 6 месяцев.
+        // Если закрытых заказов нет — по всем месяцам будут нули (ровная линия на 0).
+        List<Double> monthlyRevenue = new ArrayList<>();
+        YearMonth current = YearMonth.now();
+        for (int i = 5; i >= 0; i--) {
+            monthlyRevenue.add(revenueByMonth.getOrDefault(current.minusMonths(i), 0.0));
+        }
+
+        // Замена 4: итоговый лог
+        System.out.println("📊 Итоговый массив выручки: " + Arrays.toString(monthlyRevenue.toArray()));
+        System.out.println("📊 Всего закрытых заказов учтено: " + totalClosed);
+        return monthlyRevenue;
+    }
+
+    /**
+     * Возвращает динамику выручки за 6 месяцев: выбранный месяц и 5 предыдущих.
+     * Каждый элемент — суммарная выручка закрытых заказов за соответствующий месяц.
+     */
+    private List<Double> getMonthlyRevenueDataForMonth(YearMonth yearMonth) {
+        List<Double> monthlyRevenue = new ArrayList<>();
+        for (int i = 5; i >= 0; i--) {
+            YearMonth ym = yearMonth.minusMonths(i);
+            LocalDate monthStart = ym.atDay(1);
+            LocalDate monthEnd = ym.atEndOfMonth();
+
+            double total = 0;
+            for (WorkOrder order : DataStore.getOrders()) {
+                if (WorkOrder.STATUS_CLOSED.equals(order.getStatus())) {
+                    try {
+                        LocalDate orderDate = DateUtils.parseDate(order.getCreatedDate());
+                        if (orderDate != null && !orderDate.isBefore(monthStart) && !orderDate.isAfter(monthEnd)) {
+                            total += order.getTotal();
+                        }
+                    } catch (Exception ignored) {}
                 }
+            }
+            monthlyRevenue.add(total);
+        }
+        return monthlyRevenue;
+    }
 
-                // Проверяем, что запись активна (не закрыта и не выполнена)
-                String status = a.getStatus();
-                if (status == null) {
-                    continue;
-                }
-
-                // Исключаем закрытые и выполненные записи
-                if (status.equals("Выполнено") || status.equals("Закрыт")) {
-                    continue;
-                }
-
-                result.add(a);
-
-            } catch (Exception ignored) {
-                // Если дата не парсится — пропускаем
+    private String getTotalRevenue() {
+        double total = 0;
+        for (WorkOrder order : DataStore.getOrders()) {
+            String status = order.getStatus();
+            if (WorkOrder.STATUS_CLOSED.equals(status)) {
+                total += order.getTotal();
             }
         }
+        return currencyFormat.format(total);
+    }
 
-        // Сортируем по дате и времени
-        result.sort((a1, a2) -> {
-            int dateCompare = a1.getDate().compareTo(a2.getDate());
-            if (dateCompare != 0) return dateCompare;
-            return a1.getTime().compareTo(a2.getTime());
-        });
+    /**
+     * Подсчитывает количество заказов со статусом «В работе».
+     *
+     * @return количество активных заказов
+     */
+    private int getActiveOrdersCount() {
+        int count = 0;
+        for (WorkOrder order : DataStore.getOrders()) {
+            if (WorkOrder.STATUS_IN_PROGRESS.equals(order.getStatus())) {
+                count++;
+            }
+        }
+        return count;
+    }
 
-        return result;
+    /**
+     * Подсчитывает количество заказов со статусом «Закрыт».
+     *
+     * @return количество закрытых заказов
+     */
+    private int getCompletedOrdersCount() {
+        int count = 0;
+        for (WorkOrder order : DataStore.getOrders()) {
+            if (WorkOrder.STATUS_CLOSED.equals(order.getStatus())) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Вычисляет выручку за конкретный месяц.
+     */
+    private static List<Double> calculateMonthlyRevenueForMonth(List<WorkOrder> orders, YearMonth yearMonth) {
+        List<Double> monthlyRevenue = new ArrayList<>();
+        for (int i = 5; i >= 0; i--) {
+            YearMonth ym = yearMonth.minusMonths(i);
+            LocalDate monthStart = ym.atDay(1);
+            LocalDate monthEnd = ym.atEndOfMonth();
+
+            double total = 0;
+            for (WorkOrder order : orders) {
+                if (WorkOrder.STATUS_CLOSED.equals(order.getStatus())) {
+                    try {
+                        LocalDate orderDate = DateUtils.parseDate(order.getCreatedDate());
+                        if (orderDate != null && !orderDate.isBefore(monthStart) && !orderDate.isAfter(monthEnd)) {
+                            total += order.getTotal();
+                        }
+                    } catch (Exception ignored) {}
+                }
+            }
+            monthlyRevenue.add(total);
+        }
+        return monthlyRevenue;
     }
 
     // ==================== ВНУТРЕННИЙ КЛАСС ДЛЯ ТАБЛИЦЫ ====================
@@ -1306,7 +1711,7 @@ public class DashboardView extends ScrollPane {
 
         /**
          * Создаёт строку таблицы записей.
-         * 
+         *
          * @param orderId    идентификатор записи
          * @param clientName имя клиента
          * @param carModel   модель автомобиля
@@ -1359,12 +1764,27 @@ public class DashboardView extends ScrollPane {
         public final int totalAppointments;
         public final String formattedTotalRevenue;
 
+        // Новые поля
+        public final Map<String, Integer> topServices;
+        public final List<SparePart> lowStockParts;
+        public final double averageCheck;
+        public final Map<String, Integer> masterLoad;
+        public final int todayAppointments;
+        public final Map<String, Integer> ordersByDayOfWeek;
+        public final double monthForecast;
+        public final int newClientsThisMonth;
+        public final String topClient;
+
         public DashboardData(List<WorkOrder> orders, List<Client> clients,
                              List<Appointment> appointments, List<SparePart> spareParts,
                              double totalRevenue, List<Double> monthlyRevenue,
                              int activeOrders, int completedOrders,
                              int totalOrders, int totalClients,
-                             int totalAppointments, String formattedTotalRevenue) {
+                             int totalAppointments, String formattedTotalRevenue,
+                             Map<String, Integer> topServices, List<SparePart> lowStockParts,
+                             double averageCheck, Map<String, Integer> masterLoad,
+                             int todayAppointments, Map<String, Integer> ordersByDayOfWeek,
+                             double monthForecast, int newClientsThisMonth, String topClient) {
             this.orders = orders;
             this.clients = clients;
             this.appointments = appointments;
@@ -1377,6 +1797,15 @@ public class DashboardView extends ScrollPane {
             this.totalClients = totalClients;
             this.totalAppointments = totalAppointments;
             this.formattedTotalRevenue = formattedTotalRevenue;
+            this.topServices = topServices;
+            this.lowStockParts = lowStockParts;
+            this.averageCheck = averageCheck;
+            this.masterLoad = masterLoad;
+            this.todayAppointments = todayAppointments;
+            this.ordersByDayOfWeek = ordersByDayOfWeek;
+            this.monthForecast = monthForecast;
+            this.newClientsThisMonth = newClientsThisMonth;
+            this.topClient = topClient;
         }
     }
 }

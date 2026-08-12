@@ -533,7 +533,13 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                     c.car_model as c_car_model, c.car_number as c_car_number, c.last_repair_date
             FROM orders o
             LEFT JOIN clients c ON o.client_id = c.id
-            ORDER BY o.created_date DESC
+            ORDER BY
+                CASE
+                    WHEN LENGTH(o.created_date) >= 10
+                        THEN substr(o.created_date, 7, 4) || substr(o.created_date, 4, 2) || substr(o.created_date, 1, 2)
+                    ELSE '20' || substr(o.created_date, 7, 2) || substr(o.created_date, 4, 2) || substr(o.created_date, 1, 2)
+                END DESC,
+                o.id ASC
         """;
 
         try (Connection conn = getConnection();

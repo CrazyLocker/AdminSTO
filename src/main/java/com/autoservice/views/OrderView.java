@@ -301,9 +301,8 @@ public class OrderView {
         colId.setPrefWidth(160);
         colId.setSortable(true);
         
-        // Пользовательский компаратор для сортировки по порядковому номеру (4 последних цифры)
+        // Пользовательский компаратор для сортировки по дате (из ID), затем по порядковому номеру
         colId.setComparator((id1, id2) -> {
-            // Если один из ID пустой, он будет в конце
             if (id1 == null && id2 == null) return 0;
             if (id1 == null) return 1;
             if (id2 == null) return -1;
@@ -312,23 +311,30 @@ public class OrderView {
             if (id1.isEmpty()) return 1;
             if (id2.isEmpty()) return -1;
             
-            // Извлекаем порядковый номер (4 последних цифры)
             try {
-                String[] parts1 = id1.split("-");
-                String[] parts2 = id2.split("-");
+                // Формат: ZAK-DD/MM/YY-XXXX или ZAK-DD/MM/YYYY-XXXX
+                int lastDash1 = id1.lastIndexOf('-');
+                int lastDash2 = id2.lastIndexOf('-');
                 
-                if (parts1.length >= 2 && parts2.length >= 2) {
-                    // Берём последнюю часть как порядковый номер
-                    int num1 = Integer.parseInt(parts1[parts1.length - 1]);
-                    int num2 = Integer.parseInt(parts2[parts2.length - 1]);
-                    return Integer.compare(num1, num2);
-                }
+                String datePart1 = id1.substring(4, lastDash1);
+                String numPart1 = id1.substring(lastDash1 + 1);
+                
+                String datePart2 = id2.substring(4, lastDash2);
+                String numPart2 = id2.substring(lastDash2 + 1);
+                
+                // Преобразуем дату в сортируемый формат: YYYYMMDD
+                String sortDate1 = toSortableDate(datePart1);
+                String sortDate2 = toSortableDate(datePart2);
+                
+                int dateCompare = sortDate1.compareTo(sortDate2);
+                if (dateCompare != 0) return dateCompare;
+                
+                // При одинаковой дате — по порядковому номеру
+                return Integer.compare(Integer.parseInt(numPart1), Integer.parseInt(numPart2));
             } catch (Exception e) {
                 logger.error("Ошибка парсинга ID для сортировки", e);
+                return id1.compareTo(id2);
             }
-            
-            // Fallback: лексикографическая сортировка
-            return id1.compareTo(id2);
         });
 
         TableColumn<WorkOrder, String> colClient = new TableColumn<>("Клиент");
@@ -496,28 +502,22 @@ public class OrderView {
     }
     
     /**
-     * Извлекает дату из номера заказа и преобразует её в формат для сортировки.
-     * Формат заказа: ZAK-dd-MM-yy-0001
-     * Выход: dd-MM-yyyy (подходит для строковой сортировки)
+     * Преобразует дату из формата DD/MM/YY или DD/MM/YYYY в сортируемый формат YYYYMMDD.
+     * 
+     * @param datePart дата в формате DD/MM/YY или DD/MM/YYYY
+     * @return строка в формате YYYYMMDD для строковой сортировки
      */
-    private static String extractSortDate(String[] parts) {
-        if (parts.length < 5) return "";
-        
-        String day = parts[1]; // dd
-        String month = parts[2]; // MM
-        String yearSuffix = parts[3]; // yy
-        
-        // Преобразуем год в 4-значный формат
-        int year;
-        if (yearSuffix.length() == 2) {
-            year = 2000 + Integer.parseInt(yearSuffix);
-        } else if (yearSuffix.length() == 4) {
-            year = Integer.parseInt(yearSuffix);
-        } else {
-            return "";
+    private static String toSortableDate(String datePart) {
+        if (datePart == null || datePart.isEmpty()) return "";
+        String[] parts = datePart.split("/");
+        if (parts.length < 3) return "";
+        String day = parts[0];
+        String month = parts[1];
+        String year = parts[2];
+        if (year.length() == 2) {
+            year = "20" + year;
         }
-        
-        return String.format("%s-%s-%04d", day, month, year);
+        return year + month + day;
     }
 
     private static void applyFilters() {
