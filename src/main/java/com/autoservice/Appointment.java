@@ -2,6 +2,8 @@ package com.autoservice;
 
 public class Appointment {
     public static final String STATUS_NEW = "Новая";
+    public static final String STATUS_CONFIRMED = "Подтверждена";
+    public static final String STATUS_CANCELLED = "Отменена";
     public static final String STATUS_COMPLETED = "Выполнено";
 
     private int id;

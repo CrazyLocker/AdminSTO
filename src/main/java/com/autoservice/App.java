@@ -8,6 +8,7 @@ import com.autoservice.services.ScheduleService;
 import com.autoservice.services.TableStateManager;
 import com.autoservice.services.WindowStateManager;
 import com.autoservice.views.*;
+import com.autoservice.controllers.AppointmentController;
 import com.autoservice.controllers.ServicePanelController;
 import com.autoservice.controllers.SparePartPanelController;
 import com.autoservice.controllers.StockPanelController;
@@ -17,59 +18,31 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
+import javafx.scene.control.Label;
+import javafx.scene.layout.VBox;
 import javafx.scene.shape.SVGPath;
 import javafx.stage.Stage;
 
-/**
- * Точка входа в приложение «Администратор СТО» (JavaFX).
- * 
- * Ответственность: инициализация инфраструктуры приложения (база данных,
- * логгирование, планировщик бэкапов, тема оформления), создание главного
- * окна с набором вкладок и управление жизненным циклом приложения
- * (корректное сохранение данных и состояния при закрытии).
- * 
- * Зависимости: JavaFX, Database, DataStore, ScheduleService, ThemeManager,
- * WindowStateManager, TableStateManager, все View-классы (ClientView,
- * OrderView, ServicePanel, SparePartPanel, StockPanel, SettingsView,
- * AppointmentView) и их контроллеры.
- * 
- * Особенности: загрузка данных выполняется в фоновом потоке с индикатором
- * LoadingIndicator; состояние главного окна и всех таблиц сохраняется при
- * закрытии приложения.
- * 
- * @author AdminSTO Team
- * @since 1.0
- * @see Database
- * @see DataStore
- * @see ScheduleService
- * @see DashboardView
- */
-public class App extends Application {
-    
-    private static final Logger logger = LoggerFactory.getLogger(App.class);
+import java.io.IOException;
 
-    /**
-     * Точка входа JavaFX-приложения. Выполняет инициализацию стилей,
-     * логгирования, базы данных и фоновую загрузку данных, затем строит
-     * главное окно с вкладками и настраивает обработчики закрытия.
-     * 
-     * @param primaryStage главная сцена приложения, предоставляемая JavaFX
-     */
+public class App extends Application {
+
+    private static final Logger logger = LoggerFactory.getLogger(App.class);
+    private static AppointmentController appointmentController;
+
     @Override
     public void start(Stage primaryStage) {
-        // 1. Загрузка настроек из JSON (независимо от БД)
         SettingsManager.load();
         logger.info("Запуск приложения Администратор СТО");
 
         try {
-            // 2. Инициализация БД (бизнес-данные)
             Database.init();
             logger.info("База данных инициализирована");
 
-            // 3. Загрузка данных в кэш (в фоновом потоке)
             LoadingIndicator.show();
             new Thread(() -> {
                 DataStore.load();
@@ -78,8 +51,7 @@ public class App extends Application {
                     logger.info("Данные загружены");
                 });
             }).start();
-            
-            // Инициализация ScheduleService и проверка авто-бэкапа
+
             ScheduleService.init();
             ScheduleService.checkAndRunBackupOnStartup();
         } catch (Exception e) {
@@ -106,39 +78,36 @@ public class App extends Application {
         sparePartsTab.setContent(SparePartPanel.create());
         stockTab.setContent(StockPanel.create());
         settingsTab.setContent(SettingsView.create());
-        appointmentTab.setContent(AppointmentView.create());
+
+        // ===== ЗАГРУЗКА AppointmentView через FXML =====
+        appointmentTab.setContent(createAppointmentView());
 
         tabPane.getTabs().addAll(dashTab, clientTab, orderTab, servicesTab, sparePartsTab, stockTab, appointmentTab, settingsTab);
 
         tabPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, tab) -> {
             logger.info("🔄 Переключение вкладки: {} -> {}", oldTab != null ? oldTab.getText() : "null", tab != null ? tab.getText() : "null");
             if (tab == dashTab) {
-                // Отложенный refresh — не блокирует переключение вкладки
                 Platform.runLater(() -> DashboardView.refresh());
             } else if (tab == appointmentTab) {
-                // Отложенный refresh — не блокирует переключение вкладки
-                Platform.runLater(() -> AppointmentView.refresh());
+                Platform.runLater(() -> {
+                    if (appointmentController != null) {
+                        appointmentController.refresh();
+                    }
+                });
             }
         });
 
         Scene scene = new Scene(tabPane, 1500, 1000);
-
-        // Инициализация менеджера тем + загрузка глобального CSS
         ThemeManager.init(scene);
-
+        // Подключение стилей для календаря
+        scene.getStylesheets().add(getClass().getResource("/css/appointment.css").toExternalForm());
         primaryStage.setTitle("Администратор СТО");
         primaryStage.setScene(scene);
-        
-        // Восстановление состояния главного окна
         WindowStateManager.getInstance().restoreWindowState("mainWindow", primaryStage);
 
         primaryStage.setOnCloseRequest(e -> {
             logger.info("Закрытие приложения");
-            
-            // Сохранение состояния главного окна
             WindowStateManager.getInstance().saveWindowState("mainWindow", primaryStage);
-            
-            // Сохранение состояний всех таблиц (синхронно, до System.exit)
             TableStateManager.saveTableState(ClientView.getTable(), "clientTable");
             TableStateManager.saveTableState(OrderView.getTable(), "orderTable");
             TableStateManager.saveTableState(ServicePanel.getTable(), "servicesTable");
@@ -149,9 +118,6 @@ public class App extends Application {
                 TableStateManager.saveTableState(SettingsView.getServiceSparePartsTable(), "serviceSparePartsTable");
             }
             TableStateManager.saveTableState(SettingsView.getToPartsTable(), "toPartsTable");
-            
-            // Остановить планировщик до закрытия БД, чтобы избежать конфликтов
-            // при выполнении фоновых бэкапов
             ScheduleService.shutdown();
             DataStore.save();
             Database.close();
@@ -161,9 +127,8 @@ public class App extends Application {
         });
 
         primaryStage.show();
-
         logger.info("Приложение запущено успешно");
-        
+
         com.autoservice.controllers.ClientController.refreshTable();
         com.autoservice.controllers.OrderController.refreshTable();
         ServicePanelController.refreshTable();
@@ -172,12 +137,29 @@ public class App extends Application {
     }
 
     /**
-     * Создаёт не закрываемую вкладку с заданным заголовком и иконкой.
-     * 
-     * @param title текст заголовка вкладки
-     * @param icon  SVG-иконка, отображаемая рядом с заголовком
-     * @return настроенная вкладка {@link Tab}
+     * Создаёт представление AppointmentView через FXML.
      */
+    private VBox createAppointmentView() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/AppointmentView.fxml"));
+            VBox root = loader.load();
+            appointmentController = loader.getController();
+            logger.info("✅ AppointmentView загружен через FXML");
+            return root;
+        } catch (IOException e) {
+            logger.error("❌ Ошибка загрузки AppointmentView.fxml", e);
+            // Показываем сообщение об ошибке
+            VBox errorBox = new VBox();
+            errorBox.setAlignment(javafx.geometry.Pos.CENTER);
+            Label errorLabel = new Label("❌ Ошибка загрузки календаря");
+            errorLabel.setStyle("-fx-text-fill: #d32f2f; -fx-font-size: 16px; -fx-font-weight: bold;");
+            Label detailLabel = new Label(e.getMessage());
+            detailLabel.setStyle("-fx-text-fill: #666; -fx-font-size: 12px;");
+            errorBox.getChildren().addAll(errorLabel, detailLabel);
+            return errorBox;
+        }
+    }
+
     private static Tab createTab(String title, SVGPath icon) {
         Tab tab = new Tab(title);
         tab.setClosable(false);
@@ -185,12 +167,6 @@ public class App extends Application {
         return tab;
     }
 
-    /**
-     * Основной метод запуска приложения. Делегирует управление
-     * методу {@code launch} базового класса {@link Application}.
-     * 
-     * @param args аргументы командной строки (не используются)
-     */
     public static void main(String[] args) {
         launch(args);
     }

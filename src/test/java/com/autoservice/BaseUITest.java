@@ -27,7 +27,6 @@ import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
-import javafx.scene.layout.VBox;
 import javafx.scene.shape.SVGPath;
 import javafx.stage.Stage;
 
@@ -172,7 +171,7 @@ public abstract class BaseUITest {
         sparePartsTab.setContent(SparePartPanel.create());
         stockTab.setContent(StockPanel.create());
         settingsTab.setContent(SettingsView.create());
-        appointmentTab.setContent(AppointmentView.create());
+        appointmentTab.setContent(createAppointmentView());
 
         tabPane.getTabs().addAll(dashTab, clientTab, orderTab, servicesTab, sparePartsTab, stockTab, appointmentTab, settingsTab);
 
@@ -505,3 +504,4 @@ public abstract class BaseUITest {
         return table;
     }
 }
+

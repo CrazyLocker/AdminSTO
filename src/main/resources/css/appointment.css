@@ -1,0 +1,228 @@
+/* ============================================================
+   appointment.css — Стили для календаря (Dracula тема)
+   ============================================================ */
+
+.appointment-root {
+    -fx-background-color: #282a36;  /* Dracula background */
+}
+
+/* ---------- Панель управления ---------- */
+.appointment-controls {
+    -fx-background-color: #21222c;  /* Dracula current line */
+    -fx-border-color: #44475a;      /* Dracula comment */
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 10 15;
+    -fx-spacing: 12;
+}
+
+.appointment-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #f8f8f2;         /* Dracula foreground */
+    -fx-font-size: 13px;
+    -fx-padding: 6 14;
+    -fx-border-color: #44475a;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+}
+
+.appointment-btn:hover {
+    -fx-background-color: #44475a;
+}
+
+.appointment-btn-today {
+    -fx-background-color: #6272a4;  /* Dracula purple/blue */
+    -fx-text-fill: #f8f8f2;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-padding: 6 18;
+    -fx-background-radius: 4;
+}
+
+.appointment-btn-today:hover {
+    -fx-background-color: #50fa7b;  /* Dracula green */
+    -fx-text-fill: #282a36;
+}
+
+.appointment-nav-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #f8f8f2;
+    -fx-font-size: 14px;
+    -fx-padding: 6 10;
+}
+
+.appointment-nav-btn:hover {
+    -fx-background-color: #44475a;
+}
+
+.appointment-date-label {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f8f8f2;
+}
+
+.appointment-period-label {
+    -fx-font-size: 12px;
+    -fx-text-fill: #6272a4;
+}
+
+/* ---------- Заголовки дней ---------- */
+.appointment-day-header {
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
+    -fx-text-fill: #6272a4;
+    -fx-pref-width: 70px;
+    -fx-alignment: center;
+    -fx-padding: 5 0;
+}
+
+/* ---------- Календарная сетка ---------- */
+.appointment-calendar-container {
+    -fx-background-color: #282a36;
+    -fx-padding: 10;
+    -fx-border-color: #44475a;
+    -fx-border-width: 0 1 1 1;
+    -fx-border-radius: 0 0 8 8;
+    -fx-background-radius: 0 0 8 8;
+}
+
+.appointment-calendar-grid {
+    -fx-background-color: #282a36;
+    -fx-alignment: center;
+}
+
+/* ---------- Ячейки дней ---------- */
+.appointment-day-cell {
+    -fx-min-width: 70px;
+    -fx-min-height: 60px;
+    -fx-pref-width: 70px;
+    -fx-pref-height: 60px;
+    -fx-max-width: 100px;
+    -fx-max-height: 80px;
+    -fx-padding: 4;
+    -fx-border-color: #44475a;
+    -fx-border-width: 1;
+    -fx-background-color: #282a36;
+    -fx-cursor: hand;
+    -fx-alignment: top-center;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+}
+
+.appointment-day-cell:hover {
+    -fx-background-color: #44475a;
+    -fx-border-color: #6272a4;
+}
+
+.appointment-day-cell-empty {
+    -fx-background-color: #1e1f29;
+    -fx-border-color: #44475a;
+}
+
+.appointment-day-cell-weekend {
+    -fx-background-color: #1e1f29;
+}
+
+.appointment-day-cell-today {
+    -fx-background-color: #44475a;
+    -fx-border-color: #50fa7b;
+    -fx-border-width: 2;
+}
+
+.appointment-day-cell-selected {
+    -fx-background-color: #6272a4 !important;
+    -fx-border-color: #50fa7b;
+    -fx-border-width: 2;
+}
+
+/* ---------- Число в ячейке ---------- */
+.appointment-day-number {
+    -fx-font-weight: bold;
+    -fx-font-size: 15px;
+    -fx-text-fill: #f8f8f2 !important;
+    -fx-padding: 2 0 0 0;
+}
+
+/* ---------- Индикатор записи ---------- */
+.appointment-day-dot {
+    -fx-fill: #50fa7b;
+    -fx-arc-width: 6;
+    -fx-arc-height: 6;
+}
+
+.appointment-day-count {
+    -fx-font-size: 9px;
+    -fx-text-fill: #50fa7b;
+    -fx-font-weight: bold;
+}
+
+/* ---------- Список записей ---------- */
+.appointment-list-container {
+    -fx-background-color: #282a36;
+    -fx-border-color: #44475a;
+    -fx-border-width: 1 0 0 0;
+    -fx-padding: 10 15;
+}
+
+.appointment-list-title {
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f8f8f2;
+    -fx-padding: 0 0 8 0;
+}
+
+.appointment-list-view {
+    -fx-background-color: #282a36;
+    -fx-border-color: #44475a;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+
+.appointment-list-view .list-cell {
+    -fx-padding: 0;
+    -fx-background-color: #282a36;
+}
+
+/* ---------- Ячейка в списке записей ---------- */
+.appointment-list-cell-root {
+    -fx-border-color: #44475a;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 10 12;
+    -fx-background-color: #282a36;
+}
+
+.appointment-list-client {
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+    -fx-text-fill: #f8f8f2 !important;
+}
+
+.appointment-list-info {
+    -fx-font-size: 11px;
+    -fx-text-fill: #6272a4 !important;
+}
+
+.appointment-list-time {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #50fa7b !important;
+    -fx-pref-width: 60px;
+    -fx-alignment: center-right;
+}
+
+/* ---------- Статусы (цветные точки) ---------- */
+.appointment-status-dot-new {
+    -fx-fill: #6272a4;
+}
+
+.appointment-status-dot-confirmed {
+    -fx-fill: #50fa7b;
+}
+
+.appointment-status-dot-cancelled {
+    -fx-fill: #ff5555;
+}
+
+.appointment-status-dot-completed {
+    -fx-fill: #f1fa8c;
+}

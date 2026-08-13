@@ -2,12 +2,10 @@ package com.autoservice.controllers;
 
 import com.autoservice.Appointment;
 import com.autoservice.DataStore;
-import com.autoservice.SparePart;
 import com.autoservice.WorkOrder;
 import com.autoservice.dialogs.CreateOrderDialog;
 import com.autoservice.dialogs.EditOrderDialog;
 import com.autoservice.dialogs.OrderDetailsDialog;
-import com.autoservice.views.AppointmentView;
 import com.autoservice.views.DashboardView;
 import com.autoservice.views.OrderView;
 import org.slf4j.Logger;
@@ -15,12 +13,6 @@ import org.slf4j.LoggerFactory;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.TableView;
-
-import com.autoservice.Client;
-import com.autoservice.Service;
-import com.autoservice.SparePart;
-import com.autoservice.WorkOrder;
-import com.autoservice.Appointment;
 
 public class OrderController {
     private static final Logger logger = LoggerFactory.getLogger(OrderController.class);
@@ -33,7 +25,7 @@ public class OrderController {
 
     public static void refreshTable() {
         OrderView.refreshOrderList();
-        AppointmentView.refresh();
+        // AppointmentViewOld.refresh();
         DashboardView.refresh();
     }
 
@@ -135,3 +127,4 @@ public class OrderController {
         alert.showAndWait();
     }
 }
+
