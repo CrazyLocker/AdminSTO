@@ -215,8 +215,8 @@ class ParallelDatabaseTest extends BaseTest {
             final int readAttempt = i;
             executor.submit(() -> {
                 try {
-                    var orders = DatabaseFactory.getDatabase().getAllOrders();
-                    readCount.addAndGet(orders.size());
+                    DatabaseFactory.getDatabase().getAllOrders();
+                    readCount.incrementAndGet();
                 } catch (Exception e) {
                     System.err.println("Ошибка чтения заказов " + readAttempt + ": " + e.getMessage());
                 } finally {
@@ -230,8 +230,10 @@ class ParallelDatabaseTest extends BaseTest {
         executor.awaitTermination(10, TimeUnit.SECONDS);
 
         assertTrue(completed, "Не все операции завершились");
-        assertEquals(8, writeCount.get(), "Количество созданных заказов не совпадает");
-        assertThat(readCount.get()).isGreaterThanOrEqualTo(8);
+        assertEquals(8, readCount.get(), "Количество успешных чтений не совпадает");
+        assertEquals(8, writeCount.get(), "Количество операций записи не совпадает");
+        assertEquals(8, DatabaseFactory.getDatabase().getAllOrders().size(),
+            "Количество сохранённых заказов не совпадает");
     }
 
     @DisplayName("Параллельное удаление данных с проверкой целостности")
@@ -250,20 +252,16 @@ class ParallelDatabaseTest extends BaseTest {
         ExecutorService executor = Executors.newFixedThreadPool(5);
         CountDownLatch latch = new CountDownLatch(initialClients);
 
-        for (int i = 0; i < initialClients; i++) {
-            final int clientId = i + 1;
+        // Удаляем именно существующих клиентов: ID не начинаются с 1,
+        // так как H2 продолжает нумерацию между тестами (DELETE не сбрасывает identity).
+        var clientsToDelete = DatabaseFactory.getDatabase().getAllClients();
+        assertEquals(initialClients, clientsToDelete.size());
+        for (var clientToDelete : clientsToDelete) {
             executor.submit(() -> {
                 try {
-                    var clients = DatabaseFactory.getDatabase().getAllClients();
-                    var clientToDelete = clients.stream()
-                        .filter(c -> c.getId() == clientId)
-                        .findFirst()
-                        .orElse(null);
-                    if (clientToDelete != null) {
-                        DatabaseFactory.getDatabase().deleteClient(clientToDelete);
-                    }
+                    DatabaseFactory.getDatabase().deleteClient(clientToDelete);
                 } catch (Exception e) {
-                    System.err.println("Ошибка удаления клиента " + clientId + ": " + e.getMessage());
+                    System.err.println("Ошибка удаления клиента " + clientToDelete.getId() + ": " + e.getMessage());
                 } finally {
                     latch.countDown();
                 }

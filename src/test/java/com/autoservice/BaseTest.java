@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInstance;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 /**
@@ -19,6 +20,27 @@ import java.sql.SQLException;
 public abstract class BaseTest {
 
     private static final Logger logger = LoggerFactory.getLogger(BaseTest.class);
+
+    /**
+     * Таблицы в порядке «сначала зависимые, потом родительские»:
+     * иначе DELETE родителя нарушает FOREIGN KEY (H2 и SQLite проверяют их).
+     */
+    private static final String[] TABLES_TO_CLEAR = {
+            "order_parts",
+            "order_services",
+            "appointments",
+            "orders",
+            "service_spare_parts_list_items",
+            "service_spare_parts_lists",
+            "service_spare_parts",
+            "service_parts",
+            "to_parts",
+            "client_cars",
+            "spare_parts",
+            "services",
+            "clients",
+            "app_settings"
+    };
 
     @BeforeAll
     void setupDatabase() {
@@ -33,24 +55,36 @@ public abstract class BaseTest {
     @BeforeEach
     void clearDatabase() {
         try (Connection conn = DatabaseFactory.getDatabase().getConnection()) {
-            var stmt = conn.createStatement();
-            stmt.execute("DELETE FROM order_parts");
-            stmt.execute("DELETE FROM order_services");
-            stmt.execute("DELETE FROM appointments");
-            stmt.execute("DELETE FROM orders");
-            stmt.execute("DELETE FROM client_cars");
-            stmt.execute("DELETE FROM spare_parts");
-            stmt.execute("DELETE FROM services");
-            stmt.execute("DELETE FROM clients");
-            stmt.close();
-            DataStore.load(); // Сброс кэша
+            for (String table : TABLES_TO_CLEAR) {
+                // Часть таблиц может отсутствовать в конкретной схеме тестовой БД —
+                // отсутствие таблицы не должно прерывать очистку остальных.
+                try (PreparedStatement stmt = conn.prepareStatement("DELETE FROM " + validateTableName(table))) {
+                    stmt.executeUpdate();
+                } catch (SQLException ignored) {
+                    // таблица отсутствует в тестовой схеме — это нормально
+                }
+            }
         } catch (Exception e) {
             logger.error("Ошибка очистки БД: {}", e.getMessage());
         }
+        // Сброс кэша выполняется в любом случае, чтобы DataStore не хранил
+        // данные предыдущего теста даже при частичной очистке.
+        DataStore.load();
     }
 
     @AfterEach
     void resetDataStore() {
         // No-op
+    }
+
+    /**
+     * Валидация имени таблицы перед использованием в SQL.
+     * Разрешён только алфавитно-подчёркивающий формат для защиты от SQL-инъекций.
+     */
+    private static String validateTableName(String table) {
+        if (table == null || !table.matches("[a-zA-Z_][a-zA-Z0-9_]*")) {
+            throw new IllegalArgumentException("Недопустимое имя таблицы: " + table);
+        }
+        return table;
     }
 }

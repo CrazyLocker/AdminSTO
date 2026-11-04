@@ -496,67 +496,71 @@ public class SQLiteDatabase extends AbstractDatabase {
         }
         
         try (Connection conn = getConnection()) {
-            int clientId = getClientId(order.getClient());
-            if (clientId == -1) {
-                logger.error("Клиент не найден, заказ не сохранен");
-                return;
-            }
-
-            // Генерируем ID и проверяем, что он уникален
-            String orderId;
-            int attempts = 0;
-            final int MAX_ATTEMPTS = 5;
-            
-            do {
-                orderId = generateOrderId(conn);
-                
-                // Явная проверка дубликатов (хотя PRIMARY KEY уже защищает)
-                String checkSql = "SELECT COUNT(*) FROM orders WHERE id = ?";
-                try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
-                    checkStmt.setString(1, orderId);
-                    try (ResultSet rs = checkStmt.executeQuery()) {
-                        if (rs.next() && rs.getInt(1) > 0) {
-                            logger.warn("Сгенерированный ID {} уже существует, пробуем снова", orderId);
-                            orderId = null; // Повторная генерация
-                        }
-                    }
-                } catch (SQLException e) {
-                    logger.error("Ошибка проверки дубликата", e);
+            // Генерация ID (SELECT MAX(id)) и вставка должны быть атомарны,
+            // иначе параллельные потоки получают одинаковый номер заказа.
+            synchronized (ORDER_ID_LOCK) {
+                int clientId = findClientId(conn, order.getClient());
+                if (clientId == -1) {
+                    logger.error("Клиент не найден, заказ не сохранен");
                     return;
                 }
-                
-                attempts++;
-            } while (orderId == null && attempts < MAX_ATTEMPTS);
-            
-            if (orderId == null) {
-                logger.error("Не удалось сгенерировать уникальный ID после {} попыток", MAX_ATTEMPTS);
-                return;
+
+                // Генерируем ID и проверяем, что он уникален
+                String orderId;
+                int attempts = 0;
+                final int MAX_ATTEMPTS = 5;
+
+                do {
+                    orderId = generateOrderId(conn);
+
+                    // Явная проверка дубликатов (хотя PRIMARY KEY уже защищает)
+                    String checkSql = "SELECT COUNT(*) FROM orders WHERE id = ?";
+                    try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
+                        checkStmt.setString(1, orderId);
+                        try (ResultSet rs = checkStmt.executeQuery()) {
+                            if (rs.next() && rs.getInt(1) > 0) {
+                                logger.warn("Сгенерированный ID {} уже существует, пробуем снова", orderId);
+                                orderId = null; // Повторная генерация
+                            }
+                        }
+                    } catch (SQLException e) {
+                        logger.error("Ошибка проверки дубликата", e);
+                        return;
+                    }
+
+                    attempts++;
+                } while (orderId == null && attempts < MAX_ATTEMPTS);
+
+                if (orderId == null) {
+                    logger.error("Не удалось сгенерировать уникальный ID после {} попыток", MAX_ATTEMPTS);
+                    return;
+                }
+
+                order.setId(orderId);
+
+                // Получаем текущую дату в формате dd/MM/yyyy
+                String currentDate = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+
+                conn.setAutoCommit(false);
+
+                String sql = "INSERT INTO orders (id, client_id, status, total, created_date, closed_date, notes) VALUES (?, ?, ?, ?, ?, ?, ?)";
+                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                    pstmt.setString(1, orderId);
+                    pstmt.setInt(2, clientId);
+                    pstmt.setString(3, order.getStatus());
+                    pstmt.setDouble(4, order.getTotal());
+                    pstmt.setString(5, currentDate);
+                    pstmt.setString(6, order.getClosedDate() != null ? order.getClosedDate() : "");
+                    pstmt.setString(7, order.getNotes() != null ? order.getNotes() : "");
+                    pstmt.executeUpdate();
+                }
+
+                saveOrderServices(conn, orderId, order);
+                saveOrderParts(conn, orderId, order);
+
+                conn.commit();
+                logger.info("Заказ сохранен: {}", orderId);
             }
-            
-            order.setId(orderId);
-
-            // Получаем текущую дату в формате dd/MM/yyyy
-            String currentDate = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-
-            conn.setAutoCommit(false);
-
-            String sql = "INSERT INTO orders (id, client_id, status, total, created_date, closed_date, notes) VALUES (?, ?, ?, ?, ?, ?, ?)";
-            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                pstmt.setString(1, orderId);
-                pstmt.setInt(2, clientId);
-                pstmt.setString(3, order.getStatus());
-                pstmt.setDouble(4, order.getTotal());
-                pstmt.setString(5, currentDate);
-                pstmt.setString(6, order.getClosedDate() != null ? order.getClosedDate() : "");
-                pstmt.setString(7, order.getNotes() != null ? order.getNotes() : "");
-                pstmt.executeUpdate();
-            }
-
-            saveOrderServices(conn, orderId, order);
-            saveOrderParts(conn, orderId, order);
-
-            conn.commit();
-            logger.info("Заказ сохранен: {}", orderId);
 
         } catch (SQLException e) {
             logger.error("Ошибка добавления заказа", e);
@@ -577,7 +581,7 @@ public class SQLiteDatabase extends AbstractDatabase {
             // Update order header
             String orderSql = "UPDATE orders SET client_id = ?, status = ?, total = ?, closed_date = ?, notes = ? WHERE id = ?";
             try (PreparedStatement pstmt = conn.prepareStatement(orderSql)) {
-                int clientId = getClientId(order.getClient());
+                int clientId = findClientId(conn, order.getClient());
                 pstmt.setInt(1, clientId);
                 pstmt.setString(2, order.getStatus());
                 pstmt.setDouble(3, order.getTotal());
@@ -667,7 +671,7 @@ public class SQLiteDatabase extends AbstractDatabase {
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            int clientId = getClientId(appointment.getClient());
+            int clientId = findClientId(conn, appointment.getClient());
             pstmt.setInt(1, clientId);
             pstmt.setString(2, appointment.getOrderId());
             pstmt.setString(3, appointment.getMasterName());
@@ -688,7 +692,7 @@ public class SQLiteDatabase extends AbstractDatabase {
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            int clientId = getClientId(appointment.getClient());
+            int clientId = findClientId(conn, appointment.getClient());
             pstmt.setInt(1, clientId);
             pstmt.setString(2, appointment.getMasterName());
             pstmt.setString(3, appointment.getServiceName());

@@ -35,11 +35,14 @@ public class H2Database extends AbstractDatabase {
         config.setJdbcUrl("jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE");
         config.setUsername("sa");
         config.setPassword("");
-        config.setMaximumPoolSize(5);
-        config.setMinimumIdle(1);
-        config.setConnectionTimeout(5000);
-        config.setIdleTimeout(30000);
-        config.setMaxLifetime(60000);
+        // Тот же размер пула и таймауты, что и у SQLite: параллельные тесты
+        // используют до 10 потоков, и меньшее значение приводило к таймаутам
+        // получения соединения и «зависанию» тестов.
+        config.setMaximumPoolSize(10);
+        config.setMinimumIdle(2);
+        config.setConnectionTimeout(30000);
+        config.setIdleTimeout(600000);
+        config.setMaxLifetime(1800000);
         dataSource = new com.zaxxer.hikari.HikariDataSource(config);
         
         // Загрузить драйвер H2 явно
@@ -339,10 +342,10 @@ public class H2Database extends AbstractDatabase {
             pstmt.setInt(9, service.getSparePartQuantity());
             pstmt.executeUpdate();
             
-            // Получаем сгенерированный id
-            ResultSet rs = pstmt.getGeneratedKeys();
-            if (rs.next()) {
-                service.setId(rs.getInt(1));
+            // Получаем сгенерированный id (работает в H2 для INSERT и MERGE)
+            int id = getGeneratedKeyId(conn, pstmt);
+            if (id > 0) {
+                service.setId(id);
             }
         } catch (SQLException e) {
             logger.error("Ошибка добавления услуги", e);
@@ -370,10 +373,10 @@ public class H2Database extends AbstractDatabase {
             pstmt.setString(11, part.getUnitType());
             pstmt.executeUpdate();
             
-            // Получаем сгенерированный id
-            ResultSet rs = pstmt.getGeneratedKeys();
-            if (rs.next()) {
-                part.setId(rs.getInt(1));
+            // Получаем сгенерированный id (работает в H2 для INSERT и MERGE)
+            int id = getGeneratedKeyId(conn, pstmt);
+            if (id > 0) {
+                part.setId(id);
             }
         } catch (SQLException e) {
             logger.error("Ошибка добавления запчасти", e);
@@ -382,12 +385,12 @@ public class H2Database extends AbstractDatabase {
 
     @Override
     public void updateSparePartStock(SparePart part, double newStock) {
-        String sql = "UPDATE spare_parts SET stock = ? WHERE name = ?";
+        String sql = "UPDATE spare_parts SET stock = ? WHERE id = ?";
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setDouble(1, newStock);
-            pstmt.setString(2, part.getName());
+            pstmt.setInt(2, part.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
             logger.error("Ошибка обновления остатка запчасти", e);
@@ -399,50 +402,54 @@ public class H2Database extends AbstractDatabase {
     @Override
     public void addOrder(WorkOrder order) {
         try (Connection conn = getConnection()) {
-            int clientId = getClientId(order.getClient());
-            if (clientId == -1) {
-                logger.error("Client not found, order not saved");
-                return;
-            }
-
-            String orderId = generateOrderId(conn);
-            order.setId(orderId);
-
-            // Используем дату из order, если она установлена и не пустая,
-            // иначе текущую дату (как в SQLiteDatabase) — иначе нарушается CHECK(length(created_date) > 0)
-            String currentDate;
-            if (order.getCreatedDate() != null && !order.getCreatedDate().isEmpty()) {
-                String rawDate = order.getCreatedDate().substring(0, Math.min(10, order.getCreatedDate().length()));
-                try {
-                    LocalDate date = LocalDate.parse(rawDate);
-                    currentDate = date.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-                } catch (Exception e) {
-                    currentDate = rawDate;
+            // Генерация ID (SELECT MAX(id)) и вставка должны быть атомарны,
+            // иначе параллельные потоки получают одинаковый номер заказа.
+            synchronized (ORDER_ID_LOCK) {
+                int clientId = findClientId(conn, order.getClient());
+                if (clientId == -1) {
+                    logger.error("Client not found, order not saved");
+                    return;
                 }
-            } else {
-                currentDate = LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+
+                String orderId = generateOrderId(conn);
+                order.setId(orderId);
+
+                // Используем дату из order, если она установлена и не пустая,
+                // иначе текущую дату (как в SQLiteDatabase) — иначе нарушается CHECK(length(created_date) > 0)
+                String currentDate;
+                if (order.getCreatedDate() != null && !order.getCreatedDate().isEmpty()) {
+                    String rawDate = order.getCreatedDate().substring(0, Math.min(10, order.getCreatedDate().length()));
+                    try {
+                        LocalDate date = LocalDate.parse(rawDate);
+                        currentDate = date.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+                    } catch (Exception e) {
+                        currentDate = rawDate;
+                    }
+                } else {
+                    currentDate = LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+                }
+
+                conn.setAutoCommit(false);
+
+                String sql = "INSERT INTO orders (id, client_id, status, total, created_date, mileage, closed_date, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                    pstmt.setString(1, orderId);
+                    pstmt.setInt(2, clientId);
+                    pstmt.setString(3, order.getStatus());
+                    pstmt.setDouble(4, order.getTotal());
+                    pstmt.setString(5, currentDate);
+                    pstmt.setInt(6, order.getMileage());
+                    pstmt.setString(7, order.getClosedDate() != null ? order.getClosedDate() : "");
+                    pstmt.setString(8, order.getNotes() != null ? order.getNotes() : "");
+                    pstmt.executeUpdate();
+                }
+
+                saveOrderServices(conn, orderId, order);
+                saveOrderParts(conn, orderId, order);
+
+                conn.commit();
+                logger.info("Заказ сохранен: {}", orderId);
             }
-
-            conn.setAutoCommit(false);
-
-            String sql = "INSERT INTO orders (id, client_id, status, total, created_date, mileage, closed_date, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                pstmt.setString(1, orderId);
-                pstmt.setInt(2, clientId);
-                pstmt.setString(3, order.getStatus());
-                pstmt.setDouble(4, order.getTotal());
-                pstmt.setString(5, currentDate);
-                pstmt.setInt(6, order.getMileage());
-                pstmt.setString(7, order.getClosedDate() != null ? order.getClosedDate() : "");
-                pstmt.setString(8, order.getNotes() != null ? order.getNotes() : "");
-                pstmt.executeUpdate();
-            }
-
-            saveOrderServices(conn, orderId, order);
-            saveOrderParts(conn, orderId, order);
-
-            conn.commit();
-            logger.info("Заказ сохранен: {}", orderId);
 
         } catch (SQLException e) {
             logger.error("Ошибка добавления заказа", e);
@@ -457,7 +464,7 @@ public class H2Database extends AbstractDatabase {
             // Update order header
             String orderSql = "UPDATE orders SET client_id = ?, status = ?, total = ?, mileage = ?, closed_date = ?, notes = ? WHERE id = ?";
             try (PreparedStatement pstmt = conn.prepareStatement(orderSql)) {
-                int clientId = getClientId(order.getClient());
+                int clientId = findClientId(conn, order.getClient());
                 pstmt.setInt(1, clientId);
                 pstmt.setString(2, order.getStatus());
                 pstmt.setDouble(3, order.getTotal());
@@ -541,7 +548,7 @@ public class H2Database extends AbstractDatabase {
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            int clientId = getClientId(appointment.getClient());
+            int clientId = findClientId(conn, appointment.getClient());
             pstmt.setInt(1, clientId);
             pstmt.setString(2, appointment.getOrderId());
             pstmt.setString(3, appointment.getMasterName());
@@ -553,9 +560,9 @@ public class H2Database extends AbstractDatabase {
             pstmt.executeUpdate();
             
             // Получаем сгенерированный id
-            ResultSet rs = pstmt.getGeneratedKeys();
-            if (rs.next()) {
-                appointment.setId(rs.getInt(1));
+            int id = getGeneratedKeyId(conn, pstmt);
+            if (id > 0) {
+                appointment.setId(id);
             }
         } catch (SQLException e) {
             logger.error("Ошибка добавления записи", e);
@@ -568,7 +575,7 @@ public class H2Database extends AbstractDatabase {
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            int clientId = getClientId(appointment.getClient());
+            int clientId = findClientId(conn, appointment.getClient());
             pstmt.setInt(1, clientId);
             pstmt.setString(2, appointment.getMasterName());
             pstmt.setString(3, appointment.getServiceName());
