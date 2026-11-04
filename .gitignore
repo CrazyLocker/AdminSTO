@@ -41,7 +41,6 @@ app_log.txt
 # ===== REPORTS & TEMP =====
 report*.json
 test_output.txt
-versions.properties
 Thumbs.db
 desktop.ini
 .DS_Store

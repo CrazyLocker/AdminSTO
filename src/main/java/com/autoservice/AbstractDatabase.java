@@ -27,6 +27,13 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     
     protected HikariDataSource dataSource;
     
+    /**
+     * Блокировка генерации и вставки заказа.
+     * Генерация ID выполняется через SELECT MAX(id), поэтому параллельные
+     * вставки без синхронизации получают одинаковый номер и падают на PRIMARY KEY.
+     */
+    protected static final Object ORDER_ID_LOCK = new Object();
+
     private static final Logger logger = LoggerFactory.getLogger(AbstractDatabase.class);
     
     /**
@@ -54,12 +61,14 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     protected int getGeneratedKeyId(Connection conn, PreparedStatement stmt) throws SQLException {
         try (ResultSet rs = stmt.getGeneratedKeys()) {
             if (rs.next()) {
-                return rs.getInt(1);
+                int id = rs.getInt(1);
+                if (id > 0) {
+                    return id;
+                }
             }
         }
-        // Fallback для SQLite: last_insert_rowid()
-        String url = conn.getMetaData().getURL();
-        if (url != null && url.contains("sqlite")) {
+        // Fallback только для SQLite: H2 не знает функцию last_insert_rowid().
+        if (isSqlite(conn)) {
             try (PreparedStatement queryStmt = conn.prepareStatement("SELECT last_insert_rowid()");
                  ResultSet rs = queryStmt.executeQuery()) {
                 if (rs.next()) {
@@ -68,6 +77,24 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             }
         }
         return -1;
+    }
+
+    /**
+     * Проверяет, что соединение указывает на SQLite.
+     * Нужно, чтобы SQLite-специфичные вызовы (last_insert_rowid, PRAGMA)
+     * не попадали в H2 и другие СУБД.
+     */
+    protected boolean isSqlite(Connection conn) throws SQLException {
+        String url = conn.getMetaData().getURL();
+        return url != null && url.contains("sqlite");
+    }
+
+    /**
+     * Проверяет, что соединение указывает на H2.
+     */
+    protected boolean isH2(Connection conn) throws SQLException {
+        String url = conn.getMetaData().getURL();
+        return url != null && url.contains("h2");
     }
     
     // ==================== DEFAULT IMPLEMENTATIONS ====================
@@ -101,21 +128,26 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         List<Client> clients = new ArrayList<>();
         String sql = "SELECT id, name, last_name, phone, car_model, car_number, last_repair_date FROM clients ORDER BY id";
 
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-            while (rs.next()) {
-                Client client = new Client(
-                        rs.getInt("id"),
-                        rs.getString("name"),
-                        rs.getString("last_name"),
-                        rs.getString("phone"),
-                        rs.getString("car_model"),
-                        rs.getString("car_number"),
-                        rs.getString("last_repair_date")
-                );
-                client.setCars(getCarsByClientId(client.getId()));
-                clients.add(client);
+        // Все запросы выполняются на одном соединении: вложенный getConnection()
+        // на каждый автомобиль исчерпывал пул (H2: 5 соединений) и приводил к
+        // взаимной блокировке параллельных тестов.
+        try (Connection conn = getConnection()) {
+            try (PreparedStatement stmt = conn.prepareStatement(sql);
+                 ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    clients.add(new Client(
+                            rs.getInt("id"),
+                            rs.getString("name"),
+                            rs.getString("last_name"),
+                            rs.getString("phone"),
+                            rs.getString("car_model"),
+                            rs.getString("car_number"),
+                            rs.getString("last_repair_date")
+                    ));
+                }
+            }
+            for (Client client : clients) {
+                client.setCars(loadCarsByClientId(conn, client.getId()));
             }
         } catch (SQLException e) {
             logger.error("Ошибка загрузки клиентов", e);
@@ -157,15 +189,14 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             }
             
             // Fallback: получаем ID через last_insert_rowid() для SQLite или MAX(id) для H2
-            String url = conn.getMetaData().getURL();
-            if (url != null && url.contains("h2")) {
+            if (isH2(conn)) {
                 try (Statement stmt = conn.createStatement();
                      ResultSet rs = stmt.executeQuery("SELECT MAX(id) FROM clients")) {
                     if (rs.next()) {
                         client.setId(rs.getInt(1));
                     }
                 }
-            } else if (url != null && url.contains("sqlite")) {
+            } else if (isSqlite(conn)) {
                 try (Statement stmt = conn.createStatement();
                      ResultSet rs = stmt.executeQuery("SELECT last_insert_rowid()")) {
                     if (rs.next()) {
@@ -217,24 +248,36 @@ public abstract class AbstractDatabase implements DatabaseInterface {
 
     @Override
     public List<Car> getCarsByClientId(int clientId) {
+        try (Connection conn = getConnection()) {
+            return loadCarsByClientId(conn, clientId);
+        } catch (SQLException e) {
+            logger.error("Ошибка загрузки автомобилей клиента", e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Загружает автомобили клиента через переданное соединение.
+     * Используется внутри методов, которые уже держат соединение,
+     * чтобы не занимать второе соединение из пула.
+     */
+    protected List<Car> loadCarsByClientId(Connection conn, int clientId) throws SQLException {
         List<Car> cars = new ArrayList<>();
         String sql = "SELECT id, client_id, car_model, car_number, mileage FROM client_cars WHERE client_id = ? ORDER BY id";
 
-        try (Connection conn = getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, clientId);
-            ResultSet rs = pstmt.executeQuery();
-            while (rs.next()) {
-                cars.add(new Car(
-                        rs.getInt("id"),
-                        rs.getInt("client_id"),
-                        rs.getString("car_model"),
-                        rs.getString("car_number"),
-                        rs.getInt("mileage")
-                ));
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    cars.add(new Car(
+                            rs.getInt("id"),
+                            rs.getInt("client_id"),
+                            rs.getString("car_model"),
+                            rs.getString("car_number"),
+                            rs.getInt("mileage")
+                    ));
+                }
             }
-        } catch (SQLException e) {
-            logger.error("Ошибка загрузки автомобилей клиента", e);
         }
         return cars;
     }
@@ -260,10 +303,12 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                 }
             } catch (SQLException e) {
                 logger.debug("getGeneratedKeys не поддерживается, используем fallback для car", e);
-                try (Statement stmt = conn.createStatement();
-                     ResultSet rs = stmt.executeQuery("SELECT last_insert_rowid()")) {
-                    if (rs.next()) {
-                        car.setId(rs.getInt(1));
+                if (isSqlite(conn)) {
+                    try (Statement stmt = conn.createStatement();
+                         ResultSet rs = stmt.executeQuery("SELECT last_insert_rowid()")) {
+                        if (rs.next()) {
+                            car.setId(rs.getInt(1));
+                        }
                     }
                 }
             }
@@ -307,23 +352,28 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     public Client getClientById(int id) {
         String sql = "SELECT id, name, last_name, phone, car_model, car_number, last_repair_date FROM clients WHERE id = ?";
 
-        try (Connection conn = getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setInt(1, id);
-            ResultSet rs = pstmt.executeQuery();
-            if (rs.next()) {
-                Client client = new Client(
-                        rs.getInt("id"),
-                        rs.getString("name"),
-                        rs.getString("last_name"),
-                        rs.getString("phone"),
-                        rs.getString("car_model"),
-                        rs.getString("car_number"),
-                        rs.getString("last_repair_date")
-                );
-                client.setCars(getCarsByClientId(id));
-                return client;
+        try (Connection conn = getConnection()) {
+            Client client = null;
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setInt(1, id);
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    if (rs.next()) {
+                        client = new Client(
+                                rs.getInt("id"),
+                                rs.getString("name"),
+                                rs.getString("last_name"),
+                                rs.getString("phone"),
+                                rs.getString("car_model"),
+                                rs.getString("car_number"),
+                                rs.getString("last_repair_date")
+                        );
+                    }
+                }
             }
+            if (client != null) {
+                client.setCars(loadCarsByClientId(conn, id));
+            }
+            return client;
         } catch (SQLException e) {
             logger.error("Ошибка получения клиента по ID", e);
         }
@@ -332,21 +382,33 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     
     @Override
     public int getClientId(Client client) {
+        try (Connection conn = getConnection()) {
+            return findClientId(conn, client);
+        } catch (SQLException e) {
+            logger.error("Ошибка получения ID клиента", e);
+            return -1;
+        }
+    }
+
+    /**
+     * Ищет ID клиента через переданное соединение.
+     * Используется внутри транзакций (addOrder/updateOrder/addAppointment),
+     * чтобы не запрашивать второе соединение из пула и не блокировать его.
+     */
+    protected int findClientId(Connection conn, Client client) throws SQLException {
         String normalizedPhone = Validators.cleanPhone(client.getPhone());
         String normalizedLastName = client.getLastName() != null ? client.getLastName() : "";
         String sql = "SELECT id FROM clients WHERE name = ? AND last_name = ? AND phone = ?";
 
-        try (Connection conn = getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, client.getName());
             pstmt.setString(2, normalizedLastName);
             pstmt.setString(3, normalizedPhone);
-            ResultSet rs = pstmt.executeQuery();
-            if (rs.next()) {
-                return rs.getInt("id");
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("id");
+                }
             }
-        } catch (SQLException e) {
-            logger.error("Ошибка получения ID клиента", e);
         }
         return -1;
     }
@@ -629,7 +691,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            int clientId = getClientId(order.getClient());
+            int clientId = findClientId(conn, order.getClient());
             pstmt.setInt(1, clientId);
             pstmt.setString(2, order.getStatus());
             pstmt.setDouble(3, order.getTotal());
@@ -746,7 +808,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            int clientId = getClientId(appointment.getClient());
+            int clientId = findClientId(conn, appointment.getClient());
             pstmt.setInt(1, clientId);
             pstmt.setString(2, appointment.getMasterName());
             pstmt.setString(3, appointment.getServiceName());
@@ -869,7 +931,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         String sql = "INSERT INTO service_spare_parts (service_id, spare_part_id, quantity, unit_type, active) VALUES (?, ?, ?, ?, ?)";
 
         try (Connection conn = getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+             PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             pstmt.setInt(1, relation.getServiceId());
             pstmt.setInt(2, relation.getSparePartId());
             pstmt.setInt(3, relation.getQuantity());
@@ -877,12 +939,11 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setInt(5, relation.isActive() ? 1 : 0);
             pstmt.executeUpdate();
             
-            // Получаем сгенерированный id через last_insert_rowid() для SQLite
-            try (Statement stmt = conn.createStatement();
-                 ResultSet rs = stmt.executeQuery("SELECT last_insert_rowid()")) {
-                if (rs.next()) {
-                    relation.setId(rs.getInt(1));
-                }
+            // Универсальный способ: getGeneratedKeys работает и в SQLite, и в H2,
+            // last_insert_rowid() вызывается только как SQLite-fallback.
+            int id = getGeneratedKeyId(conn, pstmt);
+            if (id > 0) {
+                relation.setId(id);
             }
         } catch (SQLException e) {
             logger.error("Ошибка добавления связи услуги-запчасти", e);
@@ -987,11 +1048,13 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                     part.setId(id);
                 }
             } catch (SQLException e) {
-                // SQLite не поддерживает getGeneratedKeys, используем последний ID
-                try (Statement stmt = conn.createStatement();
-                     ResultSet rs = stmt.executeQuery("SELECT last_insert_rowid()")) {
-                    if (rs.next()) {
-                        part.setId(rs.getInt(1));
+                // Fallback только для SQLite: H2 не знает last_insert_rowid().
+                if (isSqlite(conn)) {
+                    try (Statement stmt = conn.createStatement();
+                         ResultSet rs = stmt.executeQuery("SELECT last_insert_rowid()")) {
+                        if (rs.next()) {
+                            part.setId(rs.getInt(1));
+                        }
                     }
                 }
             }

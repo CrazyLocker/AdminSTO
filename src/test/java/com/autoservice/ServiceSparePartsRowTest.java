@@ -210,6 +210,11 @@ public class ServiceSparePartsRowTest extends BaseTest {
         relation2.setUnitType("шт");
         Database.addServiceSparePart(relation2);
 
+        // Регрессия: раньше ID получался через SQLite-only last_insert_rowid(),
+        // и в H2 обе связи оставались без идентификатора.
+        assertTrue(relation1.getId() > 0, "ID связи должен быть сгенерирован (H2)");
+        assertTrue(relation2.getId() > 0, "ID связи должен быть сгенерирован (H2)");
+
         // Загружаем данные
         DataStore.load();
         
