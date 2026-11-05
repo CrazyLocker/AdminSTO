@@ -56,12 +56,34 @@ public class ImportService {
             this.errors = errors;
         }
 
+        /**
+         * Получить количество импортированных записей.
+         * @return количество импортированных записей
+         */
         public int getImportedCount() { return importedCount; }
+
+        /**
+         * Получить количество пропущенных записей.
+         * @return количество пропущенных записей
+         */
         public int getSkippedCount() { return skippedCount; }
+
+        /**
+         * Получить список ошибок импорта.
+         * @return список сообщений об ошибках
+         */
         public List<String> getErrors() { return errors; }
 
+        /**
+         * Проверить, были ли ошибки при импорте.
+         * @return {@code true}, если есть ошибки
+         */
         public boolean hasErrors() { return !errors.isEmpty(); }
 
+        /**
+         * Строковое представление результата импорта.
+         * @return строка с количеством импортированных и пропущенных записей
+         */
         @Override
         public String toString() {
             return String.format("Импортировано: %d, Пропущено: %d", importedCount, skippedCount);
@@ -100,6 +122,7 @@ public class ImportService {
 
     /**
      * Формат XML:
+     * <pre>{@code
      * <spareParts>
      *   <part>
      *     <name>Масляный фильтр</name>
@@ -107,6 +130,7 @@ public class ImportService {
      *     ...
      *   </part>
      * </spareParts>
+     * }</pre>
      */
     public static ImportResult importFromXml(InputStream is) {
         List<String> errors = new ArrayList<>();
@@ -224,6 +248,7 @@ public class ImportService {
 
     /**
      * Формат XML:
+     * <pre>{@code
      * <clients>
      *   <client>
      *     <lastName>Иванов</lastName>
@@ -231,6 +256,7 @@ public class ImportService {
      *     ...
      *   </client>
      * </clients>
+     * }</pre>
      */
     public static ImportResult importClientsFromXml(InputStream is) {
         List<String> errors = new ArrayList<>();
@@ -328,6 +354,7 @@ public class ImportService {
 
     /**
      * Формат XML:
+     * <pre>{@code
      * <services>
      *   <service>
      *     <name>Масляный фильтр</name>
@@ -335,6 +362,7 @@ public class ImportService {
      *     ...
      *   </service>
      * </services>
+     * }</pre>
      */
     public static ImportResult importServicesFromXml(InputStream is) {
         List<String> errors = new ArrayList<>();

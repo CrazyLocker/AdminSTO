@@ -12,6 +12,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Сервис расчёта статистики по заказам, записям на обслуживание и выручке.
+ */
 public class StatisticsService {
     
     private static final Logger logger = LoggerFactory.getLogger(StatisticsService.class);
@@ -19,6 +22,13 @@ public class StatisticsService {
     private static final DateTimeFormatter DAY_FORMATTER = DateTimeFormatter.ofPattern("dd.MM");
     private static final DateTimeFormatter DB_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
+    /**
+     * Рассчитать выручку по дням за последние {@code days} дней.
+     *
+     * <p>Учитываются только закрытые заказы; дни без выручки в результат не попадают.
+     * @param days количество дней, включая сегодняшний
+     * @return выручка по дням в формате {@code dd.MM}
+     */
     public static Map<String, Double> getDailyRevenue(int days) {
         Map<String, Double> revenue = new LinkedHashMap<>();
         LocalDate endDate = LocalDate.now();
@@ -62,6 +72,10 @@ public class StatisticsService {
         return revenue;
     }
 
+    /**
+     * Рассчитать загрузку мастеров по количеству записей.
+     * @return количество записей для каждого мастера из {@link AppConstants#MASTERS}
+     */
     public static Map<String, Integer> getMastersLoad() {
         Map<String, Integer> mastersLoad = new LinkedHashMap<>();
         Set<String> knownMasters = new HashSet<>(Arrays.asList(AppConstants.MASTERS));
@@ -79,6 +93,11 @@ public class StatisticsService {
         return mastersLoad;
     }
 
+    /**
+     * Получить самые популярные услуги.
+     * @param limit максимальное количество услуг в результате
+     * @return услуги, отсортированные по убыванию количества заказов
+     */
     public static List<Map.Entry<String, Integer>> getTopServices(int limit) {
         Map<String, Integer> servicesCount = new HashMap<>();
 
@@ -94,6 +113,11 @@ public class StatisticsService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Получить самые используемые запчасти.
+     * @param limit максимальное количество запчастей в результате
+     * @return запчасти, отсортированные по убыванию количества заказов
+     */
     public static List<Map.Entry<String, Integer>> getTopSpareParts(int limit) {
         Map<String, Integer> partsCount = new HashMap<>();
 
@@ -109,6 +133,10 @@ public class StatisticsService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Рассчитать количество заказов по статусам.
+     * @return статистика по статусам заказов
+     */
     public static Map<String, Integer> getStatusStats() {
         Map<String, Integer> statusStats = new LinkedHashMap<>();
 

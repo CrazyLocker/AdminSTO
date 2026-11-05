@@ -24,6 +24,11 @@ public class TableStateManager {
     private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     private static final double DEFAULT_COLUMN_WIDTH = 100.0;
     
+    /**
+     * Сохранить состояние таблицы (ширину и видимость колонок, сортировку) в JSON-файл.
+     * @param table таблица JavaFX
+     * @param tableId идентификатор таблицы
+     */
     @SuppressWarnings("unchecked")
     public static void saveTableState(Object table, String tableId) {
         logger.debug("saveTableState called for: {}", tableId);
@@ -100,6 +105,11 @@ public class TableStateManager {
         }
     }
     
+    /**
+     * Загрузить состояние таблицы из JSON-файла и применить его.
+     * @param table таблица JavaFX
+     * @param tableId идентификатор таблицы
+     */
     @SuppressWarnings("unchecked")
     public static void loadTableState(Object table, String tableId) {
         String filePath = STORAGE_DIR + "/" + tableId + ".json";
@@ -133,6 +143,10 @@ public class TableStateManager {
             }
     }
     
+    /**
+     * Удалить сохранённое состояние таблицы.
+     * @param tableId идентификатор таблицы
+     */
     public static void resetTableState(String tableId) {
         String filePath = STORAGE_DIR + "/" + tableId + ".json";
         File file = new File(filePath);
@@ -146,6 +160,11 @@ public class TableStateManager {
         }
     }
     
+    /**
+     * Проверить, сохранено ли состояние таблицы.
+     * @param tableId идентификатор таблицы
+     * @return {@code true}, если файл состояния существует
+     */
     public static boolean hasSavedState(String tableId) {
         String filePath = STORAGE_DIR + "/" + tableId + ".json";
         File file = new File(filePath);

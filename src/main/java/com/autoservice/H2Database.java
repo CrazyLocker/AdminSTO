@@ -23,6 +23,9 @@ public class H2Database extends AbstractDatabase {
     
     private static final Logger logger = LoggerFactory.getLogger(H2Database.class);
     
+    /**
+     * Инициализировать H2 in-memory для тестов и создать таблицы.
+     */
     @Override
     public void initForTest() {
         // Закрыть старый dataSource если он существует
@@ -325,6 +328,10 @@ public class H2Database extends AbstractDatabase {
     
     // ==================== SERVICES ====================
     
+    /**
+     * Добавить или обновить услугу ({@code MERGE ... KEY(name)}).
+     * @param service услуга для добавления; после вызова получает ID
+     */
     @Override
     public void addService(Service service) {
         String sql = "MERGE INTO services (name, price, duration, part_number, category_id, oil_volume, uses_oil, spare_part_name, spare_part_quantity) KEY(name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -354,6 +361,10 @@ public class H2Database extends AbstractDatabase {
     
     // ==================== SPARE PARTS ====================
     
+    /**
+     * Добавить или обновить запчасть ({@code MERGE ... KEY(name)}).
+     * @param part запчасть для добавления; после вызова получает ID
+     */
     @Override
     public void addSparePart(SparePart part) {
         String sql = "MERGE INTO spare_parts (name, purchase_price, retail_price, stock, part_number, manufacturer, compatible_models, note, min_stock, location, unit_type) KEY(name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -383,6 +394,11 @@ public class H2Database extends AbstractDatabase {
         }
     }
 
+    /**
+     * Обновить остаток запчасти.
+     * @param part запчасть
+     * @param newStock новый остаток
+     */
     @Override
     public void updateSparePartStock(SparePart part, double newStock) {
         String sql = "UPDATE spare_parts SET stock = ? WHERE id = ?";
@@ -399,6 +415,10 @@ public class H2Database extends AbstractDatabase {
 
     // ==================== ORDERS ====================
 
+    /**
+     * Добавить заказ и его услуги с запчастями в одной транзакции; ID генерируется с защитой от параллельных вставок.
+     * @param order заказ для добавления
+     */
     @Override
     public void addOrder(WorkOrder order) {
         try (Connection conn = getConnection()) {
@@ -456,6 +476,10 @@ public class H2Database extends AbstractDatabase {
         }
     }
     
+    /**
+     * Обновить заказ и пересоздать его услуги и запчасти в одной транзакции.
+     * @param order заказ с обновлёнными данными
+     */
     @Override
     public void updateOrder(WorkOrder order) {
         try (Connection conn = getConnection()) {
@@ -542,6 +566,10 @@ public class H2Database extends AbstractDatabase {
     
     // ==================== APPOINTMENTS ====================
     
+    /**
+     * Добавить запись на обслуживание.
+     * @param appointment запись для добавления
+     */
     @Override
     public void addAppointment(Appointment appointment) {
         String sql = "INSERT INTO appointments (client_id, order_id, master_name, service_name, service_id, appointment_date, appointment_time, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
@@ -569,6 +597,10 @@ public class H2Database extends AbstractDatabase {
         }
     }
     
+    /**
+     * Обновить запись на обслуживание.
+     * @param appointment запись с обновлёнными данными
+     */
     @Override
     public void updateAppointment(Appointment appointment) {
         String sql = "UPDATE appointments SET client_id = ?, master_name = ?, service_name = ?, service_id = ?, appointment_date = ?, appointment_time = ?, status = ?, order_id = ? WHERE id = ?";
@@ -591,6 +623,10 @@ public class H2Database extends AbstractDatabase {
         }
     }
     
+    /**
+     * Удалить запись на обслуживание.
+     * @param id идентификатор записи
+     */
     @Override
     public void deleteAppointment(int id) {
         String sql = "DELETE FROM appointments WHERE id = ?";

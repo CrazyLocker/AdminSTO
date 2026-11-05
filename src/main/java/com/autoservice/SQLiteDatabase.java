@@ -23,6 +23,9 @@ public class SQLiteDatabase extends AbstractDatabase {
     
     private static final Logger logger = LoggerFactory.getLogger(SQLiteDatabase.class);
     
+    /**
+     * Инициализировать подключение к SQLite (production) и применить миграции схемы.
+     */
     @Override
     public void init() {
         // Закрыть старый dataSource если он существует
@@ -347,6 +350,10 @@ public class SQLiteDatabase extends AbstractDatabase {
     
     // ==================== SERVICES ====================
     
+    /**
+     * Добавить услугу; при совпадении названия существующая запись заменяется ({@code INSERT OR REPLACE}).
+     * @param service услуга для добавления; после вызова получает ID
+     */
     @Override
     public void addService(Service service) {
         String sql = "INSERT OR REPLACE INTO services (name, price, duration, part_number, category_id, oil_volume, uses_oil, spare_part_name, spare_part_quantity) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -376,6 +383,10 @@ public class SQLiteDatabase extends AbstractDatabase {
     
     // ==================== SPARE PARTS ====================
     
+    /**
+     * Добавить запчасть или обновить существующую с тем же названием.
+     * @param part запчасть для добавления; после вызова получает ID
+     */
     @Override
     public void addSparePart(SparePart part) {
         // Сначала проверяем, существует ли запчасть с таким именем
@@ -444,6 +455,11 @@ public class SQLiteDatabase extends AbstractDatabase {
         }
     }
 
+    /**
+     * Обновить остаток запчасти.
+     * @param part запчасть
+     * @param newStock новый остаток
+     */
     @Override
     public void updateSparePartStock(SparePart part, double newStock) {
         String sql = "UPDATE spare_parts SET stock = ? WHERE id = ?";
@@ -458,6 +474,10 @@ public class SQLiteDatabase extends AbstractDatabase {
         }
     }
 
+    /**
+     * Обновить запчасть.
+     * @param part запчасть с обновлёнными данными
+     */
     @Override
     public void updateSparePart(SparePart part) {
         // Безопасно: используется PreparedStatement, конкатенация только для переноса строки
@@ -487,6 +507,10 @@ public class SQLiteDatabase extends AbstractDatabase {
 
     // ==================== ORDERS ====================
 
+    /**
+     * Добавить заказ и его услуги с запчастями в одной транзакции; ID генерируется с защитой от параллельных вставок.
+     * @param order заказ для добавления
+     */
     @Override
     public void addOrder(WorkOrder order) {
         logger.info("=== SQLiteDatabase.addOrder для заказа {} ===", order.getId());
@@ -567,6 +591,10 @@ public class SQLiteDatabase extends AbstractDatabase {
         }
     }
     
+    /**
+     * Обновить заказ и пересоздать его услуги и запчасти в одной транзакции.
+     * @param order заказ с обновлёнными данными
+     */
     @Override
     public void updateOrder(WorkOrder order) {
         logger.info("=== SQLiteDatabase.updateOrder для заказа {} ===", order.getId());
@@ -665,6 +693,10 @@ public class SQLiteDatabase extends AbstractDatabase {
     
     // ==================== APPOINTMENTS ====================
     
+    /**
+     * Добавить запись на обслуживание.
+     * @param appointment запись для добавления
+     */
     @Override
     public void addAppointment(Appointment appointment) {
         String sql = "INSERT INTO appointments (client_id, order_id, master_name, service_name, service_id, appointment_date, appointment_time, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
@@ -686,6 +718,10 @@ public class SQLiteDatabase extends AbstractDatabase {
         }
     }
     
+    /**
+     * Обновить запись на обслуживание.
+     * @param appointment запись с обновлёнными данными
+     */
     @Override
     public void updateAppointment(Appointment appointment) {
         String sql = "UPDATE appointments SET client_id = ?, master_name = ?, service_name = ?, service_id = ?, appointment_date = ?, appointment_time = ?, status = ?, order_id = ? WHERE id = ?";
@@ -708,6 +744,10 @@ public class SQLiteDatabase extends AbstractDatabase {
         }
     }
     
+    /**
+     * Удалить запись на обслуживание.
+     * @param id идентификатор записи
+     */
     @Override
     public void deleteAppointment(int id) {
         String sql = "DELETE FROM appointments WHERE id = ?";

@@ -99,16 +99,31 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     
     // ==================== DEFAULT IMPLEMENTATIONS ====================
     
+    /**
+     * Инициализировать production-базу данных.
+     *
+     * <p>Базовый класс не содержит реализации: метод должна переопределить конкретная СУБД.
+     * @throws UnsupportedOperationException если метод не переопределён
+     */
     @Override
     public void init() {
         throw new UnsupportedOperationException("init() must be implemented by concrete database class");
     }
     
+    /**
+     * Инициализировать тестовую базу данных.
+     *
+     * <p>Базовый класс не содержит реализации: метод должна переопределить конкретная СУБД.
+     * @throws UnsupportedOperationException если метод не переопределён
+     */
     @Override
     public void initForTest() {
         throw new UnsupportedOperationException("initForTest() must be implemented by concrete database class");
     }
     
+    /**
+     * Закрыть пул соединений и освободить ресурсы.
+     */
     @Override
     public void close() {
         if (dataSource != null && !dataSource.isClosed()) {
@@ -116,6 +131,11 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
     
+    /**
+     * Получить соединение из пула.
+     * @return соединение с базой данных
+     * @throws SQLException если соединение недоступно
+     */
     @Override
     public Connection getConnection() throws SQLException {
         return dataSource.getConnection();
@@ -123,6 +143,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     
     // ==================== CLIENTS ====================
     
+    /**
+     * Получить всех клиентов вместе с их автомобилями.
+     * @return список клиентов; пустой список, если клиентов нет
+     */
     @Override
     public List<Client> getAllClients() {
         List<Client> clients = new ArrayList<>();
@@ -155,6 +179,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         return clients;
     }
     
+    /**
+     * Добавить клиента.
+     * @param client клиент для добавления; после вызова получает сгенерированный ID
+     */
     @Override
     public void addClient(Client client) {
         String normalizedPhone = Validators.cleanPhone(client.getPhone());
@@ -210,6 +238,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
     
+    /**
+     * Обновить данные клиента.
+     * @param client клиент с обновлёнными данными
+     */
     @Override
     public void updateClient(Client client) {
         String normalizedPhone = Validators.cleanPhone(client.getPhone());
@@ -231,6 +263,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
     
+    /**
+     * Удалить клиента.
+     * @param client удаляемый клиент
+     */
     @Override
     public void deleteClient(Client client) {
         String sql = "DELETE FROM clients WHERE id = ?";
@@ -246,6 +282,11 @@ public abstract class AbstractDatabase implements DatabaseInterface {
 
     // ==================== CAR CRUD ====================
 
+    /**
+     * Получить автомобили клиента.
+     * @param clientId идентификатор клиента
+     * @return список автомобилей; пустой список, если автомобилей нет
+     */
     @Override
     public List<Car> getCarsByClientId(int clientId) {
         try (Connection conn = getConnection()) {
@@ -282,6 +323,11 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         return cars;
     }
 
+    /**
+     * Добавить автомобиль клиента.
+     * @param car автомобиль для добавления
+     * @throws SQLException при ошибке сохранения
+     */
     @Override
     public void addCar(Car car) throws SQLException {
         String normalizedNumber = Validators.normalizeCarNumber(car.getCarNumber());
@@ -318,6 +364,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Обновить данные автомобиля.
+     * @param car автомобиль с обновлёнными данными
+     */
     @Override
     public void updateCar(Car car) {
         String normalizedNumber = Validators.normalizeCarNumber(car.getCarNumber());
@@ -335,6 +385,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Удалить автомобиль.
+     * @param car удаляемый автомобиль
+     */
     @Override
     public void deleteCar(Car car) {
         String sql = "DELETE FROM client_cars WHERE id = ?";
@@ -348,6 +402,11 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
     
+    /**
+     * Получить клиента по идентификатору.
+     * @param id идентификатор клиента
+     * @return клиент или {@code null}, если не найден
+     */
     @Override
     public Client getClientById(int id) {
         String sql = "SELECT id, name, last_name, phone, car_model, car_number, last_repair_date FROM clients WHERE id = ?";
@@ -380,6 +439,11 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         return null;
     }
     
+    /**
+     * Получить идентификатор клиента по его имени, фамилии и телефону.
+     * @param client клиент
+     * @return идентификатор или {@code -1}, если клиент не найден
+     */
     @Override
     public int getClientId(Client client) {
         try (Connection conn = getConnection()) {
@@ -415,6 +479,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     
     // ==================== SERVICES ====================
     
+    /**
+     * Добавить услугу.
+     * @param service услуга для добавления; после вызова получает сгенерированный ID
+     */
     @Override
     public void addService(Service service) {
         String sql = "INSERT INTO services (name, price, duration, part_number, category_id, oil_volume, uses_oil, spare_part_name, spare_part_quantity) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -442,6 +510,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
     
+    /**
+     * Получить все услуги.
+     * @return список услуг, отсортированный по названию
+     */
     @Override
     public List<Service> getAllServices() {
         List<Service> services = new ArrayList<>();
@@ -471,6 +543,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         return services;
     }
     
+    /**
+     * Удалить услугу.
+     * @param service удаляемая услуга
+     */
     @Override
     public void deleteService(Service service) {
         String sql = "DELETE FROM services WHERE id = ?";
@@ -484,6 +560,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
     
+    /**
+     * Обновить услугу.
+     * @param service услуга с обновлёнными данными
+     */
     @Override
     public void updateService(Service service) {
         String sql = "UPDATE services SET name = ?, price = ?, duration = ?, part_number = ?, category_id = ?, oil_volume = ?, uses_oil = ?, spare_part_name = ?, spare_part_quantity = ? WHERE id = ?";
@@ -508,6 +588,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     
     // ==================== SPARE PARTS ====================
     
+    /**
+     * Получить все запчасти.
+     * @return список запчастей, отсортированный по названию
+     */
     @Override
     public List<SparePart> getAllSpareParts() {
         List<SparePart> parts = new ArrayList<>();
@@ -540,6 +624,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         return parts;
     }
     
+    /**
+     * Обновить запчасть.
+     * @param part запчасть с обновлёнными данными
+     */
     @Override
     public void updateSparePart(SparePart part) {
         String sql = "UPDATE spare_parts SET name = ?, purchase_price = ?, retail_price = ?, stock = ?, " +
@@ -566,6 +654,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
     
+    /**
+     * Удалить запчасть.
+     * @param part удаляемая запчасть
+     */
     @Override
     public void deleteSparePart(SparePart part) {
         String sql = "DELETE FROM spare_parts WHERE id = ?";
@@ -581,6 +673,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     
     // ==================== ORDERS ====================
     
+    /**
+     * Получить все заказы вместе с услугами и запчастями.
+     * @return список заказов, отсортированный по дате создания (новые первыми)
+     */
     @Override
     public List<WorkOrder> getAllOrders() {
         Map<String, WorkOrder> orderMap = new LinkedHashMap<>();
@@ -672,6 +768,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         return new ArrayList<>(orderMap.values());
     }
     
+    /**
+     * Удалить заказ.
+     * @param orderId идентификатор заказа
+     */
     @Override
     public void deleteOrder(String orderId) {
         String sql = "DELETE FROM orders WHERE id = ?";
@@ -685,6 +785,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
     
+    /**
+     * Обновить заказ, его услуги и запчасти.
+     * @param order заказ с обновлёнными данными
+     */
     @Override
     public void updateOrder(WorkOrder order) {
         String sql = "UPDATE orders SET client_id = ?, status = ?, total = ?, mileage = ?, closed_date = ?, notes = ? WHERE id = ?";
@@ -707,6 +811,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     
     // ==================== APPOINTMENTS ====================
     
+    /**
+     * Получить все записи на обслуживание.
+     * @return список записей, отсортированный по дате и времени
+     */
     @Override
     public List<Appointment> getAllAppointments() {
         List<Appointment> appointments = new ArrayList<>();
@@ -753,6 +861,11 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         return appointments;
     }
     
+    /**
+     * Получить записи на обслуживание на указанную дату.
+     * @param date дата в формате {@code dd/MM/yyyy}
+     * @return список записей, отсортированный по времени
+     */
     @Override
     public List<Appointment> getAppointmentsByDate(String date) {
         List<Appointment> appointments = new ArrayList<>();
@@ -802,6 +915,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     
     // ==================== APPOINTMENT MODIFICATION METHODS ====================
     
+    /**
+     * Обновить запись на обслуживание.
+     * @param appointment запись с обновлёнными данными
+     */
     @Override
     public void updateAppointment(Appointment appointment) {
         String sql = "UPDATE appointments SET client_id = ?, master_name = ?, service_name = ?, service_id = ?, appointment_date = ?, appointment_time = ?, status = ?, order_id = ? WHERE id = ?";
@@ -824,6 +941,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
     
+    /**
+     * Удалить запись на обслуживание.
+     * @param id идентификатор записи
+     */
     @Override
     public void deleteAppointment(int id) {
         String sql = "DELETE FROM appointments WHERE id = ?";
@@ -836,6 +957,11 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Получить запись на обслуживание по идентификатору.
+     * @param id идентификатор записи
+     * @return запись или {@code null}, если не найдена
+     */
     @Override
     public Appointment getAppointmentById(int id) {
         String sql = """
@@ -884,6 +1010,11 @@ public abstract class AbstractDatabase implements DatabaseInterface {
 
     // ==================== SERVICE-SPARE PART RELATIONSHIPS ====================
 
+    /**
+     * Получить связи услуги с запчастями.
+     * @param serviceId идентификатор услуги; {@code -1} — вернуть все связи
+     * @return список связей
+     */
     @Override
     public List<com.autoservice.model.ServiceSparePart> getServiceSparePartsByServiceId(int serviceId) {
         List<com.autoservice.model.ServiceSparePart> relations = new ArrayList<>();
@@ -926,6 +1057,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         return relations;
     }
 
+    /**
+     * Добавить связь услуги с запчастью.
+     * @param relation связь для добавления; после вызова получает сгенерированный ID
+     */
     @Override
     public void addServiceSparePart(com.autoservice.model.ServiceSparePart relation) {
         String sql = "INSERT INTO service_spare_parts (service_id, spare_part_id, quantity, unit_type, active) VALUES (?, ?, ?, ?, ?)";
@@ -950,6 +1085,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Удалить связь услуги с запчастью.
+     * @param relation удаляемая связь
+     */
     @Override
     public void deleteServiceSparePart(com.autoservice.model.ServiceSparePart relation) {
         String sql = "DELETE FROM service_spare_parts WHERE id = ?";
@@ -963,6 +1102,12 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Удалить все связи услуги с запчастями.
+     *
+     * <p>Вызов с {@code serviceId == -1} блокируется для защиты от массового удаления.
+     * @param serviceId идентификатор услуги
+     */
     @Override
     public void deleteServiceSparePartsByServiceId(int serviceId) {
         String sql;
@@ -985,6 +1130,9 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Удалить дубликаты связей услуги с запчастями, оставив по одной связи на пару «услуга — запчасть».
+     */
     @Override
     public void deleteDuplicateServiceSpareParts() {
         // Удаляет дубликаты связей для одной услуги-запчасти, оставляя только одну
@@ -1002,6 +1150,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
 
     // ==================== SERVICE-PART RELATIONSHIPS (NEW STRUCTURE) ====================
 
+    /**
+     * Получить все связи услуг с запчастями (новая структура).
+     * @return список связей
+     */
     @Override
     public List<com.autoservice.model.ServicePart> getAllServiceParts() {
         List<com.autoservice.model.ServicePart> parts = new ArrayList<>();
@@ -1028,6 +1180,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         return parts;
     }
 
+    /**
+     * Добавить связь услуги с запчастью (новая структура).
+     * @param part связь для добавления; после вызова получает сгенерированный ID
+     */
     @Override
     public void addServicePart(com.autoservice.model.ServicePart part) {
         String sql = "INSERT INTO service_parts (service_id, spare_part_id, quantity, is_required, created_date) VALUES (?, ?, ?, ?, ?)";
@@ -1063,6 +1219,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Обновить связь услуги с запчастью (новая структура).
+     * @param part связь с обновлёнными данными
+     */
     @Override
     public void updateServicePart(com.autoservice.model.ServicePart part) {
         String sql = "UPDATE service_parts SET service_id = ?, spare_part_id = ?, quantity = ?, is_required = ? WHERE id = ?";
@@ -1080,6 +1240,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Удалить связь услуги с запчастью (новая структура).
+     * @param part удаляемая связь
+     */
     @Override
     public void deleteServicePart(com.autoservice.model.ServicePart part) {
         String sql = "DELETE FROM service_parts WHERE id = ?";
@@ -1093,6 +1257,12 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Удалить все связи услуги с запчастями (новая структура).
+     *
+     * <p>Вызов с {@code serviceId == -1} блокируется для защиты от массового удаления.
+     * @param serviceId идентификатор услуги
+     */
     @Override
     public void deleteServicePartsByServiceId(int serviceId) {
         String sql;
@@ -1115,6 +1285,12 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Удалить все связи запчасти с услугами (новая структура).
+     *
+     * <p>Вызов с {@code sparePartId == -1} блокируется для защиты от массового удаления.
+     * @param sparePartId идентификатор запчасти
+     */
     @Override
     public void deleteServicePartsBySparePartId(int sparePartId) {
         String sql;
@@ -1139,6 +1315,11 @@ public abstract class AbstractDatabase implements DatabaseInterface {
 
     // ==================== SERVICE-SPARE PARTS LISTS (NEW STRUCTURE) ====================
 
+    /**
+     * Получить списки запчастей услуги.
+     * @param serviceId идентификатор услуги; {@code -1} — вернуть все списки
+     * @return список списков, отсортированный по дате создания (новые первыми)
+     */
     @Override
     public List<com.autoservice.model.ServiceSparePartsList> getServiceSparePartsListsByServiceId(int serviceId) {
         List<com.autoservice.model.ServiceSparePartsList> lists = new ArrayList<>();
@@ -1179,6 +1360,11 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         return lists;
     }
 
+    /**
+     * Получить элементы списка запчастей.
+     * @param listId идентификатор списка
+     * @return список элементов
+     */
     @Override
     public List<com.autoservice.model.ServiceSparePartsListItem> getServiceSparePartsListItems(int listId) {
         List<com.autoservice.model.ServiceSparePartsListItem> items = new ArrayList<>();
@@ -1205,6 +1391,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         return items;
     }
 
+    /**
+     * Добавить список запчастей вместе с его элементами.
+     * @param list список для добавления; после вызова получает сгенерированный ID
+     */
     @Override
     public void addServiceSparePartsList(com.autoservice.model.ServiceSparePartsList list) {
         String sql = "INSERT INTO service_spare_parts_lists (service_id, created_date, active) VALUES (?, ?, ?)";
@@ -1248,6 +1438,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Добавить элемент списка запчастей.
+     * @param item элемент для добавления; после вызова получает сгенерированный ID
+     */
     @Override
     public void addServiceSparePartsListItem(com.autoservice.model.ServiceSparePartsListItem item) {
         String sql = "INSERT INTO service_spare_parts_list_items (list_id, spare_part_id, quantity, unit_type) VALUES (?, ?, ?, ?)";
@@ -1270,6 +1464,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Удалить список запчастей вместе с его элементами.
+     * @param list удаляемый список
+     */
     @Override
     public void deleteServiceSparePartsList(com.autoservice.model.ServiceSparePartsList list) {
         // Сначала удаляем все элементы списка
@@ -1287,6 +1485,12 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Удалить все списки запчастей услуги вместе с их элементами.
+     *
+     * <p>Вызов с {@code serviceId == -1} блокируется для защиты от массового удаления.
+     * @param serviceId идентификатор услуги
+     */
     @Override
     public void deleteServiceSparePartsListsByServiceId(int serviceId) {
         // Блокировка массового удаления для безопасности
@@ -1314,6 +1518,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Удалить все элементы списка запчастей.
+     * @param listId идентификатор списка
+     */
     @Override
     public void deleteServiceSparePartsListItemsByListId(int listId) {
         String sql = "DELETE FROM service_spare_parts_list_items WHERE list_id = ?";
@@ -1329,6 +1537,11 @@ public abstract class AbstractDatabase implements DatabaseInterface {
 
     // ==================== TO PARTS RELATIONSHIPS ====================
 
+    /**
+     * Получить расходники TO для модели автомобиля.
+     * @param carModel модель автомобиля; {@code null} или пустая строка — вернуть все расходники
+     * @return список расходников
+     */
     @Override
     public List<com.autoservice.model.ToPart> getToPartsByCarModel(String carModel) {
         List<com.autoservice.model.ToPart> parts = new ArrayList<>();
@@ -1372,6 +1585,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         return parts;
     }
 
+    /**
+     * Получить все модели автомобилей, для которых заданы расходники TO.
+     * @return список моделей без дубликатов
+     */
     @Override
     public List<String> getAllCarModels() {
         List<String> carModels = new ArrayList<>();
@@ -1393,6 +1610,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         return carModels;
     }
 
+    /**
+     * Добавить расходник TO.
+     * @param part расходник для добавления; после вызова получает сгенерированный ID
+     */
     @Override
     public void addToPart(com.autoservice.model.ToPart part) {
         String sql = "INSERT INTO to_parts (car_model, spare_part_id, quantity, unit_type, note, active) VALUES (?, ?, ?, ?, ?, ?)";
@@ -1417,6 +1638,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Обновить расходник TO.
+     * @param part расходник с обновлёнными данными
+     */
     @Override
     public void updateToPart(com.autoservice.model.ToPart part) {
         String sql = "UPDATE to_parts SET spare_part_id = ?, quantity = ?, unit_type = ?, note = ?, active = ? WHERE id = ?";
@@ -1435,6 +1660,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Удалить расходник TO.
+     * @param part удаляемый расходник
+     */
     @Override
     public void deleteToPart(com.autoservice.model.ToPart part) {
         String sql = "DELETE FROM to_parts WHERE id = ?";
@@ -1448,6 +1677,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Удалить расходники TO для модели автомобиля.
+     * @param carModel модель автомобиля; {@code null} или пустая строка — удалить все расходники
+     */
     @Override
     public void deleteToPartsByCarModel(String carModel) {
         String sql;
@@ -1472,6 +1705,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
 
     // ==================== SETTINGS ====================
 
+    /**
+     * Получить все настройки приложения.
+     * @return список настроек
+     */
     @Override
     public List<com.autoservice.model.Setting> getAllSettings() {
         List<com.autoservice.model.Setting> settings = new ArrayList<>();
@@ -1495,6 +1732,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         return settings;
     }
 
+    /**
+     * Добавить настройку.
+     * @param setting настройка для добавления; после вызова получает сгенерированный ID
+     */
     @Override
     public void addSetting(com.autoservice.model.Setting setting) {
         String sql = "INSERT INTO app_settings (setting_key, setting_value, description) VALUES (?, ?, ?)";
@@ -1516,6 +1757,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Обновить значение настройки.
+     * @param setting настройка с новым значением
+     */
     @Override
     public void updateSetting(com.autoservice.model.Setting setting) {
         String sql = "UPDATE app_settings SET setting_value = ? WHERE id = ?";
@@ -1535,6 +1780,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Удалить настройку.
+     * @param setting удаляемая настройка
+     */
     @Override
     public void deleteSetting(com.autoservice.model.Setting setting) {
         String sql = "DELETE FROM app_settings WHERE id = ?";
@@ -1548,6 +1797,11 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Получить настройку по ключу.
+     * @param key ключ настройки
+     * @return настройка или {@code null}, если не найдена
+     */
     @Override
     public com.autoservice.model.Setting getSettingByKey(String key) {
         String sql = "SELECT id, setting_key, setting_value, description FROM app_settings WHERE setting_key = ?";

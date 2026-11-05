@@ -29,6 +29,10 @@ public class FileDialogPathManager {
         loadAllPaths();
     }
     
+    /**
+     * Получить singleton-экземпляр менеджера.
+     * @return экземпляр менеджера
+     */
     public static synchronized FileDialogPathManager getInstance() {
         if (instance == null) {
             instance = new FileDialogPathManager();
