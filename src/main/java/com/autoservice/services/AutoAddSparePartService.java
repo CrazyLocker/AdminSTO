@@ -166,30 +166,58 @@ public class AutoAddSparePartService {
         private double quantity;
         private String unitType;
 
+        /**
+         * Получить запчасть.
+         * @return запчасть
+         */
         public SparePart getSparePart() {
             return sparePart;
         }
 
+        /**
+         * Установить запчасть.
+         * @param sparePart запчасть
+         */
         public void setSparePart(SparePart sparePart) {
             this.sparePart = sparePart;
         }
 
+        /**
+         * Получить количество.
+         * @return количество
+         */
         public double getQuantity() {
             return quantity;
         }
 
+        /**
+         * Установить количество.
+         * @param quantity количество
+         */
         public void setQuantity(int quantity) {
             this.quantity = quantity;
         }
 
+        /**
+         * Установить количество с дробной частью.
+         * @param quantity количество
+         */
         public void setQuantity(double quantity) {
             this.quantity = quantity;
         }
 
+        /**
+         * Получить единицу измерения.
+         * @return единица измерения
+         */
         public String getUnitType() {
             return unitType;
         }
 
+        /**
+         * Установить единицу измерения.
+         * @param unitType единица измерения
+         */
         public void setUnitType(String unitType) {
             this.unitType = unitType;
         }
@@ -205,6 +233,10 @@ public class AutoAddSparePartService {
             return copy;
         }
 
+        /**
+         * Строковое представление в виде «название x количество единица».
+         * @return строковое представление
+         */
         @Override
         public String toString() {
             return sparePart.getName() + " x" + quantity + " " + unitType;

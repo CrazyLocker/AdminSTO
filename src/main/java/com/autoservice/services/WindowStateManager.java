@@ -35,6 +35,10 @@ public class WindowStateManager {
         loadAllStates();
     }
     
+    /**
+     * Получить singleton-экземпляр менеджера.
+     * @return экземпляр менеджера
+     */
     public static synchronized WindowStateManager getInstance() {
         if (instance == null) {
             instance = new WindowStateManager();
