@@ -49,11 +49,11 @@ desktop.ini
 .gitverse/
 .scanrc.yml
 
-# ===== DOCUMENTATION (keep README.md) =====
-docs/
+# ===== DOCUMENTATION (keep README.md, track docs/) =====
 !README.md
 *.md
 !README.md
+!docs/**/*.md
 
 # ===== BUILD SCRIPTS (if any temp artifacts) =====
 build-portable.ps1
