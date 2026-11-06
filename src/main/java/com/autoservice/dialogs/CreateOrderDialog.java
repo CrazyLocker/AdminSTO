@@ -7,6 +7,7 @@ import com.autoservice.controllers.StockPanelController;
 import com.autoservice.controllers.OrderController;
 import com.autoservice.services.AutoAddSparePartService;
 import com.autoservice.utils.ServicePartHelper;
+import com.autoservice.utils.DialogValidator;
 import com.autoservice.utils.ValidationErrorIndicator;
 import com.autoservice.utils.ValidationUtils;
 import com.autoservice.utils.TooltipHelper;
@@ -368,73 +369,76 @@ public class CreateOrderDialog {
         saveBtn.setOnAction(e -> {
             // Очистка ошибок валидации
             ValidationErrorIndicator.clearAllErrors(root);
-            
-            boolean isValid = true;
-            
+
+            DialogValidator validator = new DialogValidator();
+
+            Client selectedClient = clientCombo.getValue();
+            if (selectedClient == null) {
+                ValidationErrorIndicator.showError(clientCombo, "Выберите клиента");
+                validator.add("Выберите клиента");
+            }
+
             if (tempServices.isEmpty() && tempParts.isEmpty()) {
-                showAlert("Добавьте услугу или запчасть");
-                isValid = false;
-            }
-
-            // ====== ПОВТОРНАЯ ПРОВЕРКА ОСТАТКА ПЕРЕД СОХРАНЕНИЕМ ======
-            boolean hasStockIssue = false;
-            for (int i = 0; i < tempParts.size(); i++) {
-                SparePart part = tempParts.get(i);
-                double qty = tempPartQuantities.get(i);
-                int currentStock = (int)DataStore.getSparePartById(part.getId()).getStock();
-                
-                if (qty > currentStock) {
-                    hasStockIssue = true;
-                    showAlert("Недостаточно запчастей на складе: " + part.getName() + " (в наличии: " + currentStock + ")");
-                    break;
-                }
-            }
-            
-            if (hasStockIssue) {
-                return;
-            }
-            
-            if (!isValid) {
-                return;
-            }
-
-            // ====== ПРОВЕРКА ВЫХОДНЫХ ДНЕЙ ======
-            if (createAppointmentCheck.isSelected() && datePicker.getValue() != null) {
-                if (DateUtils.isWeekend(datePicker.getValue())) {
-                    Alert weekendAlert = new Alert(Alert.AlertType.CONFIRMATION);
-                    weekendAlert.setTitle("Подтверждение записи");
-                    weekendAlert.setHeaderText("Выбран выходной день!");
-                    weekendAlert.setContentText("Запись в выходной день (" + datePicker.getValue().format(java.time.format.DateTimeFormatter.ofPattern("EEEE", new java.util.Locale.Builder().setLanguage("ru").build())) + ") может быть ограничена.\n\nПродолжить?");
-                    weekendAlert.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
-                    
-                    if (weekendAlert.showAndWait().orElse(ButtonType.NO) == ButtonType.NO) {
-                        return; // Отмена при нажатии "Нет"
-                    }
-                }
+                validator.add("Добавьте хотя бы одну услугу или запчасть");
             }
 
             if (createAppointmentCheck.isSelected()) {
                 if (datePicker.getValue() == null) {
                     ValidationErrorIndicator.showError(datePicker, "Выберите дату записи");
-                    return;
+                    validator.add("Выберите дату записи");
                 }
                 if (timeCombo.getValue() == null) {
                     ValidationErrorIndicator.showError(timeCombo, "Выберите время записи");
-                    return;
+                    validator.add("Выберите время записи");
                 }
                 if (masterCombo.getValue() == null) {
                     ValidationErrorIndicator.showError(masterCombo, "Выберите мастера");
-                    return;
+                    validator.add("Выберите мастера");
+                }
+            }
+
+            ValidationUtils.ValidationError mileageError =
+                    ValidationUtils.validateIntegerText(mileageField.getText(), "Пробег", false);
+            if (mileageError != null) {
+                ValidationErrorIndicator.showError(mileageField, mileageError.getErrorMessage());
+                validator.add(mileageError);
+            }
+
+            // ====== ПОВТОРНАЯ ПРОВЕРКА ОСТАТКА ПЕРЕД СОХРАНЕНИЕМ ======
+            for (int i = 0; i < tempParts.size(); i++) {
+                SparePart part = tempParts.get(i);
+                double qty = tempPartQuantities.get(i);
+                SparePart stockPart = DataStore.getSparePartById(part.getId());
+                if (stockPart == null) {
+                    validator.add("Запчасть не найдена в базе: " + part.getName());
+                    continue;
+                }
+                int currentStock = (int) stockPart.getStock();
+                if (qty > currentStock) {
+                    validator.add("Недостаточно запчастей на складе: " + part.getName()
+                            + " (в наличии: " + currentStock + ")");
+                }
+            }
+
+            if (validator.hasErrors()) {
+                showAlert(validator.getMessage());
+                return;
+            }
+
+            // ====== ПРОВЕРКА ВЫХОДНЫХ ДНЕЙ ======
+            if (createAppointmentCheck.isSelected() && DateUtils.isWeekend(datePicker.getValue())) {
+                Alert weekendAlert = new Alert(Alert.AlertType.CONFIRMATION);
+                weekendAlert.setTitle("Подтверждение записи");
+                weekendAlert.setHeaderText("Выбран выходной день!");
+                weekendAlert.setContentText("Запись в выходной день (" + datePicker.getValue().format(java.time.format.DateTimeFormatter.ofPattern("EEEE", new java.util.Locale.Builder().setLanguage("ru").build())) + ") может быть ограничена.\n\nПродолжить?");
+                weekendAlert.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
+
+                if (weekendAlert.showAndWait().orElse(ButtonType.NO) == ButtonType.NO) {
+                    return; // Отмена при нажатии "Нет"
                 }
             }
 
             // ====== СОЗДАЁМ ЗАКАЗ ======
-            Client selectedClient = clientCombo.getValue();
-            if (selectedClient == null) {
-                ValidationErrorIndicator.showError(clientCombo, "Выберите клиента");
-                return;
-            }
-            
             WorkOrder order = new WorkOrder();
             order.setClient(selectedClient);
             order.setClientId(selectedClient.getId());
@@ -697,26 +701,21 @@ public class CreateOrderDialog {
                 TextField qtyField = (TextField)hBox.getChildren().get(1);
                 
                 if (checkBox != null && checkBox.isSelected()) {
-                    try {
-                        int qty = Integer.parseInt(qtyField.getText());
-                        int maxQty = (int)partInfo.getSparePart().getStock();
-                        if (qty < 1) {
-                            showAlert("Минимальное количество: 1");
-                            return;
-                        }
-                        if (qty > maxQty) {
-                            showAlert("Недостаточно запчастей на складе: " + partInfo.getSparePart().getName() + " (в наличии: " + maxQty + ")");
-                            return;
-                        }
-                        if (qty > 0) {
-                            AutoAddSparePartService.SparePartWithQuantity selected = partInfo.copy();
-                            selected.setQuantity(qty);
-                            selectedParts.add(selected);
-                        }
-                    } catch (NumberFormatException ex) {
-                        showAlert("Некорректное количество");
+                    ValidationUtils.ValidationError qtyError =
+                            ValidationUtils.validatePositiveIntegerText(qtyField.getText(), "Количество");
+                    if (qtyError != null) {
+                        showAlert(qtyError.getErrorMessage() + " для запчасти " + partInfo.getSparePart().getName());
                         return;
                     }
+                    int qty = Integer.parseInt(qtyField.getText().trim());
+                    int maxQty = (int)partInfo.getSparePart().getStock();
+                    if (qty > maxQty) {
+                        showAlert("Недостаточно запчастей на складе: " + partInfo.getSparePart().getName() + " (в наличии: " + maxQty + ")");
+                        return;
+                    }
+                    AutoAddSparePartService.SparePartWithQuantity selected = partInfo.copy();
+                    selected.setQuantity(qty);
+                    selectedParts.add(selected);
                 }
             }
             

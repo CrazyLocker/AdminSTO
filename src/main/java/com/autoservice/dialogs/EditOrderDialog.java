@@ -10,6 +10,7 @@ import com.autoservice.DataStore;
 import com.autoservice.controllers.OrderController;
 import com.autoservice.services.AutoAddSparePartService;
 import com.autoservice.services.WindowStateManager;
+import com.autoservice.utils.DialogValidator;
 import com.autoservice.utils.ServicePartHelper;
 import com.autoservice.utils.ValidationErrorIndicator;
 import com.autoservice.utils.ValidationUtils;
@@ -404,63 +405,64 @@ public class EditOrderDialog {
 
         // Очистка ошибок валидации
         ValidationErrorIndicator.clearAllErrors(currentStage.getScene().getRoot());
-        
-        boolean isValid = true;
 
-        // Валидация
+        DialogValidator validator = new DialogValidator();
+
+        // Валидация обязательных полей
         if (tempServices.isEmpty() && tempParts.isEmpty()) {
-            showAlert("Должна быть хотя бы одна услуга или запчасть");
-            isValid = false;
+            validator.add("Должна быть хотя бы одна услуга или запчасть");
         }
 
         // ====== ПОВТОРНАЯ ПРОВЕРКА ОСТАТКА ПЕРЕД СОХРАНЕНИЕМ ======
-        boolean hasStockIssue = false;
         for (int i = 0; i < tempParts.size(); i++) {
             SparePart part = tempParts.get(i);
             double qty = tempPartQuantities.get(i);
             SparePart currentPart = DataStore.getSparePartById(part.getId());
             if (currentPart == null) {
-                hasStockIssue = true;
-                showAlert("Запчасть не найдена в базе: " + part.getName());
+                validator.add("Запчасть не найдена в базе: " + part.getName());
                 continue;
             }
-            int currentStock = (int)currentPart.getStock();
-            
+            int currentStock = (int) currentPart.getStock();
             if (qty > currentStock) {
-                hasStockIssue = true;
-                showAlert("Недостаточно запчастей на складе: " + part.getName() + " (в наличии: " + currentStock + ")");
+                validator.add("Недостаточно запчастей на складе: " + part.getName()
+                        + " (в наличии: " + currentStock + ")");
             }
         }
-        if (hasStockIssue) {
-            isValid = false;
-        }
-        
-        if (!isValid) {
-            return;
+
+        // ====== ПРОВЕРКА ПРОБЕГА ======
+        ValidationUtils.ValidationError mileageError =
+                ValidationUtils.validateIntegerText(mileageField.getText(), "Пробег", false);
+        if (mileageError != null) {
+            ValidationErrorIndicator.showError(mileageField, mileageError.getErrorMessage());
+            validator.add(mileageError);
         }
 
         // Валидация записи в календаре
         if (hasAppointmentCheck.isSelected()) {
-            LocalDate selectedDate = datePicker.getValue();
-            String selectedTime = timeCombo.getValue();
-            String selectedMaster = masterCombo.getValue();
-
-            if (selectedDate == null) {
+            if (datePicker.getValue() == null) {
                 ValidationErrorIndicator.showError(datePicker, "Выберите дату записи");
-                return;
+                validator.add("Выберите дату записи");
             }
-            if (selectedTime == null || selectedTime.isEmpty()) {
+            if (timeCombo.getValue() == null || timeCombo.getValue().isEmpty()) {
                 ValidationErrorIndicator.showError(timeCombo, "Выберите время записи");
-                return;
+                validator.add("Выберите время записи");
             }
-            if (selectedMaster == null || selectedMaster.isEmpty()) {
+            if (masterCombo.getValue() == null || masterCombo.getValue().isEmpty()) {
                 ValidationErrorIndicator.showError(masterCombo, "Выберите мастера");
-                return;
+                validator.add("Выберите мастера");
             }
+        }
 
+        if (validator.hasErrors()) {
+            showAlert(validator.getMessage());
+            return;
+        }
+
+        if (hasAppointmentCheck.isSelected()) {
+            LocalDate selectedDate = datePicker.getValue();
+            String timeStr = timeCombo.getValue();
+            String master = masterCombo.getValue();
             String dateStr = DateUtils.formatDateForDB(selectedDate);
-            String timeStr = selectedTime;
-            String master = selectedMaster;
 
             // Проверка на занятость времени
             List<Appointment> existing = DataStore.getAppointmentsByDate(dateStr);
@@ -487,7 +489,7 @@ public class EditOrderDialog {
                 weekendAlert.setHeaderText("Выбран выходной день!");
                 weekendAlert.setContentText("Запись в выходной день (" + selectedDate.format(DateTimeFormatter.ofPattern("EEEE", new java.util.Locale.Builder().setLanguage("ru").build())) + ") может быть ограничена.\n\nПродолжить?");
                 weekendAlert.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
-                
+
                 if (weekendAlert.showAndWait().orElse(ButtonType.NO) == ButtonType.NO) {
                     return; // Отмена при нажатии "Нет"
                 }
@@ -746,17 +748,22 @@ public class EditOrderDialog {
                 TextField qtyField = (TextField)hBox.getChildren().get(1);
                 
                 if (checkBox != null && checkBox.isSelected()) {
-                    try {
-                        int qty = Integer.parseInt(qtyField.getText());
-                        if (qty > 0) {
-                            AutoAddSparePartService.SparePartWithQuantity selected = partInfo.copy();
-                            selected.setQuantity(qty);
-                            selectedParts.add(selected);
-                        }
-                    } catch (NumberFormatException ex) {
-                        // Используем значение по умолчанию
-                        selectedParts.add(partInfo.copy());
+                    ValidationUtils.ValidationError qtyError =
+                            ValidationUtils.validatePositiveIntegerText(qtyField.getText(), "Количество");
+                    if (qtyError != null) {
+                        showAlert(qtyError.getErrorMessage() + " для запчасти " + partInfo.getSparePart().getName());
+                        return;
                     }
+                    int qty = Integer.parseInt(qtyField.getText().trim());
+                    int maxQty = (int) partInfo.getSparePart().getStock();
+                    if (qty > maxQty) {
+                        showAlert("Недостаточно запчастей на складе: " + partInfo.getSparePart().getName()
+                                + " (в наличии: " + maxQty + ")");
+                        return;
+                    }
+                    AutoAddSparePartService.SparePartWithQuantity selected = partInfo.copy();
+                    selected.setQuantity(qty);
+                    selectedParts.add(selected);
                 }
             }
             
