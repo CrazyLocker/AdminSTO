@@ -7,6 +7,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -59,7 +60,7 @@ public class FileDialogPathManager {
         try {
             createDirectoryIfNotExists();
             String filePath = STORAGE_DIR + "/" + dialogId + ".json";
-            try (Writer writer = new FileWriter(filePath)) {
+            try (Writer writer = new FileWriter(filePath, StandardCharsets.UTF_8)) {
                 gson.toJson(path, writer);
             }
             logger.debug("Last path saved: {} -> {}", dialogId, path);
@@ -92,7 +93,7 @@ public class FileDialogPathManager {
             return null;
         }
         
-        try (Reader reader = new FileReader(file)) {
+        try (Reader reader = new FileReader(file, StandardCharsets.UTF_8)) {
             String path = gson.fromJson(reader, String.class);
             if (path != null && !path.trim().isEmpty()) {
                 lastPaths.put(dialogId, path);

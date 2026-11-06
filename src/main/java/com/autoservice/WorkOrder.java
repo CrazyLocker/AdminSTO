@@ -185,7 +185,7 @@ public class WorkOrder {
         for (int i = 0; i < spareParts.size(); i++) {
             newTotal += spareParts.get(i).getRetailPrice() * sparePartQuantities.get(i);
         }
-        if (this.total != newTotal) {
+        if (Double.compare(this.total, newTotal) != 0) {
             this.total = newTotal;
             this.dirty = true;
         }

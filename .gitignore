@@ -62,7 +62,5 @@ create-runbat.ps1
 # ===== BAD FOLDERS FROM YOUR STATUS =====
 backups/
 Import_export/
-config/
 wrapper/dists/
-.github/
 STO.bat

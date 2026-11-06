@@ -103,7 +103,7 @@ public class SparePart {
     public void setRetailPrice(double retailPrice) { this.retailPrice = retailPrice; this.dirty = true; }
 
     public void setStock(double stock) {
-        if (this.stock != stock) {
+        if (Double.compare(this.stock, stock) != 0) {
             this.stock = stock;
             this.dirty = true;
         }

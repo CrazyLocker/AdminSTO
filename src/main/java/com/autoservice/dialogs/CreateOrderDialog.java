@@ -669,7 +669,9 @@ public class CreateOrderDialog {
                 if (checkBox != null && checkBox.isSelected()) {
                     checkedCount++;
                     try {
-                        int qty = Integer.parseInt(((HBox)checkboxesVBox.getChildren().get(relatedParts.indexOf(partInfo))).getChildren().get(1).toString().replaceAll(".*text=", "").replaceAll(").*", ""));
+                        HBox qtyBox = (HBox) checkboxesVBox.getChildren().get(relatedParts.indexOf(partInfo));
+                        TextField qtyField = (TextField) qtyBox.getChildren().get(1);
+                        int qty = Integer.parseInt(qtyField.getText());
                         total += partInfo.getSparePart().getRetailPrice() * qty;
                     } catch (Exception ex) {
                         total += partInfo.getSparePart().getRetailPrice() * partInfo.getQuantity();

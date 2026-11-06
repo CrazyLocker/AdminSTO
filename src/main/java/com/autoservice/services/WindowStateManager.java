@@ -7,6 +7,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -61,7 +62,7 @@ public class WindowStateManager {
         try {
             createDirectoryIfNotExists();
             String filePath = STORAGE_DIR + "/" + windowId + ".json";
-            try (Writer writer = new FileWriter(filePath)) {
+            try (Writer writer = new FileWriter(filePath, StandardCharsets.UTF_8)) {
                 gson.toJson(state, writer);
             }
             logger.debug("Window state saved: {} -> {}", windowId, state);
@@ -105,7 +106,7 @@ public class WindowStateManager {
             return null;
         }
         
-        try (Reader reader = new FileReader(file)) {
+        try (Reader reader = new FileReader(file, StandardCharsets.UTF_8)) {
             WindowState state = gson.fromJson(reader, WindowState.class);
             if (state != null) {
                 windowStates.put(windowId, state);

@@ -87,6 +87,9 @@ public class ReportGenerator {
                     closed++;
                     totalRevenue += order.getTotal();
                 }
+                default -> {
+                    // Неизвестный статус не учитывается в статистике.
+                }
             }
 
             // Услуги

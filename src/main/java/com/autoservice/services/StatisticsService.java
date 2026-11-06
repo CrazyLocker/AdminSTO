@@ -78,7 +78,7 @@ public class StatisticsService {
      */
     public static Map<String, Integer> getMastersLoad() {
         Map<String, Integer> mastersLoad = new LinkedHashMap<>();
-        Set<String> knownMasters = new HashSet<>(Arrays.asList(AppConstants.MASTERS));
+        Set<String> knownMasters = new HashSet<>(AppConstants.MASTERS);
         for (String master : AppConstants.MASTERS) {
             mastersLoad.put(master, 0);
         }
