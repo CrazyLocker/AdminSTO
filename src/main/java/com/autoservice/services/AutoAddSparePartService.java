@@ -223,7 +223,8 @@ public class AutoAddSparePartService {
         }
 
         /**
-         * Создает копию объекта.
+         * Создать копию объекта.
+         * @return новая копия с теми же запчастью, количеством и единицей измерения
          */
         public SparePartWithQuantity copy() {
             SparePartWithQuantity copy = new SparePartWithQuantity();

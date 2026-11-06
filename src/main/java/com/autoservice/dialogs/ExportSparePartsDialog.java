@@ -22,6 +22,9 @@ import java.util.List;
  */
 public class ExportSparePartsDialog {
 
+    /**
+     * Открыть диалог экспорта запчастей в файл.
+     */
     public static void show() {
         Stage stage = new Stage();
         stage.setTitle("Экспорт запчастей");

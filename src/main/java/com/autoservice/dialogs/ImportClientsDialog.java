@@ -20,6 +20,9 @@ import javafx.stage.Stage;
 
 import java.io.File;
 
+/**
+ * Диалог импорта клиентов из файла.
+ */
 public class ImportClientsDialog {
 
     private static ListView<String> errorListView;
@@ -28,6 +31,9 @@ public class ImportClientsDialog {
     private static Button importBtn;
     private static VBox errorsBox;
 
+    /**
+     * Открыть диалог импорта клиентов из файла.
+     */
     public static void show() {
         Stage stage = new Stage();
         stage.setTitle("Импорт клиентов");

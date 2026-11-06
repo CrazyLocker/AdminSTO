@@ -34,6 +34,10 @@ import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Диалог создания нового заказа: выбор клиента и автомобиля,
+ * услуг, запчастей, мастера и времени записи.
+ */
 public class CreateOrderDialog {
     private static final Logger logger = LoggerFactory.getLogger(CreateOrderDialog.class);
 
@@ -43,6 +47,7 @@ public class CreateOrderDialog {
      * Асинхронное создание заказа (для тестирования).
      * Возвращает CompletableFuture, который завершается при создании заказа.
      * Результат содержит созданный WorkOrder.
+     * @return future, завершающийся результатом диалога
      */
     public static CompletableFuture<DialogResult> showAsync() {
         CompletableFuture<DialogResult> future = new CompletableFuture<>();
@@ -532,7 +537,7 @@ public class CreateOrderDialog {
     }
 
     /**
-     * Синхронная версия для обратной совместимости.
+     * Синхронно открыть диалог создания заказа и дождаться его завершения.
      */
     public static void show() {
         showAsync().join();

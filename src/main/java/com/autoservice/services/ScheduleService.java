@@ -65,6 +65,9 @@ public class ScheduleService {
     
     /**
      * Сохранить настройки бэкапа в базу данных через SettingService.
+     * @param enabled включён ли автоматический бэкап
+     * @param time время ежедневного запуска в формате {@code "HH:mm"}
+     * @param retention количество дней хранения резервных копий
      */
     public static void saveSettings(boolean enabled, String time, int retention) {
         backupEnabled = enabled;

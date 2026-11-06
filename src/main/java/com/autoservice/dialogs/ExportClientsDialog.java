@@ -22,6 +22,9 @@ import java.util.List;
  */
 public class ExportClientsDialog {
 
+    /**
+     * Открыть диалог экспорта клиентов в файл.
+     */
     public static void show() {
         Stage stage = new Stage();
         stage.setTitle("Экспорт клиентов");

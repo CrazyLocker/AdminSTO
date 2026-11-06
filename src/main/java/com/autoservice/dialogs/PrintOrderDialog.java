@@ -19,10 +19,17 @@ import java.io.File;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
+/**
+ * Диалог сохранения заказа-наряда в PDF-файл.
+ */
 public class PrintOrderDialog {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
+    /**
+     * Открыть диалог сохранения заказа-наряда в PDF.
+     * @param order заказ, для которого формируется заказ-наряд
+     */
     public static void show(WorkOrder order) {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Сохранить заказ-наряд");

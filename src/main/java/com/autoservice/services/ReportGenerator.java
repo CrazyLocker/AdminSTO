@@ -23,22 +23,45 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Генератор отчётов: собирает статистику по данным автосервиса
+ * и экспортирует её в PDF.
+ */
 public class ReportGenerator {
 
+    /**
+     * Снимок статистики автосервиса, используемый для построения отчёта.
+     */
     public static class ReportData {
+        /** Общее количество заказов. */
         public int totalOrders;
+        /** Общее количество клиентов. */
         public int totalClients;
+        /** Общее количество запчастей. */
         public int totalSpareParts;
+        /** Общее количество записей на обслуживание. */
         public int totalAppointments;
+        /** Общая выручка по закрытым заказам. */
         public double totalRevenue;
+        /** Количество новых заказов. */
         public int newOrders;
+        /** Количество заказов в работе. */
         public int inProgressOrders;
+        /** Количество закрытых заказов. */
         public int closedOrders;
+        /** Топ-5 услуг по количеству использований. */
         public Map<String, Integer> topServices = new LinkedHashMap<>();
+        /** Топ-5 запчастей по количеству использований. */
         public Map<String, Integer> topParts = new LinkedHashMap<>();
+        /** Дата и время формирования отчёта. */
         public String generatedDate;
+        /** Средний чек по закрытым заказам. */
         public double averageOrderValue;
 
+        /**
+         * Строковое представление данных отчёта.
+         * @return строка с основными показателями отчёта
+         */
         @Override
         public String toString() {
             return "ReportData{" +
@@ -54,6 +77,13 @@ public class ReportGenerator {
         }
     }
 
+    /**
+     * Собрать статистику по заказам, клиентам, запчастям и записям на обслуживание.
+     *
+     * <p>Выручка и средний чек рассчитываются только по закрытым заказам;
+     * топ-5 услуг и запчастей определяется по частоте использования.
+     * @return снимок статистики для отчёта
+     */
     public static ReportData generateReport() {
         ReportData data = new ReportData();
         // Используем LocalDateTime для получения времени
@@ -134,6 +164,12 @@ public class ReportGenerator {
         return data;
     }
 
+    /**
+     * Экспортировать отчёт в PDF-файл.
+     * @param filePath путь к создаваемому PDF-файлу
+     * @param data данные отчёта
+     * @throws IOException если не удалось записать файл или сформировать PDF
+     */
     public static void exportToPdf(String filePath, ReportData data) throws IOException {
         try (PdfWriter writer = new PdfWriter(new FileOutputStream(filePath));
              PdfDocument pdfDoc = new PdfDocument(writer);
