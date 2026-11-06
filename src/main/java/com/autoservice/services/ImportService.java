@@ -50,6 +50,12 @@ public class ImportService {
         private final int skippedCount;
         private final List<String> errors;
 
+        /**
+         * Создать результат импорта.
+         * @param importedCount количество импортированных записей
+         * @param skippedCount количество пропущенных записей
+         * @param errors список сообщений об ошибках
+         */
         public ImportResult(int importedCount, int skippedCount, List<String> errors) {
             this.importedCount = importedCount;
             this.skippedCount = skippedCount;
@@ -91,7 +97,9 @@ public class ImportService {
     }
 
     /**
-     * Определяет формат файла по расширению
+     * Определить формат файла по его расширению.
+     * @param file проверяемый файл
+     * @return {@code "xml"} для XML-файлов, иначе {@code "unknown"}
      */
     public static String detectFormat(File file) {
         if (file == null) return "unknown";
@@ -102,7 +110,11 @@ public class ImportService {
     }
 
     /**
-     * Импортирует запчасти из файла
+     * Импортировать запчасти из файла, формат которого определяется по расширению.
+     * @param file XML-файл с запчастями
+     * @return результат импорта с количеством добавленных и пропущенных записей
+     * @throws IOException если не удалось открыть или прочитать файл
+     * @throws IllegalArgumentException если формат файла не поддерживается
      */
     public static ImportResult importFromFile(File file) throws IOException {
         String format = detectFormat(file);
@@ -121,7 +133,9 @@ public class ImportService {
     // ======================== XML ========================
 
     /**
-     * Формат XML:
+     * Импортировать запчасти из XML-потока.
+     *
+     * <p>Формат XML:
      * <pre>{@code
      * <spareParts>
      *   <part>
@@ -131,6 +145,8 @@ public class ImportService {
      *   </part>
      * </spareParts>
      * }</pre>
+     * @param is поток с XML-документом запчастей
+     * @return результат импорта с количеством добавленных и пропущенных записей
      */
     public static ImportResult importFromXml(InputStream is) {
         List<String> errors = new ArrayList<>();
@@ -228,7 +244,11 @@ public class ImportService {
     // ======================== ИМПОРТ КЛИЕНТОВ ========================
 
     /**
-     * Импортирует клиентов из файла
+     * Импортировать клиентов из файла, формат которого определяется по расширению.
+     * @param file XML-файл с клиентами
+     * @return результат импорта с количеством добавленных и пропущенных записей
+     * @throws IOException если не удалось открыть или прочитать файл
+     * @throws IllegalArgumentException если формат файла не поддерживается
      */
     public static ImportResult importClientsFromFile(File file) throws IOException {
         String format = detectFormat(file);
@@ -247,7 +267,9 @@ public class ImportService {
     // ======================== XML КЛИЕНТОВ ========================
 
     /**
-     * Формат XML:
+     * Импортировать клиентов из XML-потока.
+     *
+     * <p>Формат XML:
      * <pre>{@code
      * <clients>
      *   <client>
@@ -257,6 +279,8 @@ public class ImportService {
      *   </client>
      * </clients>
      * }</pre>
+     * @param is поток с XML-документом клиентов
+     * @return результат импорта с количеством добавленных и пропущенных записей
      */
     public static ImportResult importClientsFromXml(InputStream is) {
         List<String> errors = new ArrayList<>();
@@ -334,7 +358,11 @@ public class ImportService {
     // ======================== ИМПОРТ УСЛУГ ========================
 
     /**
-     * Импортирует услуги из файла
+     * Импортировать услуги из файла, формат которого определяется по расширению.
+     * @param file XML-файл с услугами
+     * @return результат импорта с количеством добавленных и пропущенных записей
+     * @throws IOException если не удалось открыть или прочитать файл
+     * @throws IllegalArgumentException если формат файла не поддерживается
      */
     public static ImportResult importServicesFromFile(File file) throws IOException {
         String format = detectFormat(file);
@@ -353,7 +381,9 @@ public class ImportService {
     // ======================== XML УСЛУГ ========================
 
     /**
-     * Формат XML:
+     * Импортировать услуги из XML-потока.
+     *
+     * <p>Формат XML:
      * <pre>{@code
      * <services>
      *   <service>
@@ -363,6 +393,8 @@ public class ImportService {
      *   </service>
      * </services>
      * }</pre>
+     * @param is поток с XML-документом услуг
+     * @return результат импорта с количеством добавленных и пропущенных записей
      */
     public static ImportResult importServicesFromXml(InputStream is) {
         List<String> errors = new ArrayList<>();

@@ -27,7 +27,12 @@ public class ExportService {
     private static final Logger logger = LoggerFactory.getLogger(ExportService.class);
 
     /**
-     * Экспортирует запчасти в XML файл
+     * Экспортировать запчасти в файл указанного формата.
+     * @param parts список запчастей
+     * @param file файл назначения
+     * @param format формат экспорта; поддерживается только {@code "xml"}
+     * @throws Exception если не удалось сформировать или записать XML-файл
+     * @throws IllegalArgumentException если формат не поддерживается
      */
     public static void exportToFile(List<SparePart> parts, File file, String format) throws Exception {
         try (OutputStream os = new FileOutputStream(file)) {
@@ -94,7 +99,12 @@ public class ExportService {
     }
 
     /**
-     * Экспортирует услуги в XML файл
+     * Экспортировать услуги в файл указанного формата.
+     * @param services список услуг
+     * @param file файл назначения
+     * @param format формат экспорта; поддерживается только {@code "xml"}
+     * @throws Exception если не удалось сформировать или записать XML-файл
+     * @throws IllegalArgumentException если формат не поддерживается
      */
     public static void exportServicesToFile(List<Service> services, File file, String format) throws Exception {
         try (OutputStream os = new FileOutputStream(file)) {
@@ -152,7 +162,12 @@ public class ExportService {
     // ======================== ЭКСПОРТ КЛИЕНТОВ ========================
 
     /**
-     * Экспортирует клиентов в XML файл
+     * Экспортировать клиентов в файл указанного формата.
+     * @param clients список клиентов
+     * @param file файл назначения
+     * @param format формат экспорта; поддерживается только {@code "xml"}
+     * @throws Exception если не удалось сформировать или записать XML-файл
+     * @throws IllegalArgumentException если формат не поддерживается
      */
     public static void exportClientsToFile(List<Client> clients, File file, String format) throws Exception {
         try (OutputStream os = new FileOutputStream(file)) {

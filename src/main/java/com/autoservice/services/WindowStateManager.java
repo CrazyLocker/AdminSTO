@@ -48,7 +48,12 @@ public class WindowStateManager {
     }
     
     /**
-     * Сохраняет состояние окна
+     * Сохранить состояние окна по его геометрии.
+     * @param windowId идентификатор окна
+     * @param x координата окна по оси X
+     * @param y координата окна по оси Y
+     * @param width ширина окна
+     * @param height высота окна
      */
     public void saveWindowState(String windowId, double x, double y, double width, double height) {
         if (windowId == null || windowId.trim().isEmpty()) {
@@ -72,7 +77,9 @@ public class WindowStateManager {
     }
     
     /**
-     * Сохраняет состояние окна изjavafx.stage.Stage
+     * Сохранить текущее состояние окна.
+     * @param windowId идентификатор окна
+     * @param stage окно, состояние которого нужно сохранить
      */
     public void saveWindowState(String windowId, javafx.stage.Stage stage) {
         if (stage == null) {
@@ -83,8 +90,9 @@ public class WindowStateManager {
     }
     
     /**
-     * Загружает состояние окна
-     * @return WindowState или null если не найдено
+     * Получить сохранённое состояние окна.
+     * @param windowId идентификатор окна
+     * @return сохранённое состояние или {@code null}, если оно не найдено
      */
     public WindowState getWindowState(String windowId) {
         if (windowId == null || windowId.trim().isEmpty()) {
@@ -121,8 +129,13 @@ public class WindowStateManager {
     }
     
     /**
-     * Восстанавливает состояние окна (позиция и размеры)
-     * @return true если состояние было применено, false если использованы дефолтные значения
+     * Восстановить позицию и размеры окна.
+     *
+     * <p>Если сохранённое состояние отсутствует, окну задаются значения по умолчанию.
+     * @param windowId идентификатор окна
+     * @param stage окно, которому применяется состояние
+     * @return {@code true}, если сохранённое состояние было применено,
+     *         {@code false}, если использованы значения по умолчанию
      */
     public boolean restoreWindowState(String windowId, javafx.stage.Stage stage) {
         WindowState state = getWindowState(windowId);
@@ -147,7 +160,8 @@ public class WindowStateManager {
     }
     
     /**
-     * Сбрасывает состояние окна (удаляет файл)
+     * Сбросить сохранённое состояние окна и удалить его файл.
+     * @param windowId идентификатор окна
      */
     public void resetWindowState(String windowId) {
         if (windowId == null || windowId.trim().isEmpty()) {
@@ -169,7 +183,9 @@ public class WindowStateManager {
     }
     
     /**
-     * Проверяет наличие сохраненного состояния
+     * Проверить наличие сохранённого состояния окна.
+     * @param windowId идентификатор окна
+     * @return {@code true}, если состояние сохранено
      */
     public boolean hasSavedState(String windowId) {
         if (windowId == null || windowId.trim().isEmpty()) {

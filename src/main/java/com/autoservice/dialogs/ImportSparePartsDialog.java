@@ -21,6 +21,9 @@ import javafx.stage.Stage;
 
 import java.io.File;
 
+/**
+ * Диалог импорта запчастей из файла.
+ */
 public class ImportSparePartsDialog {
 
     private static ListView<String> errorListView;
@@ -29,6 +32,9 @@ public class ImportSparePartsDialog {
     private static Button importBtn;
     private static VBox errorsBox;
 
+    /**
+     * Открыть диалог импорта запчастей из файла.
+     */
     public static void show() {
         Stage stage = new Stage();
         stage.setTitle("Импорт запчастей");

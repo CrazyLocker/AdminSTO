@@ -26,12 +26,17 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.Map;
 
+/**
+ * Диалог создания и редактирования клиента, включая список его автомобилей.
+ */
 public class EditClientDialog {
 
     private static final Logger logger = LoggerFactory.getLogger(EditClientDialog.class);
 
     /**
-     * Асинхронное открытие диалога (для тестирования).
+     * Асинхронно открыть диалог создания или редактирования клиента.
+     * @param client редактируемый клиент; новый клиент имеет идентификатор {@code -1} или {@code 0}
+     * @return future, завершающийся результатом диалога
      */
     public static CompletableFuture<DialogResult> showAsync(Client client) {
         CompletableFuture<DialogResult> future = new CompletableFuture<>();
@@ -352,6 +357,10 @@ public class EditClientDialog {
         TextField numberField;
     }
 
+    /**
+     * Синхронно открыть диалог создания или редактирования клиента.
+     * @param client редактируемый клиент; новый клиент имеет идентификатор {@code -1} или {@code 0}
+     */
     public static void show(Client client) {
         try {
             showAsync(client).join();

@@ -42,7 +42,9 @@ public class FileDialogPathManager {
     }
     
     /**
-     * Сохраняет последний путь для конкретного окна
+     * Сохранить последний путь для конкретного диалога.
+     * @param dialogId идентификатор диалога
+     * @param path последний выбранный путь
      */
     public void saveLastPath(String dialogId, String path) {
         if (dialogId == null || dialogId.trim().isEmpty()) {
@@ -70,8 +72,9 @@ public class FileDialogPathManager {
     }
     
     /**
-     * Загружает последний путь для конкретного окна
-     * @return путь или null если не найден
+     * Получить последний сохранённый путь для конкретного диалога.
+     * @param dialogId идентификатор диалога
+     * @return последний путь или {@code null}, если он не найден
      */
     public String getLastPath(String dialogId) {
         if (dialogId == null || dialogId.trim().isEmpty()) {
@@ -108,7 +111,8 @@ public class FileDialogPathManager {
     }
     
     /**
-     * Удаляет сохраненный путь для конкретного окна
+     * Удалить сохранённый путь для конкретного диалога.
+     * @param dialogId идентификатор диалога
      */
     public void resetLastPath(String dialogId) {
         if (dialogId == null || dialogId.trim().isEmpty()) {

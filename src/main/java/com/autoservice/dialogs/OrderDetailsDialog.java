@@ -13,8 +13,15 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
+/**
+ * Диалог просмотра подробной информации о заказе.
+ */
 public class OrderDetailsDialog {
 
+    /**
+     * Открыть диалог с подробностями заказа.
+     * @param order отображаемый заказ
+     */
     public static void show(WorkOrder order) {
         Stage stage = new Stage();
         stage.setTitle("Заказ " + order.getId());

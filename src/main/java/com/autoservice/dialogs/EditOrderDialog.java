@@ -34,6 +34,9 @@ import com.autoservice.DateUtils;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Диалог редактирования заказа: услуги, запчасти, пробег и запись в календарь.
+ */
 public class EditOrderDialog {
     
     private static final Logger logger = LoggerFactory.getLogger(EditOrderDialog.class);
@@ -55,6 +58,12 @@ public class EditOrderDialog {
     private static final List<SparePart> tempParts = new ArrayList<>();
     private static final List<Double> tempPartQuantities = new ArrayList<>();
 
+    /**
+     * Открыть диалог редактирования заказа.
+     *
+     * <p>Закрытые заказы не редактируются — выводится предупреждение.
+     * @param order редактируемый заказ
+     */
     public static void show(WorkOrder order) {
         if (order.getStatus().equals(WorkOrder.STATUS_CLOSED)) {
             showAlert("Нельзя редактировать закрытый заказ");
