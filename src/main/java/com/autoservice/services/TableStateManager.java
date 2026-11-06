@@ -10,6 +10,7 @@ import com.google.gson.GsonBuilder;
 import javafx.collections.ObservableList;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.*;
@@ -95,7 +96,7 @@ public class TableStateManager {
             tableState.setSortOrder(sortStates);
             
             String filePath = STORAGE_DIR + "/" + tableId + ".json";
-            try (Writer writer = new FileWriter(filePath)) {
+            try (Writer writer = new FileWriter(filePath, StandardCharsets.UTF_8)) {
                 gson.toJson(tableState, writer);
             }
             
@@ -122,7 +123,7 @@ public class TableStateManager {
         
             logger.debug("Loading state from: {}", filePath);
             
-            try (Reader reader = new FileReader(file)) {
+            try (Reader reader = new FileReader(file, StandardCharsets.UTF_8)) {
                 TableState tableState = gson.fromJson(reader, TableState.class);
                 
                 if (tableState == null || tableState.getColumns() == null) {

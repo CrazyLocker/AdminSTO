@@ -206,8 +206,8 @@ public class AppointmentView {
             scheduleGrid.add(dayHeader, i + 1, 0);
         }
 
-        for (int i = 0; i < AppConstants.TIME_SLOTS.length; i++) {
-            String time = AppConstants.TIME_SLOTS[i];
+        for (int i = 0; i < AppConstants.TIME_SLOTS.size(); i++) {
+            String time = AppConstants.TIME_SLOTS.get(i);
             int row = i + 1;
 
             Label timeLabel = new Label(time);
