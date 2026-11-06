@@ -175,4 +175,16 @@ class SparePartTest {
         assertThat(part.getStock()).isEqualTo(20);
         assertThat(part.getLocation()).isEqualTo("Склад А");
     }
+
+    @Test
+    @Order(16)
+    void testSetStockToSameValueKeepsCleanState() {
+        SparePart part = new SparePart("Масло", 800, 1200, 20);
+        part.markClean();
+
+        part.setStock(20);
+
+        assertThat(part.getStock()).isEqualTo(20);
+        assertThat(part.isDirty()).isFalse();
+    }
 }
