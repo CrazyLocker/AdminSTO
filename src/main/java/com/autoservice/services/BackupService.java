@@ -27,6 +27,7 @@ import java.util.zip.CRC32;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
+import java.util.stream.Stream;
 
 /**
  * Сервис для управления резервным копированием.
@@ -100,37 +101,39 @@ public class BackupService {
                 // Добавить файлы настроек таблиц
                 Path tableStatePath = Paths.get(TABLE_STATE_DIR);
                 if (Files.exists(tableStatePath)) {
-                    Files.walk(tableStatePath)
-                        .filter(p -> Files.isRegularFile(p) && p.toString().endsWith(".json"))
-                        .forEach(p -> {
-                            try {
-                                String entryName = TABLE_STATE_DIR + File.separator + tableStatePath.relativize(p);
-                                ZipEntry tableEntry = new ZipEntry(entryName.replace(File.separator, "/"));
-                                zos.putNextEntry(tableEntry);
-                                zos.write(Files.readAllBytes(p));
-                                zos.closeEntry();
-                            } catch (IOException e) {
-                                logger.warn("Не удалось добавить в бэкап: {}", p, e);
-                            }
-                        });
+                    try (Stream<Path> paths = Files.walk(tableStatePath)) {
+                        paths.filter(p -> Files.isRegularFile(p) && p.toString().endsWith(".json"))
+                            .forEach(p -> {
+                                try {
+                                    String entryName = TABLE_STATE_DIR + File.separator + tableStatePath.relativize(p);
+                                    ZipEntry tableEntry = new ZipEntry(entryName.replace(File.separator, "/"));
+                                    zos.putNextEntry(tableEntry);
+                                    zos.write(Files.readAllBytes(p));
+                                    zos.closeEntry();
+                                } catch (IOException e) {
+                                    logger.warn("Не удалось добавить в бэкап: {}", p, e);
+                                }
+                            });
+                    }
                 }
                 
                 // Добавить файлы настроек окон
                 Path windowStatePath = Paths.get(WINDOW_STATE_DIR);
                 if (Files.exists(windowStatePath)) {
-                    Files.walk(windowStatePath)
-                        .filter(p -> Files.isRegularFile(p) && p.toString().endsWith(".json"))
-                        .forEach(p -> {
-                            try {
-                                String entryName = WINDOW_STATE_DIR + File.separator + windowStatePath.relativize(p);
-                                ZipEntry windowEntry = new ZipEntry(entryName.replace(File.separator, "/"));
-                                zos.putNextEntry(windowEntry);
-                                zos.write(Files.readAllBytes(p));
-                                zos.closeEntry();
-                            } catch (IOException e) {
-                                logger.warn("Не удалось добавить в бэкап: {}", p, e);
-                            }
-                        });
+                    try (Stream<Path> paths = Files.walk(windowStatePath)) {
+                        paths.filter(p -> Files.isRegularFile(p) && p.toString().endsWith(".json"))
+                            .forEach(p -> {
+                                try {
+                                    String entryName = WINDOW_STATE_DIR + File.separator + windowStatePath.relativize(p);
+                                    ZipEntry windowEntry = new ZipEntry(entryName.replace(File.separator, "/"));
+                                    zos.putNextEntry(windowEntry);
+                                    zos.write(Files.readAllBytes(p));
+                                    zos.closeEntry();
+                                } catch (IOException e) {
+                                    logger.warn("Не удалось добавить в бэкап: {}", p, e);
+                                }
+                            });
+                    }
                 }
             }
             
@@ -550,9 +553,10 @@ public class BackupService {
             }
             
             List<Path> backupFiles = new ArrayList<>();
-            Files.walk(backupDir)
-                .filter(p -> p.toString().endsWith(BACKUP_EXTENSION))
-                .forEach(backupFiles::add);
+            try (Stream<Path> paths = Files.walk(backupDir)) {
+                paths.filter(p -> p.toString().endsWith(BACKUP_EXTENSION))
+                    .forEach(backupFiles::add);
+            }
             
             // Отсортировать по дате (новые в конце)
             backupFiles.sort(Comparator.naturalOrder());
@@ -582,11 +586,12 @@ public class BackupService {
                 return backups;
             }
             
-            Files.walk(backupDir)
-                .filter(p -> p.toString().endsWith(BACKUP_EXTENSION))
-                .map(p -> p.toString())
-                .sorted()
-                .forEach(backups::add);
+            try (Stream<Path> paths = Files.walk(backupDir)) {
+                paths.filter(p -> p.toString().endsWith(BACKUP_EXTENSION))
+                    .map(p -> p.toString())
+                    .sorted()
+                    .forEach(backups::add);
+            }
             
         } catch (IOException e) {
             logger.error("Ошибка получения списка бэкапов", e);
