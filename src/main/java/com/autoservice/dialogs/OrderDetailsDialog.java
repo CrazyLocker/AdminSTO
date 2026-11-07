@@ -1,5 +1,7 @@
 package com.autoservice.dialogs;
 
+import com.autoservice.AppConstants;
+import com.autoservice.Client;
 import com.autoservice.DateUtils;
 import com.autoservice.SparePart;
 import com.autoservice.Validators;
@@ -35,11 +37,18 @@ public class OrderDetailsDialog {
         VBox content = new VBox(15);
         content.setPadding(new Insets(20));
 
-        Label headerLabel = new Label(order.getClient().getName() + " | " + Validators.formatPhoneForDisplay(order.getClient().getPhone()));
+        Client client = order.getClient();
+        String clientHeader = client == null
+                ? AppConstants.NO_CLIENT
+                : client.getName() + " | " + Validators.formatPhoneForDisplay(client.getPhone());
+        Label headerLabel = new Label(clientHeader);
         headerLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
 
         Label statusLabel = new Label("Статус: " + order.getStatus());
-        Label carLabel = new Label("Авто: " + order.getClient().getCarModel() + " (" + order.getClient().getCarNumber() + ")");
+        String carInfo = client == null
+                ? "—"
+                : client.getCarModel() + " (" + client.getCarNumber() + ")";
+        Label carLabel = new Label("Авто: " + carInfo);
 
         Label servicesLabel = new Label("Услуги:");
         servicesLabel.setStyle("-fx-font-weight: bold;");

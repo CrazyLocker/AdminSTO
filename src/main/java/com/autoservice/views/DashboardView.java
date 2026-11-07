@@ -412,10 +412,16 @@ public class DashboardView extends ScrollPane {
         for (Appointment a : weekAppointments) {
             Client client = a.getClient();
             String orderId = a.getOrderId() != null ? a.getOrderId() : "—";
-            String clientName = (client.getLastName() != null && !client.getLastName().isEmpty())
-                    ? client.getLastName() + " " + client.getName()
-                    : client.getName();
-            String carModel = client.getCarModel() != null ? client.getCarModel() : "—";
+            String clientName;
+            String carModel;
+            if (client == null) {
+                clientName = AppConstants.NO_CLIENT;
+                carModel = "—";
+            } else {
+                String fullName = client.getFullName();
+                clientName = fullName != null && !fullName.isEmpty() ? fullName : AppConstants.NO_CLIENT;
+                carModel = client.getCarModel() != null ? client.getCarModel() : "—";
+            }
             String serviceName = a.getServiceName() != null ? a.getServiceName() : "—";
             String dateTime = DateUtils.formatDate(a.getDate()) + " " + a.getTime();
 

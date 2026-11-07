@@ -11,6 +11,11 @@ public final class AppConstants {
     private AppConstants() {
     }
 
+    /**
+     * Текст-заглушка для заказа или записи без связанного клиента.
+     */
+    public static final String NO_CLIENT = "Без клиента";
+
     // ==================== ВРЕМЯ ====================
 
     /**
