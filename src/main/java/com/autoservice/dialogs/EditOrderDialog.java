@@ -89,7 +89,9 @@ public class EditOrderDialog {
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
 
-        Label infoLabel = new Label("Клиент: " + order.getClient().getName() + " (" + order.getCarModel() + ", " + order.getCarNumber() + ")");
+        Client orderClient = order.getClient();
+        String clientName = orderClient != null ? orderClient.getName() : AppConstants.NO_CLIENT;
+        Label infoLabel = new Label("Клиент: " + clientName + " (" + order.getCarModel() + ", " + order.getCarNumber() + ")");
         infoLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
 
         // ==================== ПРОБЕГ ====================

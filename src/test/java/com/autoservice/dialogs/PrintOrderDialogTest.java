@@ -53,6 +53,25 @@ class PrintOrderDialogTest {
         }
     }
 
+    @Test
+    void generatesPdfForOrderWithoutClient() throws Exception {
+        WorkOrder order = new WorkOrder();
+        order.setId("ZAK-NO-CLIENT");
+        order.setStatus(WorkOrder.STATUS_NEW);
+        order.addService("Замена масла", 1500);
+        Path pdfPath = tempDir.resolve("order-no-client.pdf");
+
+        assertThatCode(() -> PrintOrderDialog.generatePdf(
+                order, pdfPath, REGULAR_FONT_RESOURCE, BOLD_FONT_RESOURCE))
+                .doesNotThrowAnyException();
+
+        assertThat(pdfPath).exists();
+        try (PdfDocument pdf = new PdfDocument(new PdfReader(pdfPath.toString()))) {
+            String text = PdfTextExtractor.getTextFromPage(pdf.getPage(1));
+            assertThat(text).contains("Без клиента", "Замена масла");
+        }
+    }
+
     private WorkOrder createOrder() {
         Client client = new Client("Иван", "Петров", "+79001234567", "Haval Jolion", "А123ВС163");
         WorkOrder order = new WorkOrder(client);

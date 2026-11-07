@@ -1269,7 +1269,6 @@ public class SettingsView {
         okBtn.setOnAction(e -> {
             Service service = serviceCombo.getValue();
             SparePart sparePart = sparePartCombo.getValue();
-            double quantity = quantitySpinner.getValue();
             boolean isRequired = requiredCheckbox.isSelected();
 
             if (service == null) {
@@ -1280,6 +1279,14 @@ public class SettingsView {
                 showAlert("Выберите запчасть", Alert.AlertType.WARNING);
                 return;
             }
+
+            Double quantityValue = quantitySpinner.getValue();
+            if (quantityValue == null) {
+                ValidationErrorIndicator.showError(quantitySpinner, "Укажите количество");
+                showAlert("Укажите количество", Alert.AlertType.WARNING);
+                return;
+            }
+            double quantity = quantityValue;
 
             ServicePart servicePart = new ServicePart(service.getId(), sparePart.getId(), quantity, isRequired);
             DataStore.addServicePart(servicePart);
@@ -1386,7 +1393,6 @@ public class SettingsView {
         okBtn.setOnAction(e -> {
             Service newService = serviceCombo.getValue();
             SparePart newSparePart = sparePartCombo.getValue();
-            double quantity = quantitySpinner.getValue();
             boolean isRequired = requiredCheckbox.isSelected();
 
             if (newService == null) {
@@ -1397,6 +1403,14 @@ public class SettingsView {
                 showAlert("Выберите запчасть", Alert.AlertType.WARNING);
                 return;
             }
+
+            Double quantityValue = quantitySpinner.getValue();
+            if (quantityValue == null) {
+                ValidationErrorIndicator.showError(quantitySpinner, "Укажите количество");
+                showAlert("Укажите количество", Alert.AlertType.WARNING);
+                return;
+            }
+            double quantity = quantityValue;
 
             part.setServiceId(newService.getId());
             part.setSparePartId(newSparePart.getId());
@@ -2450,7 +2464,7 @@ public class SettingsView {
         saveBtn.setOnAction(e -> {
             boolean autoBackupEnabled = autoBackupYes.isSelected();
             String time = backupTimeCombo.getValue();
-            int backupRetentionValue = retentionSpinner.getValue();
+            Integer retentionValue = retentionSpinner.getValue();
 
             // Валидация времени
             ValidationErrorIndicator.clearAllErrors(panel);
@@ -2460,6 +2474,13 @@ public class SettingsView {
                 showAlert("Выберите время бэкапа", Alert.AlertType.WARNING);
                 return;
             }
+
+            if (retentionValue == null) {
+                ValidationErrorIndicator.showError(retentionSpinner, "Укажите количество копий");
+                showAlert("Укажите количество копий", Alert.AlertType.WARNING);
+                return;
+            }
+            int backupRetentionValue = retentionValue;
 
             // Валидация количества копий (7-14)
             if (backupRetentionValue < 7 || backupRetentionValue > 14) {

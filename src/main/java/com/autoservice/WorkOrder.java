@@ -9,6 +9,10 @@ public class WorkOrder {
     public static final String STATUS_CLOSED = "Закрыт";
 
     private String id;
+    /**
+     * Клиент заказа. Может быть {@code null} у нового заказа, которому клиент
+     * ещё не назначен; для сохранения в БД клиент обязателен.
+     */
     private Client client;
     private String status;
     private double total;
@@ -40,7 +44,7 @@ public class WorkOrder {
     public WorkOrder(Client client) {
         this();
         this.client = client;
-        this.clientId = client.getId();
+        this.clientId = client != null ? client.getId() : 0;
     }
 
     public WorkOrder(String id, Client client, String status, double total, String createdDate) {
@@ -200,6 +204,7 @@ public class WorkOrder {
 
     @Override
     public String toString() {
-        return id + " - " + client.getFullName() + " (" + status + ")";
+        String clientName = client != null ? client.getFullName() : AppConstants.NO_CLIENT;
+        return id + " - " + clientName + " (" + status + ")";
     }
 }

@@ -1,5 +1,7 @@
 package com.autoservice.views;
 
+import com.autoservice.AppConstants;
+import com.autoservice.Client;
 import com.autoservice.DataStore;
 import com.autoservice.DateUtils;
 import com.autoservice.Validators;
@@ -295,8 +297,12 @@ public class OrderView {
         colClient.setId("colClient");
         colClient.setCellValueFactory(cellData -> {
             WorkOrder order = cellData.getValue();
-            String lastName = order.getClient().getLastName();
-            String firstName = order.getClient().getName();
+            Client client = order.getClient();
+            if (client == null) {
+                return new SimpleStringProperty(AppConstants.NO_CLIENT);
+            }
+            String lastName = client.getLastName();
+            String firstName = client.getName();
             return new SimpleStringProperty((lastName != null && !lastName.isEmpty()) ? lastName + " " + firstName : firstName);
         });
         colClient.setPrefWidth(180);
@@ -305,8 +311,12 @@ public class OrderView {
         TableColumn<WorkOrder, String> colCar = new TableColumn<>("Автомобиль");
         colCar.setId("colCar");
         colCar.setCellValueFactory(cellData -> {
-            String model = cellData.getValue().getClient().getCarModel();
-            String number = cellData.getValue().getClient().getCarNumber();
+            Client client = cellData.getValue().getClient();
+            if (client == null) {
+                return new SimpleStringProperty("—");
+            }
+            String model = client.getCarModel();
+            String number = client.getCarNumber();
             return new SimpleStringProperty(model + " (" + number + ")");
         });
         colCar.setPrefWidth(200);

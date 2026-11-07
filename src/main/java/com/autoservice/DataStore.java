@@ -220,9 +220,13 @@ public class DataStore {
      * @param client удаляемый клиент
      */
     public static void deleteClient(Client client) {
+        if (client == null) {
+            return;
+        }
         List<WorkOrder> ordersToDelete = new ArrayList<>();
         for (WorkOrder order : orders) {
-            if (order.getClient().getId() == client.getId()) {
+            Client orderClient = order.getClient();
+            if (orderClient != null && orderClient.getId() == client.getId()) {
                 ordersToDelete.add(order);
             }
         }

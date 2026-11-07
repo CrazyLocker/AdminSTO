@@ -5,6 +5,10 @@ public class Appointment {
     public static final String STATUS_COMPLETED = "Выполнено";
 
     private int id;
+    /**
+     * Клиент записи. Может быть {@code null} у новой записи, которой клиент
+     * ещё не назначен; для сохранения в БД клиент обязателен.
+     */
     private Client client;
     private String orderId;
     private String masterName;
@@ -118,6 +122,7 @@ public class Appointment {
 
     @Override
     public String toString() {
-        return date + " " + time + " - " + client.getFullName() + " (" + serviceName + ")";
+        String clientName = client != null ? client.getFullName() : AppConstants.NO_CLIENT;
+        return date + " " + time + " - " + clientName + " (" + serviceName + ")";
     }
 }
