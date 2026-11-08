@@ -12,6 +12,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 import com.autoservice.utils.ExceptionHandler;
+import com.autoservice.utils.Formatters;
 import com.autoservice.Client;
 import com.autoservice.Car;
 import com.autoservice.Service;
@@ -236,8 +237,8 @@ public abstract class AbstractDatabase implements DatabaseInterface {
      */
     @Override
     public void addClient(Client client) {
-        String normalizedPhone = Validators.cleanPhone(client.getPhone());
-        String normalizedCarNumber = Validators.normalizeCarNumber(client.getCarNumber());
+        String normalizedPhone = Formatters.cleanPhone(client.getPhone());
+        String normalizedCarNumber = Formatters.normalizeCarNumber(client.getCarNumber());
         String sql = "INSERT INTO clients (name, last_name, phone, car_model, car_number, last_repair_date) VALUES (?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = getConnection();
@@ -295,8 +296,8 @@ public abstract class AbstractDatabase implements DatabaseInterface {
      */
     @Override
     public void updateClient(Client client) {
-        String normalizedPhone = Validators.cleanPhone(client.getPhone());
-        String normalizedCarNumber = Validators.normalizeCarNumber(client.getCarNumber());
+        String normalizedPhone = Formatters.cleanPhone(client.getPhone());
+        String normalizedCarNumber = Formatters.normalizeCarNumber(client.getCarNumber());
         String sql = "UPDATE clients SET name = ?, last_name = ?, phone = ?, car_model = ?, car_number = ?, last_repair_date = ? WHERE id = ?";
 
         try (Connection conn = getConnection();
@@ -381,7 +382,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
      */
     @Override
     public void addCar(Car car) throws SQLException {
-        String normalizedNumber = Validators.normalizeCarNumber(car.getCarNumber());
+        String normalizedNumber = Formatters.normalizeCarNumber(car.getCarNumber());
         String sql = "INSERT INTO client_cars (client_id, car_model, car_number, mileage) VALUES (?, ?, ?, ?)";
 
         try (Connection conn = getConnection();
@@ -421,7 +422,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
      */
     @Override
     public void updateCar(Car car) {
-        String normalizedNumber = Validators.normalizeCarNumber(car.getCarNumber());
+        String normalizedNumber = Formatters.normalizeCarNumber(car.getCarNumber());
         String sql = "UPDATE client_cars SET car_model = ?, car_number = ?, mileage = ? WHERE id = ?";
 
         try (Connection conn = getConnection();
@@ -511,7 +512,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
      * чтобы не запрашивать второе соединение из пула и не блокировать его.
      */
     protected int findClientId(Connection conn, Client client) throws SQLException {
-        String normalizedPhone = Validators.cleanPhone(client.getPhone());
+        String normalizedPhone = Formatters.cleanPhone(client.getPhone());
         String normalizedLastName = client.getLastName() != null ? client.getLastName() : "";
         String sql = "SELECT id FROM clients WHERE name = ? AND last_name = ? AND phone = ?";
 

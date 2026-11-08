@@ -4,7 +4,7 @@ import com.autoservice.AppConstants;
 import com.autoservice.Client;
 import com.autoservice.DateUtils;
 import com.autoservice.SparePart;
-import com.autoservice.Validators;
+import com.autoservice.utils.Formatters;
 import com.autoservice.WorkOrder;
 import com.autoservice.services.WindowStateManager;
 import javafx.geometry.Insets;
@@ -40,7 +40,7 @@ public class OrderDetailsDialog {
         Client client = order.getClient();
         String clientHeader = client == null
                 ? AppConstants.NO_CLIENT
-                : client.getName() + " | " + Validators.formatPhoneForDisplay(client.getPhone());
+                : client.getName() + " | " + Formatters.formatPhoneForDisplay(client.getPhone());
         Label headerLabel = new Label(clientHeader);
         headerLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
 

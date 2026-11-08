@@ -4,7 +4,7 @@ import com.autoservice.AppConstants;
 import com.autoservice.Client;
 import com.autoservice.DataStore;
 import com.autoservice.DateUtils;
-import com.autoservice.Validators;
+import com.autoservice.utils.Formatters;
 import com.autoservice.WorkOrder;
 import com.autoservice.Appointment;
 import com.autoservice.controllers.OrderController;
@@ -501,7 +501,7 @@ public class OrderView {
                 if (order.getClient() != null) {
                     boolean match = (order.getClient().getName() != null && order.getClient().getName().toLowerCase().contains(lowerFilter)) ||
                             (order.getClient().getLastName() != null && order.getClient().getLastName().toLowerCase().contains(lowerFilter)) ||
-                            (order.getClient().getPhone() != null && Validators.formatPhoneForDisplay(order.getClient().getPhone()).toLowerCase().contains(lowerFilter)) ||
+                            (order.getClient().getPhone() != null && Formatters.formatPhoneForDisplay(order.getClient().getPhone()).toLowerCase().contains(lowerFilter)) ||
                             (order.getClient().getCarNumber() != null && order.getClient().getCarNumber().toLowerCase().contains(lowerFilter));
                     if (!match) continue;
                 } else continue;

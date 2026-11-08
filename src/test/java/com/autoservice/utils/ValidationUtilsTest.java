@@ -130,4 +130,76 @@ class ValidationUtilsTest {
         assertThat(validator.hasErrors()).isFalse();
         assertThat(validator.getMessage()).isEmpty();
     }
+
+    @Test
+    void isValidPhoneAcceptsRussianNumber() {
+        assertThat(ValidationUtils.isValidPhone("+79001234567")).isTrue();
+        assertThat(ValidationUtils.isValidPhone("+79112223344")).isTrue();
+        assertThat(ValidationUtils.isValidPhone("+79998887766")).isTrue();
+        assertThat(ValidationUtils.isValidPhone("  +79001234567  ")).isTrue();
+    }
+
+    @Test
+    void isValidPhoneRejectsWrongFormat() {
+        assertThat(ValidationUtils.isValidPhone("+89001234567")).isFalse();
+        assertThat(ValidationUtils.isValidPhone("9001234567")).isFalse();
+        assertThat(ValidationUtils.isValidPhone("+7900123456")).isFalse();
+        assertThat(ValidationUtils.isValidPhone("+790012345678")).isFalse();
+        assertThat(ValidationUtils.isValidPhone("+79001234567890")).isFalse();
+        assertThat(ValidationUtils.isValidPhone("")).isFalse();
+        assertThat(ValidationUtils.isValidPhone("   ")).isFalse();
+        assertThat(ValidationUtils.isValidPhone(null)).isFalse();
+        assertThat(ValidationUtils.isValidPhone("+7abc1234567")).isFalse();
+    }
+
+    @Test
+    void isValidCarNumberAcceptsRussianPlate() {
+        assertThat(ValidationUtils.isValidCarNumber("А123ВС163")).isTrue();
+        assertThat(ValidationUtils.isValidCarNumber("В456СЕ16")).isTrue();
+        assertThat(ValidationUtils.isValidCarNumber("Е789КХ197")).isTrue();
+        assertThat(ValidationUtils.isValidCarNumber("М123НО163")).isTrue();
+        assertThat(ValidationUtils.isValidCarNumber("  А123ВС163  ")).isTrue();
+    }
+
+    @Test
+    void isValidCarNumberRejectsWrongFormat() {
+        assertThat(ValidationUtils.isValidCarNumber("А123ВС")).isFalse();
+        assertThat(ValidationUtils.isValidCarNumber("А12BC163")).isFalse();
+        assertThat(ValidationUtils.isValidCarNumber("I123ВС163")).isFalse();
+        assertThat(ValidationUtils.isValidCarNumber("А123ВС1634")).isFalse();
+        assertThat(ValidationUtils.isValidCarNumber("А1ВС163")).isFalse();
+        assertThat(ValidationUtils.isValidCarNumber("АА123ВС163")).isFalse();
+        assertThat(ValidationUtils.isValidCarNumber("АБВГ163")).isFalse();
+        assertThat(ValidationUtils.isValidCarNumber("123АВС163")).isFalse();
+        assertThat(ValidationUtils.isValidCarNumber("")).isFalse();
+        assertThat(ValidationUtils.isValidCarNumber("   ")).isFalse();
+        assertThat(ValidationUtils.isValidCarNumber(null)).isFalse();
+    }
+
+    @Test
+    void isValidCarNumberAllowsOnlyRussianPlateLetters() {
+        for (char letter : "АВЕКМНОРСТУХ".toCharArray()) {
+            assertThat(ValidationUtils.isValidCarNumber(letter + "123ВС163")).isTrue();
+        }
+
+        for (char letter : "БГДЖЗЙ".toCharArray()) {
+            assertThat(ValidationUtils.isValidCarNumber(letter + "123ВС163")).isFalse();
+        }
+    }
+
+    @Test
+    void validatePhoneReportsEmptyAndMalformedValues() {
+        assertThat(ValidationUtils.validatePhone(null)).isNotNull();
+        assertThat(ValidationUtils.validatePhone("   ")).isNotNull();
+        assertThat(ValidationUtils.validatePhone("89001234567")).isNotNull();
+        assertThat(ValidationUtils.validatePhone("+79001234567")).isNull();
+    }
+
+    @Test
+    void validateCarNumberReportsEmptyAndMalformedValues() {
+        assertThat(ValidationUtils.validateCarNumber(null)).isNotNull();
+        assertThat(ValidationUtils.validateCarNumber("   ")).isNotNull();
+        assertThat(ValidationUtils.validateCarNumber("А123ВС")).isNotNull();
+        assertThat(ValidationUtils.validateCarNumber("А123ВС163")).isNull();
+    }
 }

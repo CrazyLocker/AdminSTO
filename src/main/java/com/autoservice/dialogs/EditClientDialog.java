@@ -4,7 +4,7 @@ import com.autoservice.AppConstants;
 import com.autoservice.Car;
 import com.autoservice.Client;
 import com.autoservice.DataStore;
-import com.autoservice.Validators;
+import com.autoservice.utils.Formatters;
 import com.autoservice.controllers.ClientController;
 import com.autoservice.services.WindowStateManager;
 import com.autoservice.utils.DialogValidator;
@@ -73,7 +73,7 @@ public class EditClientDialog {
         lastNameField.setId("lastNameField");
         lastNameField.setPromptText("Фамилия");
         lastNameField.setPrefWidth(250);
-        Validators.setupLastNameField(lastNameField);
+        Formatters.setupLastNameField(lastNameField);
 
         // Имя
         Label nameLabel = new Label("Имя:");
@@ -82,7 +82,7 @@ public class EditClientDialog {
         nameField.setId("nameField");
         nameField.setPromptText("Имя");
         nameField.setPrefWidth(250);
-        Validators.setupNameField(nameField);
+        Formatters.setupNameField(nameField);
 
         // Телефон
         Label phoneLabel = new Label("Телефон:");
@@ -97,9 +97,9 @@ public class EditClientDialog {
         if (existingPhone == null || existingPhone.trim().isEmpty()) {
             phoneField.setText("+7");
         } else {
-            phoneField.setText(Validators.formatPhoneForDisplay(existingPhone));
+            phoneField.setText(Formatters.formatPhoneForDisplay(existingPhone));
         }
-        Validators.setupPhoneField(phoneField);
+        Formatters.setupPhoneField(phoneField);
 
         // ====== Автомобили клиента ======
         Label carsSectionLabel = new Label("Автомобили клиента:");
@@ -147,7 +147,7 @@ public class EditClientDialog {
                 DialogValidator validator = new DialogValidator();
 
                 // Получаем "сырой" номер для валидации
-                String rawPhone = Validators.cleanPhone(phoneField.getText());
+                String rawPhone = Formatters.cleanPhone(phoneField.getText());
                 ValidationUtils.ValidationError phoneError = ValidationUtils.validatePhone(rawPhone);
                 if (phoneError != null) {
                     ValidationErrorIndicator.showError(phoneField, phoneError.getErrorMessage());
@@ -328,7 +328,7 @@ public class EditClientDialog {
         if (car != null && car.getCarNumber() != null) {
             numberField.setText(car.getCarNumber());
         }
-        Validators.setupCarNumberField(numberField);
+        Formatters.setupCarNumberField(numberField);
 
         // Кнопка удаления
         Button deleteBtn = new Button("✕");
