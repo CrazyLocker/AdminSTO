@@ -58,15 +58,11 @@ public class TableStateManager {
                 // prefWidth при перетаскивании НЕ обновляется, поэтому getPrefWidth() вернёт
                 // исходное значение из кода, а не изменённое.
                 double w = (Double) column.getClass().getMethod("getWidth").invoke(column);
+                boolean visible = (Boolean) column.getClass().getMethod("isVisible").invoke(column);
                 
                 logger.debug("[{}] {} width={}", i, colId, w);
                 
-                ColumnState columnState = new ColumnState();
-                columnState.setId(colId);
-                columnState.setWidth(w);
-                columnState.setVisible((Boolean) column.getClass().getMethod("isVisible").invoke(column));
-                columnState.setIndex(i);
-                columnStates.add(columnState);
+                columnStates.add(new ColumnState(colId, w, visible, i));
             }
             
             tableState.setColumns(columnStates);
@@ -87,10 +83,7 @@ public class TableStateManager {
                 
                 logger.debug("Sorted by: {} {}", colId, order);
                 
-                SortState sortState = new SortState();
-                sortState.setColumnId(colId);
-                sortState.setOrder(order);
-                sortStates.add(sortState);
+                sortStates.add(new SortState(colId, order));
             }
             
             tableState.setSortOrder(sortStates);
@@ -206,12 +199,12 @@ public class TableStateManager {
             Map<String, Boolean> visibleMap = new HashMap<>();
             
             for (ColumnState cs : sortedColumns) {
-                Object col = columnMap.get(cs.getId());
+                Object col = columnMap.get(cs.id());
                 if (col != null) {
                     newOrder.add(col);
-                    processedIds.add(cs.getId());
-                    widthMap.put(cs.getId(), cs.getWidth());
-                    visibleMap.put(cs.getId(), cs.isVisible());
+                    processedIds.add(cs.id());
+                    widthMap.put(cs.id(), cs.width());
+                    visibleMap.put(cs.id(), cs.visible());
                 }
             }
             
@@ -285,9 +278,9 @@ public class TableStateManager {
      */
     static void sortColumnStates(List<ColumnState> columns) {
         columns.sort(Comparator.comparingInt(
-                (ColumnState column) -> column.getIndex() == null
+                (ColumnState column) -> column.index() == null
                         ? Integer.MAX_VALUE
-                        : column.getIndex()));
+                        : column.index()));
     }
 
     @SuppressWarnings("unchecked")
@@ -307,8 +300,8 @@ public class TableStateManager {
             ObservableList<Object> columns = (ObservableList<Object>) getColumnsMethod.invoke(table);
             
             for (SortState sortState : tableState.getSortOrder()) {
-                String columnId = sortState.getColumnId();
-                String order = sortState.getOrder();
+                String columnId = sortState.columnId();
+                String order = sortState.order();
                 
                 // Находим колонку
                 Object targetColumn = null;
