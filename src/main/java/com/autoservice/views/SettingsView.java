@@ -1,19 +1,21 @@
 package com.autoservice.views;
 
 import com.autoservice.*;
+import com.autoservice.controllers.ClientController;
+import com.autoservice.controllers.ServicePanelController;
 import com.autoservice.controllers.SettingsController;
-import com.autoservice.dialogs.ImportClientsDialog;
-import com.autoservice.dialogs.ImportServicesDialog;
-import com.autoservice.dialogs.ImportSparePartsDialog;
-import com.autoservice.dialogs.ExportClientsDialog;
-import com.autoservice.dialogs.ExportServicesDialog;
-import com.autoservice.dialogs.ExportSparePartsDialog;
+import com.autoservice.controllers.SparePartPanelController;
+import com.autoservice.controllers.StockPanelController;
+import com.autoservice.dialogs.EntityExportDialog;
+import com.autoservice.dialogs.EntityImportDialog;
 import com.autoservice.model.ServiceSparePart;
 import com.autoservice.model.ServiceSparePartsList;
 import com.autoservice.model.ServiceSparePartsListItem;
 import com.autoservice.model.ServicePart;
 import com.autoservice.model.Setting;
 import com.autoservice.model.ToPart;
+import com.autoservice.services.ExportService;
+import com.autoservice.services.ImportService;
 import com.autoservice.services.SettingService;
 import com.autoservice.services.BackupService;
 import com.autoservice.services.ScheduleService;
@@ -2556,17 +2558,42 @@ public class SettingsView {
         Button importClientsBtn = new Button("📥 Импорт клиентов");
         importClientsBtn.getStyleClass().add("add-button");
         importClientsBtn.setPrefWidth(200);
-        importClientsBtn.setOnAction(e -> ImportClientsDialog.show());
+        importClientsBtn.setOnAction(e -> EntityImportDialog.show(
+                "Импорт клиентов",
+                "importClientsDialog",
+                "importClients",
+                "XML: <client><lastName>...</lastName>...</client>",
+                "Клиенты успешно добавлены в справочник.",
+                ImportService::importClientsFromFile,
+                ClientController::refreshTable));
 
         Button importServicesBtn = new Button("📥 Импорт услуг");
         importServicesBtn.getStyleClass().add("add-button");
         importServicesBtn.setPrefWidth(200);
-        importServicesBtn.setOnAction(e -> ImportServicesDialog.show());
+        importServicesBtn.setOnAction(e -> EntityImportDialog.show(
+                "Импорт услуг",
+                "importServicesDialog",
+                "importServices",
+                "XML: <service><name>...</name>...</service>",
+                "Услуги успешно добавлены в справочник.",
+                ImportService::importServicesFromFile,
+                ServicePanelController::refreshTable));
 
         Button importSparePartsBtn = new Button("📥 Импорт запчастей");
         importSparePartsBtn.getStyleClass().add("add-button");
         importSparePartsBtn.setPrefWidth(200);
-        importSparePartsBtn.setOnAction(e -> ImportSparePartsDialog.show());
+        importSparePartsBtn.setOnAction(e -> EntityImportDialog.show(
+                "Импорт запчастей",
+                "importSparePartsDialog",
+                "importSpareParts",
+                "XML: <part><name>...</name>...</part>",
+                "Запчасти успешно добавлены в справочник.",
+                ImportService::importFromFile,
+                () -> {
+                    ServicePanelController.refreshTable();
+                    SparePartPanelController.refreshTable();
+                    StockPanelController.refreshTable();
+                }));
 
         importButtons.getChildren().addAll(importClientsBtn, importServicesBtn, importSparePartsBtn);
 
@@ -2589,17 +2616,32 @@ public class SettingsView {
         Button exportClientsBtn = new Button("📤 Экспорт клиентов");
         exportClientsBtn.getStyleClass().add("save-button");
         exportClientsBtn.setPrefWidth(200);
-        exportClientsBtn.setOnAction(e -> ExportClientsDialog.show());
+        exportClientsBtn.setOnAction(e -> EntityExportDialog.show(
+                "Экспорт клиентов",
+                "exportClientsDialog",
+                "exportClients",
+                DataStore::getClients,
+                ExportService::exportClientsToFile));
 
         Button exportServicesBtn = new Button("📤 Экспорт услуг");
         exportServicesBtn.getStyleClass().add("save-button");
         exportServicesBtn.setPrefWidth(200);
-        exportServicesBtn.setOnAction(e -> ExportServicesDialog.show());
+        exportServicesBtn.setOnAction(e -> EntityExportDialog.show(
+                "Экспорт услуг",
+                "exportServicesDialog",
+                "exportServices",
+                DataStore::getServices,
+                ExportService::exportServicesToFile));
 
         Button exportSparePartsBtn = new Button("📤 Экспорт запчастей");
         exportSparePartsBtn.getStyleClass().add("save-button");
         exportSparePartsBtn.setPrefWidth(200);
-        exportSparePartsBtn.setOnAction(e -> ExportSparePartsDialog.show());
+        exportSparePartsBtn.setOnAction(e -> EntityExportDialog.show(
+                "Экспорт запчастей",
+                "exportSparePartsDialog",
+                "exportSpareParts",
+                DataStore::getSpareParts,
+                ExportService::exportToFile));
 
         exportButtons.getChildren().addAll(exportClientsBtn, exportServicesBtn, exportSparePartsBtn);
 
