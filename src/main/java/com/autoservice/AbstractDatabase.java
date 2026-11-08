@@ -37,17 +37,68 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     private static final Logger logger = LoggerFactory.getLogger(AbstractDatabase.class);
     
     /**
-     * Создание таблиц базы данных.
+     * Создание таблиц базы данных. DDL общий для обеих СУБД,
+     * различия диалектов учитываются в {@link DatabaseSchema}.
      * @param conn соединение с базой данных
      */
-    protected abstract void createTables(Connection conn) throws SQLException;
+    protected void createTables(Connection conn) throws SQLException {
+        DatabaseSchema.createTables(conn, isSqlite(conn));
+    }
     
     /**
      * Генерация уникального ID заказа.
      * @param conn соединение с базой данных
      * @return сгенерированный ID заказа
      */
-    protected abstract String generateOrderId(Connection conn);
+    protected String generateOrderId(Connection conn) {
+        LocalDate today = LocalDate.now();
+
+        // Ищем максимальный порядковый номер среди ВСЕХ заказов (сквозная нумерация)
+        // Формат ID: ZAK-ДД/ММ/ГГ-0001
+        String sql = "SELECT MAX(id) as max_id FROM orders WHERE id LIKE 'ZAK-%-%'";
+        String lastOrderId = null;
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    lastOrderId = rs.getString("max_id");
+                }
+            }
+        } catch (SQLException e) {
+            logger.error("Ошибка генерации ID", e);
+        }
+
+        int newNumber = 1;
+        if (lastOrderId != null) {
+            try {
+                // Извлекаем номер после последнего дефиса
+                String[] parts = lastOrderId.split("-");
+                if (parts.length >= 2) {
+                    newNumber = Integer.parseInt(parts[parts.length - 1]) + 1;
+                } else {
+                    logger.warn("Неожиданный формат ID: {}", lastOrderId);
+                }
+            } catch (NumberFormatException e) {
+                logger.error("Ошибка парсинга ID: {}", lastOrderId, e);
+            }
+        } else {
+            logger.debug("Нет существующих заказов");
+        }
+
+        // Обработка переполнения (максимум 9999 заказов)
+        if (newNumber > 9999) {
+            logger.warn("Переполнение порядкового номера, сброс в 1");
+            newNumber = 1;
+        }
+
+        // Генерируем формат даты для ID: dd/MM/yy (с косыми чертами, как в существующих данных)
+        String date = today.format(DateTimeFormatter.ofPattern("dd/MM/yy"));
+        String orderId = String.format("ZAK-%s-%04d", date, newNumber);
+
+        logger.debug("Сгенерирован ID заказа: {} (последний: {}, номер: {})", orderId, lastOrderId, newNumber);
+
+        return orderId;
+    }
     
     // ==================== HELPER METHODS ====================
     
@@ -480,15 +531,13 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     // ==================== SERVICES ====================
     
     /**
-     * Добавить услугу.
+     * Добавить услугу; при совпадении названия существующая запись заменяется.
      * @param service услуга для добавления; после вызова получает сгенерированный ID
      */
     @Override
     public void addService(Service service) {
-        String sql = "INSERT INTO services (name, price, duration, part_number, category_id, oil_volume, uses_oil, spare_part_name, spare_part_quantity) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
         try (Connection conn = getConnection();
-              PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+              PreparedStatement pstmt = conn.prepareStatement(addServiceSql(conn), Statement.RETURN_GENERATED_KEYS)) {
             pstmt.setString(1, service.getName());
             pstmt.setDouble(2, service.getPrice());
             pstmt.setInt(3, service.getDuration());
@@ -499,15 +548,32 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setString(8, service.getSparePartName());
             pstmt.setInt(9, service.getSparePartQuantity());
             pstmt.executeUpdate();
-            
+
             // Получаем сгенерированный id
-            ResultSet rs = pstmt.getGeneratedKeys();
-            if (rs.next()) {
-                service.setId(rs.getInt(1));
+            int id = getGeneratedKeyId(conn, pstmt);
+            if (id > 0) {
+                service.setId(id);
             }
         } catch (SQLException e) {
             logger.error("Ошибка добавления услуги", e);
         }
+    }
+
+    /**
+     * SQL для добавления услуги с заменой записи с тем же названием.
+     * SQLite и H2 не поддерживают общий upsert-синтаксис ({@code INSERT OR REPLACE}
+     * и {@code MERGE ... KEY(name)} соответственно).
+     * @param conn соединение с базой данных
+     * @return SQL-запрос для текущего диалекта
+     */
+    private String addServiceSql(Connection conn) throws SQLException {
+        if (isSqlite(conn)) {
+            return "INSERT OR REPLACE INTO services (name, price, duration, part_number, category_id, oil_volume, uses_oil, spare_part_name, spare_part_quantity) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        }
+        if (isH2(conn)) {
+            return "MERGE INTO services (name, price, duration, part_number, category_id, oil_volume, uses_oil, spare_part_name, spare_part_quantity) KEY(name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        }
+        return "INSERT INTO services (name, price, duration, part_number, category_id, oil_volume, uses_oil, spare_part_name, spare_part_quantity) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
     }
     
     /**
@@ -809,6 +875,32 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
     
+    /**
+     * Сохранить запчасти заказа в {@code order_parts}.
+     * Используется внутри транзакций {@code addOrder}/{@code updateOrder}.
+     * @param conn соединение с базой данных
+     * @param orderId идентификатор заказа
+     * @param order заказ с запчастями
+     * @throws SQLException если вставка не удалась
+     */
+    protected void saveOrderParts(Connection conn, String orderId, WorkOrder order) throws SQLException {
+        String sql = "INSERT INTO order_parts (order_id, part_name, price, quantity, spare_part_id, unit_type, purchase_price) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            for (int i = 0; i < order.getSpareParts().size(); i++) {
+                SparePart part = order.getSpareParts().get(i);
+                pstmt.setString(1, orderId);
+                pstmt.setString(2, part.getName());
+                pstmt.setDouble(3, part.getRetailPrice());
+                pstmt.setDouble(4, order.getSparePartQuantities().get(i));
+                pstmt.setInt(5, part.getId());
+                pstmt.setString(6, part.getUnitType() != null ? part.getUnitType() : "шт");
+                pstmt.setDouble(7, part.getPurchasePrice());
+                pstmt.addBatch();
+            }
+            pstmt.executeBatch();
+        }
+    }
+
     // ==================== APPOINTMENTS ====================
     
     /**
