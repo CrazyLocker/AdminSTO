@@ -183,12 +183,18 @@ public class PrintOrderDialog {
         Paragraph clientTitle = new Paragraph("ЗАКАЗЧИК").setFont(boldFont).setFontSize(9);
         doc.add(clientTitle);
 
-        String fullName = (client.getLastName() != null && !client.getLastName().isEmpty())
-                ? client.getLastName() + " " + client.getName()
-                : client.getName();
+        String fullName = AppConstants.NO_CLIENT;
+        String phone = "—";
+        if (client != null) {
+            String clientFullName = client.getFullName();
+            if (clientFullName != null && !clientFullName.isEmpty()) {
+                fullName = clientFullName;
+            }
+            phone = Validators.formatPhoneForDisplay(client.getPhone());
+        }
         Paragraph clientInfo = new Paragraph()
                 .add(new Text(fullName + "\n").setFont(regularFont).setFontSize(7))
-                .add(new Text("Тел: " + Validators.formatPhoneForDisplay(client.getPhone()) + "\n\n").setFont(regularFont).setFontSize(7));
+                .add(new Text("Тел: " + phone + "\n\n").setFont(regularFont).setFontSize(7));
         doc.add(clientInfo);
     }
 
@@ -200,10 +206,12 @@ public class PrintOrderDialog {
         table.setFontSize(7);
 
         // Заголовки
+        String carModel = client != null && client.getCarModel() != null ? client.getCarModel() : "—";
+        String carNumber = client != null && client.getCarNumber() != null ? client.getCarNumber() : "—";
         table.addCell(new Cell().add(new Paragraph("Марка").setFont(boldFont)));
-        table.addCell(new Cell().add(new Paragraph(client.getCarModel()).setFont(regularFont)));
+        table.addCell(new Cell().add(new Paragraph(carModel).setFont(regularFont)));
         table.addCell(new Cell().add(new Paragraph("Гос. номер").setFont(boldFont)));
-        table.addCell(new Cell().add(new Paragraph(client.getCarNumber()).setFont(regularFont)));
+        table.addCell(new Cell().add(new Paragraph(carNumber).setFont(regularFont)));
         table.addCell(new Cell().add(new Paragraph("VIN").setFont(boldFont)));
         table.addCell(new Cell().add(new Paragraph("—").setFont(regularFont)));
 

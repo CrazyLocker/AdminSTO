@@ -192,9 +192,12 @@ public class TableStateManager {
                 }
             }
             
-            // Сортируем колонки из JSON по индексу
+            // Сортируем колонки из JSON по индексу.
+            // index может быть null (старый файл или ручная правка JSON):
+            // такие колонки помещаем в конец, чтобы не распаковывать null в int.
             List<ColumnState> sortedColumns = new ArrayList<>(tableState.getColumns());
-            sortedColumns.sort(Comparator.comparingInt(ColumnState::getIndex));
+            sortedColumns.removeIf(Objects::isNull);
+            sortColumnStates(sortedColumns);
             
             // ШАГ 1: Собираем колонки в новом порядке (БЕЗ установки ширины)
             List<Object> newOrder = new ArrayList<>();
@@ -274,6 +277,19 @@ public class TableStateManager {
         }
     }
     
+    /**
+     * Отсортировать состояния колонок по индексу.
+     * Колонки без индекса ({@code null}) помещаются в конец списка.
+     *
+     * @param columns состояния колонок; изменяется на месте
+     */
+    static void sortColumnStates(List<ColumnState> columns) {
+        columns.sort(Comparator.comparingInt(
+                (ColumnState column) -> column.getIndex() == null
+                        ? Integer.MAX_VALUE
+                        : column.getIndex()));
+    }
+
     @SuppressWarnings("unchecked")
     private static void restoreSortOrder(Object table, TableState tableState) {
         if (tableState.getSortOrder() == null || tableState.getSortOrder().isEmpty()) {

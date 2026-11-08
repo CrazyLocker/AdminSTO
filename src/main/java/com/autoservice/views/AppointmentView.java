@@ -224,10 +224,8 @@ public class AppointmentView {
 
                 if (appointment != null) {
                     Client client = appointment.getClient();
-                    String fullName = (client.getLastName() != null && !client.getLastName().isEmpty())
-                            ? client.getLastName() + " " + client.getName()
-                            : client.getName();
-                    String carInfo = client.getCarModel() + " (" + client.getCarNumber() + ")";
+                    String fullName = formatClientName(client);
+                    String carInfo = formatClientCar(client);
 
                     Label nameLabel = new Label(fullName);
                     nameLabel.setWrapText(true);
@@ -382,10 +380,7 @@ public class AppointmentView {
                             cell.getChildren().add(moreLabel);
                             break;
                         }
-                        Client client = a.getClient();
-                        String fullName = (client.getLastName() != null && !client.getLastName().isEmpty())
-                                ? client.getLastName() + " " + client.getName()
-                                : client.getName();
+                        String fullName = formatClientName(a.getClient());
 
                         Label appLabel = new Label(a.getTime() + " - " + fullName);
                         appLabel.getStyleClass().add("month-appointment-label");
@@ -481,18 +476,16 @@ public class AppointmentView {
         grid.getStyleClass().add("dialog-grid");
 
         Client client = appointment.getClient();
-        String fullName = (client.getLastName() != null && !client.getLastName().isEmpty())
-                ? client.getLastName() + " " + client.getName()
-                : client.getName();
+        String fullName = formatClientName(client);
 
         grid.add(new Label("Клиент:"), 0, 0);
         grid.add(new Label(fullName), 1, 0);
 
         grid.add(new Label("Телефон:"), 0, 1);
-        grid.add(new Label(Validators.formatPhoneForDisplay(client.getPhone())), 1, 1);
+        grid.add(new Label(formatClientPhone(client)), 1, 1);
 
         grid.add(new Label("Автомобиль:"), 0, 2);
-        grid.add(new Label(client.getCarModel() + " (" + client.getCarNumber() + ")"), 1, 2);
+        grid.add(new Label(formatClientCar(client)), 1, 2);
 
         grid.add(new Label("Мастер:"), 0, 3);
         grid.add(new Label(appointment.getMasterName()), 1, 3);
@@ -650,18 +643,16 @@ public class AppointmentView {
         grid.getStyleClass().add("dialog-grid");
 
         Client client = appointment.getClient();
-        String fullName = (client.getLastName() != null && !client.getLastName().isEmpty())
-                ? client.getLastName() + " " + client.getName()
-                : client.getName();
+        String fullName = formatClientName(client);
 
         grid.add(new Label("Клиент:"), 0, 0);
         grid.add(new Label(fullName), 1, 0);
 
         grid.add(new Label("Телефон:"), 0, 1);
-        grid.add(new Label(Validators.formatPhoneForDisplay(client.getPhone())), 1, 1);
+        grid.add(new Label(formatClientPhone(client)), 1, 1);
 
         grid.add(new Label("Автомобиль:"), 0, 2);
-        grid.add(new Label(client.getCarModel() + " (" + client.getCarNumber() + ")"), 1, 2);
+        grid.add(new Label(formatClientCar(client)), 1, 2);
 
         grid.add(new Label("Мастер:"), 0, 3);
         grid.add(new Label(appointment.getMasterName()), 1, 3);
@@ -946,6 +937,10 @@ public class AppointmentView {
 
             WorkOrder selectedOrder = orderCombo.getValue();
             Client orderClient = selectedOrder.getClient();
+            if (orderClient == null) {
+                showAlert("У выбранного заказа не указан клиент");
+                return;
+            }
             String selectedServiceName = selectedOrder.getServices().isEmpty() 
                     ? "Консультация" 
                     : selectedOrder.getServices().get(0);
@@ -1014,9 +1009,7 @@ public class AppointmentView {
         
         if (existingAppointment != null) {
             Client client = existingAppointment.getClient();
-            String fullName = (client.getLastName() != null && !client.getLastName().isEmpty())
-                    ? client.getLastName() + " " + client.getName()
-                    : client.getName();
+            String fullName = formatClientName(client);
 
             infoGrid.add(new Label("Клиент:"), 0, 0);
             infoGrid.add(new Label(fullName), 1, 0);
@@ -1137,6 +1130,36 @@ public class AppointmentView {
 
         stage.setOnHiding(e -> WindowStateManager.getInstance().saveWindowState("editAppointmentDialog", stage));
         stage.showAndWait();
+    }
+
+    /**
+     * Отображаемое имя клиента; для записи без клиента возвращает заглушку.
+     */
+    private static String formatClientName(Client client) {
+        if (client == null) {
+            return AppConstants.NO_CLIENT;
+        }
+        String fullName = client.getFullName();
+        return fullName != null && !fullName.isEmpty() ? fullName : AppConstants.NO_CLIENT;
+    }
+
+    /**
+     * Отображаемый телефон клиента; для записи без клиента возвращает прочерк.
+     */
+    private static String formatClientPhone(Client client) {
+        return client == null ? "—" : Validators.formatPhoneForDisplay(client.getPhone());
+    }
+
+    /**
+     * Отображаемая информация об автомобиле; для записи без клиента возвращает прочерк.
+     */
+    private static String formatClientCar(Client client) {
+        if (client == null) {
+            return "—";
+        }
+        String model = client.getCarModel() != null ? client.getCarModel() : "";
+        String number = client.getCarNumber() != null ? client.getCarNumber() : "";
+        return model + " (" + number + ")";
     }
 
     private static void showAlert(String msg) {
