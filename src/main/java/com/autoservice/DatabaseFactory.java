@@ -1,7 +1,7 @@
 package com.autoservice;
 
 /**
- * Фабрика для создания и управления экземплярами Database.
+ * Фабрика для создания и управления экземплярами DatabaseInterface.
  * Используется для внедрения зависимостей и управления состоянием.
  */
 public class DatabaseFactory {
@@ -9,7 +9,7 @@ public class DatabaseFactory {
     private static DatabaseInterface database;
     
     /**
-     * Получить текущий экземпляр Database.
+     * Получить текущий экземпляр DatabaseInterface.
      * По умолчанию возвращает SQLiteDatabase для production.
      */
     public static DatabaseInterface getDatabase() {

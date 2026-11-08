@@ -21,7 +21,7 @@ import com.autoservice.WorkOrder;
 import com.autoservice.Appointment;
 
 /**
- * Абстрактный базовый класс для реализаций Database.
+ * Абстрактный базовый класс для реализаций DatabaseInterface.
  * Содержит общую логику для SQLite и H2.
  */
 public abstract class AbstractDatabase implements DatabaseInterface {
