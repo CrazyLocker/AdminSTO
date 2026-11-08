@@ -87,10 +87,10 @@ public class WindowStateManager extends JsonStateManager<WindowState> {
             return false;
         }
 
-        stage.setX(state.getX());
-        stage.setY(state.getY());
-        stage.setWidth(state.getWidth());
-        stage.setHeight(state.getHeight());
+        stage.setX(state.x());
+        stage.setY(state.y());
+        stage.setWidth(state.width());
+        stage.setHeight(state.height());
 
         logger.debug("Window state restored: {} -> {}", windowId, state);
         return true;

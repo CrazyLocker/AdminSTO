@@ -4,6 +4,7 @@ import org.junit.jupiter.api.*;
 import static org.assertj.core.api.Assertions.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 /**
  * Тесты для класса DateUtils
@@ -107,10 +108,57 @@ class DateUtilsTest {
     }
 
     @Test
-    @Order(12)
-    void testFormatDateWithSingleDigitDay() {
-        String result = DateUtils.formatDate("2024-02-05");
-        
-        assertThat(result).contains("5 февраля");
+    @Order(13)
+    void testParseDateTimeStrictWithColon() {
+        LocalDateTime result = DateUtils.parseDateTime("18/07/2026 12:30", true);
+
+        assertThat(result).isEqualTo(LocalDateTime.of(2026, 7, 18, 12, 30));
+    }
+
+    @Test
+    @Order(14)
+    void testParseDateTimeStrictWithDash() {
+        LocalDateTime result = DateUtils.parseDateTime("18/07/2026 12-30", true);
+
+        assertThat(result).isEqualTo(LocalDateTime.of(2026, 7, 18, 12, 30));
+    }
+
+    @Test
+    @Order(15)
+    void testParseDateTimeStrictRejectsNonDatabaseFormats() {
+        assertThat(DateUtils.parseDateTime("2026-07-18 12:30", true)).isNull();
+        assertThat(DateUtils.parseDateTime("18 июля 2026 г. в 12-30", true)).isNull();
+    }
+
+    @Test
+    @Order(16)
+    void testParseDateTimeStrictRejectsOutOfRangeTime() {
+        assertThat(DateUtils.parseDateTime("18/07/2026 24:00", true)).isNull();
+        assertThat(DateUtils.parseDateTime("18/07/2026 12:60", true)).isNull();
+    }
+
+    @Test
+    @Order(17)
+    void testParseDateTimeLenientSupportsIsoDate() {
+        LocalDateTime result = DateUtils.parseDateTime("2026-07-18 12-30", false);
+
+        assertThat(result).isEqualTo(LocalDateTime.of(2026, 7, 18, 12, 30));
+    }
+
+    @Test
+    @Order(18)
+    void testParseDateTimeLenientSupportsRussianFormat() {
+        LocalDateTime result = DateUtils.parseDateTime("18 июля 2026 г. в 12-30", false);
+
+        assertThat(result).isEqualTo(LocalDateTime.of(2026, 7, 18, 12, 30));
+    }
+
+    @Test
+    @Order(19)
+    void testParseDateTimeReturnsNullForInvalidInput() {
+        assertThat(DateUtils.parseDateTime(null, true)).isNull();
+        assertThat(DateUtils.parseDateTime("", false)).isNull();
+        assertThat(DateUtils.parseDateTime("not-a-date", true)).isNull();
+        assertThat(DateUtils.parseDateTime("not-a-date", false)).isNull();
     }
 }

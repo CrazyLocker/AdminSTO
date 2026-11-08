@@ -108,10 +108,10 @@ class JsonStateManagerTest {
         WindowState state = reloaded.get("main");
 
         assertThat(state).isNotNull();
-        assertThat(state.getX()).isEqualTo(10);
-        assertThat(state.getY()).isEqualTo(20);
-        assertThat(state.getWidth()).isEqualTo(800);
-        assertThat(state.getHeight()).isEqualTo(600);
+        assertThat(state.x()).isEqualTo(10);
+        assertThat(state.y()).isEqualTo(20);
+        assertThat(state.width()).isEqualTo(800);
+        assertThat(state.height()).isEqualTo(600);
     }
 
     private static class TestStateManager extends JsonStateManager<String> {

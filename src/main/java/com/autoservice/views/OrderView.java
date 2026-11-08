@@ -561,136 +561,19 @@ public class OrderView {
     }
 
     /**
-     * Извлекает LocalDateTime из строки с датой и временем.
-     * Поддерживает несколько форматов:
-     * 1. "18 июля 2026 г. в 12-00" (русский формат)
-     * 2. "2026-07-18 12-00" (ISO формат даты)
-     * 3. "18/07/2026 12-00" (dd/MM/yyyy формат даты)
-     * Время может быть с дефисом (-) или двоеточием (:)
+     * Извлекает LocalDateTime из строки с датой и временем в нестрогом режиме
+     * (русский формат, ISO-дата или dd/MM/yyyy; время через дефис или двоеточие).
      */
     private static java.time.LocalDateTime extractLocalDateTime(String s) {
-        if (s == null || s.isEmpty()) return null;
-        
-        try {
-            java.time.LocalDate date;
-            String timeStr;
-            
-            // Проверяем русский формат: "18 июля 2026 г. в 12-00"
-            int idx = s.indexOf(" г. в ");
-            if (idx > 0) {
-                String dateStr = s.substring(0, idx).trim();
-                timeStr = s.substring(idx + 5).trim();
-                java.time.format.DateTimeFormatter dateFormatter = java.time.format.DateTimeFormatter.ofPattern("d MMMM yyyy", new java.util.Locale.Builder().setLanguage("ru").build());
-                date = java.time.LocalDate.parse(dateStr, dateFormatter);
-            } else {
-                // Формат БД: "2026-07-18 12-00" или "18/07/2026 12-00"
-                // Ищем пробел, разделяющий дату и время
-                int spaceIdx = s.lastIndexOf(" ");
-                if (spaceIdx > 0) {
-                    String dateStr = s.substring(0, spaceIdx).trim();
-                    timeStr = s.substring(spaceIdx + 1).trim();
-                    
-                    // Парсим дату в разных форматах
-                    if (dateStr.contains("-") && !dateStr.contains("/")) {
-                        // ISO формат: yyyy-MM-dd
-                        date = java.time.LocalDate.parse(dateStr);
-                    } else if (dateStr.contains("/")) {
-                        // dd/MM/yyyy формат
-                        java.time.format.DateTimeFormatter dateFormatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
-                        date = java.time.LocalDate.parse(dateStr, dateFormatter);
-                    } else {
-                        return null;
-                    }
-                } else {
-                    return null;
-                }
-            }
-            
-            // Парсим время - поддерживаем как дефис (-), так и двоеточие (:)
-            String[] timeParts;
-            if (timeStr.contains("-")) {
-                timeParts = timeStr.split("-");
-            } else {
-                timeParts = timeStr.split(":");
-            }
-            
-            if (timeParts.length >= 2) {
-                return date.atTime(Integer.parseInt(timeParts[0]), Integer.parseInt(timeParts[1]));
-            }
-            
-        } catch (Exception e) {
-            // Логируем ошибку для отладки
-            logger.debug("Ошибка парсинга даты-времени из строки '{}': {}", s, e.getMessage());
-        }
-        return null;
+        return DateUtils.parseDateTime(s, false);
     }
 
     /**
-     * Парсит дату и время из строки формата "dd/MM/yyyy HH:mm" (из БД).
-     * Поддерживает как дефис (-), так и двоеточие (:) в формате времени.
-     * Использует lastIndexOf для поиска последнего пробела между датой и временем.
+     * Парсит дату и время из строки формата "dd/MM/yyyy HH:mm" (из БД)
+     * в строгом режиме с проверкой диапазона времени.
      */
     private static java.time.LocalDateTime parseAppointmentDateTime(String s) {
-        if (s == null || s.isEmpty()) return null;
-        
-        try {
-            // Ищем последний пробел, разделяющий дату и время
-            int spaceIdx = s.lastIndexOf(" ");
-            if (spaceIdx > 0 && spaceIdx < s.length() - 1) {
-                String dateStr = s.substring(0, spaceIdx).trim();
-                String timeStr = s.substring(spaceIdx + 1).trim();
-                
-                // Валидация: дата должна быть в формате dd/MM/yyyy (минимум 10 символов)
-                if (dateStr.length() < 10) {
-                    logger.debug("Некорректная дата: {} (слишком короткая)", dateStr);
-                    return null;
-                }
-                
-                // Проверяем, что дата в формате dd/MM/yyyy (содержит два слеша)
-                int slashCount = 0;
-                for (char c : dateStr.toCharArray()) {
-                    if (c == '/') slashCount++;
-                }
-                if (slashCount != 2) {
-                    logger.debug("Некорректный формат даты: {} (ожидается dd/MM/yyyy)", dateStr);
-                    return null;
-                }
-                
-                // Парсим дату в формате dd/MM/yyyy
-                java.time.format.DateTimeFormatter dateFormatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
-                java.time.LocalDate date = java.time.LocalDate.parse(dateStr, dateFormatter);
-                
-                // Валидация времени (должно быть не короче 4 символов, например 12:00)
-                if (timeStr.length() < 4) {
-                    logger.debug("Некорректное время: {} (слишком короткое)", timeStr);
-                    return null;
-                }
-                
-                // Парсим время - поддерживаем как дефис (-), так и двоеточие (:)
-                String[] timeParts;
-                if (timeStr.contains("-")) {
-                    timeParts = timeStr.split("-");
-                } else {
-                    timeParts = timeStr.split(":");
-                }
-                
-                if (timeParts.length >= 2) {
-                    int hour = Integer.parseInt(timeParts[0]);
-                    int minute = Integer.parseInt(timeParts[1]);
-                    
-                    // Валидация: час от 0 до 23, минута от 0 до 59
-                    if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
-                        return date.atTime(hour, minute);
-                    } else {
-                        logger.debug("Некорректное время: {} (ожидается 00:00-23:59)", timeStr);
-                        return null;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            logger.debug("Ошибка парсинга даты-времени записи из строки '{}': {}", s, e.getMessage());
-        }
-        return null;
+        return DateUtils.parseDateTime(s, true);
     }
 
     private static void onEdit() {
