@@ -1,8 +1,7 @@
 package com.autoservice.views;
 
-import com.autoservice.DataStore;
-import com.autoservice.WorkOrder;
-import com.autoservice.SparePart;
+import com.autoservice.model.ReportData;
+import com.autoservice.services.StatisticsService;
 import com.autoservice.services.WindowStateManager;
 import com.autoservice.utils.IconHelper;
 import javafx.beans.value.ChangeListener;
@@ -29,17 +28,9 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.stream.Collectors;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class ReportView {
-    private static final Logger logger = LoggerFactory.getLogger(ReportView.class);
-
     private static final String[] MONTHS = {
             "Янв", "Фев", "Мар", "Апр", "Май", "Июн",
             "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"
@@ -60,6 +51,9 @@ public class ReportView {
         // Восстановление состояния диалога
         WindowStateManager.getInstance().restoreWindowState("reportDialog", stage);
 
+        // ====== СБОР ДАННЫХ ======
+        currentData = StatisticsService.buildReport();
+
         ScrollPane scrollPane = new ScrollPane();
         scrollPane.setFitToWidth(true);
         scrollPane.setStyle("-fx-background-color: #f5f7fa;");
@@ -76,8 +70,7 @@ public class ReportView {
         titleLabel.setGraphic(IconHelper.report(24, "#2c3e50"));
         titleLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #2c3e50; -fx-graphic-text-gap: 10;");
 
-        Label dateLabel = new Label("Дата генерации: " +
-                LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")));
+        Label dateLabel = new Label("Дата генерации: " + currentData.generatedDate());
         dateLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #7f8c8d;");
 
         headerBox.getChildren().addAll(titleLabel, dateLabel);
@@ -97,9 +90,6 @@ public class ReportView {
         periodCombo.setStyle("-fx-font-size: 14px; -fx-padding: 5;");
 
         periodBox.getChildren().addAll(periodLabel, periodCombo);
-
-        // ====== СБОР ДАННЫХ ======
-        currentData = collectData();
 
         // ====== СТАТИСТИЧЕСКИЕ КАРТОЧКИ ======
         HBox cardsBox = createStatCards(currentData);
@@ -126,8 +116,8 @@ public class ReportView {
 
         // ====== ТРИ БЛОКА (ОДИНАКОВАЯ ВЫСОТА) ======
         VBox statusBox = createStatusListBox(currentData);
-        VBox topServicesBox = createTopListBox(currentData.topServices, "ТОП-5 УСЛУГ", IconHelper.settings(20, "#2c3e50"));
-        VBox topPartsBox = createTopListBox(currentData.topParts, "ТОП-5 ЗАПЧАСТЕЙ", IconHelper.settings(20, "#2c3e50"));
+        VBox topServicesBox = createTopListBox(currentData.topServices(), "ТОП-5 УСЛУГ", IconHelper.settings(20, "#2c3e50"));
+        VBox topPartsBox = createTopListBox(currentData.topParts(), "ТОП-5 ЗАПЧАСТЕЙ", IconHelper.settings(20, "#2c3e50"));
 
         // Устанавливаем одинаковую минимальную высоту для всех трёх блоков
         double fixedHeight = 280; // Фиксированная высота для выравнивания
@@ -244,58 +234,6 @@ public class ReportView {
         revenueChart.getData().add(series);
     }
 
-    // ==================== СБОР ДАННЫХ ====================
-
-    private static ReportData collectData() {
-        ReportData data = new ReportData();
-        List<WorkOrder> orders = DataStore.getOrders();
-
-        data.totalOrders = orders.size();
-        data.totalClients = DataStore.getClients().size();
-        data.totalSpareParts = DataStore.getSpareParts().size();
-
-        for (WorkOrder order : orders) {
-            String status = order.getStatus() != null ? order.getStatus() : "Новый";
-            data.statusCount.put(status, data.statusCount.getOrDefault(status, 0) + 1);
-            if ("Закрыт".equals(status)) {
-                data.totalRevenue += order.getTotal();
-                data.closedOrders++;
-                String dateStr = order.getCreatedDate();
-                if (dateStr != null && !dateStr.isEmpty()) {
-                    try {
-                        String monthKey = dateStr.substring(0, 7);
-                        data.monthlyRevenue.put(monthKey, data.monthlyRevenue.getOrDefault(monthKey, 0.0) + order.getTotal());
-                    } catch (Exception ex) { logger.error("Error in report view", ex); }
-                }
-            }
-        }
-        data.averageOrderValue = data.closedOrders > 0 ? data.totalRevenue / data.closedOrders : 0;
-
-        Map<String, Integer> serviceCount = new HashMap<>();
-        for (WorkOrder order : orders) {
-            for (String service : order.getServices()) {
-                serviceCount.put(service, serviceCount.getOrDefault(service, 0) + 1);
-            }
-        }
-        data.topServices = serviceCount.entrySet().stream()
-                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
-                .limit(5)
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
-
-        Map<String, Integer> partCount = new HashMap<>();
-        for (WorkOrder order : orders) {
-            for (SparePart part : order.getSpareParts()) {
-                partCount.put(part.getName(), partCount.getOrDefault(part.getName(), 0) + 1);
-            }
-        }
-        data.topParts = partCount.entrySet().stream()
-                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
-                .limit(5)
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
-
-        return data;
-    }
-
     // ==================== КАРТОЧКИ ====================
 
     private static HBox createStatCards(ReportData data) {
@@ -304,10 +242,10 @@ public class ReportView {
         box.setPadding(new Insets(5, 0, 10, 0));
 
         box.getChildren().addAll(
-                createCard(IconHelper.assignment(24, "#3498db"), "Заказов", String.valueOf(data.totalOrders), "#3498db"),
-                createCard(IconHelper.people(24, "#2ecc71"), "Клиентов", String.valueOf(data.totalClients), "#2ecc71"),
-                createCard(IconHelper.report(24, "#f39c12"), "Выручка", String.format("%,.0f", data.totalRevenue), "#f39c12"),
-                createCard(IconHelper.save(24, "#9b59b6"), "Средний чек", String.format("%,.0f", data.averageOrderValue), "#9b59b6")
+                createCard(IconHelper.assignment(24, "#3498db"), "Заказов", String.valueOf(data.totalOrders()), "#3498db"),
+                createCard(IconHelper.people(24, "#2ecc71"), "Клиентов", String.valueOf(data.totalClients()), "#2ecc71"),
+                createCard(IconHelper.report(24, "#f39c12"), "Выручка", String.format("%,.0f", data.totalRevenue()), "#f39c12"),
+                createCard(IconHelper.save(24, "#9b59b6"), "Средний чек", String.format("%,.0f", data.averageOrderValue()), "#9b59b6")
         );
 
         return box;
@@ -367,7 +305,7 @@ public class ReportView {
             default -> 6;
         };
 
-        List<Map.Entry<String, Double>> sorted = data.monthlyRevenue.entrySet().stream()
+        List<Map.Entry<String, Double>> sorted = data.monthlyRevenue().entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
                 .toList();
 
@@ -411,8 +349,8 @@ public class ReportView {
         );
         listBox.setFillWidth(true);
 
-        int totalOrders = data.totalOrders;
-        for (Map.Entry<String, Integer> entry : data.statusCount.entrySet()) {
+        int totalOrders = data.totalOrders();
+        for (Map.Entry<String, Integer> entry : data.statusCount().entrySet()) {
             String status = entry.getKey();
             int count = entry.getValue();
             double percent = totalOrders > 0 ? (count * 100.0 / totalOrders) : 0;
@@ -490,20 +428,5 @@ public class ReportView {
 
         box.getChildren().addAll(titleLabel, listBox);
         return box;
-    }
-
-    // ==================== ВНУТРЕННИЙ КЛАСС ====================
-
-    private static class ReportData {
-        int totalOrders = 0;
-        int totalClients = 0;
-        int totalSpareParts = 0;
-        double totalRevenue = 0;
-        double averageOrderValue = 0;
-        int closedOrders = 0;
-        Map<String, Integer> statusCount = new LinkedHashMap<>();
-        Map<String, Double> monthlyRevenue = new LinkedHashMap<>();
-        Map<String, Integer> topServices = new LinkedHashMap<>();
-        Map<String, Integer> topParts = new LinkedHashMap<>();
     }
 }

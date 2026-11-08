@@ -4,10 +4,12 @@ import com.autoservice.AppConstants;
 import com.autoservice.DataStore;
 import com.autoservice.Appointment;
 import com.autoservice.WorkOrder;
+import com.autoservice.model.ReportData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -21,6 +23,7 @@ public class StatisticsService {
 
     private static final DateTimeFormatter DAY_FORMATTER = DateTimeFormatter.ofPattern("dd.MM");
     private static final DateTimeFormatter DB_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final DateTimeFormatter REPORT_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
 
     /**
      * Рассчитать выручку по дням за последние {@code days} дней.
@@ -134,6 +137,63 @@ public class StatisticsService {
     }
 
     /**
+     * Собрать полный снимок статистики для экрана отчёта и PDF.
+     *
+     * <p>Выручка и средний чек рассчитываются только по закрытым заказам;
+     * топ-5 услуг и запчастей определяется по частоте использования.
+     * @return снимок статистики для отчёта
+     */
+    public static ReportData buildReport() {
+        List<WorkOrder> orders = DataStore.getOrders();
+
+        double totalRevenue = 0;
+        for (WorkOrder order : orders) {
+            if (WorkOrder.STATUS_CLOSED.equals(order.getStatus())) {
+                totalRevenue += order.getTotal();
+            }
+        }
+
+        return new ReportData(
+                orders.size(),
+                DataStore.getClients().size(),
+                DataStore.getSpareParts().size(),
+                DataStore.getAppointments().size(),
+                totalRevenue,
+                getStatusStats(),
+                getMonthlyRevenue(),
+                toLinkedMap(getTopServices(5)),
+                toLinkedMap(getTopSpareParts(5)),
+                LocalDateTime.now().format(REPORT_DATE_FORMATTER)
+        );
+    }
+
+    /**
+     * Рассчитать выручку по месяцам для закрытых заказов.
+     * @return выручка по месяцам; ключ — первые 7 символов даты создания заказа
+     */
+    public static Map<String, Double> getMonthlyRevenue() {
+        Map<String, Double> monthlyRevenue = new LinkedHashMap<>();
+
+        for (WorkOrder order : DataStore.getOrders()) {
+            if (!WorkOrder.STATUS_CLOSED.equals(order.getStatus())) {
+                continue;
+            }
+            String createdDate = order.getCreatedDate();
+            if (createdDate == null || createdDate.isEmpty()) {
+                continue;
+            }
+            try {
+                String monthKey = createdDate.substring(0, 7);
+                monthlyRevenue.merge(monthKey, order.getTotal(), Double::sum);
+            } catch (Exception e) {
+                logger.error("Ошибка разбора даты: {}", createdDate, e);
+            }
+        }
+
+        return monthlyRevenue;
+    }
+
+    /**
      * Рассчитать количество заказов по статусам.
      * @return статистика по статусам заказов
      */
@@ -141,10 +201,22 @@ public class StatisticsService {
         Map<String, Integer> statusStats = new LinkedHashMap<>();
 
         for (WorkOrder order : DataStore.getOrders()) {
-            statusStats.merge(order.getStatus(), 1, Integer::sum);
+            statusStats.merge(normalizeStatus(order.getStatus()), 1, Integer::sum);
         }
 
         return statusStats;
+    }
+
+    private static String normalizeStatus(String status) {
+        return status != null ? status : WorkOrder.STATUS_NEW;
+    }
+
+    private static Map<String, Integer> toLinkedMap(List<Map.Entry<String, Integer>> entries) {
+        Map<String, Integer> result = new LinkedHashMap<>();
+        for (Map.Entry<String, Integer> entry : entries) {
+            result.put(entry.getKey(), entry.getValue());
+        }
+        return result;
     }
 
 }

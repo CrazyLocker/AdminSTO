@@ -1,168 +1,24 @@
 package com.autoservice.services;
 
-import com.autoservice.DataStore;
-import com.autoservice.WorkOrder;
-import com.autoservice.SparePart;
-import com.itextpdf.kernel.font.PdfFont;
-import com.itextpdf.kernel.font.PdfFontFactory;
-import com.itextpdf.kernel.geom.PageSize;
+import com.autoservice.model.ReportData;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.layout.Document;
+import com.itextpdf.layout.element.Cell;
 import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Table;
-import com.itextpdf.layout.element.Cell;
 import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.properties.UnitValue;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Map;
 
 /**
- * Генератор отчётов: собирает статистику по данным автосервиса
- * и экспортирует её в PDF.
+ * Генератор отчётов: рендерит в PDF общий снимок статистики
+ * {@link ReportData}, подготовленный {@link StatisticsService}.
  */
 public class ReportGenerator {
-
-    /**
-     * Снимок статистики автосервиса, используемый для построения отчёта.
-     */
-    public static class ReportData {
-        /** Общее количество заказов. */
-        public int totalOrders;
-        /** Общее количество клиентов. */
-        public int totalClients;
-        /** Общее количество запчастей. */
-        public int totalSpareParts;
-        /** Общее количество записей на обслуживание. */
-        public int totalAppointments;
-        /** Общая выручка по закрытым заказам. */
-        public double totalRevenue;
-        /** Количество новых заказов. */
-        public int newOrders;
-        /** Количество заказов в работе. */
-        public int inProgressOrders;
-        /** Количество закрытых заказов. */
-        public int closedOrders;
-        /** Топ-5 услуг по количеству использований. */
-        public Map<String, Integer> topServices = new LinkedHashMap<>();
-        /** Топ-5 запчастей по количеству использований. */
-        public Map<String, Integer> topParts = new LinkedHashMap<>();
-        /** Дата и время формирования отчёта. */
-        public String generatedDate;
-        /** Средний чек по закрытым заказам. */
-        public double averageOrderValue;
-
-        /**
-         * Строковое представление данных отчёта.
-         * @return строка с основными показателями отчёта
-         */
-        @Override
-        public String toString() {
-            return "ReportData{" +
-                    "totalOrders=" + totalOrders +
-                    ", totalClients=" + totalClients +
-                    ", totalRevenue=" + totalRevenue +
-                    ", newOrders=" + newOrders +
-                    ", inProgressOrders=" + inProgressOrders +
-                    ", closedOrders=" + closedOrders +
-                    ", topServices=" + topServices +
-                    ", topParts=" + topParts +
-                    '}';
-        }
-    }
-
-    /**
-     * Собрать статистику по заказам, клиентам, запчастям и записям на обслуживание.
-     *
-     * <p>Выручка и средний чек рассчитываются только по закрытым заказам;
-     * топ-5 услуг и запчастей определяется по частоте использования.
-     * @return снимок статистики для отчёта
-     */
-    public static ReportData generateReport() {
-        ReportData data = new ReportData();
-        // Используем LocalDateTime для получения времени
-        data.generatedDate = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"));
-
-        // Общая статистика
-        data.totalClients = DataStore.getClients().size();
-        data.totalSpareParts = DataStore.getSpareParts().size();
-        data.totalAppointments = DataStore.getAppointments().size();
-
-        // Статистика по заказам
-        List<WorkOrder> orders = DataStore.getOrders();
-        data.totalOrders = orders.size();
-
-        double totalRevenue = 0;
-        int newOrders = 0, inProgress = 0, closed = 0;
-
-        // Сбор статистики по услугам и запчастям
-        Map<String, Integer> serviceCount = new HashMap<>();
-        Map<String, Integer> partCount = new HashMap<>();
-
-        for (WorkOrder order : orders) {
-            // Статусы
-            String status = order.getStatus();
-            if (status == null) status = WorkOrder.STATUS_NEW;
-
-            switch (status) {
-                case WorkOrder.STATUS_NEW -> newOrders++;
-                case WorkOrder.STATUS_IN_PROGRESS -> inProgress++;
-                case WorkOrder.STATUS_CLOSED -> {
-                    closed++;
-                    totalRevenue += order.getTotal();
-                }
-                default -> {
-                    // Неизвестный статус не учитывается в статистике.
-                }
-            }
-
-            // Услуги
-            for (String service : order.getServices()) {
-                serviceCount.put(service, serviceCount.getOrDefault(service, 0) + 1);
-            }
-
-            // Запчасти
-            for (SparePart part : order.getSpareParts()) {
-                partCount.put(part.getName(), partCount.getOrDefault(part.getName(), 0) + 1);
-            }
-        }
-
-        data.totalRevenue = totalRevenue;
-        data.newOrders = newOrders;
-        data.inProgressOrders = inProgress;
-        data.closedOrders = closed;
-        data.averageOrderValue = closed > 0 ? totalRevenue / closed : 0;
-
-        // Топ-5 услуг
-        data.topServices = serviceCount.entrySet().stream()
-                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
-                .limit(5)
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        Map.Entry::getValue,
-                        (e1, e2) -> e1,
-                        LinkedHashMap::new
-                ));
-
-        // Топ-5 запчастей
-        data.topParts = partCount.entrySet().stream()
-                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
-                .limit(5)
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        Map.Entry::getValue,
-                        (e1, e2) -> e1,
-                        LinkedHashMap::new
-                ));
-
-        return data;
-    }
 
     /**
      * Экспортировать отчёт в PDF-файл.
@@ -181,7 +37,7 @@ public class ReportGenerator {
                     .setBold()
                     .setTextAlignment(TextAlignment.CENTER));
 
-            document.add(new Paragraph("Дата генерации: " + data.generatedDate)
+            document.add(new Paragraph("Дата генерации: " + data.generatedDate())
                     .setFontSize(12)
                     .setTextAlignment(TextAlignment.CENTER));
 
@@ -195,12 +51,12 @@ public class ReportGenerator {
             Table statsTable = new Table(UnitValue.createPercentArray(new float[]{40, 60}));
             statsTable.setWidth(UnitValue.createPercentValue(100));
 
-            addStatRow(statsTable, "Всего заказов", String.valueOf(data.totalOrders));
-            addStatRow(statsTable, "Всего клиентов", String.valueOf(data.totalClients));
-            addStatRow(statsTable, "Всего запчастей", String.valueOf(data.totalSpareParts));
-            addStatRow(statsTable, "Всего записей", String.valueOf(data.totalAppointments));
-            addStatRow(statsTable, "Общая выручка", String.format("%,.0f руб.", data.totalRevenue));
-            addStatRow(statsTable, "Средний чек", String.format("%,.0f руб.", data.averageOrderValue));
+            addStatRow(statsTable, "Всего заказов", String.valueOf(data.totalOrders()));
+            addStatRow(statsTable, "Всего клиентов", String.valueOf(data.totalClients()));
+            addStatRow(statsTable, "Всего запчастей", String.valueOf(data.totalSpareParts()));
+            addStatRow(statsTable, "Всего записей", String.valueOf(data.totalAppointments()));
+            addStatRow(statsTable, "Общая выручка", String.format("%,.0f руб.", data.totalRevenue()));
+            addStatRow(statsTable, "Средний чек", String.format("%,.0f руб.", data.averageOrderValue()));
 
             document.add(statsTable);
             document.add(new Paragraph("\n"));
@@ -213,15 +69,15 @@ public class ReportGenerator {
             Table statusTable = new Table(UnitValue.createPercentArray(new float[]{40, 60}));
             statusTable.setWidth(UnitValue.createPercentValue(100));
 
-            addStatRow(statusTable, "Новые", String.valueOf(data.newOrders));
-            addStatRow(statusTable, "В работе", String.valueOf(data.inProgressOrders));
-            addStatRow(statusTable, "Закрытые", String.valueOf(data.closedOrders));
+            addStatRow(statusTable, "Новые", String.valueOf(data.newOrders()));
+            addStatRow(statusTable, "В работе", String.valueOf(data.inProgressOrders()));
+            addStatRow(statusTable, "Закрытые", String.valueOf(data.closedOrders()));
 
             document.add(statusTable);
             document.add(new Paragraph("\n"));
 
             // ====== ТОП УСЛУГ ======
-            if (!data.topServices.isEmpty()) {
+            if (!data.topServices().isEmpty()) {
                 document.add(new Paragraph("ТОП-5 УСЛУГ")
                         .setFontSize(16)
                         .setBold());
@@ -232,7 +88,7 @@ public class ReportGenerator {
                 serviceTable.addHeaderCell(new Cell().add(new Paragraph("Услуга").setBold()));
                 serviceTable.addHeaderCell(new Cell().add(new Paragraph("Количество").setBold()));
 
-                for (Map.Entry<String, Integer> entry : data.topServices.entrySet()) {
+                for (Map.Entry<String, Integer> entry : data.topServices().entrySet()) {
                     serviceTable.addCell(new Cell().add(new Paragraph(entry.getKey())));
                     serviceTable.addCell(new Cell().add(new Paragraph(String.valueOf(entry.getValue()))));
                 }
@@ -242,7 +98,7 @@ public class ReportGenerator {
             }
 
             // ====== ТОП ЗАПЧАСТЕЙ ======
-            if (!data.topParts.isEmpty()) {
+            if (!data.topParts().isEmpty()) {
                 document.add(new Paragraph("ТОП-5 ЗАПЧАСТЕЙ")
                         .setFontSize(16)
                         .setBold());
@@ -253,7 +109,7 @@ public class ReportGenerator {
                 partTable.addHeaderCell(new Cell().add(new Paragraph("Запчасть").setBold()));
                 partTable.addHeaderCell(new Cell().add(new Paragraph("Количество").setBold()));
 
-                for (Map.Entry<String, Integer> entry : data.topParts.entrySet()) {
+                for (Map.Entry<String, Integer> entry : data.topParts().entrySet()) {
                     partTable.addCell(new Cell().add(new Paragraph(entry.getKey())));
                     partTable.addCell(new Cell().add(new Paragraph(String.valueOf(entry.getValue()))));
                 }
