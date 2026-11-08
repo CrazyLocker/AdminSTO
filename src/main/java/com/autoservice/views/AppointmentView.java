@@ -261,7 +261,7 @@ public class AppointmentView {
 
                     cell.setOnMouseClicked(event -> {
                         if (event.getClickCount() == 2) {
-                            showAppointmentDetails(appointment);
+                            showAppointmentDialog(appointment, AppointmentDialogMode.DETAILS);
                         }
                     });
                 } else {
@@ -398,7 +398,7 @@ public class AppointmentView {
                         final Appointment currentAppointment = a;
                         appLabel.setOnMouseClicked(event -> {
                             if (event.getClickCount() == 2) {
-                                showAppointmentInfoOnly(currentAppointment);
+                                showAppointmentDialog(currentAppointment, AppointmentDialogMode.INFO_ONLY);
                             }
                         });
 
@@ -454,14 +454,14 @@ public class AppointmentView {
         return "#95a5a6"; // серый - заказ не найден
     }
 
-    private static void showAppointmentDetails(Appointment appointment) {
+    private static void showAppointmentDialog(Appointment appointment, AppointmentDialogMode mode) {
         Stage stage = new Stage();
-        stage.setTitle("Детали записи");
+        stage.setTitle(mode.windowTitle);
         stage.setMinWidth(500);
         stage.setMinHeight(500);
         stage.initModality(Modality.WINDOW_MODAL);
 
-        WindowStateManager.getInstance().restoreWindowState("appointmentDetails", stage);
+        WindowStateManager.getInstance().restoreWindowState(mode.windowStateKey, stage);
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
@@ -616,177 +616,31 @@ public class AppointmentView {
         root.getChildren().addAll(titleLabel, grid, btnBox);
 
         Scene scene = new Scene(root);
+        if (mode.attachStylesheet) {
+            scene.getStylesheets().add(AppointmentView.class.getResource("/styles.css").toExternalForm());
+        }
         stage.setScene(scene);
-        stage.setOnHiding(e -> WindowStateManager.getInstance().saveWindowState("appointmentDetails", stage));
+        stage.setOnHiding(e -> WindowStateManager.getInstance().saveWindowState(mode.windowStateKey, stage));
         stage.showAndWait();
     }
 
-    private static void showAppointmentInfoOnly(Appointment appointment) {
-        Stage stage = new Stage();
-        stage.setTitle("Информация о записи");
-        stage.setMinWidth(500);
-        stage.setMinHeight(500);
-        stage.initModality(Modality.WINDOW_MODAL);
+    /**
+     * Режим диалога записи: от него зависят заголовок окна, ключ сохранённого
+     * состояния и подключение таблицы стилей.
+     */
+    private enum AppointmentDialogMode {
+        DETAILS("Детали записи", "appointmentDetails", false),
+        INFO_ONLY("Информация о записи", "appointmentInfoOnly", true);
 
-        WindowStateManager.getInstance().restoreWindowState("appointmentInfoOnly", stage);
+        private final String windowTitle;
+        private final String windowStateKey;
+        private final boolean attachStylesheet;
 
-        VBox root = new VBox(15);
-        root.setPadding(new Insets(20));
-        root.getStyleClass().add("dialog-root");
-
-        Label titleLabel = new Label("Информация о записи");
-        titleLabel.getStyleClass().add("dialog-title");
-
-        GridPane grid = new GridPane();
-        grid.setHgap(15);
-        grid.setVgap(12);
-        grid.getStyleClass().add("dialog-grid");
-
-        Client client = appointment.getClient();
-        String fullName = formatClientName(client);
-
-        grid.add(new Label("Клиент:"), 0, 0);
-        grid.add(new Label(fullName), 1, 0);
-
-        grid.add(new Label("Телефон:"), 0, 1);
-        grid.add(new Label(formatClientPhone(client)), 1, 1);
-
-        grid.add(new Label("Автомобиль:"), 0, 2);
-        grid.add(new Label(formatClientCar(client)), 1, 2);
-
-        grid.add(new Label("Мастер:"), 0, 3);
-        grid.add(new Label(appointment.getMasterName()), 1, 3);
-
-        grid.add(new Label("Дата:"), 0, 4);
-        grid.add(new Label(appointment.getDate()), 1, 4);
-
-        grid.add(new Label("Время:"), 0, 5);
-        grid.add(new Label(appointment.getTime()), 1, 5);
-
-        int rowIndex = 6;
-
-        String orderId = appointment.getOrderId();
-        if (orderId != null && !orderId.isEmpty()) {
-            grid.add(new Label("Номер заказа:"), 0, rowIndex);
-            Label orderLabel = new Label(orderId);
-            orderLabel.setStyle("-fx-text-fill: #1976d2; -fx-font-weight: bold;");
-            grid.add(orderLabel, 1, rowIndex);
-            rowIndex++;
-
-            // Статус заказа
-            String orderStatus = "—";
-            for (WorkOrder order : DataStore.getOrders()) {
-                if (orderId.equals(order.getId())) {
-                    orderStatus = order.getStatus();
-                    break;
-                }
-            }
-            grid.add(new Label("Статус заказа:"), 0, rowIndex);
-            Label statusLabel = new Label(orderStatus);
-            if ("Новый".equals(orderStatus)) {
-                statusLabel.setStyle("-fx-text-fill: #e74c3c; -fx-font-weight: bold;");
-            } else if ("Закрыт".equals(orderStatus)) {
-                statusLabel.setStyle("-fx-text-fill: #27ae60; -fx-font-weight: bold;");
-            } else if ("В работе".equals(orderStatus)) {
-                statusLabel.setStyle("-fx-text-fill: #f39c12; -fx-font-weight: bold;");
-            }
-            grid.add(statusLabel, 1, rowIndex);
-            rowIndex++;
+        AppointmentDialogMode(String windowTitle, String windowStateKey, boolean attachStylesheet) {
+            this.windowTitle = windowTitle;
+            this.windowStateKey = windowStateKey;
+            this.attachStylesheet = attachStylesheet;
         }
-
-        List<String> allServices = new ArrayList<>();
-        double totalPrice = 0;
-
-        if (orderId != null && !orderId.isEmpty()) {
-            for (WorkOrder order : DataStore.getOrders()) {
-                if (orderId.equals(order.getId())) {
-                    allServices.addAll(order.getServices());
-                    totalPrice = order.getTotal();
-                    break;
-                }
-            }
-        }
-
-        if (allServices.isEmpty()) {
-            allServices.add(appointment.getServiceName());
-        }
-
-        grid.add(new Label("Услуги:"), 0, rowIndex);
-        VBox servicesBox = new VBox(4);
-        for (String service : allServices) {
-            Label serviceLabel = new Label("• " + service);
-            serviceLabel.setWrapText(true);
-            serviceLabel.setStyle("-fx-font-size: 13px;");
-            servicesBox.getChildren().add(serviceLabel);
-        }
-        grid.add(servicesBox, 1, rowIndex);
-        rowIndex++;
-
-        if (totalPrice > 0) {
-            grid.add(new Label("Общая сумма:"), 0, rowIndex);
-            Label priceLabel = new Label(String.format("%,.0f руб.", totalPrice));
-            priceLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #27ae60;");
-            grid.add(priceLabel, 1, rowIndex);
-            rowIndex++;
-        }
-
-        if (orderId != null && !orderId.isEmpty()) {
-            for (WorkOrder order : DataStore.getOrders()) {
-                if (orderId.equals(order.getId())) {
-                    if (!order.getSpareParts().isEmpty()) {
-                        VBox partsBox = new VBox(4);
-                        for (int i = 0; i < order.getSpareParts().size(); i++) {
-                            SparePart part = order.getSpareParts().get(i);
-                            double quantity = order.getSparePartQuantities().get(i);
-                            Label partLabel = new Label("• " + part.getName() + " x" + (int)quantity);
-                            partLabel.setWrapText(true);
-                            partLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #7f8c8d;");
-                            partsBox.getChildren().add(partLabel);
-                        }
-                        grid.add(new Label("Запчасти:"), 0, rowIndex);
-                        grid.add(partsBox, 1, rowIndex);
-                    }
-                    break;
-                }
-            }
-        }
-
-        HBox btnBox = new HBox(15);
-        btnBox.setAlignment(Pos.CENTER);
-
-        Button closeBtn = new Button("Закрыть");
-        closeBtn.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold;");
-        closeBtn.setOnAction(e -> stage.close());
-
-        btnBox.getChildren().add(closeBtn);
-        
-        // Кнопка удаления записи (всегда доступна)
-        Button deleteBtn = new Button("Удалить запись");
-        deleteBtn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold;");
-        deleteBtn.setOnAction(e -> {
-            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
-                    "Удалить запись?\n\n" +
-                            "Это действие нельзя отменить.",
-                    ButtonType.YES, ButtonType.NO);
-            confirm.setTitle("Подтверждение удаления");
-            
-            confirm.showAndWait().ifPresent(response -> {
-                if (response == ButtonType.YES) {
-                    DataStore.deleteAppointment(appointment.getId());
-                    refresh();
-                    stage.close();
-                }
-            });
-        });
-        btnBox.getChildren().add(deleteBtn);
-
-        root.getChildren().addAll(titleLabel, grid, btnBox);
-
-        Scene scene = new Scene(root);
-        scene.getStylesheets().add(AppointmentView.class.getResource("/styles.css").toExternalForm());
-        stage.setScene(scene);
-        stage.setOnHiding(e -> WindowStateManager.getInstance().saveWindowState("appointmentInfoOnly", stage));
-        stage.showAndWait();
     }
 
     private static void showAddAppointmentWithOrderDialog(String presetTime) {
