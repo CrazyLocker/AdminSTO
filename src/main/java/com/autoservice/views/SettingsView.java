@@ -1435,10 +1435,57 @@ public class SettingsView {
     // ==================== ДИАЛОГ СВЯЗИ УСЛУГИ И ЗАПЧАСТЕЙ ====================
 
     /**
+     * Элементы формы диалога связи услуги и запчастей.
+     */
+    private static final class ServiceSparePartForm {
+
+        private final ServiceSparePartsRow initial;
+        private final boolean isEdit;
+        private final Stage stage;
+        private final VBox root;
+        private final List<ServiceSparePart> currentRelations;
+        private final java.util.Map<Integer, ServiceSparePart> currentRelationsMap = new java.util.HashMap<>();
+        private final ObservableList<SparePartWithQuantity> partsData = FXCollections.observableArrayList();
+
+        private ComboBox<String> serviceCombo;
+        private Button saveBtn;
+        private Button cancelBtn;
+
+        private ServiceSparePartForm(
+                ServiceSparePartsRow initial, Stage stage, List<ServiceSparePart> currentRelations) {
+            this.initial = initial;
+            this.isEdit = initial != null;
+            this.stage = stage;
+            this.root = (VBox) stage.getScene().getRoot();
+            this.currentRelations = currentRelations;
+        }
+    }
+
+    /**
      * Диалог создания или редактирования связи услуги и запчастей.
      * @param initial {@code null} для создания; существующая строка для редактирования
      */
     private static void showServiceSparePartDialog(ServiceSparePartsRow initial) {
+        boolean isEdit = initial != null;
+        List<ServiceSparePart> currentRelations = isEdit
+                ? DataStore.getServiceSparePartsByServiceId(initial.getService().getId())
+                : List.of();
+
+        ServiceSparePartForm form = new ServiceSparePartForm(
+                initial, createServiceSparePartWindow(initial), currentRelations);
+        buildServiceSparePartForm(form);
+        attachServiceSparePartHandlers(form);
+
+        form.stage.showAndWait();
+    }
+
+    /**
+     * Создать окно и сцену диалога связи услуги и запчастей.
+     *
+     * @param initial {@code null} для создания; существующая строка для редактирования
+     * @return настроенное окно диалога
+     */
+    private static Stage createServiceSparePartWindow(ServiceSparePartsRow initial) {
         boolean isEdit = initial != null;
 
         Stage stage = new Stage();
@@ -1454,42 +1501,63 @@ public class SettingsView {
         root.setPadding(new Insets(20));
         root.getStyleClass().add("dialog-root");
 
-        Label titleLabel = new Label(title);
-        titleLabel.getStyleClass().add("dialog-title");
+        Scene scene = new Scene(root);
+        scene.getStylesheets().add("com/autoservice/styles/styles.css");
+        stage.setScene(scene);
+        return stage;
+    }
 
-        // Услуга: в режиме создания — выпадающий список, при редактировании — только отображение
+    /**
+     * Собрать секции формы: заголовок, услугу, таблицу запчастей и кнопки.
+     *
+     * @param form форма диалога
+     */
+    private static void buildServiceSparePartForm(ServiceSparePartForm form) {
+        buildServiceSparePartTitle(form);
+        buildServiceSparePartServiceRow(form);
+        buildServiceSparePartParts(form);
+        buildServiceSparePartButtons(form);
+    }
+
+    private static void buildServiceSparePartTitle(ServiceSparePartForm form) {
+        Label titleLabel = new Label(form.stage.getTitle());
+        titleLabel.getStyleClass().add("dialog-title");
+        form.root.getChildren().add(titleLabel);
+    }
+
+    // Услуга: в режиме создания — выпадающий список, при редактировании — только отображение
+    private static void buildServiceSparePartServiceRow(ServiceSparePartForm form) {
         HBox serviceRow = new HBox(10);
         serviceRow.setAlignment(Pos.CENTER_LEFT);
 
         Label serviceLabel = new Label("Услуга:");
         serviceLabel.getStyleClass().add("label");
 
-        ComboBox<String> serviceCombo = new ComboBox<>();
-        if (isEdit) {
-            Label serviceNameLabel = new Label(initial.getService().getName());
+        if (form.isEdit) {
+            Label serviceNameLabel = new Label(form.initial.getService().getName());
             serviceNameLabel.getStyleClass().add("highlight-label");
             serviceRow.getChildren().addAll(serviceLabel, serviceNameLabel);
         } else {
-            serviceCombo.setPromptText("Выберите услугу");
-            serviceCombo.setPrefWidth(300);
-            serviceCombo.setItems(getServiceNamesObservable());
-            serviceRow.getChildren().addAll(serviceLabel, serviceCombo);
+            form.serviceCombo = new ComboBox<>();
+            form.serviceCombo.setPromptText("Выберите услугу");
+            form.serviceCombo.setPrefWidth(300);
+            form.serviceCombo.setItems(getServiceNamesObservable());
+            serviceRow.getChildren().addAll(serviceLabel, form.serviceCombo);
         }
 
+        form.root.getChildren().add(serviceRow);
+    }
+
+    private static void buildServiceSparePartParts(ServiceSparePartForm form) {
         // Текущие связи услуги (только в режиме редактирования)
-        List<ServiceSparePart> currentRelations = isEdit
-                ? DataStore.getServiceSparePartsByServiceId(initial.getService().getId())
-                : List.of();
-        java.util.Map<Integer, ServiceSparePart> currentRelationsMap = new java.util.HashMap<>();
-        for (ServiceSparePart relation : currentRelations) {
-            currentRelationsMap.put(relation.getSparePartId(), relation);
+        for (ServiceSparePart relation : form.currentRelations) {
+            form.currentRelationsMap.put(relation.getSparePartId(), relation);
         }
 
         // Загружаем запчасти с заполнением из текущих связей
-        ObservableList<SparePartWithQuantity> partsData = FXCollections.observableArrayList();
         for (SparePart part : DataStore.getSpareParts()) {
             SparePartWithQuantity item = new SparePartWithQuantity(part);
-            ServiceSparePart existingRelation = currentRelationsMap.get(part.getId());
+            ServiceSparePart existingRelation = form.currentRelationsMap.get(part.getId());
             item.setSelected(existingRelation != null);
             if (existingRelation != null) {
                 item.setQuantity(existingRelation.getQuantity());
@@ -1498,124 +1566,181 @@ public class SettingsView {
                 item.setQuantity(1);
                 item.setUnitType("шт");
             }
-            partsData.add(item);
+            form.partsData.add(item);
         }
 
         Label partsLabel = new Label("Запчасти:");
         partsLabel.getStyleClass().add("section-title");
-        TableView<SparePartWithQuantity> partsTable = createPartsTable(partsData, 380, 130, 100, 100);
+        TableView<SparePartWithQuantity> partsTable = createPartsTable(form.partsData, 380, 130, 100, 100);
 
-        Button saveBtn = new Button(isEdit ? "Сохранить изменения" : "Добавить связь");
-        saveBtn.getStyleClass().add("save-button");
-        Button cancelBtn = new Button("Отмена");
-        cancelBtn.getStyleClass().add("cancel-button");
+        form.root.getChildren().addAll(partsLabel, partsTable);
+    }
 
-        HBox btnBox = new HBox(15, saveBtn, cancelBtn);
+    private static void buildServiceSparePartButtons(ServiceSparePartForm form) {
+        form.saveBtn = new Button(form.isEdit ? "Сохранить изменения" : "Добавить связь");
+        form.saveBtn.getStyleClass().add("save-button");
+        form.cancelBtn = new Button("Отмена");
+        form.cancelBtn.getStyleClass().add("cancel-button");
+
+        HBox btnBox = new HBox(15, form.saveBtn, form.cancelBtn);
         btnBox.setAlignment(Pos.CENTER);
         btnBox.setPadding(new Insets(20, 0, 0, 0));
 
-        root.getChildren().addAll(titleLabel, serviceRow, partsLabel, partsTable, btnBox);
+        form.root.getChildren().add(btnBox);
+    }
 
-        Scene scene = new Scene(root);
-        scene.getStylesheets().add("com/autoservice/styles/styles.css");
-        stage.setScene(scene);
+    private static void attachServiceSparePartHandlers(ServiceSparePartForm form) {
+        form.saveBtn.setOnAction(e -> saveServiceSparePart(form));
+        form.cancelBtn.setOnAction(e -> form.stage.close());
+    }
 
-        saveBtn.setOnAction(e -> {
-            Service service;
-            if (isEdit) {
-                service = initial.getService();
-            } else {
-                String serviceName = serviceCombo.getValue();
-                if (serviceName == null) {
-                    showAlert("Выберите услугу", Alert.AlertType.WARNING);
-                    return;
-                }
-
-                service = DataStore.getServices().stream()
-                        .filter(s -> s.getName().equals(serviceName))
-                        .findFirst()
-                        .orElse(null);
-
-                if (service == null) {
-                    showAlert("Услуга не найдена", Alert.AlertType.WARNING);
-                    return;
-                }
+    /**
+     * Сохранить выбранные запчасти и обновить список связей.
+     *
+     * @param form форма диалога
+     */
+    private static void saveServiceSparePart(ServiceSparePartForm form) {
+        Service service;
+        if (form.isEdit) {
+            service = form.initial.getService();
+        } else {
+            service = findServiceByName(form.serviceCombo.getValue());
+            if (service == null) {
+                return;
             }
+        }
 
-            int addedCount = 0;
-            int updatedCount = 0;
-            java.util.List<Integer> checkedPartIds = new java.util.ArrayList<>();
+        SaveCounts counts = persistServiceSparePartChanges(form, service);
 
-            for (SparePartWithQuantity item : partsData) {
-                if (item.isSelected()) {
-                    SparePart part = item.getPart();
-                    if (part != null) {
-                        try {
-                            int quantity = item.getQuantity();
-                            String unitType = item.getUnitType();
+        if (form.isEdit) {
+            refreshServiceSparePartsRows();
 
-                            if (quantity > 0) {
-                                checkedPartIds.add(part.getId());
-
-                                ServiceSparePart existingRelation = currentRelationsMap.get(part.getId());
-                                if (existingRelation != null) {
-                                    // Обновляем существующую связь
-                                    existingRelation.setQuantity(quantity);
-                                    existingRelation.setUnitType(unitType);
-                                    SettingsController.addServiceSparePart(existingRelation);
-                                    updatedCount++;
-                                } else {
-                                    // Создаем новую связь
-                                    ServiceSparePart relation = new ServiceSparePart();
-                                    relation.setServiceId(service.getId());
-                                    relation.setSparePartId(part.getId());
-                                    relation.setQuantity(quantity);
-                                    relation.setUnitType(unitType);
-                                    relation.setActive(true);
-                                    SettingsController.addServiceSparePart(relation);
-                                    addedCount++;
-                                }
-                            }
-                        } catch (NumberFormatException ex) {
-                            showAlert("Неверное количество для запчасти: " + part.getName(), Alert.AlertType.WARNING);
-                        }
-                    }
-                }
-            }
-
-            // В режиме редактирования удаляем неотмеченные связи
-            for (ServiceSparePart relation : currentRelations) {
-                if (!checkedPartIds.contains(relation.getSparePartId())) {
-                    SettingsController.deleteServiceSparePart(relation);
-                }
-            }
-
-            if (isEdit) {
-                refreshServiceSparePartsRows();
-
-                if (addedCount > 0 || updatedCount > 0) {
-                    showAlert("Изменения сохранены:\n" +
-                            "- Добавлено новых связей: " + addedCount + "\n" +
-                            "- Обновлено существующих: " + updatedCount,
-                            Alert.AlertType.INFORMATION);
-                    stage.close();
-                } else {
-                    showAlert("Выберите хотя бы одну запчасть", Alert.AlertType.WARNING);
-                }
-            } else if (addedCount > 0) {
-                refreshServiceSparePartsRows();
-                showAlert("Связь добавлена:\n" +
-                        "- Добавлено новых связей: " + addedCount,
+            if (counts.added > 0 || counts.updated > 0) {
+                showAlert("Изменения сохранены:\n" +
+                        "- Добавлено новых связей: " + counts.added + "\n" +
+                        "- Обновлено существующих: " + counts.updated,
                         Alert.AlertType.INFORMATION);
-                stage.close();
+                form.stage.close();
             } else {
                 showAlert("Выберите хотя бы одну запчасть", Alert.AlertType.WARNING);
             }
-        });
+        } else if (counts.added > 0) {
+            refreshServiceSparePartsRows();
+            showAlert("Связь добавлена:\n" +
+                    "- Добавлено новых связей: " + counts.added,
+                    Alert.AlertType.INFORMATION);
+            form.stage.close();
+        } else {
+            showAlert("Выберите хотя бы одну запчасть", Alert.AlertType.WARNING);
+        }
+    }
 
-        cancelBtn.setOnAction(e -> stage.close());
+    /**
+     * Найти услугу по имени из выпадающего списка.
+     *
+     * @param serviceName выбранное имя услуги
+     * @return найденная услуга или {@code null}, если выбор не сделан
+     */
+    private static Service findServiceByName(String serviceName) {
+        if (serviceName == null) {
+            showAlert("Выберите услугу", Alert.AlertType.WARNING);
+            return null;
+        }
 
-        stage.showAndWait();
+        Service service = DataStore.getServices().stream()
+                .filter(s -> s.getName().equals(serviceName))
+                .findFirst()
+                .orElse(null);
+
+        if (service == null) {
+            showAlert("Услуга не найдена", Alert.AlertType.WARNING);
+        }
+        return service;
+    }
+
+    /**
+     * Добавить, обновить и удалить связи услуги с запчастями.
+     *
+     * @param form форма диалога
+     * @param service услуга, к которой относятся связи
+     * @return количество добавленных и обновлённых связей
+     */
+    private static SaveCounts persistServiceSparePartChanges(
+            ServiceSparePartForm form, Service service) {
+        SaveCounts counts = new SaveCounts();
+        List<Integer> checkedPartIds = applySelectedServiceSpareParts(form, service, counts);
+        deleteUncheckedServiceSpareParts(form, checkedPartIds);
+        return counts;
+    }
+
+    /**
+     * Добавить новые и обновить существующие связи услуги с запчастями.
+     *
+     * @param form форма диалога
+     * @param service услуга, к которой относятся связи
+     * @param counts счётчики добавленных и обновлённых связей
+     * @return идентификаторы отмеченных запчастей
+     */
+    private static List<Integer> applySelectedServiceSpareParts(
+            ServiceSparePartForm form, Service service, SaveCounts counts) {
+        List<Integer> checkedPartIds = new java.util.ArrayList<>();
+
+        for (SparePartWithQuantity item : form.partsData) {
+            if (!item.isSelected()) {
+                continue;
+            }
+            SparePart part = item.getPart();
+            if (part == null) {
+                continue;
+            }
+            try {
+                int quantity = item.getQuantity();
+                String unitType = item.getUnitType();
+
+                if (quantity <= 0) {
+                    continue;
+                }
+                checkedPartIds.add(part.getId());
+
+                ServiceSparePart existingRelation = form.currentRelationsMap.get(part.getId());
+                if (existingRelation != null) {
+                    // Обновляем существующую связь
+                    existingRelation.setQuantity(quantity);
+                    existingRelation.setUnitType(unitType);
+                    SettingsController.addServiceSparePart(existingRelation);
+                    counts.updated++;
+                } else {
+                    // Создаем новую связь
+                    ServiceSparePart relation = new ServiceSparePart();
+                    relation.setServiceId(service.getId());
+                    relation.setSparePartId(part.getId());
+                    relation.setQuantity(quantity);
+                    relation.setUnitType(unitType);
+                    relation.setActive(true);
+                    SettingsController.addServiceSparePart(relation);
+                    counts.added++;
+                }
+            } catch (NumberFormatException ex) {
+                showAlert("Неверное количество для запчасти: " + part.getName(), Alert.AlertType.WARNING);
+            }
+        }
+
+        return checkedPartIds;
+    }
+
+    /**
+     * Удалить связи, снятые с выбора в режиме редактирования.
+     *
+     * @param form форма диалога
+     * @param checkedPartIds идентификаторы отмеченных запчастей
+     */
+    private static void deleteUncheckedServiceSpareParts(
+            ServiceSparePartForm form, List<Integer> checkedPartIds) {
+        for (ServiceSparePart relation : form.currentRelations) {
+            if (!checkedPartIds.contains(relation.getSparePartId())) {
+                SettingsController.deleteServiceSparePart(relation);
+            }
+        }
     }
 
     // ==================== Утилиты ====================
@@ -1693,13 +1818,68 @@ public class SettingsView {
         public void setUnitType(String unitType) { this.unitType.set(unitType); }
     }
 
+    /**
+     * Количество добавленных и обновлённых связей при сохранении диалога.
+     */
+    private static final class SaveCounts {
+        private int added;
+        private int updated;
+    }
+
     // ==================== ДИАЛОГИ РАСХОДНИКОВ ТО ====================
+
+    /**
+     * Элементы формы диалога расходников ТО.
+     */
+    private static final class ToPartForm {
+
+        private final ToPartsRow initial;
+        private final boolean isEdit;
+        private final Stage stage;
+        private final VBox root;
+        private final List<ToPart> currentParts;
+        private final java.util.Map<Integer, ToPart> currentPartsMap = new java.util.HashMap<>();
+        private final ObservableList<SparePartWithQuantity> partsData = FXCollections.observableArrayList();
+
+        private ComboBox<String> modelCombo;
+        private TextField noteField;
+        private Button saveBtn;
+        private Button cancelBtn;
+        private String carModel;
+
+        private ToPartForm(ToPartsRow initial, Stage stage, List<ToPart> currentParts) {
+            this.initial = initial;
+            this.isEdit = initial != null;
+            this.stage = stage;
+            this.root = (VBox) stage.getScene().getRoot();
+            this.currentParts = currentParts;
+        }
+    }
 
     /**
      * Диалог создания или редактирования расходников ТО.
      * @param initial {@code null} для создания; существующая строка для редактирования
      */
     private static void showToPartDialog(ToPartsRow initial) {
+        boolean isEdit = initial != null;
+        List<ToPart> currentParts = isEdit
+                ? DataStore.getToPartsByCarModel(initial.getCarModel())
+                : List.of();
+
+        ToPartForm form = new ToPartForm(initial, createToPartWindow(initial), currentParts);
+        buildToPartForm(form);
+        attachToPartHandlers(form);
+
+        form.stage.showAndWait();
+    }
+
+    /**
+     * Создать окно и сцену диалога расходников ТО.
+     *
+     * @param initial {@code null} для создания; существующая строка для редактирования
+     * @return настроенное окно диалога
+     */
+    private static Stage createToPartWindow(ToPartsRow initial) {
         boolean isEdit = initial != null;
 
         Stage stage = new Stage();
@@ -1715,58 +1895,85 @@ public class SettingsView {
         root.setPadding(new Insets(20));
         root.getStyleClass().add("dialog-root");
 
-        Label titleLabel = new Label(title);
-        titleLabel.getStyleClass().add("dialog-title");
+        Scene scene = new Scene(root);
+        scene.getStylesheets().add("com/autoservice/styles/styles.css");
+        stage.setScene(scene);
+        return stage;
+    }
 
-        // Модель авто: в режиме создания — редактируемый список, при редактировании — только отображение
+    /**
+     * Собрать секции формы: заголовок, модель авто, примечание, таблицу и кнопки.
+     *
+     * @param form форма диалога
+     */
+    private static void buildToPartForm(ToPartForm form) {
+        buildToPartTitle(form);
+        buildToPartModelRow(form);
+        if (!form.isEdit) {
+            buildToPartNoteRow(form);
+        }
+        buildToPartParts(form);
+        buildToPartButtons(form);
+    }
+
+    private static void buildToPartTitle(ToPartForm form) {
+        Label titleLabel = new Label(form.stage.getTitle());
+        titleLabel.getStyleClass().add("dialog-title");
+        form.root.getChildren().add(titleLabel);
+    }
+
+    // Модель авто: в режиме создания — редактируемый список, при редактировании — только отображение
+    private static void buildToPartModelRow(ToPartForm form) {
         HBox modelRow = new HBox(10);
         modelRow.setAlignment(Pos.CENTER_LEFT);
 
         Label modelLabel = new Label("Модель авто:");
         modelLabel.getStyleClass().add("label");
 
-        ComboBox<String> modelCombo = new ComboBox<>();
-        if (isEdit) {
-            Label modelNameLabel = new Label(initial.getCarModel());
+        if (form.isEdit) {
+            Label modelNameLabel = new Label(form.initial.getCarModel());
             modelNameLabel.getStyleClass().add("highlight-label");
             modelRow.getChildren().addAll(modelLabel, modelNameLabel);
         } else {
-            modelCombo.setPromptText("Выберите или введите модель авто");
-            modelCombo.setPrefWidth(300);
+            form.modelCombo = new ComboBox<>();
+            form.modelCombo.setPromptText("Выберите или введите модель авто");
+            form.modelCombo.setPrefWidth(300);
             // Обновляем список моделей при каждом открытии диалога
-            modelCombo.setItems(getCarModelsObservable());
+            form.modelCombo.setItems(getCarModelsObservable());
             // Разрешаем ввод пользовательских значений
-            modelCombo.setEditable(true);
-            modelRow.getChildren().addAll(modelLabel, modelCombo);
+            form.modelCombo.setEditable(true);
+            modelRow.getChildren().addAll(modelLabel, form.modelCombo);
         }
 
-        // Примечание вводится только при создании
+        form.root.getChildren().add(modelRow);
+    }
+
+    // Примечание вводится только при создании
+    private static void buildToPartNoteRow(ToPartForm form) {
         HBox noteRow = new HBox(10);
         noteRow.setAlignment(Pos.CENTER_LEFT);
 
         Label noteLabel = new Label("Примечание:");
         noteLabel.getStyleClass().add("label");
 
-        TextField noteField = new TextField();
-        noteField.setPromptText("Введите примечание (до 1000 символов)");
-        noteField.setPrefWidth(500);
+        form.noteField = new TextField();
+        form.noteField.setPromptText("Введите примечание (до 1000 символов)");
+        form.noteField.setPrefWidth(500);
 
-        noteRow.getChildren().addAll(noteLabel, noteField);
+        noteRow.getChildren().addAll(noteLabel, form.noteField);
+        form.root.getChildren().add(noteRow);
+    }
 
+    private static void buildToPartParts(ToPartForm form) {
         // Текущие расходники для модели (только в режиме редактирования)
-        List<ToPart> currentParts = isEdit
-                ? DataStore.getToPartsByCarModel(initial.getCarModel())
-                : List.of();
-        java.util.Map<Integer, ToPart> currentPartsMap = new java.util.HashMap<>();
-        for (ToPart part : currentParts) {
-            currentPartsMap.put(part.getSparePartId(), part);
+        for (ToPart part : form.currentParts) {
+            form.currentPartsMap.put(part.getSparePartId(), part);
         }
 
         // Загружаем запчасти с заполнением из текущих расходников
-        ObservableList<SparePartWithQuantity> partsData = FXCollections.observableArrayList();
         for (SparePart part : DataStore.getSpareParts()) {
             SparePartWithQuantity item = new SparePartWithQuantity(part);
-            ToPart existingPart = currentPartsMap.get(part.getId());
+            ToPart existingPart = form.currentPartsMap.get(part.getId());
             item.setSelected(existingPart != null);
             if (existingPart != null) {
                 item.setQuantity(existingPart.getQuantity());
@@ -1775,122 +1982,178 @@ public class SettingsView {
                 item.setQuantity(1);
                 item.setUnitType("шт");
             }
-            partsData.add(item);
+            form.partsData.add(item);
         }
 
         Label partsLabel = new Label("Запчасти:");
         partsLabel.getStyleClass().add("section-title");
-        TableView<SparePartWithQuantity> partsTable = createPartsTable(partsData, 250, 100, 80, 80);
+        TableView<SparePartWithQuantity> partsTable = createPartsTable(form.partsData, 250, 100, 80, 80);
 
-        Button saveBtn = new Button(isEdit ? "Сохранить изменения" : "Добавить");
-        saveBtn.getStyleClass().add("save-button");
-        Button cancelBtn = new Button("Отмена");
-        cancelBtn.getStyleClass().add("cancel-button");
+        form.root.getChildren().addAll(partsLabel, partsTable);
+    }
 
-        HBox btnBox = new HBox(15, saveBtn, cancelBtn);
+    private static void buildToPartButtons(ToPartForm form) {
+        form.saveBtn = new Button(form.isEdit ? "Сохранить изменения" : "Добавить");
+        form.saveBtn.getStyleClass().add("save-button");
+        form.cancelBtn = new Button("Отмена");
+        form.cancelBtn.getStyleClass().add("cancel-button");
+
+        HBox btnBox = new HBox(15, form.saveBtn, form.cancelBtn);
         btnBox.setAlignment(Pos.CENTER);
         btnBox.setPadding(new Insets(20, 0, 0, 0));
 
-        root.getChildren().addAll(titleLabel, modelRow);
-        if (!isEdit) {
-            root.getChildren().add(noteRow);
+        form.root.getChildren().add(btnBox);
+    }
+
+    private static void attachToPartHandlers(ToPartForm form) {
+        form.saveBtn.setOnAction(e -> saveToPart(form));
+        form.cancelBtn.setOnAction(e -> form.stage.close());
+    }
+
+    /**
+     * Сохранить выбранные расходники и обновить список.
+     *
+     * @param form форма диалога
+     */
+    private static void saveToPart(ToPartForm form) {
+        if (!readToPartCarModel(form)) {
+            return;
         }
-        root.getChildren().addAll(partsLabel, partsTable, btnBox);
 
-        Scene scene = new Scene(root);
-        scene.getStylesheets().add("com/autoservice/styles/styles.css");
-        stage.setScene(scene);
+        // Примечание сохраняется только в режиме создания
+        String note = form.isEdit ? "" : (form.noteField.getText() != null ? form.noteField.getText() : "");
 
-        saveBtn.setOnAction(e -> {
-            String carModel;
-            if (isEdit) {
-                carModel = initial.getCarModel();
-            } else {
-                carModel = modelCombo.getValue() != null ? modelCombo.getValue() : modelCombo.getEditor().getText();
-                if (carModel == null || carModel.trim().isEmpty()) {
-                    showAlert("Выберите или введите модель авто", Alert.AlertType.WARNING);
-                    return;
-                }
-            }
+        SaveCounts counts = persistToPartChanges(form, note);
 
-            // Примечание сохраняется только в режиме создания
-            String note = isEdit ? "" : (noteField.getText() != null ? noteField.getText() : "");
-
-            int addedCount = 0;
-            int updatedCount = 0;
-            java.util.List<Integer> checkedPartIds = new java.util.ArrayList<>();
-
-            for (SparePartWithQuantity item : partsData) {
-                if (item.isSelected()) {
-                    SparePart part = item.getPart();
-                    if (part != null) {
-                        try {
-                            int quantity = item.getQuantity();
-                            String unitType = item.getUnitType();
-
-                            if (quantity > 0) {
-                                checkedPartIds.add(part.getId());
-
-                                ToPart existingPart = currentPartsMap.get(part.getId());
-                                if (existingPart != null) {
-                                    // Обновляем существующую связь
-                                    existingPart.setQuantity(quantity);
-                                    existingPart.setUnitType(unitType);
-                                    existingPart.setNote(note);
-                                    SettingsController.updateToPart(existingPart);
-                                    updatedCount++;
-                                } else {
-                                    // Создаем новую связь
-                                    ToPart toPart = new ToPart();
-                                    toPart.setCarModel(carModel);
-                                    toPart.setSparePartId(part.getId());
-                                    toPart.setQuantity(quantity);
-                                    toPart.setUnitType(unitType);
-                                    toPart.setNote(note);
-                                    toPart.setActive(true);
-                                    SettingsController.addToPart(toPart);
-                                    addedCount++;
-                                }
-                            }
-                        } catch (NumberFormatException ex) {
-                            showAlert("Неверное количество для запчасти: " + part.getName(), Alert.AlertType.WARNING);
-                        }
-                    }
-                }
-            }
-
-            // В режиме редактирования удаляем неотмеченные связи
-            for (ToPart part : currentParts) {
-                if (!checkedPartIds.contains(part.getSparePartId())) {
-                    SettingsController.deleteToPart(part);
-                }
-            }
-
-            if (isEdit) {
-                if (addedCount > 0 || updatedCount > 0) {
-                    showAlert("Изменения сохранены:\n" +
-                            "- Модель авто: " + carModel + "\n" +
-                            "- Добавлено новых: " + addedCount + "\n" +
-                            "- Обновлено существующих: " + updatedCount,
-                            Alert.AlertType.INFORMATION);
-                    stage.close();
-                } else {
-                    showAlert("Выберите хотя бы одну запчасть", Alert.AlertType.WARNING);
-                }
-            } else if (addedCount > 0) {
-                showAlert("Расходники добавлены:\n" +
-                        "- Модель авто: " + carModel + "\n" +
-                        "- Добавлено запчастей: " + addedCount,
+        if (form.isEdit) {
+            if (counts.added > 0 || counts.updated > 0) {
+                showAlert("Изменения сохранены:\n" +
+                        "- Модель авто: " + form.carModel + "\n" +
+                        "- Добавлено новых: " + counts.added + "\n" +
+                        "- Обновлено существующих: " + counts.updated,
                         Alert.AlertType.INFORMATION);
-                stage.close();
+                form.stage.close();
             } else {
                 showAlert("Выберите хотя бы одну запчасть", Alert.AlertType.WARNING);
             }
-        });
+        } else if (counts.added > 0) {
+            showAlert("Расходники добавлены:\n" +
+                    "- Модель авто: " + form.carModel + "\n" +
+                    "- Добавлено запчастей: " + counts.added,
+                    Alert.AlertType.INFORMATION);
+            form.stage.close();
+        } else {
+            showAlert("Выберите хотя бы одну запчасть", Alert.AlertType.WARNING);
+        }
+    }
 
-        cancelBtn.setOnAction(e -> stage.close());
+    /**
+     * Прочитать модель авто и показать предупреждение, если она не указана.
+     *
+     * @param form форма диалога
+     * @return {@code true}, если модель можно сохранять
+     */
+    private static boolean readToPartCarModel(ToPartForm form) {
+        if (form.isEdit) {
+            form.carModel = form.initial.getCarModel();
+            return true;
+        }
 
-        stage.showAndWait();
+        String carModel = form.modelCombo.getValue() != null
+                ? form.modelCombo.getValue()
+                : form.modelCombo.getEditor().getText();
+        if (carModel == null || carModel.trim().isEmpty()) {
+            showAlert("Выберите или введите модель авто", Alert.AlertType.WARNING);
+            return false;
+        }
+
+        form.carModel = carModel;
+        return true;
+    }
+
+    /**
+     * Добавить, обновить и удалить расходники ТО для модели авто.
+     *
+     * @param form форма диалога
+     * @param note примечание, сохраняемое только при создании
+     * @return количество добавленных и обновлённых запчастей
+     */
+    private static SaveCounts persistToPartChanges(ToPartForm form, String note) {
+        SaveCounts counts = new SaveCounts();
+        List<Integer> checkedPartIds = applySelectedToParts(form, note, counts);
+        deleteUncheckedToParts(form, checkedPartIds);
+        return counts;
+    }
+
+    /**
+     * Добавить новые и обновить существующие расходники ТО для модели авто.
+     *
+     * @param form форма диалога
+     * @param note примечание, сохраняемое только при создании
+     * @param counts счётчики добавленных и обновлённых запчастей
+     * @return идентификаторы отмеченных запчастей
+     */
+    private static List<Integer> applySelectedToParts(
+            ToPartForm form, String note, SaveCounts counts) {
+        List<Integer> checkedPartIds = new java.util.ArrayList<>();
+
+        for (SparePartWithQuantity item : form.partsData) {
+            if (!item.isSelected()) {
+                continue;
+            }
+            SparePart part = item.getPart();
+            if (part == null) {
+                continue;
+            }
+            try {
+                int quantity = item.getQuantity();
+                String unitType = item.getUnitType();
+
+                if (quantity <= 0) {
+                    continue;
+                }
+                checkedPartIds.add(part.getId());
+
+                ToPart existingPart = form.currentPartsMap.get(part.getId());
+                if (existingPart != null) {
+                    // Обновляем существующую связь
+                    existingPart.setQuantity(quantity);
+                    existingPart.setUnitType(unitType);
+                    existingPart.setNote(note);
+                    SettingsController.updateToPart(existingPart);
+                    counts.updated++;
+                } else {
+                    // Создаем новую связь
+                    ToPart toPart = new ToPart();
+                    toPart.setCarModel(form.carModel);
+                    toPart.setSparePartId(part.getId());
+                    toPart.setQuantity(quantity);
+                    toPart.setUnitType(unitType);
+                    toPart.setNote(note);
+                    toPart.setActive(true);
+                    SettingsController.addToPart(toPart);
+                    counts.added++;
+                }
+            } catch (NumberFormatException ex) {
+                showAlert("Неверное количество для запчасти: " + part.getName(), Alert.AlertType.WARNING);
+            }
+        }
+
+        return checkedPartIds;
+    }
+
+    /**
+     * Удалить расходники, снятые с выбора в режиме редактирования.
+     *
+     * @param form форма диалога
+     * @param checkedPartIds идентификаторы отмеченных запчастей
+     */
+    private static void deleteUncheckedToParts(ToPartForm form, List<Integer> checkedPartIds) {
+        for (ToPart part : form.currentParts) {
+            if (!checkedPartIds.contains(part.getSparePartId())) {
+                SettingsController.deleteToPart(part);
+            }
+        }
     }
 
     // ==================== ОБЩАЯ ТАБЛИЦА ЗАПЧАСТЕЙ ДЛЯ ДИАЛОГОВ ====================
@@ -2005,14 +2268,51 @@ public class SettingsView {
 
     // ==================== Вкладка: Резервное копирование ====================
 
-    private static VBox createBackupPanel() {
-        VBox panel = new VBox(15);
-        panel.setPadding(new Insets(20));
+    /**
+     * Элементы панели резервного копирования.
+     */
+    private static final class BackupPanel {
 
+        private final VBox root = new VBox(15);
+        private RadioButton autoBackupYes;
+        private ComboBox<String> backupTimeCombo;
+        private Spinner<Integer> retentionSpinner;
+        private Button createBackupBtn;
+        private Button restoreBackupBtn;
+        private Button saveBtn;
+        private Label backupInfoLabel;
+        private ListView<String> backupsListView;
+        private Button deleteBackupBtn;
+        private Button refreshBackupsBtn;
+    }
+
+    private static VBox createBackupPanel() {
+        BackupPanel panel = new BackupPanel();
+        panel.root.setPadding(new Insets(20));
+
+        buildBackupIntro(panel);
+        buildAutoBackupSetting(panel);
+        buildBackupScheduleSetting(panel);
+        buildBackupRetentionSetting(panel);
+        buildBackupActionButtons(panel);
+        buildBackupsList(panel);
+        buildBackupSaveSection(panel);
+        attachBackupHandlers(panel);
+
+        // Заполняем данные и обновляем интерфейс
+        updateBackupInfoLabel(panel.backupInfoLabel);
+
+        return panel.root;
+    }
+
+    private static void buildBackupIntro(BackupPanel panel) {
         Label introLabel = new Label("Настройки резервного копирования");
         introLabel.getStyleClass().add("intro-label");
+        panel.root.getChildren().add(introLabel);
+    }
 
-        // Настройка 1: Включить/выключить авто-бэкап
+    // Настройка 1: Включить/выключить авто-бэкап
+    private static void buildAutoBackupSetting(BackupPanel panel) {
         HBox autoBackupBox = new HBox(10);
         autoBackupBox.setAlignment(Pos.CENTER_LEFT);
 
@@ -2020,210 +2320,227 @@ public class SettingsView {
         autoBackupLabel.setPrefWidth(250);
 
         ToggleGroup autoBackupGroup = new ToggleGroup();
-        RadioButton autoBackupYes = new RadioButton("Да");
+        panel.autoBackupYes = new RadioButton("Да");
         RadioButton autoBackupNo = new RadioButton("Нет");
 
-        autoBackupYes.setToggleGroup(autoBackupGroup);
+        panel.autoBackupYes.setToggleGroup(autoBackupGroup);
         autoBackupNo.setToggleGroup(autoBackupGroup);
 
         // Загрузить текущие настройки из SettingService
-        boolean backupEnabled = SettingService.isAutoBackupEnabled();
-        String currentBackupTime = SettingService.getBackupTime();
-        int backupRetention = SettingService.getBackupRetention();
-        if (backupEnabled) {
-            autoBackupYes.setSelected(true);
+        if (SettingService.isAutoBackupEnabled()) {
+            panel.autoBackupYes.setSelected(true);
         } else {
             autoBackupNo.setSelected(true);
         }
 
-        autoBackupBox.getChildren().addAll(autoBackupLabel, autoBackupYes, autoBackupNo);
+        autoBackupBox.getChildren().addAll(autoBackupLabel, panel.autoBackupYes, autoBackupNo);
+        panel.root.getChildren().add(autoBackupBox);
+    }
 
-        // Настройка 2: Время бэкапа
+    // Настройка 2: Время бэкапа
+    private static void buildBackupScheduleSetting(BackupPanel panel) {
         HBox backupTimeBox = new HBox(10);
         backupTimeBox.setAlignment(Pos.CENTER_LEFT);
 
         Label backupTimeLabel = new Label("Время ежедневного бэкапа:");
         backupTimeLabel.setPrefWidth(250);
 
-        ComboBox<String> backupTimeCombo = new ComboBox<>();
-        backupTimeCombo.setPromptText("Выберите время");
-        backupTimeCombo.setPrefWidth(200);
-        backupTimeCombo.setItems(FXCollections.observableArrayList(
+        panel.backupTimeCombo = new ComboBox<>();
+        panel.backupTimeCombo.setPromptText("Выберите время");
+        panel.backupTimeCombo.setPrefWidth(200);
+        panel.backupTimeCombo.setItems(FXCollections.observableArrayList(
                 "02:00", "03:00", "04:00", "05:00", "06:00", "07:00",
                 "08:00", "09:00", "10:00", "11:00", "12:00", "13:00",
                 "14:00", "15:00", "16:00", "17:00", "18:00", "19:00",
                 "20:00", "21:00", "22:00", "23:00"
         ));
+        panel.backupTimeCombo.setValue(SettingService.getBackupTime());
 
-        backupTimeCombo.setValue(currentBackupTime);
+        backupTimeBox.getChildren().addAll(backupTimeLabel, panel.backupTimeCombo);
+        panel.root.getChildren().add(backupTimeBox);
+    }
 
-        backupTimeBox.getChildren().addAll(backupTimeLabel, backupTimeCombo);
-
-        // Настройка 3: Количество хранимых копий
+    // Настройка 3: Количество хранимых копий
+    private static void buildBackupRetentionSetting(BackupPanel panel) {
         HBox retentionBox = new HBox(10);
         retentionBox.setAlignment(Pos.CENTER_LEFT);
 
         Label retentionLabel = new Label("Хранить копий (7-14):");
         retentionLabel.setPrefWidth(250);
 
-        Spinner<Integer> retentionSpinner = new Spinner<>(7, 14, 14, 1);
-        retentionSpinner.setPrefWidth(100);
-        retentionSpinner.getValueFactory().setValue(backupRetention);
+        panel.retentionSpinner = new Spinner<>(7, 14, 14, 1);
+        panel.retentionSpinner.setPrefWidth(100);
+        panel.retentionSpinner.getValueFactory().setValue(SettingService.getBackupRetention());
 
-        retentionBox.getChildren().addAll(retentionLabel, retentionSpinner);
+        retentionBox.getChildren().addAll(retentionLabel, panel.retentionSpinner);
+        panel.root.getChildren().add(retentionBox);
+    }
 
-        // Кнопка создания бэкапа
-        Button createBackupBtn = new Button("Создать резервную копию сейчас");
-        createBackupBtn.getStyleClass().add("save-button");
+    private static void buildBackupActionButtons(BackupPanel panel) {
+        panel.createBackupBtn = new Button("Создать резервную копию сейчас");
+        panel.createBackupBtn.getStyleClass().add("save-button");
 
-        // Кнопка восстановления
-        Button restoreBackupBtn = new Button("Восстановить из...");
-        restoreBackupBtn.getStyleClass().add("add-button");
+        panel.restoreBackupBtn = new Button("Восстановить из...");
+        panel.restoreBackupBtn.getStyleClass().add("add-button");
 
-        // Кнопка сохранения настроек - объявляем ДО использования
-        Button saveBtn = new Button("Сохранить настройки");
-        saveBtn.getStyleClass().add("save-button");
+        panel.root.getChildren().addAll(panel.createBackupBtn, panel.restoreBackupBtn);
+    }
 
-        // Статус - объявляем Label ДО использования
-        Label backupInfoLabel = new Label();
-
+    private static void buildBackupsList(BackupPanel panel) {
         // Список доступных бэкапов
         Label backupsLabel = new Label("Доступные резервные копии:");
         backupsLabel.getStyleClass().add("section-title");
 
-        ListView<String> backupsListView = new ListView<>();
-        backupsListView.setPrefHeight(150);
-        VBox.setVgrow(backupsListView, Priority.ALWAYS);
+        panel.backupsListView = new ListView<>();
+        panel.backupsListView.setPrefHeight(150);
+        VBox.setVgrow(panel.backupsListView, Priority.ALWAYS);
 
         // Обновить список бэкапов
-        refreshBackupsList(backupsListView);
+        refreshBackupsList(panel.backupsListView);
 
-        // Кнопка удаления бэкапа
-        Button deleteBackupBtn = new Button("Удалить выбранную копию");
-        deleteBackupBtn.getStyleClass().add("delete-button");
-        deleteBackupBtn.setDisable(true);
+        panel.deleteBackupBtn = new Button("Удалить выбранную копию");
+        panel.deleteBackupBtn.getStyleClass().add("delete-button");
+        panel.deleteBackupBtn.setDisable(true);
 
-        deleteBackupBtn.setOnAction(e -> {
-            String selectedBackup = backupsListView.getSelectionModel().getSelectedItem();
-            if (selectedBackup != null) {
-                Alert confirmDialog = new Alert(Alert.AlertType.CONFIRMATION,
-                    "Вы уверены что хотите удалить бэкап:\n" + selectedBackup,
-                    ButtonType.YES, ButtonType.NO);
-                confirmDialog.showAndWait();
-                if (confirmDialog.getResult() == ButtonType.YES) {
-                    boolean success = SettingsController.deleteBackup(selectedBackup);
-                    if (success) {
-                        showAlert("Бэкап удален успешно", Alert.AlertType.INFORMATION);
-                        refreshBackupsList(backupsListView);
-                        updateBackupInfoLabel(backupInfoLabel);
-                    } else {
-                        showAlert("Ошибка удаления бэкапа", Alert.AlertType.ERROR);
-                    }
-                }
-            }
-        });
-
-        // Отслеживание выбора в списке
-        backupsListView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
-            deleteBackupBtn.setDisable(newVal == null);
-        });
-
-        // Кнопка обновления списка
-        Button refreshBackupsBtn = new Button("Обновить список");
-        refreshBackupsBtn.setOnAction(e -> refreshBackupsList(backupsListView));
+        panel.refreshBackupsBtn = new Button("Обновить список");
 
         HBox deleteButtons = new HBox(10);
         deleteButtons.setAlignment(Pos.CENTER);
-        deleteButtons.getChildren().addAll(deleteBackupBtn);
+        deleteButtons.getChildren().addAll(panel.deleteBackupBtn);
 
-        // Обработчик кнопки создания бэкапа (после объявления saveBtn)
-        createBackupBtn.setOnAction(e -> {
-            boolean success = SettingsController.performManualBackup();
+        panel.root.getChildren().addAll(backupsLabel, panel.backupsListView, deleteButtons);
+    }
+
+    private static void buildBackupSaveSection(BackupPanel panel) {
+        panel.backupInfoLabel = new Label();
+
+        panel.saveBtn = new Button("Сохранить настройки");
+        panel.saveBtn.getStyleClass().add("save-button");
+
+        panel.root.getChildren().addAll(panel.backupInfoLabel, panel.saveBtn);
+    }
+
+    private static void attachBackupHandlers(BackupPanel panel) {
+        panel.deleteBackupBtn.setOnAction(e -> deleteSelectedBackup(panel));
+
+        // Отслеживание выбора в списке
+        panel.backupsListView.getSelectionModel().selectedItemProperty().addListener(
+                (obs, oldVal, newVal) -> panel.deleteBackupBtn.setDisable(newVal == null));
+
+        panel.refreshBackupsBtn.setOnAction(e -> refreshBackupsList(panel.backupsListView));
+        panel.createBackupBtn.setOnAction(e -> createBackupNow(panel));
+        panel.restoreBackupBtn.setOnAction(e -> restoreBackup(panel));
+        panel.saveBtn.setOnAction(e -> saveBackupSettings(panel));
+    }
+
+    private static void deleteSelectedBackup(BackupPanel panel) {
+        String selectedBackup = panel.backupsListView.getSelectionModel().getSelectedItem();
+        if (selectedBackup == null) {
+            return;
+        }
+
+        Alert confirmDialog = new Alert(Alert.AlertType.CONFIRMATION,
+            "Вы уверены что хотите удалить бэкап:\n" + selectedBackup,
+            ButtonType.YES, ButtonType.NO);
+        confirmDialog.showAndWait();
+        if (confirmDialog.getResult() == ButtonType.YES) {
+            boolean success = SettingsController.deleteBackup(selectedBackup);
             if (success) {
-                showAlert("Бэкап создан успешно", Alert.AlertType.INFORMATION);
-                updateBackupInfoLabel(backupInfoLabel);
+                showAlert("Бэкап удален успешно", Alert.AlertType.INFORMATION);
+                refreshBackupsList(panel.backupsListView);
+                updateBackupInfoLabel(panel.backupInfoLabel);
             } else {
-                showAlert("Ошибка создания бэкапа", Alert.AlertType.ERROR);
+                showAlert("Ошибка удаления бэкапа", Alert.AlertType.ERROR);
             }
-        });
+        }
+    }
 
-        // Обработчик кнопки восстановления (после объявления saveBtn)
-        restoreBackupBtn.setOnAction(e -> {
-            // Открыть диалог выбора файла
-            FileChooser fileChooser = new FileChooser();
-            fileChooser.setTitle("Выберите файл резервной копии");
-            fileChooser.getExtensionFilters().add(
-                new FileChooser.ExtensionFilter("Zip files", "*.zip")
-            );
-            File selectedFile = fileChooser.showOpenDialog(panel.getScene().getWindow());
-            if (selectedFile != null) {
-                boolean success = SettingsController.performRestoreBackup(selectedFile.getAbsolutePath());
-                if (success) {
-                    showAlert("База данных восстановлена успешно", Alert.AlertType.INFORMATION);
-                    updateBackupInfoLabel(backupInfoLabel);
-                } else {
-                    showAlert("Ошибка восстановления из бэкапа", Alert.AlertType.ERROR);
-                }
-            }
-        });
+    private static void createBackupNow(BackupPanel panel) {
+        boolean success = SettingsController.performManualBackup();
+        if (success) {
+            showAlert("Бэкап создан успешно", Alert.AlertType.INFORMATION);
+            updateBackupInfoLabel(panel.backupInfoLabel);
+        } else {
+            showAlert("Ошибка создания бэкапа", Alert.AlertType.ERROR);
+        }
+    }
 
-        panel.getChildren().addAll(
-            introLabel,
-            autoBackupBox,
-            backupTimeBox,
-            retentionBox,
-            createBackupBtn,
-            restoreBackupBtn,
-            backupsLabel,
-            backupsListView,
-            deleteButtons,
-            backupInfoLabel,
-            saveBtn
+    private static void restoreBackup(BackupPanel panel) {
+        // Открыть диалог выбора файла
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Выберите файл резервной копии");
+        fileChooser.getExtensionFilters().add(
+            new FileChooser.ExtensionFilter("Zip files", "*.zip")
         );
+        File selectedFile = fileChooser.showOpenDialog(panel.root.getScene().getWindow());
+        if (selectedFile == null) {
+            return;
+        }
 
-        // Заполняем данные и обновляем интерфейс
-        updateBackupInfoLabel(backupInfoLabel);
+        boolean success = SettingsController.performRestoreBackup(selectedFile.getAbsolutePath());
+        if (success) {
+            showAlert("База данных восстановлена успешно", Alert.AlertType.INFORMATION);
+            updateBackupInfoLabel(panel.backupInfoLabel);
+        } else {
+            showAlert("Ошибка восстановления из бэкапа", Alert.AlertType.ERROR);
+        }
+    }
 
-        saveBtn.setOnAction(e -> {
-            boolean autoBackupEnabled = autoBackupYes.isSelected();
-            String time = backupTimeCombo.getValue();
-            Integer retentionValue = retentionSpinner.getValue();
+    /**
+     * Проверить и сохранить настройки резервного копирования.
+     *
+     * @param panel элементы панели резервного копирования
+     */
+    private static void saveBackupSettings(BackupPanel panel) {
+        ValidationErrorIndicator.clearAllErrors(panel.root);
 
-            // Валидация времени
-            ValidationErrorIndicator.clearAllErrors(panel);
-            
-            if (time == null || time.trim().isEmpty()) {
-                ValidationErrorIndicator.showError(backupTimeCombo, "Выберите время бэкапа");
-                showAlert("Выберите время бэкапа", Alert.AlertType.WARNING);
-                return;
-            }
+        String time = panel.backupTimeCombo.getValue();
+        Integer backupRetentionValue = validateBackupSettings(panel, time);
+        if (backupRetentionValue == null) {
+            return;
+        }
 
-            if (retentionValue == null) {
-                ValidationErrorIndicator.showError(retentionSpinner, "Укажите количество копий");
-                showAlert("Укажите количество копий", Alert.AlertType.WARNING);
-                return;
-            }
-            int backupRetentionValue = retentionValue;
+        boolean autoBackupEnabled = panel.autoBackupYes.isSelected();
+        SettingsController.saveBackupSettings(autoBackupEnabled, time, backupRetentionValue);
 
-            // Валидация количества копий (7-14)
-            if (backupRetentionValue < 7 || backupRetentionValue > 14) {
-                ValidationErrorIndicator.showError(retentionSpinner, "Количество копий должно быть от 7 до 14");
-                showAlert("Количество копий должно быть от 7 до 14", Alert.AlertType.WARNING);
-                return;
-            }
+        if (autoBackupEnabled) {
+            ScheduleService.scheduleDailyBackup(time);
+        } else {
+            ScheduleService.cancelScheduledBackup();
+        }
 
-            SettingsController.saveBackupSettings(autoBackupEnabled, time, backupRetentionValue);
+        showAlert("Настройки сохранены", Alert.AlertType.INFORMATION);
+    }
 
-            if (autoBackupEnabled) {
-                ScheduleService.scheduleDailyBackup(time);
-            } else {
-                ScheduleService.cancelScheduledBackup();
-            }
+    /**
+     * Проверить время и количество хранимых копий.
+     *
+     * @param panel элементы панели резервного копирования
+     * @param time выбранное время бэкапа
+     * @return количество копий или {@code null}, если настройки некорректны
+     */
+    private static Integer validateBackupSettings(BackupPanel panel, String time) {
+        if (time == null || time.trim().isEmpty()) {
+            ValidationErrorIndicator.showError(panel.backupTimeCombo, "Выберите время бэкапа");
+            showAlert("Выберите время бэкапа", Alert.AlertType.WARNING);
+            return null;
+        }
 
-            showAlert("Настройки сохранены", Alert.AlertType.INFORMATION);
-        });
+        Integer retentionValue = panel.retentionSpinner.getValue();
+        if (retentionValue == null) {
+            ValidationErrorIndicator.showError(panel.retentionSpinner, "Укажите количество копий");
+            showAlert("Укажите количество копий", Alert.AlertType.WARNING);
+            return null;
+        }
 
-        return panel;
+        // Валидация количества копий (7-14)
+        if (retentionValue < 7 || retentionValue > 14) {
+            ValidationErrorIndicator.showError(panel.retentionSpinner, "Количество копий должно быть от 7 до 14");
+            showAlert("Количество копий должно быть от 7 до 14", Alert.AlertType.WARNING);
+            return null;
+        }
+
+        return retentionValue;
     }
 
     private static void refreshBackupsList(ListView<String> listView) {
