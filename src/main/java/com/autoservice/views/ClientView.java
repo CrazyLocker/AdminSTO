@@ -5,7 +5,7 @@ import com.autoservice.Car;
 import com.autoservice.Client;
 import com.autoservice.DataStore;
 import com.autoservice.DateUtils;
-import com.autoservice.Validators;
+import com.autoservice.utils.Formatters;
 import com.autoservice.controllers.ClientController;
 import com.autoservice.dialogs.EditClientDialog;
 import com.autoservice.services.TableStateManager;
@@ -178,7 +178,7 @@ public class ClientView {
         colPhone.setId("colPhone");
         colPhone.setCellValueFactory(cellData -> {
             String phone = cellData.getValue().getPhone();
-            return new SimpleStringProperty(Validators.formatPhoneForDisplay(phone));
+            return new SimpleStringProperty(Formatters.formatPhoneForDisplay(phone));
         });
         colPhone.setPrefWidth(180);
         colPhone.setSortable(true);
@@ -274,7 +274,7 @@ public class ClientView {
             filteredClients.setPredicate(client -> {
                 if (client.getName() != null && client.getName().toLowerCase().contains(lowerFilter)) return true;
                 if (client.getLastName() != null && client.getLastName().toLowerCase().contains(lowerFilter)) return true;
-                if (Validators.formatPhoneForDisplay(client.getPhone()).toLowerCase().contains(lowerFilter)) return true;
+                if (Formatters.formatPhoneForDisplay(client.getPhone()).toLowerCase().contains(lowerFilter)) return true;
                 if (client.getCarNumber() != null && client.getCarNumber().toLowerCase().contains(lowerFilter)) return true;
                 return client.getCarModel() != null && client.getCarModel().toLowerCase().contains(lowerFilter);
             });

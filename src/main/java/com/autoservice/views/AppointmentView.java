@@ -7,7 +7,7 @@ import com.autoservice.DataStore;
 import com.autoservice.DateUtils;
 import com.autoservice.Service;
 import com.autoservice.SparePart;
-import com.autoservice.Validators;
+import com.autoservice.utils.Formatters;
 import com.autoservice.WorkOrder;
 import com.autoservice.controllers.ClientController;
 import com.autoservice.controllers.OrderController;
@@ -1001,7 +1001,7 @@ public class AppointmentView {
      * Отображаемый телефон клиента; для записи без клиента возвращает прочерк.
      */
     private static String formatClientPhone(Client client) {
-        return client == null ? "—" : Validators.formatPhoneForDisplay(client.getPhone());
+        return client == null ? "—" : Formatters.formatPhoneForDisplay(client.getPhone());
     }
 
     /**

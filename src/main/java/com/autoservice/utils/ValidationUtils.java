@@ -101,7 +101,7 @@ public class ValidationUtils {
         if (phone == null || phone.trim().isEmpty()) {
             return false;
         }
-        return phone.trim().matches("^\\+7\\d{10}$");
+        return PHONE_PATTERN.matcher(phone.trim()).matches();
     }
     
     /**
@@ -125,7 +125,7 @@ public class ValidationUtils {
         if (number == null || number.trim().isEmpty()) {
             return false;
         }
-        return number.trim().matches("^[АВЕКМНОРСТУХ]\\d{3}[АВЕКМНОРСТУХ]{2}\\d{2,3}$");
+        return PLATE_PATTERN.matcher(number.trim()).matches();
     }
     
     /**

@@ -1,15 +1,22 @@
-package com.autoservice;
+package com.autoservice.utils;
 
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextFormatter;
 
 import java.util.regex.Pattern;
 
-public class Validators {
+/**
+ * Форматтеры значений: маски полей ввода, отображение телефона и
+ * приведение телефона/госномера к стандартному виду.
+ *
+ * <p>Логические проверки ({@code isValid*}) выполняет {@link ValidationUtils};
+ * этот класс значения не валидирует.
+ */
+public class Formatters {
 
     // Допустимые буквы для российского госномера
     private static final String ALLOWED_LETTERS = "АВЕКМНОРСТУХ";
-    
+
     // Паттерн для кириллицы
     private static final Pattern CYRILLIC_PATTERN = Pattern.compile("^[\\u0400-\\u04FF]+$");
 
@@ -25,43 +32,43 @@ public class Validators {
         if (phoneField.getText() == null || phoneField.getText().trim().isEmpty()) {
             phoneField.setText("+7");
         }
-        
+
         // Создаем форматтер для телефона
         TextFormatter<String> formatter = new TextFormatter<>(change -> {
             String text = change.getText();
-            
+
             // Разрешаем удаление любых символов
             if (text.isEmpty()) {
                 return change;
             }
-            
+
             // REQ-VD-010: Запрет любых символов кроме цифр
             if (!text.matches("[0-9]+")) {
                 return null;
             }
-            
+
             // Получаем текст ДО изменения
             String oldText = change.getControlText();
-            
+
             // REQ-VD-009: Блокируем редактирование префикса +7
             // Если пользователь пытается вставить текст в начало (включая удаление +7)
             if (change.getRangeStart() < 2) {
                 return null;
             }
-            
+
             // Формируем новый текст
             String newText = oldText.substring(0, change.getRangeStart()) + text + oldText.substring(change.getRangeEnd());
-            
+
             // Максимум 12 символов (+7 + 10 цифр)
             if (newText.length() > 12) {
                 return null;
             }
-            
+
             return change;
         });
-        
+
         phoneField.setTextFormatter(formatter);
-        
+
         // Дополнительная защита от вставки нецифровых символов через контекстное меню
         phoneField.setOnKeyTyped(e -> {
             char c = e.getCharacter().charAt(0);
@@ -79,37 +86,37 @@ public class Validators {
         // Создаем форматтер для госномера
         TextFormatter<String> formatter = new TextFormatter<>(change -> {
             String text = change.getText();
-            
+
             // Разрешаем удаление
             if (text.isEmpty()) {
                 return change;
             }
-            
+
             // Проверяем каждый символ
             String upper = text.toUpperCase();
             StringBuilder filtered = new StringBuilder();
-            
+
             for (char c : upper.toCharArray()) {
                 if (ALLOWED_LETTERS.indexOf(c) >= 0 || Character.isDigit(c)) {
                     filtered.append(c);
                 }
             }
-            
-            // Если ничего не прошло фильтра, отклоняем
+
+            // Если ничего не прошло фильтр, отклоняем
             if (filtered.length() == 0) {
                 return null;
             }
-            
+
             // Ограничиваем длину (максимум 9 символов)
             String result = filtered.toString();
             if (result.length() > 9) {
                 result = result.substring(0, 9);
             }
-            
+
             change.setText(result);
             return change;
         });
-        
+
         carNumberField.setTextFormatter(formatter);
     }
 
@@ -119,20 +126,20 @@ public class Validators {
     public static void setupNameField(TextField nameField) {
         TextFormatter<String> formatter = new TextFormatter<>(change -> {
             String text = change.getText();
-            
+
             // Разрешаем удаление
             if (text.isEmpty()) {
                 return change;
             }
-            
+
             // Разрешаем только кириллические символы
-            if (text.matches("^[\\u0400-\\u04FF]+$")) {
+            if (CYRILLIC_PATTERN.matcher(text).matches()) {
                 return change;
             }
-            
+
             return null; // Отклоняем изменение
         });
-        
+
         nameField.setTextFormatter(formatter);
     }
 
@@ -142,41 +149,21 @@ public class Validators {
     public static void setupLastNameField(TextField lastNameField) {
         TextFormatter<String> formatter = new TextFormatter<>(change -> {
             String text = change.getText();
-            
+
             // Разрешаем удаление
             if (text.isEmpty()) {
                 return change;
             }
-            
+
             // Разрешаем только кириллические символы
-            if (text.matches("^[\\u0400-\\u04FF]+$")) {
+            if (CYRILLIC_PATTERN.matcher(text).matches()) {
                 return change;
             }
-            
+
             return null; // Отклоняем изменение
         });
-        
+
         lastNameField.setTextFormatter(formatter);
-    }
-
-    /**
-     * Проверка формата госномера
-     */
-    public static boolean isValidCarNumber(String number) {
-        if (number == null || number.isEmpty()) return false;
-
-        // Паттерн: буква + 3 цифры + 2 буквы + 2-3 цифры
-        String pattern = "^[" + ALLOWED_LETTERS + "]\\d{3}[" + ALLOWED_LETTERS + "]{2}\\d{2,3}$";
-        return number.matches(pattern);
-    }
-
-    /**
-     * Проверка формата телефона
-     */
-    public static boolean isValidPhone(String phone) {
-        if (phone == null || !phone.startsWith("+7")) return false;
-        String digits = phone.substring(2);
-        return digits.length() == 10 && digits.matches("\\d+");
     }
 
     /**
@@ -201,26 +188,26 @@ public class Validators {
         if (phone == null || phone.isEmpty()) {
             return "";
         }
-        
+
         // Извлекаем только цифры
         String digits = phone.replaceAll("[^0-9]", "");
-        
+
         // Если начинается с 8, заменяем на 7
         if (digits.startsWith("8") && digits.length() == 11) {
             digits = "7" + digits.substring(1);
         }
-        
+
         // Проверяем что это российский номер
         if (!digits.startsWith("7") || digits.length() < 11) {
             return phone; // Возвращаем как есть если не совпадает формат
         }
-        
+
         // Форматируем: +7 (XXX) XXX-XX-XX
-        String result = "+7 (" + digits.substring(1, 4) + ") " 
-                      + digits.substring(4, 7) + "-" 
-                      + digits.substring(7, 9) + "-" 
+        String result = "+7 (" + digits.substring(1, 4) + ") "
+                      + digits.substring(4, 7) + "-"
+                      + digits.substring(7, 9) + "-"
                       + digits.substring(9, 11);
-        
+
         return result;
     }
 

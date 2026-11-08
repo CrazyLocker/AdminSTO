@@ -68,28 +68,28 @@ class EditClientDialogTest {
     @Order(5)
     void testValidationInvalidPhone() {
         String invalidPhone = "89001234567";
-        assertThat(!com.autoservice.Validators.isValidPhone(invalidPhone)).isTrue();
+        assertThat(!com.autoservice.utils.ValidationUtils.isValidPhone(invalidPhone)).isTrue();
     }
 
     @Test
     @Order(6)
     void testValidationValidPhone() {
         String validPhone = "+79001234567";
-        assertThat(com.autoservice.Validators.isValidPhone(validPhone)).isTrue();
+        assertThat(com.autoservice.utils.ValidationUtils.isValidPhone(validPhone)).isTrue();
     }
 
     @Test
     @Order(7)
     void testValidationInvalidCarNumber() {
         String invalidCarNumber = "I123ВС163";
-        assertThat(!com.autoservice.Validators.isValidCarNumber(invalidCarNumber)).isTrue();
+        assertThat(!com.autoservice.utils.ValidationUtils.isValidCarNumber(invalidCarNumber)).isTrue();
     }
 
     @Test
     @Order(8)
     void testValidationValidCarNumber() {
         String validCarNumber = "А123ВС163";
-        assertThat(com.autoservice.Validators.isValidCarNumber(validCarNumber)).isTrue();
+        assertThat(com.autoservice.utils.ValidationUtils.isValidCarNumber(validCarNumber)).isTrue();
     }
 
     @Test
@@ -97,7 +97,7 @@ class EditClientDialogTest {
     void testPhoneNormalization() {
         String inputPhone = "+7 (900) 123-45-67";
         String expected = "+79001234567";
-        String result = com.autoservice.Validators.cleanPhone(inputPhone);
+        String result = com.autoservice.utils.Formatters.cleanPhone(inputPhone);
         
         assertThat(result).isEqualTo(expected);
     }
@@ -107,7 +107,7 @@ class EditClientDialogTest {
     void testCarNumberNormalization() {
         String inputCarNumber = "а123вс163";
         String expected = "А123ВС163";
-        String result = com.autoservice.Validators.normalizeCarNumber(inputCarNumber);
+        String result = com.autoservice.utils.Formatters.normalizeCarNumber(inputCarNumber);
         
         assertThat(result).isEqualTo(expected);
     }

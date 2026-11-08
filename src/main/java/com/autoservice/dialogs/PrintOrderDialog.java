@@ -1,6 +1,7 @@
 package com.autoservice.dialogs;
 
 import com.autoservice.*;
+import com.autoservice.utils.Formatters;
 import com.itextpdf.io.font.PdfEncodings;
 import com.itextpdf.io.font.constants.StandardFonts;
 import com.itextpdf.kernel.font.PdfFont;
@@ -190,7 +191,7 @@ public class PrintOrderDialog {
             if (clientFullName != null && !clientFullName.isEmpty()) {
                 fullName = clientFullName;
             }
-            phone = Validators.formatPhoneForDisplay(client.getPhone());
+            phone = Formatters.formatPhoneForDisplay(client.getPhone());
         }
         Paragraph clientInfo = new Paragraph()
                 .add(new Text(fullName + "\n").setFont(regularFont).setFontSize(7))
