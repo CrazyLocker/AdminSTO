@@ -113,7 +113,7 @@ public class SparePartPanel {
         table.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
                 SparePart selected = table.getSelectionModel().getSelectedItem();
-                if (selected != null) editSparePartDialog(selected);
+                if (selected != null) showSparePartDialog(selected);
             }
         });
 
@@ -121,11 +121,11 @@ public class SparePartPanel {
         table.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> {
             if (e.isControlDown() && e.getCode() == KeyCode.N) {
                 e.consume();
-                showAddSparePartDialog();
+                showSparePartDialog(null);
             } else if (e.isControlDown() && e.getCode() == KeyCode.S) {
                 e.consume();
                 SparePart selected = table.getSelectionModel().getSelectedItem();
-                if (selected != null) editSparePartDialog(selected);
+                if (selected != null) showSparePartDialog(selected);
             } else if (e.getCode() == javafx.scene.input.KeyCode.DELETE) {
                 e.consume();
                 deleteBtn.fire();
@@ -170,7 +170,7 @@ public class SparePartPanel {
 
         Button addBtn = new Button("Добавить запчасть");
         addBtn.getStyleClass().add("add-button");
-        addBtn.setOnAction(e -> showAddSparePartDialog());
+        addBtn.setOnAction(e -> showSparePartDialog(null));
 
         deleteBtn = new Button("Удалить выбранные");
         deleteBtn.getStyleClass().add("delete-button");
@@ -242,21 +242,28 @@ public class SparePartPanel {
         }
     }
 
-    private static void showAddSparePartDialog() {
+    /**
+     * Диалог создания или редактирования запчасти.
+     * @param initial {@code null} для создания; существующая запчасть для редактирования
+     */
+    private static void showSparePartDialog(SparePart initial) {
+        boolean isEdit = initial != null;
+        String windowStateKey = isEdit ? "editSparePartDialog" : "addSparePartDialog";
+
         Stage stage = new Stage();
-        stage.setTitle("Новая запчасть");
+        stage.setTitle(isEdit ? "Редактировать запчасть" : "Новая запчасть");
         stage.setMinWidth(500);
-        stage.setMinHeight(450);
+        stage.setMinHeight(isEdit ? 500 : 450);
         stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
-        
+
         // Восстановление состояния диалога
-        WindowStateManager.getInstance().restoreWindowState("addSparePartDialog", stage);
+        WindowStateManager.getInstance().restoreWindowState(windowStateKey, stage);
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
         root.getStyleClass().add("dialog-root");
 
-        Label titleLabel = new Label("Новая запчасть");
+        Label titleLabel = new Label(stage.getTitle());
         titleLabel.getStyleClass().add("dialog-title");
 
         GridPane grid = new GridPane();
@@ -264,234 +271,71 @@ public class SparePartPanel {
         grid.setVgap(12);
         grid.setPadding(new Insets(10));
 
-        TextField nameField = new TextField();
-        nameField.setPromptText("Название");
+        TextField nameField = new TextField(isEdit ? initial.getName() : "");
         nameField.setPrefWidth(250);
+        if (!isEdit) {
+            nameField.setPromptText("Название");
+        }
 
-        TextField partNumberField = new TextField();
-        partNumberField.setPromptText("Артикул");
+        TextField partNumberField = new TextField(isEdit ? initial.getPartNumber() : "");
         partNumberField.setPrefWidth(200);
+        if (!isEdit) {
+            partNumberField.setPromptText("Артикул");
+        }
 
-        TextField manufacturerField = new TextField();
-        manufacturerField.setPromptText("Производитель");
+        TextField manufacturerField = new TextField(isEdit ? initial.getManufacturer() : "");
         manufacturerField.setPrefWidth(200);
+        if (!isEdit) {
+            manufacturerField.setPromptText("Производитель");
+        }
 
-        TextField modelsField = new TextField();
-        modelsField.setPromptText("Совместимые модели");
+        TextField modelsField = new TextField(isEdit ? initial.getCompatibleModels() : "");
         modelsField.setPrefWidth(250);
+        if (!isEdit) {
+            modelsField.setPromptText("Совместимые модели");
+        }
 
-        TextField retailPriceField = new TextField();
-        retailPriceField.setPromptText("Розн. цена");
+        TextField retailPriceField = new TextField(isEdit ? String.valueOf(initial.getRetailPrice()) : "");
         retailPriceField.setPrefWidth(120);
+        if (!isEdit) {
+            retailPriceField.setPromptText("Розн. цена");
+        }
         TooltipHelper.setToolTip(retailPriceField, "Обязательное поле, должно быть положительным числом");
 
-        TextField purchasePriceField = new TextField();
-        purchasePriceField.setPromptText("Закуп. цена");
+        TextField purchasePriceField = new TextField(isEdit ? String.valueOf(initial.getPurchasePrice()) : "");
         purchasePriceField.setPrefWidth(120);
+        if (!isEdit) {
+            purchasePriceField.setPromptText("Закуп. цена");
+        }
         TooltipHelper.setToolTip(purchasePriceField, "Обязательное поле, должно быть положительным числом");
 
-        TextField stockField = new TextField("0");
-        stockField.setPromptText("Остаток");
+        TextField stockField = new TextField(isEdit ? String.valueOf(initial.getStock()) : "0");
         stockField.setPrefWidth(100);
+        if (!isEdit) {
+            stockField.setPromptText("Остаток");
+        }
         TooltipHelper.setToolTip(stockField, "Обязательное поле, должно быть неотрицательным числом");
 
-        TextField minStockField = new TextField("0");
-        minStockField.setPromptText("Мин. остаток");
+        TextField minStockField = new TextField(isEdit ? String.valueOf(initial.getMinStock()) : "0");
         minStockField.setPrefWidth(100);
+        if (!isEdit) {
+            minStockField.setPromptText("Мин. остаток");
+        }
         TooltipHelper.setToolTip(minStockField, "Обязательное поле, должно быть неотрицательным числом");
 
-        TextField noteField = new TextField();
-        noteField.setPromptText("Примечание");
+        TextField noteField = new TextField(isEdit ? initial.getNote() : "");
         noteField.setPrefWidth(250);
+        if (!isEdit) {
+            noteField.setPromptText("Примечание");
+        }
         TooltipHelper.setToolTip(noteField, "Общее примечание для запчасти");
 
         ComboBox<String> unitTypeCombo = new ComboBox<>(FXCollections.observableArrayList("шт", "л", "компл"));
-        unitTypeCombo.setValue("шт");
+        unitTypeCombo.setValue(isEdit ? initial.getUnitType() : "шт");
         unitTypeCombo.setPrefWidth(80);
         TooltipHelper.setToolTip(unitTypeCombo, "Выберите единицу измерения");
 
-        grid.add(new Label("Название:"), 0, 0);
-        grid.add(nameField, 1, 0);
-        grid.add(new Label("Артикул:"), 0, 1);
-        grid.add(partNumberField, 1, 1);
-        grid.add(new Label("Производитель:"), 0, 2);
-        grid.add(manufacturerField, 1, 2);
-        grid.add(new Label("Модели:"), 0, 3);
-        grid.add(modelsField, 1, 3);
-        grid.add(new Label("Розн. цена:"), 0, 4);
-        grid.add(retailPriceField, 1, 4);
-        grid.add(new Label("Закуп. цена:"), 0, 5);
-        grid.add(purchasePriceField, 1, 5);
-        grid.add(new Label("Остаток:"), 0, 6);
-        grid.add(stockField, 1, 6);
-        grid.add(new Label("Мин. остаток:"), 0, 7);
-        grid.add(minStockField, 1, 7);
-        grid.add(new Label("Примечание:"), 0, 8);
-        grid.add(noteField, 1, 8);
-        grid.add(new Label("Ед. изм.:"), 0, 9);
-        grid.add(unitTypeCombo, 1, 9);
-
-        Button saveBtn = new Button("Сохранить");
-        saveBtn.getStyleClass().add("save-button");
-
-        Button cancelBtn = new Button("Отмена");
-        cancelBtn.getStyleClass().add("cancel-button");
-
-        HBox btnBox = new HBox(15, saveBtn, cancelBtn);
-        btnBox.setAlignment(Pos.CENTER);
-        root.getChildren().addAll(titleLabel, grid, btnBox);
-
-        Scene scene = new Scene(root);
-        stage.setScene(scene);
-
-        saveBtn.setOnAction(e -> {
-            ValidationErrorIndicator.clearAllErrors(grid);
-            
-            boolean isValid = true;
-            String name = nameField.getText().trim();
-            String retailPriceText = retailPriceField.getText().trim();
-            String purchasePriceText = purchasePriceField.getText().trim();
-            String stockText = stockField.getText().trim();
-            String minStockText = minStockField.getText().trim();
-            String note = noteField.getText().trim();
-            String unitType = unitTypeCombo.getValue();
-            
-            if (!ValidationUtils.isNotBlank(name, "Название")) {
-                ValidationErrorIndicator.showError(nameField, "Название обязательно для заполнения");
-                isValid = false;
-            }
-            
-            Double retailPrice = null;
-            try {
-                retailPrice = retailPriceText.isEmpty() ? null : Double.parseDouble(retailPriceText);
-            } catch (NumberFormatException ex) {
-                retailPrice = null;
-            }
-            if (retailPrice == null || !ValidationUtils.isNonNegativeDouble(retailPrice, "Розн. цена")) {
-                ValidationErrorIndicator.showError(retailPriceField, "Розничная цена должна быть положительным числом");
-                isValid = false;
-            }
-            
-            Double purchasePrice = null;
-            try {
-                purchasePrice = purchasePriceText.isEmpty() ? null : Double.parseDouble(purchasePriceText);
-            } catch (NumberFormatException ex) {
-                purchasePrice = null;
-            }
-            if (purchasePrice == null || !ValidationUtils.isNonNegativeDouble(purchasePrice, "Закуп. цена")) {
-                ValidationErrorIndicator.showError(purchasePriceField, "Закупочная цена должна быть положительным числом");
-                isValid = false;
-            }
-            
-            Double stock = null;
-            try {
-                stock = stockText.isEmpty() ? null : Double.parseDouble(stockText);
-            } catch (NumberFormatException ex) {
-                stock = null;
-            }
-            if (stock == null || !ValidationUtils.isNonNegativeDouble(stock, "Остаток")) {
-                ValidationErrorIndicator.showError(stockField, "Остаток должен быть неотрицательным числом");
-                isValid = false;
-            }
-            
-            Double minStock = null;
-            try {
-                minStock = minStockText.isEmpty() ? null : Double.parseDouble(minStockText);
-            } catch (NumberFormatException ex) {
-                minStock = null;
-            }
-            if (minStock == null || !ValidationUtils.isNonNegativeDouble(minStock, "Мин. остаток")) {
-                ValidationErrorIndicator.showError(minStockField, "Минимальный остаток должен быть неотрицательным числом");
-                isValid = false;
-            }
-            
-            if (!ValidationUtils.isValidEnum(unitType, List.of("шт", "л", "компл"), "Ед. изм.")) {
-                ValidationErrorIndicator.showError(unitTypeCombo, "Выберите единицу измерения");
-                isValid = false;
-            }
-            
-            if (!isValid) {
-                return;
-            }
-
-            SparePart part = new SparePart(
-                    -1, 0, name, partNumberField.getText().trim(),
-                    manufacturerField.getText().trim(), modelsField.getText().trim(), note,
-                    purchasePrice, retailPrice, stock, minStock,
-                    unitType, ""
-            );
-            SparePartPanelController.addSparePart(part);
-            stage.close();
-        });
-        cancelBtn.setOnAction(e -> stage.close());
-        
-        stage.setOnHiding(e -> {
-            WindowStateManager.getInstance().saveWindowState("addSparePartDialog", stage);
-        });
-
-        stage.showAndWait();
-    }
-
-    private static void editSparePartDialog(SparePart part) {
-        Stage stage = new Stage();
-        stage.setTitle("Редактировать запчасть");
-        stage.setMinWidth(500);
-        stage.setMinHeight(500);
-        stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
-        
-        // Восстановление состояния диалога
-        WindowStateManager.getInstance().restoreWindowState("editSparePartDialog", stage);
-
-        VBox root = new VBox(15);
-        root.setPadding(new Insets(20));
-        root.getStyleClass().add("dialog-root");
-
-        Label titleLabel = new Label("Редактировать запчасть");
-        titleLabel.getStyleClass().add("dialog-title");
-
-        GridPane grid = new GridPane();
-        grid.setHgap(15);
-        grid.setVgap(12);
-        grid.setPadding(new Insets(10));
-
-        TextField nameField = new TextField(part.getName());
-        nameField.setPrefWidth(250);
-
-        TextField partNumberField = new TextField(part.getPartNumber());
-        partNumberField.setPrefWidth(200);
-
-        TextField manufacturerField = new TextField(part.getManufacturer());
-        manufacturerField.setPrefWidth(200);
-
-        TextField modelsField = new TextField(part.getCompatibleModels());
-        modelsField.setPrefWidth(250);
-
-        TextField retailPriceField = new TextField(String.valueOf(part.getRetailPrice()));
-        retailPriceField.setPrefWidth(120);
-        TooltipHelper.setToolTip(retailPriceField, "Обязательное поле, должно быть положительным числом");
-
-        TextField purchasePriceField = new TextField(String.valueOf(part.getPurchasePrice()));
-        purchasePriceField.setPrefWidth(120);
-        TooltipHelper.setToolTip(purchasePriceField, "Обязательное поле, должно быть положительным числом");
-
-        TextField stockField = new TextField(String.valueOf(part.getStock()));
-        stockField.setPrefWidth(100);
-        TooltipHelper.setToolTip(stockField, "Обязательное поле, должно быть неотрицательным числом");
-
-        TextField minStockField = new TextField(String.valueOf(part.getMinStock()));
-        minStockField.setPrefWidth(100);
-        TooltipHelper.setToolTip(minStockField, "Обязательное поле, должно быть неотрицательным числом");
-
-        TextField noteField = new TextField(part.getNote());
-        noteField.setPrefWidth(250);
-        TooltipHelper.setToolTip(noteField, "Общее примечание для запчасти");
-
-        ComboBox<String> unitTypeCombo = new ComboBox<>(FXCollections.observableArrayList("шт", "л", "компл"));
-        unitTypeCombo.setValue(part.getUnitType());
-        unitTypeCombo.setPrefWidth(80);
-        TooltipHelper.setToolTip(unitTypeCombo, "Выберите единицу измерения");
-
-        TextField locationField = new TextField(part.getLocation());
+        TextField locationField = new TextField(isEdit ? initial.getLocation() : "");
         locationField.setPrefWidth(150);
 
         grid.add(new Label("Название:"), 0, 0); grid.add(nameField, 1, 0);
@@ -504,7 +348,9 @@ public class SparePartPanel {
         grid.add(new Label("Мин. остаток:"), 0, 7); grid.add(minStockField, 1, 7);
         grid.add(new Label("Примечание:"), 0, 8); grid.add(noteField, 1, 8);
         grid.add(new Label("Ед. изм.:"), 0, 9); grid.add(unitTypeCombo, 1, 9);
-        grid.add(new Label("Место:"), 0, 10); grid.add(locationField, 1, 10);
+        if (isEdit) {
+            grid.add(new Label("Место:"), 0, 10); grid.add(locationField, 1, 10);
+        }
 
         Button saveBtn = new Button("Сохранить");
         saveBtn.getStyleClass().add("save-button");
@@ -521,15 +367,21 @@ public class SparePartPanel {
 
         saveBtn.setOnAction(e -> {
             ValidationErrorIndicator.clearAllErrors(grid);
-            
+
             boolean isValid = true;
+            String name = nameField.getText().trim();
             String retailPriceText = retailPriceField.getText().trim();
             String purchasePriceText = purchasePriceField.getText().trim();
             String stockText = stockField.getText().trim();
             String minStockText = minStockField.getText().trim();
             String note = noteField.getText().trim();
             String unitType = unitTypeCombo.getValue();
-            
+
+            if (!isEdit && !ValidationUtils.isNotBlank(name, "Название")) {
+                ValidationErrorIndicator.showError(nameField, "Название обязательно для заполнения");
+                isValid = false;
+            }
+
             Double retailPrice = null;
             try {
                 retailPrice = retailPriceText.isEmpty() ? null : Double.parseDouble(retailPriceText);
@@ -540,7 +392,7 @@ public class SparePartPanel {
                 ValidationErrorIndicator.showError(retailPriceField, "Розничная цена должна быть положительным числом");
                 isValid = false;
             }
-            
+
             Double purchasePrice = null;
             try {
                 purchasePrice = purchasePriceText.isEmpty() ? null : Double.parseDouble(purchasePriceText);
@@ -551,7 +403,7 @@ public class SparePartPanel {
                 ValidationErrorIndicator.showError(purchasePriceField, "Закупочная цена должна быть положительным числом");
                 isValid = false;
             }
-            
+
             Double stock = null;
             try {
                 stock = stockText.isEmpty() ? null : Double.parseDouble(stockText);
@@ -562,7 +414,7 @@ public class SparePartPanel {
                 ValidationErrorIndicator.showError(stockField, "Остаток должен быть неотрицательным числом");
                 isValid = false;
             }
-            
+
             Double minStock = null;
             try {
                 minStock = minStockText.isEmpty() ? null : Double.parseDouble(minStockText);
@@ -573,35 +425,44 @@ public class SparePartPanel {
                 ValidationErrorIndicator.showError(minStockField, "Минимальный остаток должен быть неотрицательным числом");
                 isValid = false;
             }
-            
+
             if (!ValidationUtils.isValidEnum(unitType, List.of("шт", "л", "компл"), "Ед. изм.")) {
                 ValidationErrorIndicator.showError(unitTypeCombo, "Выберите единицу измерения");
                 isValid = false;
             }
-            
+
             if (!isValid) {
                 return;
             }
 
-            part.setName(nameField.getText().trim());
-            part.setPartNumber(partNumberField.getText().trim());
-            part.setManufacturer(manufacturerField.getText().trim());
-            part.setCompatibleModels(modelsField.getText().trim());
-            part.setNote(note);
-            part.setRetailPrice(retailPrice);
-            part.setPurchasePrice(purchasePrice);
-            part.setStock(stock);
-            part.setMinStock(minStock);
-            part.setUnitType(unitType);
-            part.setLocation(locationField.getText().trim());
-            SparePartPanelController.updateSparePart(part);
+            if (isEdit) {
+                initial.setName(name);
+                initial.setPartNumber(partNumberField.getText().trim());
+                initial.setManufacturer(manufacturerField.getText().trim());
+                initial.setCompatibleModels(modelsField.getText().trim());
+                initial.setNote(note);
+                initial.setRetailPrice(retailPrice);
+                initial.setPurchasePrice(purchasePrice);
+                initial.setStock(stock);
+                initial.setMinStock(minStock);
+                initial.setUnitType(unitType);
+                initial.setLocation(locationField.getText().trim());
+                SparePartPanelController.updateSparePart(initial);
+            } else {
+                SparePart part = new SparePart(
+                        -1, 0, name, partNumberField.getText().trim(),
+                        manufacturerField.getText().trim(), modelsField.getText().trim(), note,
+                        purchasePrice, retailPrice, stock, minStock,
+                        unitType, ""
+                );
+                SparePartPanelController.addSparePart(part);
+            }
             stage.close();
         });
-
         cancelBtn.setOnAction(e -> stage.close());
-        
+
         stage.setOnHiding(e -> {
-            WindowStateManager.getInstance().saveWindowState("editSparePartDialog", stage);
+            WindowStateManager.getInstance().saveWindowState(windowStateKey, stage);
         });
 
         stage.showAndWait();
