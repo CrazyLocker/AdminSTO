@@ -31,7 +31,7 @@ public class App extends Application {
         logger.info("Запуск приложения Администратор СТО");
         
         try {
-            Database.init();
+            DatabaseFactory.init();
             logger.info("База данных инициализирована");
             DataStore.load();
             logger.info("Данные загружены");
@@ -103,7 +103,7 @@ public class App extends Application {
             TableStateManager.saveTableState(SettingsView.getToPartsTable(), "toPartsTable");
             
             DataStore.save();
-            Database.close();
+            DatabaseFactory.close();
             ScheduleService.shutdown();
             logger.info("Приложение закрыто");
             Platform.exit();

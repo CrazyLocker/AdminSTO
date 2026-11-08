@@ -46,7 +46,7 @@ public class ServiceSparePartsRowTest extends BaseTest {
         Service service = new Service();
         service.setName("Тестовая услуга");
         service.setPrice(1000);
-        Database.addService(service);
+        DatabaseFactory.getDatabase().addService(service);
         assertNotNull(service.getId(), "ID услуги должен быть сгенерирован");
 
         // Создаем список связей
@@ -80,7 +80,7 @@ public class ServiceSparePartsRowTest extends BaseTest {
         list.addItem(item3);
 
         // Сохраняем список - это вызовет last_insert_rowid() для SQLite
-        Database.addServiceSparePartsList(list);
+        DatabaseFactory.getDatabase().addServiceSparePartsList(list);
 
         // Проверяем, что список был сохранен с ID (SQLite совместимость)
         assertNotNull(list.getId(), "ID списка должен быть сгенерирован через last_insert_rowid()");
@@ -92,12 +92,12 @@ public class ServiceSparePartsRowTest extends BaseTest {
         }
 
         // Проверяем, что данные сохранены в БД
-        List<ServiceSparePartsList> loadedLists = Database.getServiceSparePartsListsByServiceId(service.getId());
+        List<ServiceSparePartsList> loadedLists = DatabaseFactory.getDatabase().getServiceSparePartsListsByServiceId(service.getId());
         assertEquals(1, loadedLists.size(), "Должен быть сохранен 1 список");
         assertEquals(service.getId(), loadedLists.get(0).getServiceId(), "ID услуги должен совпадать");
 
         // Проверяем элементы
-        List<ServiceSparePartsListItem> loadedItems = Database.getServiceSparePartsListItems(list.getId());
+        List<ServiceSparePartsListItem> loadedItems = DatabaseFactory.getDatabase().getServiceSparePartsListItems(list.getId());
         assertEquals(3, loadedItems.size(), "Должно быть 3 элемента");
 
         // Проверяем содержимое элементов
@@ -163,20 +163,20 @@ public class ServiceSparePartsRowTest extends BaseTest {
         Service service1 = new Service();
         service1.setName("Услуга 1");
         service1.setPrice(1000);
-        Database.addService(service1);
+        DatabaseFactory.getDatabase().addService(service1);
 
         Service service2 = new Service();
         service2.setName("Услуга 2");
         service2.setPrice(2000);
-        Database.addService(service2);
+        DatabaseFactory.getDatabase().addService(service2);
 
         // Создаем списки для каждой услуги
         ServiceSparePartsList list1 = createServiceSparePartsList(service1.getId(), "Запчасть 1", "Запчасть 2");
         ServiceSparePartsList list2 = createServiceSparePartsList(service2.getId(), "Запчасть 3");
 
         // Проверяем, что оба списка сохранены
-        List<ServiceSparePartsList> lists1 = Database.getServiceSparePartsListsByServiceId(service1.getId());
-        List<ServiceSparePartsList> lists2 = Database.getServiceSparePartsListsByServiceId(service2.getId());
+        List<ServiceSparePartsList> lists1 = DatabaseFactory.getDatabase().getServiceSparePartsListsByServiceId(service1.getId());
+        List<ServiceSparePartsList> lists2 = DatabaseFactory.getDatabase().getServiceSparePartsListsByServiceId(service2.getId());
 
         assertEquals(1, lists1.size(), "Услуга 1 должна иметь 1 список");
         assertEquals(1, lists2.size(), "Услуга 2 должна иметь 1 список");
@@ -189,7 +189,7 @@ public class ServiceSparePartsRowTest extends BaseTest {
         Service service = new Service();
         service.setName("Совмещенная услуга");
         service.setPrice(3000);
-        Database.addService(service);
+        DatabaseFactory.getDatabase().addService(service);
 
         // Создаем две запчасти
         SparePart part1 = createSparePart("Запчасть А");
@@ -201,14 +201,14 @@ public class ServiceSparePartsRowTest extends BaseTest {
         relation1.setSparePartId(part1.getId());
         relation1.setQuantity(2);
         relation1.setUnitType("шт");
-        Database.addServiceSparePart(relation1);
+        DatabaseFactory.getDatabase().addServiceSparePart(relation1);
 
         ServiceSparePart relation2 = new ServiceSparePart();
         relation2.setServiceId(service.getId());
         relation2.setSparePartId(part2.getId());
         relation2.setQuantity(1);
         relation2.setUnitType("шт");
-        Database.addServiceSparePart(relation2);
+        DatabaseFactory.getDatabase().addServiceSparePart(relation2);
 
         // Регрессия: раньше ID получался через SQLite-only last_insert_rowid(),
         // и в H2 обе связи оставались без идентификатора.
@@ -239,7 +239,7 @@ public class ServiceSparePartsRowTest extends BaseTest {
         part.setRetailPrice(100);
         part.setStock(10);
         part.setUnitType("шт");
-        Database.addSparePart(part);
+        DatabaseFactory.getDatabase().addSparePart(part);
         return part;
     }
 
@@ -261,7 +261,7 @@ public class ServiceSparePartsRowTest extends BaseTest {
             list.addItem(item);
         }
 
-        Database.addServiceSparePartsList(list);
+        DatabaseFactory.getDatabase().addServiceSparePartsList(list);
         return list;
     }
 }

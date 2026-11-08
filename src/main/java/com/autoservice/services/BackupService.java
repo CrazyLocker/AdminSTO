@@ -1,7 +1,7 @@
 package com.autoservice.services;
 
 import com.autoservice.DataStore;
-import com.autoservice.Database;
+import com.autoservice.DatabaseFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -159,7 +159,7 @@ public class BackupService {
      *     <li>создаётся резервная копия текущей БД для отката;</li>
      *     <li>БД распаковывается во временный файл рядом с рабочей БД;</li>
      *     <li>пул соединений закрывается, файл БД заменяется атомарно;</li>
-     *     <li>БД переинициализируется ({@link Database#init()}), данные
+     *     <li>БД переинициализируется ({@link DatabaseFactory#init()}), данные
      *         перезагружаются ({@link DataStore#load()});</li>
      *     <li>при любой ошибке после начала замены выполняется откат из
      *         резервной копии, созданной в начале метода.</li>
@@ -216,7 +216,7 @@ public class BackupService {
 
             // Шаг 4. Закрыть пул соединений и атомарно заменить файл БД.
             replacementStarted = true;
-            Database.close();
+            DatabaseFactory.close();
             moveAtomically(stagedDatabase, currentDb.toAbsolutePath().normalize());
             stagedDatabase = null;
 
@@ -224,7 +224,7 @@ public class BackupService {
             restoreConfigEntries(backupZip);
 
             // Шаг 6. Переинициализировать БД и перезагрузить данные.
-            Database.init();
+            DatabaseFactory.init();
             DataStore.load();
 
             logger.info("Восстановление из бэкапа успешно завершено: {}", backupZip);
@@ -473,7 +473,7 @@ public class BackupService {
      */
     private static void rollbackRestore(Path currentDb, Path rollbackBackup) {
         try {
-            Database.close();
+            DatabaseFactory.close();
         } catch (RuntimeException e) {
             logger.warn("Не удалось закрыть пул соединений перед откатом", e);
         }
@@ -490,7 +490,7 @@ public class BackupService {
         }
 
         try {
-            Database.init();
+            DatabaseFactory.init();
             DataStore.load();
         } catch (RuntimeException e) {
             restored = false;

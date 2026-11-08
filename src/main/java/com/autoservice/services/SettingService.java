@@ -20,7 +20,7 @@ public class SettingService {
 
     /**
      * Получить все настройки из базы данных и кэшировать их.
-     * Загружает напрямую из Database, чтобы избежать рассинхронизации с DataStore.
+     * Загружает напрямую из DatabaseFactory.getDatabase(), чтобы избежать рассинхронизации с DataStore.
      */
     public static void loadSettings() {
         settingsCache = new HashMap<>();

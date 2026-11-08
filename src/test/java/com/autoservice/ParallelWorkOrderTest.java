@@ -309,7 +309,7 @@ class ParallelWorkOrderTest extends BaseTest {
 
     @AfterEach
     void verifyDataIntegrity() {
-        // Синхронизируем кэш: тесты работают напрямую через Database.
+        // Синхронизируем кэш: тесты работают напрямую через DatabaseFactory.getDatabase().
         DataStore.load();
 
         // Проверка целостности данных после каждого теста

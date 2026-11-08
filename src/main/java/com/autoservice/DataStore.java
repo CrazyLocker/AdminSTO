@@ -83,7 +83,7 @@ public class DataStore {
 
             for (WorkOrder order : orders) {
                 if (order.isDirty()) {
-                    Database.updateOrder(order);
+                    DatabaseFactory.getDatabase().updateOrder(order);
                     order.setDirty(false);
                     saved++;
                 }
@@ -91,7 +91,7 @@ public class DataStore {
 
             for (Client client : clients) {
                 if (client.isDirty()) {
-                    Database.updateClient(client);
+                    DatabaseFactory.getDatabase().updateClient(client);
                     client.setDirty(false);
                     saved++;
                 }
@@ -99,7 +99,7 @@ public class DataStore {
 
             for (Appointment a : appointments) {
                 if (a.isDirty()) {
-                    Database.updateAppointment(a);
+                    DatabaseFactory.getDatabase().updateAppointment(a);
                     a.setDirty(false);
                     saved++;
                 }
@@ -107,7 +107,7 @@ public class DataStore {
 
             for (SparePart sp : spareParts) {
                 if (sp.isDirty()) {
-                    Database.updateSparePartStock(sp, sp.getStock());
+                    DatabaseFactory.getDatabase().updateSparePartStock(sp, sp.getStock());
                     sp.setDirty(false);
                     saved++;
                 }
@@ -115,7 +115,7 @@ public class DataStore {
 
             for (ServiceSparePart ssp : serviceSpareParts) {
                 if (ssp.isDirty()) {
-                    Database.addServiceSparePart(ssp);
+                    DatabaseFactory.getDatabase().addServiceSparePart(ssp);
                     ssp.setDirty(false);
                     saved++;
                 }
@@ -123,7 +123,7 @@ public class DataStore {
 
             for (ServiceSparePartsList sspList : serviceSparePartsLists) {
                 if (sspList.isDirty()) {
-                    Database.addServiceSparePartsList(sspList);
+                    DatabaseFactory.getDatabase().addServiceSparePartsList(sspList);
                     // Элементы сохраняются автоматически внутри addServiceSparePartsList
                     sspList.setDirty(false);
                     saved++;
@@ -132,7 +132,7 @@ public class DataStore {
 
             for (ToPart tp : toParts) {
                 if (tp.isDirty()) {
-                    Database.updateToPart(tp);
+                    DatabaseFactory.getDatabase().updateToPart(tp);
                     tp.setDirty(false);
                     saved++;
                 }
@@ -140,7 +140,7 @@ public class DataStore {
 
             for (Setting setting : settings) {
                 if (setting.isDirty()) {
-                    Database.updateSetting(setting);
+                    DatabaseFactory.getDatabase().updateSetting(setting);
                     setting.markClean();
                     saved++;
                 }
@@ -149,7 +149,7 @@ public class DataStore {
             // Сохраняем serviceParts (связи услуги-запчасти)
             for (ServicePart sp : serviceParts) {
                 if (sp.isDirty()) {
-                    Database.updateServicePart(sp);
+                    DatabaseFactory.getDatabase().updateServicePart(sp);
                     sp.setDirty(false);
                     saved++;
                 }
@@ -515,7 +515,7 @@ public class DataStore {
      * @return список записей
      */
     public static List<Appointment> getAppointmentsByDate(String date) {
-        return Database.getAppointmentsByDate(date);
+        return DatabaseFactory.getDatabase().getAppointmentsByDate(date);
     }
 
     /**
@@ -901,7 +901,7 @@ public class DataStore {
                 setting.getId(), maskSensitive(setting.getKey()), setting.isDirty());
         setting.setDirty(true);
         DatabaseFactory.getDatabase().updateSetting(setting);
-        logger.info("  Database.updateSetting completed");
+        logger.info("  DataStore.updateSetting completed");
         // Обновляем значение в существующем объекте, чтобы избежать создания новых объектов
         // Найдем объект в списке по ID и обновим его значение
         boolean found = false;
