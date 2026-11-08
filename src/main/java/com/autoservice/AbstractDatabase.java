@@ -746,9 +746,22 @@ public abstract class AbstractDatabase implements DatabaseInterface {
      */
     @Override
     public List<WorkOrder> getAllOrders() {
-        Map<String, WorkOrder> orderMap = new LinkedHashMap<>();
+        Map<String, WorkOrder> orders = new LinkedHashMap<>();
+        if (!loadOrders(orders)) {
+            return new ArrayList<>();
+        }
+        loadOrderServices(orders);
+        loadOrderSpareParts(orders);
+        return new ArrayList<>(orders.values());
+    }
 
-        String ordersSql = """
+    /**
+     * Загрузить заказы и их клиентов.
+     * @param orders карта «ID заказа — заказ», которую нужно заполнить
+     * @return {@code true}, если заказы удалось загрузить
+     */
+    private boolean loadOrders(Map<String, WorkOrder> orders) {
+        String sql = """
             SELECT o.id as order_id, o.status, o.total, o.created_date, o.mileage,
                     o.closed_date, o.notes,
                     c.id as client_id, c.name, c.last_name, c.phone, 
@@ -760,62 +773,84 @@ public abstract class AbstractDatabase implements DatabaseInterface {
 
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(ordersSql)) {
+             ResultSet rs = stmt.executeQuery(sql)) {
             // Безопасно: запрос без параметров, Statement используется корректно
-
             while (rs.next()) {
-                Client client = new Client(
-                        rs.getInt("client_id"),
-                        rs.getString("name") != null ? rs.getString("name") : "",
-                        rs.getString("last_name") != null ? rs.getString("last_name") : "",
-                        rs.getString("phone") != null ? rs.getString("phone") : "",
-                        rs.getString("car_model") != null ? rs.getString("car_model") : "",
-                        rs.getString("car_number") != null ? rs.getString("car_number") : "",
-                        rs.getString("last_repair_date") != null ? rs.getString("last_repair_date") : ""
-                );
-
-                WorkOrder order = new WorkOrder(
-                        rs.getString("order_id"),
-                        client,
-                        rs.getString("status"),
-                        rs.getDouble("total"),
-                        rs.getString("created_date")
-                );
-                order.setMileage(rs.getInt("mileage"));
-                order.setClosedDate(rs.getString("closed_date") != null ? rs.getString("closed_date") : "");
-                order.setNotes(rs.getString("notes") != null ? rs.getString("notes") : "");
-                orderMap.put(rs.getString("order_id"), order);
+                orders.put(rs.getString("order_id"), mapOrder(rs));
             }
+            return true;
         } catch (SQLException e) {
             logger.error("Ошибка загрузки заказов", e);
             logger.error("Технические детали: {}", ExceptionHandler.getTechnicalDetails(e));
-            return new ArrayList<>();
+            return false;
         }
+    }
 
-        String servicesSql = "SELECT order_id, service_name, price, service_id FROM order_services";
+    /**
+     * Собрать заказ и его клиента из текущей строки выборки.
+     * @param rs строка результата с колонками заказа и клиента
+     * @return заказ с данными клиента
+     * @throws SQLException при ошибке чтения результата
+     */
+    private WorkOrder mapOrder(ResultSet rs) throws SQLException {
+        Client client = new Client(
+                rs.getInt("client_id"),
+                valueOrDefault(rs.getString("name"), ""),
+                valueOrDefault(rs.getString("last_name"), ""),
+                valueOrDefault(rs.getString("phone"), ""),
+                valueOrDefault(rs.getString("car_model"), ""),
+                valueOrDefault(rs.getString("car_number"), ""),
+                valueOrDefault(rs.getString("last_repair_date"), "")
+        );
+
+        WorkOrder order = new WorkOrder(
+                rs.getString("order_id"),
+                client,
+                rs.getString("status"),
+                rs.getDouble("total"),
+                rs.getString("created_date")
+        );
+        order.setMileage(rs.getInt("mileage"));
+        order.setClosedDate(valueOrDefault(rs.getString("closed_date"), ""));
+        order.setNotes(valueOrDefault(rs.getString("notes"), ""));
+        return order;
+    }
+
+    /**
+     * Дозагрузить услуги в уже собранные заказы.
+     * @param orders карта «ID заказа — заказ»
+     */
+    private void loadOrderServices(Map<String, WorkOrder> orders) {
+        String sql = "SELECT order_id, service_name, price, service_id FROM order_services";
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(servicesSql)) {
+             ResultSet rs = stmt.executeQuery(sql)) {
             // Безопасно: запрос без параметров, Statement используется корректно
             while (rs.next()) {
-                String orderId = rs.getString("order_id");
-                WorkOrder order = orderMap.get(orderId);
+                WorkOrder order = orders.get(rs.getString("order_id"));
                 if (order != null) {
-                    order.addService(rs.getInt("service_id"), rs.getString("service_name"), rs.getDouble("price"));
+                    order.addService(rs.getInt("service_id"),
+                            rs.getString("service_name"), rs.getDouble("price"));
                 }
             }
         } catch (SQLException e) {
             logger.error("Ошибка загрузки услуг заказа", e);
         }
+    }
 
-        String partsSql = "SELECT order_id, part_name, price, quantity, spare_part_id, unit_type, purchase_price FROM order_parts";
+    /**
+     * Дозагрузить запчасти в уже собранные заказы.
+     * @param orders карта «ID заказа — заказ»
+     */
+    private void loadOrderSpareParts(Map<String, WorkOrder> orders) {
+        String sql = "SELECT order_id, part_name, price, quantity, spare_part_id, unit_type, "
+                + "purchase_price FROM order_parts";
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(partsSql)) {
+             ResultSet rs = stmt.executeQuery(sql)) {
             // Безопасно: запрос без параметров, Statement используется корректно
             while (rs.next()) {
-                String orderId = rs.getString("order_id");
-                WorkOrder order = orderMap.get(orderId);
+                WorkOrder order = orders.get(rs.getString("order_id"));
                 if (order != null) {
                     SparePart part = new SparePart(
                             rs.getString("part_name"),
@@ -824,15 +859,23 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                             rs.getInt("quantity")
                     );
                     part.setId(rs.getInt("spare_part_id"));
-                    part.setUnitType(rs.getString("unit_type") != null ? rs.getString("unit_type") : "шт");
+                    part.setUnitType(valueOrDefault(rs.getString("unit_type"), "шт"));
                     order.addSparePart(part, rs.getInt("quantity"));
                 }
             }
         } catch (SQLException e) {
             logger.error("Ошибка загрузки запчастей заказа", e);
         }
+    }
 
-        return new ArrayList<>(orderMap.values());
+    /**
+     * Вернуть значение из базы или значение по умолчанию, если оно {@code null}.
+     * @param value значение из результата запроса
+     * @param defaultValue значение по умолчанию
+     * @return значение или значение по умолчанию
+     */
+    private static String valueOrDefault(String value, String defaultValue) {
+        return value != null ? value : defaultValue;
     }
     
     /**

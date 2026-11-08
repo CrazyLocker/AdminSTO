@@ -411,13 +411,39 @@ public class EditOrderDialog {
     private static void saveOrder(WorkOrder order, Appointment existingAppointment,
                                   CheckBox hasAppointmentCheck, DatePicker datePicker,
                                   ComboBox<String> timeCombo, ComboBox<String> masterCombo) {
+        if (!validateInput(existingAppointment, hasAppointmentCheck, datePicker, timeCombo, masterCombo)) {
+            return;
+        }
 
-        // Очистка ошибок валидации
+        logger.info("=== СОХРАНЕНИЕ ИЗМЕНЕНИЙ ЗАКАЗА ===");
+        logger.info("Услуг: {}", tempServices.size());
+        logger.info("Запчастей: {}", tempParts.size());
+
+        applyOrderChanges(order);
+        persistOrder(order);
+        createOrUpdateAppointment(order, existingAppointment, hasAppointmentCheck,
+                datePicker, timeCombo, masterCombo);
+
+        OrderController.refreshTable();
+        currentStage.close();
+    }
+
+    /**
+     * Проверить введённые данные и выбранное время записи.
+     *
+     * <p>При ошибке показывает сообщение и возвращает {@code false}. Проверка
+     * остатков повторяется перед сохранением, потому что остатки могли
+     * измениться, пока диалог был открыт.</p>
+     *
+     * @return {@code true}, если можно сохранять заказ
+     */
+    private static boolean validateInput(Appointment existingAppointment,
+                                         CheckBox hasAppointmentCheck, DatePicker datePicker,
+                                         ComboBox<String> timeCombo, ComboBox<String> masterCombo) {
         ValidationErrorIndicator.clearAllErrors(currentStage.getScene().getRoot());
 
         DialogValidator validator = new DialogValidator();
 
-        // Валидация обязательных полей
         if (tempServices.isEmpty() && tempParts.isEmpty()) {
             validator.add("Должна быть хотя бы одна услуга или запчасть");
         }
@@ -446,7 +472,6 @@ public class EditOrderDialog {
             validator.add(mileageError);
         }
 
-        // Валидация записи в календаре
         if (hasAppointmentCheck.isSelected()) {
             if (datePicker.getValue() == null) {
                 ValidationErrorIndicator.showError(datePicker, "Выберите дату записи");
@@ -464,53 +489,68 @@ public class EditOrderDialog {
 
         if (validator.hasErrors()) {
             showAlert(validator.getMessage());
-            return;
+            return false;
         }
 
         if (hasAppointmentCheck.isSelected()) {
-            LocalDate selectedDate = datePicker.getValue();
-            String timeStr = timeCombo.getValue();
-            String master = masterCombo.getValue();
-            String dateStr = DateUtils.formatDateForDB(selectedDate);
+            return validateAppointmentSlot(existingAppointment, datePicker, timeCombo, masterCombo);
+        }
+        return true;
+    }
 
-            // Проверка на занятость времени
-            List<Appointment> existing = DataStore.getAppointmentsByDate(dateStr);
-            boolean isFree = true;
-            int existingId = (existingAppointment != null) ? existingAppointment.getId() : -1;
-            for (Appointment a : existing) {
-                if (a.getTime().equals(timeStr) && a.getMasterName().equals(master)) {
-                    if (existingId == -1 || a.getId() != existingId) {
-                        isFree = false;
-                        break;
-                    }
-                }
-            }
+    /**
+     * Проверить, что выбранное время записи свободно и подтверждён выходной день.
+     *
+     * @return {@code true}, если запись можно создавать или обновлять
+     */
+    private static boolean validateAppointmentSlot(Appointment existingAppointment,
+                                                   DatePicker datePicker,
+                                                   ComboBox<String> timeCombo,
+                                                   ComboBox<String> masterCombo) {
+        LocalDate selectedDate = datePicker.getValue();
+        String timeStr = timeCombo.getValue();
+        String master = masterCombo.getValue();
+        String dateStr = DateUtils.formatDateForDB(selectedDate);
 
-            if (!isFree) {
+        // Проверка на занятость времени
+        List<Appointment> existing = DataStore.getAppointmentsByDate(dateStr);
+        int existingId = (existingAppointment != null) ? existingAppointment.getId() : -1;
+        for (Appointment appointment : existing) {
+            if (appointment.getTime().equals(timeStr)
+                    && appointment.getMasterName().equals(master)
+                    && (existingId == -1 || appointment.getId() != existingId)) {
                 showAlert("Выбранное время уже занято другим клиентом!");
-                return;
-            }
-
-            // ====== ПРОВЕРКА ВЫХОДНЫХ ДНЕЙ ======
-            if (DateUtils.isWeekend(selectedDate)) {
-                Alert weekendAlert = new Alert(Alert.AlertType.CONFIRMATION);
-                weekendAlert.setTitle("Подтверждение записи");
-                weekendAlert.setHeaderText("Выбран выходной день!");
-                weekendAlert.setContentText("Запись в выходной день (" + selectedDate.format(DateTimeFormatter.ofPattern("EEEE", new java.util.Locale.Builder().setLanguage("ru").build())) + ") может быть ограничена.\n\nПродолжить?");
-                weekendAlert.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
-
-                if (weekendAlert.showAndWait().orElse(ButtonType.NO) == ButtonType.NO) {
-                    return; // Отмена при нажатии "Нет"
-                }
+                return false;
             }
         }
 
-        logger.info("=== СОХРАНЕНИЕ ИЗМЕНЕНИЙ ЗАКАЗА ===");
-        logger.info("Услуг: {}", tempServices.size());
-        logger.info("Запчастей: {}", tempParts.size());
+        // ====== ПРОВЕРКА ВЫХОДНЫХ ДНЕЙ ======
+        if (!DateUtils.isWeekend(selectedDate)) {
+            return true;
+        }
 
+        Alert weekendAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        weekendAlert.setTitle("Подтверждение записи");
+        weekendAlert.setHeaderText("Выбран выходной день!");
+        weekendAlert.setContentText("Запись в выходной день ("
+                + selectedDate.format(DateTimeFormatter.ofPattern("EEEE",
+                        new java.util.Locale.Builder().setLanguage("ru").build()))
+                + ") может быть ограничена.\n\nПродолжить?");
+        weekendAlert.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
+
+        return weekendAlert.showAndWait().orElse(ButtonType.NO) == ButtonType.YES;
+    }
+
+    /**
+     * Применить отредактированные услуги, запчасти и пробег к заказу.
+     *
+     * <p>Остатки запчастей списываются и восстанавливаются при добавлении и
+     * удалении в диалоге, поэтому перед сохранением достаточно пересобрать
+     * состав заказа из временных списков.</p>
+     */
+    private static void applyOrderChanges(WorkOrder order) {
         // ====== ОЧИЩАЕМ СТАРЫЕ УСЛУГИ ======
-        while (order.getServices().size() > 0) {
+        while (!order.getServices().isEmpty()) {
             order.removeService(0);
         }
         for (int i = 0; i < tempServices.size(); i++) {
@@ -520,12 +560,10 @@ public class EditOrderDialog {
             order.addService(serviceId, serviceName, tempServicePrices.get(i));
         }
 
-        // ====== ОЧИЩАЕМ СТАРЫЕ ЗАПЧАСТИ ======
-        while (order.getSpareParts().size() > 0) {
+        // ====== ОЧИЩАЕМ СТАРЫЕ ЗАПЧАСТИ И ДОБАВЛЯЕМ ТЕКУЩИЕ ======
+        while (!order.getSpareParts().isEmpty()) {
             order.removeSparePart(0);
         }
-
-        // ====== ДОБАВЛЯЕМ РУЧНЫЕ ЗАПЧАСТИ ======
         for (int i = 0; i < tempParts.size(); i++) {
             order.addSparePart(tempParts.get(i), tempPartQuantities.get(i));
         }
@@ -534,57 +572,62 @@ public class EditOrderDialog {
         String mileageText = mileageField.getText().trim();
         int mileage = mileageText.isEmpty() ? 0 : Integer.parseInt(mileageText);
         order.setMileage(mileage);
+    }
 
-        // ====== СОХРАНЯЕМ ЗАКАЗ ======
+    /**
+     * Сохранить изменения заказа в базе данных.
+     */
+    private static void persistOrder(WorkOrder order) {
         DataStore.updateOrder(order);
+    }
 
-        // ====== ОБРАБОТКА ЗАПИСИ В КАЛЕНДАРЕ ======
-        if (hasAppointmentCheck.isSelected()) {
-            LocalDate selectedDate = datePicker.getValue();
-            String selectedTime = timeCombo.getValue();
-            String selectedMaster = masterCombo.getValue();
-            String serviceName = tempServices.isEmpty() ? "Консультация" : tempServices.get(0);
-            String dateStr = DateUtils.formatDateForDB(selectedDate);
-            String timeStr = selectedTime;
-            String master = selectedMaster;
-
-            // Находим ID услуги для записи в календарь
-            Service appointmentService = DataStore.getServiceByName(serviceName);
-            int appointmentServiceId = (appointmentService != null) ? appointmentService.getId() : 0;
-
-            if (existingAppointment != null) {
-                // Обновляем существующую запись
-                existingAppointment.setDate(dateStr);
-                existingAppointment.setTime(timeStr);
-                existingAppointment.setMasterName(master);
-                existingAppointment.setServiceName(serviceName);
-                existingAppointment.setServiceId(appointmentServiceId);
-                existingAppointment.setOrderId(order.getId());
-                DataStore.updateAppointment(existingAppointment);
-                logger.debug("Запись в календаре обновлена");
-            } else {
-                // Создаём новую запись
-                Appointment newAppointment = new Appointment(
-                        order.getClient(),
-                        master,
-                        serviceName,
-                        dateStr,
-                        timeStr
-                );
-                newAppointment.setServiceId(appointmentServiceId);
-                newAppointment.setOrderId(order.getId());
-                DataStore.addAppointment(newAppointment);
-                logger.debug("Новая запись в календаре создана");
-            }
-        } else {
+    /**
+     * Создать, обновить или удалить связанную запись в календаре.
+     */
+    private static void createOrUpdateAppointment(WorkOrder order, Appointment existingAppointment,
+                                                  CheckBox hasAppointmentCheck, DatePicker datePicker,
+                                                  ComboBox<String> timeCombo,
+                                                  ComboBox<String> masterCombo) {
+        if (!hasAppointmentCheck.isSelected()) {
             if (existingAppointment != null) {
                 DataStore.deleteAppointment(existingAppointment.getId());
                 logger.debug("Запись в календаре удалена");
             }
+            return;
         }
 
-        OrderController.refreshTable();
-        currentStage.close();
+        String serviceName = tempServices.isEmpty() ? "Консультация" : tempServices.get(0);
+        String dateStr = DateUtils.formatDateForDB(datePicker.getValue());
+        String timeStr = timeCombo.getValue();
+        String master = masterCombo.getValue();
+
+        // Находим ID услуги для записи в календарь
+        Service appointmentService = DataStore.getServiceByName(serviceName);
+        int appointmentServiceId = (appointmentService != null) ? appointmentService.getId() : 0;
+
+        if (existingAppointment != null) {
+            existingAppointment.setDate(dateStr);
+            existingAppointment.setTime(timeStr);
+            existingAppointment.setMasterName(master);
+            existingAppointment.setServiceName(serviceName);
+            existingAppointment.setServiceId(appointmentServiceId);
+            existingAppointment.setOrderId(order.getId());
+            DataStore.updateAppointment(existingAppointment);
+            logger.debug("Запись в календаре обновлена");
+            return;
+        }
+
+        Appointment newAppointment = new Appointment(
+                order.getClient(),
+                master,
+                serviceName,
+                dateStr,
+                timeStr
+        );
+        newAppointment.setServiceId(appointmentServiceId);
+        newAppointment.setOrderId(order.getId());
+        DataStore.addAppointment(newAppointment);
+        logger.debug("Новая запись в календаре создана");
     }
 
     private static void cancelChanges() {
