@@ -23,82 +23,23 @@ public class AutoAddSparePartService {
      * @return список объектов SparePart с количеством
      */
     public static List<SparePartWithQuantity> getSparePartsByService(String serviceName) {
-        List<SparePartWithQuantity> result = new ArrayList<>();
         Service service = DataStore.getServiceByName(serviceName);
 
         if (service == null) {
-            return result;
+            return new ArrayList<>();
         }
 
-        int serviceId = service.getId();
-
-        // Получаем связи из новой структуры service_parts
-        List<ServicePart> newRelations = DataStore.getAllServiceParts().stream()
-                .filter(sp -> sp.getServiceId() == serviceId)
-                .collect(Collectors.toList());
-        
-        for (ServicePart relation : newRelations) {
-            SparePart sparePart = DataStore.getSparePartById(relation.getSparePartId());
-
-            if (sparePart != null) {
-                SparePartWithQuantity item = new SparePartWithQuantity();
-                item.setSparePart(sparePart);
-                item.setQuantity(relation.getQuantity());
-                item.setUnitType(sparePart.getUnitType());
-                result.add(item);
-            }
-        }
-
-        // Получаем списки из старой новой структуры (ServiceSparePartsList)
-        List<ServiceSparePartsList> lists = DataStore.getServiceSparePartsListsByServiceId(serviceId);
-        
-        for (ServiceSparePartsList list : lists) {
-            if (!list.isActive()) {
-                continue;
-            }
-            
-            for (ServiceSparePartsListItem item : list.getItems()) {
-                SparePart sparePart = DataStore.getSparePartById(item.getSparePartId());
-
-                if (sparePart != null) {
-                    SparePartWithQuantity partItem = new SparePartWithQuantity();
-                    partItem.setSparePart(sparePart);
-                    partItem.setQuantity(item.getQuantity());
-                    partItem.setUnitType(item.getUnitType());
-                    result.add(partItem);
-                }
-            }
-        }
-
-        // Также поддерживаем старую структуру для обратной совместимости (ServiceSparePart)
-        List<ServiceSparePart> oldRelations = DataStore.getServiceSparePartsByServiceId(serviceId);
-        for (ServiceSparePart relation : oldRelations) {
-            if (!relation.isActive()) {
-                continue;
-            }
-
-            SparePart sparePart = DataStore.getSparePartById(relation.getSparePartId());
-
-            if (sparePart != null) {
-                SparePartWithQuantity item = new SparePartWithQuantity();
-                item.setSparePart(sparePart);
-                item.setQuantity(relation.getQuantity());
-                item.setUnitType(relation.getUnitType());
-                result.add(item);
-            }
-        }
-
-        return result;
+        return collect(service.getId());
     }
 
     /**
-     * Получить список запчастей по ID услуги.
+     * Собрать запчасти, связанные с услугой, из всех поддерживаемых структур связей.
      * @param serviceId ID услуги
      * @return список объектов SparePart с количеством
      */
-    public static List<SparePartWithQuantity> getSparePartsByServiceId(int serviceId) {
+    private static List<SparePartWithQuantity> collect(int serviceId) {
         List<SparePartWithQuantity> result = new ArrayList<>();
-        
+
         // Получаем связи из новой структуры service_parts
         List<ServicePart> newRelations = DataStore.getAllServiceParts().stream()
                 .filter(sp -> sp.getServiceId() == serviceId)
