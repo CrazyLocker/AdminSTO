@@ -643,7 +643,59 @@ public class AppointmentView {
         }
     }
 
+    /**
+     * Состояние диалога создания записи: окно и элементы формы.
+     */
+    private static final class AddAppointmentForm {
+        private final Stage stage;
+        private final VBox root;
+
+        private ComboBox<WorkOrder> orderCombo;
+        private ComboBox<String> masterCombo;
+        private DatePicker datePicker;
+        private ComboBox<String> timeCombo;
+        private Button saveBtn;
+        private Button cancelBtn;
+
+        private AddAppointmentForm(Stage stage) {
+            this.stage = stage;
+            this.root = (VBox) stage.getScene().getRoot();
+        }
+    }
+
+    /**
+     * Состояние диалога перемещения записи: окно, элементы формы и запись.
+     */
+    private static final class EditAppointmentForm {
+        private final Stage stage;
+        private final VBox root;
+        private final int appointmentId;
+
+        private Appointment existingAppointment;
+        private ComboBox<String> masterCombo;
+        private DatePicker datePicker;
+        private ComboBox<String> timeCombo;
+        private Button saveBtn;
+        private Button cancelBtn;
+
+        private EditAppointmentForm(Stage stage, int appointmentId) {
+            this.stage = stage;
+            this.appointmentId = appointmentId;
+            this.root = (VBox) stage.getScene().getRoot();
+        }
+    }
+
     private static void showAddAppointmentWithOrderDialog(String presetTime) {
+        AddAppointmentForm form = new AddAppointmentForm(createAddAppointmentWindow());
+        buildAddAppointmentForm(form, presetTime);
+        attachAddAppointmentHandlers(form);
+        form.stage.showAndWait();
+    }
+
+    /**
+     * Создать окно диалога создания записи.
+     */
+    private static Stage createAddAppointmentWindow() {
         Stage stage = new Stage();
         stage.setTitle("Новая запись");
         stage.setMinWidth(500);
@@ -656,6 +708,15 @@ public class AppointmentView {
         root.setPadding(new Insets(20));
         root.getStyleClass().add("dialog-root");
 
+        Scene scene = new Scene(root);
+        stage.setScene(scene);
+        return stage;
+    }
+
+    /**
+     * Собрать форму диалога создания записи: заголовок, поля и кнопки.
+     */
+    private static void buildAddAppointmentForm(AddAppointmentForm form, String presetTime) {
         Label titleLabel = new Label("Новая запись");
         titleLabel.getStyleClass().add("dialog-title");
 
@@ -664,6 +725,28 @@ public class AppointmentView {
         grid.setVgap(12);
         grid.getStyleClass().add("dialog-grid");
 
+        buildOrderSection(form, grid);
+        buildNewAppointmentFields(form, grid, presetTime);
+
+        HBox btnBox = new HBox(15);
+        btnBox.setAlignment(Pos.CENTER);
+
+        // ====== КНОПКИ БЕЗ ИКОНОК ======
+        form.saveBtn = new Button("Создать запись");
+        form.saveBtn.getStyleClass().add("save-button");
+
+        form.cancelBtn = new Button("Отмена");
+        form.cancelBtn.getStyleClass().add("cancel-button");
+
+        btnBox.getChildren().addAll(form.saveBtn, form.cancelBtn);
+
+        form.root.getChildren().addAll(titleLabel, grid, btnBox);
+    }
+
+    /**
+     * Секция выбора заказа: список активных (не закрытых) заказов.
+     */
+    private static void buildOrderSection(AddAppointmentForm form, GridPane grid) {
         // Комбо бокс для выбора заказа (кроме закрытых)
         List<WorkOrder> activeOrders = new ArrayList<>();
         for (WorkOrder order : DataStore.getOrders()) {
@@ -671,12 +754,21 @@ public class AppointmentView {
                 activeOrders.add(order);
             }
         }
-        
-        ComboBox<WorkOrder> orderCombo = new ComboBox<>(FXCollections.observableArrayList(activeOrders));
-        orderCombo.setPromptText("Выберите заказ");
-        orderCombo.setPrefWidth(300);
-        
-        // Форматирование отображения заказа
+
+        form.orderCombo = new ComboBox<>(FXCollections.observableArrayList(activeOrders));
+        form.orderCombo.setPromptText("Выберите заказ");
+        form.orderCombo.setPrefWidth(300);
+
+        configureOrderComboFormatting(form.orderCombo);
+
+        grid.add(new Label("Заказ:"), 0, 0);
+        grid.add(form.orderCombo, 1, 0);
+    }
+
+    /**
+     * Форматирование отображения заказа: номер и имя клиента.
+     */
+    private static void configureOrderComboFormatting(ComboBox<WorkOrder> orderCombo) {
         orderCombo.setCellFactory(listView -> new ListCell<WorkOrder>() {
             @Override
             protected void updateItem(WorkOrder item, boolean empty) {
@@ -684,7 +776,7 @@ public class AppointmentView {
                 if (empty || item == null) {
                     setText(null);
                 } else {
-                    String clientName = item.getClient() != null 
+                    String clientName = item.getClient() != null
                             ? (item.getClient().getLastName() != null && !item.getClient().getLastName().isEmpty()
                                 ? item.getClient().getLastName() + " " + item.getClient().getName()
                                 : item.getClient().getName())
@@ -693,7 +785,7 @@ public class AppointmentView {
                 }
             }
         });
-        
+
         orderCombo.setButtonCell(new ListCell<WorkOrder>() {
             @Override
             protected void updateItem(WorkOrder item, boolean empty) {
@@ -701,7 +793,7 @@ public class AppointmentView {
                 if (empty || item == null) {
                     setText(null);
                 } else {
-                    String clientName = item.getClient() != null 
+                    String clientName = item.getClient() != null
                             ? (item.getClient().getLastName() != null && !item.getClient().getLastName().isEmpty()
                                 ? item.getClient().getLastName() + " " + item.getClient().getName()
                                 : item.getClient().getName())
@@ -710,134 +802,169 @@ public class AppointmentView {
                 }
             }
         });
+    }
 
-        ComboBox<String> masterCombo = new ComboBox<>(FXCollections.observableArrayList(AppConstants.MASTERS));
-        masterCombo.setPromptText("Выберите мастера");
-        masterCombo.setPrefWidth(200);
+    /**
+     * Секция мастера, даты и времени новой записи.
+     */
+    private static void buildNewAppointmentFields(AddAppointmentForm form, GridPane grid, String presetTime) {
+        form.masterCombo = new ComboBox<>(FXCollections.observableArrayList(AppConstants.MASTERS));
+        form.masterCombo.setPromptText("Выберите мастера");
+        form.masterCombo.setPrefWidth(200);
 
-        DatePicker datePickerLocal = new DatePicker(datePicker.getValue());
-        datePickerLocal.setPrefWidth(200);
+        form.datePicker = new DatePicker(datePicker.getValue());
+        form.datePicker.setPrefWidth(200);
 
-        ComboBox<String> timeCombo = new ComboBox<>(FXCollections.observableArrayList(AppConstants.TIME_SLOTS));
+        form.timeCombo = new ComboBox<>(FXCollections.observableArrayList(AppConstants.TIME_SLOTS));
         if (presetTime != null) {
-            timeCombo.setValue(presetTime);
+            form.timeCombo.setValue(presetTime);
         }
-        timeCombo.setPromptText("Выберите время");
-        timeCombo.setPrefWidth(100);
-        TooltipHelper.setToolTip(masterCombo, "Выберите мастера сервиса");
+        form.timeCombo.setPromptText("Выберите время");
+        form.timeCombo.setPrefWidth(100);
+        TooltipHelper.setToolTip(form.masterCombo, "Выберите мастера сервиса");
 
-        grid.add(new Label("Заказ:"), 0, 0);
-        grid.add(orderCombo, 1, 0);
         grid.add(new Label("Мастер:"), 0, 1);
-        grid.add(masterCombo, 1, 1);
+        grid.add(form.masterCombo, 1, 1);
         grid.add(new Label("Дата:"), 0, 2);
-        grid.add(datePickerLocal, 1, 2);
+        grid.add(form.datePicker, 1, 2);
         grid.add(new Label("Время:"), 0, 3);
-        grid.add(timeCombo, 1, 3);
+        grid.add(form.timeCombo, 1, 3);
+    }
 
-        HBox btnBox = new HBox(15);
-        btnBox.setAlignment(Pos.CENTER);
+    /**
+     * Повесить обработчики диалога создания записи.
+     */
+    private static void attachAddAppointmentHandlers(AddAppointmentForm form) {
+        form.saveBtn.setOnAction(e -> saveNewAppointment(form));
+        form.cancelBtn.setOnAction(e -> form.stage.close());
 
-        // ====== КНОПКИ БЕЗ ИКОНОК ======
-        Button saveBtn = new Button("Создать запись");
-        saveBtn.getStyleClass().add("save-button");
+        form.stage.setOnHiding(e -> WindowStateManager.getInstance().saveWindowState("editAppointmentDialog", form.stage));
+    }
 
-        Button cancelBtn = new Button("Отмена");
-        cancelBtn.getStyleClass().add("cancel-button");
+    /**
+     * Проверить обязательные поля диалога создания записи.
+     *
+     * @return {@code true}, если все поля заполнены
+     */
+    private static boolean validateNewAppointment(AddAppointmentForm form) {
+        boolean isValid = true;
 
-        btnBox.getChildren().addAll(saveBtn, cancelBtn);
+        if (form.orderCombo.getValue() == null) {
+            showAlert("Выберите заказ");
+            isValid = false;
+        }
+        if (form.masterCombo.getValue() == null) {
+            showAlert("Выберите мастера");
+            isValid = false;
+        }
+        if (form.timeCombo.getValue() == null) {
+            showAlert("Выберите время");
+            isValid = false;
+        }
+        if (form.datePicker.getValue() == null) {
+            showAlert("Выберите дату");
+            isValid = false;
+        }
 
-        root.getChildren().addAll(titleLabel, grid, btnBox);
+        return isValid;
+    }
 
-        Scene scene = new Scene(root);
-        stage.setScene(scene);
+    /**
+     * Сохранить новую запись: проверить поля, выходной день и занятость времени.
+     */
+    private static void saveNewAppointment(AddAppointmentForm form) {
+        if (!validateNewAppointment(form)) {
+            return;
+        }
 
-        saveBtn.setOnAction(e -> {
-            boolean isValid = true;
-            
-            if (orderCombo.getValue() == null) {
-                showAlert("Выберите заказ");
-                isValid = false;
+        // ====== ПРОВЕРКА ВЫХОДНЫХ ДНЕЙ ======
+        if (!confirmWeekend(form.datePicker, "Подтверждение записи")) {
+            return; // Отмена при нажатии "Нет"
+        }
+
+        WorkOrder selectedOrder = form.orderCombo.getValue();
+        Client orderClient = selectedOrder.getClient();
+        if (orderClient == null) {
+            showAlert("У выбранного заказа не указан клиент");
+            return;
+        }
+        String selectedServiceName = selectedOrder.getServices().isEmpty()
+                ? "Консультация"
+                : selectedOrder.getServices().get(0);
+
+        String dateStr = DateUtils.formatDateForDB(form.datePicker.getValue());
+        String timeStr = form.timeCombo.getValue();
+
+        if (isTimeSlotTaken(dateStr, timeStr)) {
+            showAlert("Это время уже занято!");
+            return;
+        }
+
+        Service newService = DataStore.getServiceByName(selectedServiceName);
+        int newServiceId = (newService != null) ? newService.getId() : 0;
+
+        Appointment appointment = new Appointment(
+                orderClient,
+                form.masterCombo.getValue(),
+                selectedServiceName,
+                dateStr,
+                timeStr
+        );
+        appointment.setServiceId(newServiceId);
+        appointment.setOrderId(selectedOrder.getId());
+
+        DataStore.addAppointment(appointment);
+
+        refresh();
+        form.stage.close();
+    }
+
+    /**
+     * Проверить, занято ли время в выбранный день (для новой записи).
+     */
+    private static boolean isTimeSlotTaken(String dateStr, String timeStr) {
+        List<Appointment> existing = DataStore.getAppointmentsByDate(dateStr);
+        for (Appointment a : existing) {
+            if (a.getTime().equals(timeStr)) {
+                return true;
             }
-            if (masterCombo.getValue() == null) {
-                showAlert("Выберите мастера");
-                isValid = false;
-            }
-            if (timeCombo.getValue() == null) {
-                showAlert("Выберите время");
-                isValid = false;
-            }
-            if (datePickerLocal.getValue() == null) {
-                showAlert("Выберите дату");
-                isValid = false;
-            }
-            
-            if (!isValid) {
-                return;
-            }
+        }
+        return false;
+    }
 
-            // ====== ПРОВЕРКА ВЫХОДНЫХ ДНЕЙ ======
-            if (DateUtils.isWeekend(datePickerLocal.getValue())) {
-                Alert weekendAlert = new Alert(Alert.AlertType.CONFIRMATION);
-                weekendAlert.setTitle("Подтверждение записи");
-                weekendAlert.setHeaderText("Выбран выходной день!");
-                weekendAlert.setContentText("Запись в выходной день (" + datePickerLocal.getValue().format(java.time.format.DateTimeFormatter.ofPattern("EEEE", new java.util.Locale.Builder().setLanguage("ru").build())) + ") может быть ограничена.\n\nПродолжить?");
-                weekendAlert.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
-                
-                if (weekendAlert.showAndWait().orElse(ButtonType.NO) == ButtonType.NO) {
-                    return; // Отмена при нажатии "Нет"
-                }
-            }
+    /**
+     * Подтвердить запись в выходной день.
+     *
+     * @return {@code true}, если пользователь подтвердил запись
+     */
+    private static boolean confirmWeekend(DatePicker picker, String title) {
+        if (!DateUtils.isWeekend(picker.getValue())) {
+            return true;
+        }
 
-            WorkOrder selectedOrder = orderCombo.getValue();
-            Client orderClient = selectedOrder.getClient();
-            if (orderClient == null) {
-                showAlert("У выбранного заказа не указан клиент");
-                return;
-            }
-            String selectedServiceName = selectedOrder.getServices().isEmpty() 
-                    ? "Консультация" 
-                    : selectedOrder.getServices().get(0);
+        Alert weekendAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        weekendAlert.setTitle(title);
+        weekendAlert.setHeaderText("Выбран выходной день!");
+        weekendAlert.setContentText("Запись в выходной день (" + picker.getValue().format(java.time.format.DateTimeFormatter.ofPattern("EEEE", new java.util.Locale.Builder().setLanguage("ru").build())) + ") может быть ограничена.\n\nПродолжить?");
+        weekendAlert.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
 
-            String dateStr = DateUtils.formatDateForDB(datePickerLocal.getValue());
-            String timeStr = timeCombo.getValue();
-
-            List<Appointment> existing = DataStore.getAppointmentsByDate(dateStr);
-            for (Appointment a : existing) {
-                if (a.getTime().equals(timeStr)) {
-                    showAlert("Это время уже занято!");
-                    return;
-                }
-            }
-
-            Service newService = DataStore.getServiceByName(selectedServiceName);
-            int newServiceId = (newService != null) ? newService.getId() : 0;
-
-            Appointment appointment = new Appointment(
-                    orderClient,
-                    masterCombo.getValue(),
-                    selectedServiceName,
-                    dateStr,
-                    timeStr
-            );
-            appointment.setServiceId(newServiceId);
-            appointment.setOrderId(selectedOrder.getId());
-
-            DataStore.addAppointment(appointment);
-
-            refresh();
-            stage.close();
-        });
-
-        cancelBtn.setOnAction(e -> stage.close());
-
-        stage.setOnHiding(e -> WindowStateManager.getInstance().saveWindowState("editAppointmentDialog", stage));
-        stage.showAndWait();
+        return weekendAlert.showAndWait().orElse(ButtonType.NO) != ButtonType.NO;
     }
 
     // ====== МЕТОД РЕДАКТИРОВАНИЯ ЗАПИСИ ПОСЛЕ DRAG AND DROP ======
-    private static void showEditAppointmentDialog(String appointmentId, String originalDate, String originalTime, 
+    private static void showEditAppointmentDialog(String appointmentId, String originalDate, String originalTime,
                                                     String originalMaster, LocalDate newDate, String newTime) {
+        EditAppointmentForm form = new EditAppointmentForm(
+                createEditAppointmentWindow(), Integer.parseInt(appointmentId));
+        buildEditAppointmentForm(form, originalDate, originalTime, originalMaster, newDate, newTime);
+        attachEditAppointmentHandlers(form);
+        form.stage.showAndWait();
+    }
+
+    /**
+     * Создать окно диалога перемещения записи.
+     */
+    private static Stage createEditAppointmentWindow() {
         Stage stage = new Stage();
         stage.setTitle("Переместить запись");
         stage.setMinWidth(500);
@@ -850,19 +977,60 @@ public class AppointmentView {
         root.setPadding(new Insets(20));
         root.getStyleClass().add("dialog-root");
 
+        Scene scene = new Scene(root);
+        stage.setScene(scene);
+        return stage;
+    }
+
+    /**
+     * Собрать форму диалога перемещения записи: заголовок, информация о текущей
+     * записи, новые дата/время и кнопки.
+     */
+    private static void buildEditAppointmentForm(EditAppointmentForm form, String originalDate,
+                                                 String originalTime, String originalMaster,
+                                                 LocalDate newDate, String newTime) {
         Label titleLabel = new Label("Переместить запись");
         titleLabel.getStyleClass().add("dialog-title");
 
+        GridPane infoGrid = buildAppointmentInfoSection(form, originalDate, originalTime);
+
+        // Поля для новой даты и времени
+        GridPane grid = new GridPane();
+        grid.setHgap(15);
+        grid.setVgap(12);
+        grid.getStyleClass().add("dialog-grid");
+
+        buildEditScheduleFields(form, grid, originalMaster, newDate, newTime);
+
+        HBox btnBox = new HBox(15);
+        btnBox.setAlignment(Pos.CENTER);
+
+        form.saveBtn = new Button("Сохранить изменения");
+        form.saveBtn.getStyleClass().add("save-button");
+
+        form.cancelBtn = new Button("Отмена");
+        form.cancelBtn.getStyleClass().add("cancel-button");
+
+        btnBox.getChildren().addAll(form.saveBtn, form.cancelBtn);
+
+        form.root.getChildren().addAll(titleLabel, infoGrid, grid, btnBox);
+    }
+
+    /**
+     * Секция с информацией о перемещаемой записи.
+     */
+    private static GridPane buildAppointmentInfoSection(EditAppointmentForm form,
+                                                        String originalDate, String originalTime) {
         // Информация о текущей записи
         GridPane infoGrid = new GridPane();
         infoGrid.setHgap(15);
         infoGrid.setVgap(8);
         infoGrid.getStyleClass().add("dialog-grid");
-        
-        Appointment existingAppointment = DataStore.getAppointmentById(Integer.parseInt(appointmentId));
-        
-        if (existingAppointment != null) {
-            Client client = existingAppointment.getClient();
+
+        form.existingAppointment = DataStore.getAppointmentById(form.appointmentId);
+
+        if (form.existingAppointment != null) {
+            Client client = form.existingAppointment.getClient();
             String fullName = formatClientName(client);
 
             infoGrid.add(new Label("Клиент:"), 0, 0);
@@ -879,116 +1047,122 @@ public class AppointmentView {
             infoGrid.add(oldTimeLabel, 1, 2);
 
             infoGrid.add(new Label("Мастер:"), 0, 3);
-            infoGrid.add(new Label(existingAppointment.getMasterName()), 1, 3);
+            infoGrid.add(new Label(form.existingAppointment.getMasterName()), 1, 3);
 
             infoGrid.add(new Label("Услуга:"), 0, 4);
-            infoGrid.add(new Label(existingAppointment.getServiceName()), 1, 4);
+            infoGrid.add(new Label(form.existingAppointment.getServiceName()), 1, 4);
         }
 
-        // Поля для новой даты и времени
-        GridPane grid = new GridPane();
-        grid.setHgap(15);
-        grid.setVgap(12);
-        grid.getStyleClass().add("dialog-grid");
-
-        ComboBox<String> masterCombo = new ComboBox<>(FXCollections.observableArrayList(AppConstants.MASTERS));
-        masterCombo.setValue(originalMaster);
-        masterCombo.setPromptText("Выберите мастера");
-        masterCombo.setPrefWidth(200);
-
-        DatePicker datePickerLocal = new DatePicker(newDate);
-        datePickerLocal.setPrefWidth(200);
-
-        ComboBox<String> timeCombo = new ComboBox<>(FXCollections.observableArrayList(AppConstants.TIME_SLOTS));
-        timeCombo.setValue(newTime);
-        timeCombo.setPromptText("Выберите время");
-        timeCombo.setPrefWidth(100);
-        TooltipHelper.setToolTip(masterCombo, "Выберите мастера сервиса");
-
-        grid.add(new Label("Мастер:"), 0, 0);
-        grid.add(masterCombo, 1, 0);
-        grid.add(new Label("Дата:"), 0, 1);
-        grid.add(datePickerLocal, 1, 1);
-        grid.add(new Label("Время:"), 0, 2);
-        grid.add(timeCombo, 1, 2);
-
-        HBox btnBox = new HBox(15);
-        btnBox.setAlignment(Pos.CENTER);
-
-        Button saveBtn = new Button("Сохранить изменения");
-        saveBtn.getStyleClass().add("save-button");
-
-        Button cancelBtn = new Button("Отмена");
-        cancelBtn.getStyleClass().add("cancel-button");
-
-        btnBox.getChildren().addAll(saveBtn, cancelBtn);
-
-        root.getChildren().addAll(titleLabel, infoGrid, grid, btnBox);
-
-        Scene scene = new Scene(root);
-        stage.setScene(scene);
-
-        saveBtn.setOnAction(e -> {
-            if (masterCombo.getValue() == null) {
-                showAlert("Выберите мастера");
-                return;
-            }
-            if (timeCombo.getValue() == null) {
-                showAlert("Выберите время");
-                return;
-            }
-            if (datePickerLocal.getValue() == null) {
-                showAlert("Выберите дату");
-                return;
-            }
-
-            // ====== ПРОВЕРКА ВЫХОДНЫХ ДНЕЙ ======
-            if (DateUtils.isWeekend(datePickerLocal.getValue())) {
-                Alert weekendAlert = new Alert(Alert.AlertType.CONFIRMATION);
-                weekendAlert.setTitle("Подтверждение");
-                weekendAlert.setHeaderText("Выбран выходной день!");
-                weekendAlert.setContentText("Запись в выходной день (" + datePickerLocal.getValue().format(java.time.format.DateTimeFormatter.ofPattern("EEEE", new java.util.Locale.Builder().setLanguage("ru").build())) + ") может быть ограничена.\n\nПродолжить?");
-                weekendAlert.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO);
-                
-                if (weekendAlert.showAndWait().orElse(ButtonType.NO) == ButtonType.NO) {
-                    return;
-                }
-            }
-
-            String newDateStr = DateUtils.formatDateForDB(datePickerLocal.getValue());
-            String newTimeStr = timeCombo.getValue();
-            String newMaster = masterCombo.getValue();
-
-            // ====== ПРОВЕРКА КОНФЛИКТА ВРЕМЕНИ ======
-            List<Appointment> existing = DataStore.getAppointmentsByDate(newDateStr);
-            for (Appointment a : existing) {
-                if (a.getTime().equals(newTimeStr) && a.getMasterName().equals(newMaster)) {
-                    if (a.getId() != existingAppointment.getId()) {
-                        showAlert("Это время уже занято другим клиентом!");
-                        return;
-                    }
-                }
-            }
-
-            // ====== ОБНОВЛЕНИЕ ЗАПИСИ ======
-            existingAppointment.setDate(newDateStr);
-            existingAppointment.setTime(newTimeStr);
-            existingAppointment.setMasterName(newMaster);
-            DataStore.updateAppointment(existingAppointment);
-
-            refresh();
-            stage.close();
-        });
-
-        cancelBtn.setOnAction(e -> stage.close());
-
-        stage.setOnHiding(e -> WindowStateManager.getInstance().saveWindowState("editAppointmentDialog", stage));
-        stage.showAndWait();
+        return infoGrid;
     }
 
     /**
-     * Отображаемое имя клиента; для записи без клиента возвращает заглушку.
+     * Секция новых мастера, даты и времени записи.
      */
+    private static void buildEditScheduleFields(EditAppointmentForm form, GridPane grid,
+                                                String originalMaster, LocalDate newDate, String newTime) {
+        form.masterCombo = new ComboBox<>(FXCollections.observableArrayList(AppConstants.MASTERS));
+        form.masterCombo.setValue(originalMaster);
+        form.masterCombo.setPromptText("Выберите мастера");
+        form.masterCombo.setPrefWidth(200);
+
+        form.datePicker = new DatePicker(newDate);
+        form.datePicker.setPrefWidth(200);
+
+        form.timeCombo = new ComboBox<>(FXCollections.observableArrayList(AppConstants.TIME_SLOTS));
+        form.timeCombo.setValue(newTime);
+        form.timeCombo.setPromptText("Выберите время");
+        form.timeCombo.setPrefWidth(100);
+        TooltipHelper.setToolTip(form.masterCombo, "Выберите мастера сервиса");
+
+        grid.add(new Label("Мастер:"), 0, 0);
+        grid.add(form.masterCombo, 1, 0);
+        grid.add(new Label("Дата:"), 0, 1);
+        grid.add(form.datePicker, 1, 1);
+        grid.add(new Label("Время:"), 0, 2);
+        grid.add(form.timeCombo, 1, 2);
+    }
+
+    /**
+     * Повесить обработчики диалога перемещения записи.
+     */
+    private static void attachEditAppointmentHandlers(EditAppointmentForm form) {
+        form.saveBtn.setOnAction(e -> saveEditedAppointment(form));
+        form.cancelBtn.setOnAction(e -> form.stage.close());
+
+        form.stage.setOnHiding(e -> WindowStateManager.getInstance().saveWindowState("editAppointmentDialog", form.stage));
+    }
+
+    /**
+     * Проверить обязательные поля диалога перемещения записи.
+     *
+     * @return {@code true}, если все поля заполнены
+     */
+    private static boolean validateEditedAppointment(EditAppointmentForm form) {
+        if (form.masterCombo.getValue() == null) {
+            showAlert("Выберите мастера");
+            return false;
+        }
+        if (form.timeCombo.getValue() == null) {
+            showAlert("Выберите время");
+            return false;
+        }
+        if (form.datePicker.getValue() == null) {
+            showAlert("Выберите дату");
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Сохранить перемещение записи: проверить поля, выходной день и конфликт времени.
+     */
+    private static void saveEditedAppointment(EditAppointmentForm form) {
+        if (!validateEditedAppointment(form)) {
+            return;
+        }
+
+        // ====== ПРОВЕРКА ВЫХОДНЫХ ДНЕЙ ======
+        if (!confirmWeekend(form.datePicker, "Подтверждение")) {
+            return;
+        }
+
+        String newDateStr = DateUtils.formatDateForDB(form.datePicker.getValue());
+        String newTimeStr = form.timeCombo.getValue();
+        String newMaster = form.masterCombo.getValue();
+
+        // ====== ПРОВЕРКА КОНФЛИКТА ВРЕМЕНИ ======
+        if (isEditTimeSlotTaken(newDateStr, newTimeStr, newMaster, form.existingAppointment.getId())) {
+            showAlert("Это время уже занято другим клиентом!");
+            return;
+        }
+
+        // ====== ОБНОВЛЕНИЕ ЗАПИСИ ======
+        form.existingAppointment.setDate(newDateStr);
+        form.existingAppointment.setTime(newTimeStr);
+        form.existingAppointment.setMasterName(newMaster);
+        DataStore.updateAppointment(form.existingAppointment);
+
+        refresh();
+        form.stage.close();
+    }
+
+    /**
+     * Проверить конфликт времени с другой записью того же мастера.
+     */
+    private static boolean isEditTimeSlotTaken(String dateStr, String timeStr, String masterName,
+                                               int appointmentId) {
+        List<Appointment> existing = DataStore.getAppointmentsByDate(dateStr);
+        for (Appointment a : existing) {
+            if (a.getTime().equals(timeStr) && a.getMasterName().equals(masterName)) {
+                if (a.getId() != appointmentId) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     private static String formatClientName(Client client) {
         if (client == null) {
             return AppConstants.NO_CLIENT;
