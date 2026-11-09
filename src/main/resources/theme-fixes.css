@@ -1,0 +1,88 @@
+/* =====================================================================
+   theme-fixes.css — резервные определения базовых look-up цветов темы
+   =====================================================================
+
+   JavaFX разрешает look-up переменные (-color-*) в момент применения стиля.
+   При смене темы в runtime часть узлов может перестилизоваться раньше, чем
+   станут видны переменные новой темы, и в консоли появляются:
+
+       WARNING: Could not resolve '-color-fg-default' while resolving lookups
+       WARNING: Caught 'java.lang.ClassCastException: class java.lang.String
+                cannot be cast to class javafx.scene.paint.Paint' ... from
+                rule '*.table-row-cell' in stylesheet .../dracula.css
+
+   Это проявление ошибки JavaFX JDK-8268657 (исправлена только в JavaFX 27):
+   при замене набора stylesheets look-up цвета не успевают разрешиться.
+   ThemeManager обходит её, сначала добавляя новые stylesheets и только затем
+   удаляя старые, а этот файл дополнительно закрепляет базовые foreground-
+   переменные на author-уровне.
+
+   Файл загружается ThemeManager-ом ПОСЛЕ AtlantaFX-темы и повторно
+   объявляет базовые foreground-переменные. Значения совпадают с теми, что
+   тема задаёт в своём .root, поэтому при нормально загруженной теме внешний
+   вид не меняется, а при потере переменных остаётся корректный цвет вместо
+   неразрешённой строки.
+
+   Корень сцены помечается классом theme-<имя темы> (см. ThemeManager),
+   чтобы подставить палитру выбранной темы. Значения соответствуют
+   AtlantaFX 2.1.0.
+
+   Общий блок .root — страховка для сцены без класса темы (например,
+   fallback на Modena): используются значения темы по умолчанию Primer Dark.
+   ===================================================================== */
+
+.root {
+    -color-fg-default: #c9d1d9;
+    -color-fg-muted: #8b949e;
+    -color-fg-subtle: #6e7681;
+    -color-fg-emphasis: #ffffff;
+}
+
+.root.theme-primer-dark {
+    -color-fg-default: #c9d1d9;
+    -color-fg-muted: #8b949e;
+    -color-fg-subtle: #6e7681;
+    -color-fg-emphasis: #ffffff;
+}
+
+.root.theme-primer-light {
+    -color-fg-default: #24292f;
+    -color-fg-muted: #57606a;
+    -color-fg-subtle: #6e7781;
+    -color-fg-emphasis: #ffffff;
+}
+
+.root.theme-nord-dark {
+    -color-fg-default: #ECEFF4;
+    -color-fg-muted: #979fae;
+    -color-fg-subtle: #788192;
+    -color-fg-emphasis: #fdfdfe;
+}
+
+.root.theme-nord-light {
+    -color-fg-default: #2E3440;
+    -color-fg-muted: rgba(76, 86, 106, 0.88);
+    -color-fg-subtle: #788192;
+    -color-fg-emphasis: #fafafc;
+}
+
+.root.theme-cupertino-dark {
+    -color-fg-default: rgb(255, 255, 255);
+    -color-fg-muted: #aeaeb2;
+    -color-fg-subtle: rgb(141, 141, 147);
+    -color-fg-emphasis: rgb(255, 255, 255);
+}
+
+.root.theme-cupertino-light {
+    -color-fg-default: rgb(0, 0, 0);
+    -color-fg-muted: #636366;
+    -color-fg-subtle: rgb(138, 138, 142);
+    -color-fg-emphasis: rgb(255, 255, 255);
+}
+
+.root.theme-dracula {
+    -color-fg-default: #f8f8f2;
+    -color-fg-muted: #bfbfc3;
+    -color-fg-subtle: #7e7f86;
+    -color-fg-emphasis: #0d0e12;
+}
