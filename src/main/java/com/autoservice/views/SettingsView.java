@@ -42,6 +42,8 @@ import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import javafx.application.Platform;
 import javafx.stage.FileChooser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.time.LocalDate;
@@ -53,6 +55,8 @@ import java.util.List;
  * Представление для управления настройками приложения.
  */
 public class SettingsView {
+
+    private static final Logger logger = LoggerFactory.getLogger(SettingsView.class);
 
     // ==================== НАСТРОЙКИ ПРИЛОЖЕНИЯ ====================
 
@@ -697,8 +701,8 @@ public class SettingsView {
         List<ServiceSparePart> relations = DataStore.getServiceSparePartsByServiceId(-1);
         
         // Логируем количество связей для диагностики
-        System.out.println("=== REFRESH SERVICE-SPARE PARTS ===");
-        System.out.println("Всего связей в БД: " + relations.size());
+        logger.debug("=== REFRESH SERVICE-SPARE PARTS ===");
+        logger.debug("Всего связей в БД: {}", relations.size());
         for (int i = 0; i < relations.size(); i++) {
             ServiceSparePart relation = relations.get(i);
             Service service = DataStore.getServices().stream()
@@ -709,9 +713,10 @@ public class SettingsView {
                     .filter(s -> s.getId() == relation.getSparePartId())
                     .findFirst()
                     .orElse(null);
-            System.out.println("  [" + i + "] serviceId=" + relation.getServiceId() + "(" + (service != null ? service.getName() : "?") + ") " +
-                               "sparePartId=" + relation.getSparePartId() + "(" + (part != null ? part.getName() : "?") + ") " +
-                               "qty=" + relation.getQuantity() + " unit=" + relation.getUnitType());
+            logger.debug("  [{}] serviceId={}({}) sparePartId={}({}) qty={} unit={}",
+                    i, relation.getServiceId(), service != null ? service.getName() : "?",
+                    relation.getSparePartId(), part != null ? part.getName() : "?",
+                    relation.getQuantity(), relation.getUnitType());
         }
 
         // Группируем связи по услугам
@@ -726,9 +731,9 @@ public class SettingsView {
             }
         }
         
-        System.out.println("Уникальных услуг: " + relationsByService.size());
+        logger.debug("Уникальных услуг: {}", relationsByService.size());
         for (java.util.Map.Entry<Service, List<ServiceSparePart>> entry : relationsByService.entrySet()) {
-            System.out.println("  Услуга: " + entry.getKey().getName() + " - " + entry.getValue().size() + " связей");
+            logger.debug("  Услуга: {} - {} связей", entry.getKey().getName(), entry.getValue().size());
         }
 
         // Создаем строки для таблицы
@@ -945,17 +950,18 @@ public class SettingsView {
         List<ToPart> parts = DataStore.getToPartsByCarModel("");
         
         // Логируем количество расходников для диагностики
-        System.out.println("=== REFRESH TO PARTS ===");
-        System.out.println("Всего расходников в БД: " + parts.size());
+        logger.debug("=== REFRESH TO PARTS ===");
+        logger.debug("Всего расходников в БД: {}", parts.size());
         for (int i = 0; i < parts.size(); i++) {
             ToPart part = parts.get(i);
             SparePart sparePart = DataStore.getSpareParts().stream()
                     .filter(s -> s.getId() == part.getSparePartId())
                     .findFirst()
                     .orElse(null);
-            System.out.println("  [" + i + "] carModel=" + part.getCarModel() + " " +
-                               "sparePartId=" + part.getSparePartId() + "(" + (sparePart != null ? sparePart.getName() : "?") + ") " +
-                               "qty=" + part.getQuantity() + " unit=" + part.getUnitType());
+            logger.debug("  [{}] carModel={} sparePartId={}({}) qty={} unit={}",
+                    i, part.getCarModel(), part.getSparePartId(),
+                    sparePart != null ? sparePart.getName() : "?",
+                    part.getQuantity(), part.getUnitType());
         }
 
         // Группируем расходники по моделям авто
@@ -965,9 +971,9 @@ public class SettingsView {
             partsByModel.computeIfAbsent(carModel, k -> new java.util.ArrayList<>()).add(part);
         }
         
-        System.out.println("Уникальных моделей: " + partsByModel.size());
+        logger.debug("Уникальных моделей: {}", partsByModel.size());
         for (java.util.Map.Entry<String, List<ToPart>> entry : partsByModel.entrySet()) {
-            System.out.println("  Модель: " + entry.getKey() + " - " + entry.getValue().size() + " расходников");
+            logger.debug("  Модель: {} - {} расходников", entry.getKey(), entry.getValue().size());
         }
 
         // Создаем строки для таблицы
