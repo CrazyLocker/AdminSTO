@@ -66,7 +66,8 @@ class ClientViewUITest extends BaseUITest {
         seedClient("Иван", "Петров", "+79001234567", "Haval Jolion", "А123ВС163");
         seedClient("Сергей", "Смирнов", "+79009876543", "Haval F7", "В777ОР777");
 
-        writeText("clientSearchField", "9876543");
+        // Телефон отображается как "+7 (900) 987-65-43", поэтому ищем цифровую подстроку без разрывов
+        writeText("clientSearchField", "987");
         TableView<Client> table = getTable("clientTable");
         assertThat(getOnFxThread(() -> table.getItems().size())).isEqualTo(1);
     }

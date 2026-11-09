@@ -66,7 +66,7 @@ public class SettingService {
         if (setting != null) {
             logger.info("  setting found: id={}, oldValue=[REDACTED], oldKey={}", setting.getId(), setting.getKey());
             setting.setValue(value);
-            logger.info("  after setValue: id={}, newValue={}, dirty={}", setting.getId(), setting.getValue(), setting.isDirty());
+            logger.info("  after setValue: id={}, newValue=[REDACTED], dirty={}", setting.getId(), setting.isDirty());
             DataStore.updateSetting(setting);
             logger.info("  DataStore.updateSetting completed");
             loadSettings();
