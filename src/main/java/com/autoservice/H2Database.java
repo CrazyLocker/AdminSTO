@@ -71,7 +71,7 @@ public class H2Database extends AbstractDatabase {
      */
     @Override
     public void addSparePart(SparePart part) {
-        String sql = "MERGE INTO spare_parts (name, purchase_price, retail_price, stock, part_number, manufacturer, compatible_models, note, min_stock, location, unit_type) KEY(name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "MERGE INTO spare_parts (name, purchase_price, retail_price, stock, part_number, manufacturer, compatible_models, note, min_stock, location, unit_type, category) KEY(name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -86,6 +86,7 @@ public class H2Database extends AbstractDatabase {
             pstmt.setDouble(9, part.getMinStock());
             pstmt.setString(10, part.getLocation());
             pstmt.setString(11, part.getUnitType());
+            pstmt.setString(12, part.getCategory().name());
             pstmt.executeUpdate();
             
             // Получаем сгенерированный id (работает в H2 для INSERT и MERGE)

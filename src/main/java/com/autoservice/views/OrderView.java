@@ -388,7 +388,8 @@ public class OrderView {
                 comboBox.setOnAction(e -> {
                     WorkOrder order = getTableView().getItems().get(getIndex());
                     if (order != null) {
-                        order.setStatus(comboBox.getValue());
+                        // Статус меняет контроллер: он же сохраняет заказ и
+                        // начисляет лояльность при закрытии.
                         OrderController.changeOrderStatus(order, comboBox.getValue());
                     }
                 });

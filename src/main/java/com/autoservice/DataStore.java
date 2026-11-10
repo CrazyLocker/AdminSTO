@@ -278,7 +278,12 @@ public class DataStore {
         isDirty = true;
     }
 
-    private static Client getClientById(int id) {
+    /**
+     * Найти клиента по идентификатору в кэше.
+     * @param id идентификатор клиента
+     * @return клиент или {@code null}, если не найден
+     */
+    public static Client getClientById(int id) {
         return clients.stream()
                 .filter(c -> c.getId() == id)
                 .findFirst()

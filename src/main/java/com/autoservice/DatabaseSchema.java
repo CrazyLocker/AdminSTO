@@ -30,7 +30,9 @@ final class DatabaseSchema {
             "phone TEXT NOT NULL CHECK(length(phone) > 0), " +
             "car_model TEXT DEFAULT '', " +
             "car_number TEXT DEFAULT '', " +
-            "last_repair_date TEXT DEFAULT ''" +
+            "last_repair_date TEXT DEFAULT '', " +
+            "maintenance_stars INTEGER DEFAULT 0 CHECK(maintenance_stars >= 0), " +
+            "tuning_total REAL DEFAULT 0 CHECK(tuning_total >= 0)" +
             ")";
 
     private static final String CREATE_CLIENT_CARS = "CREATE TABLE IF NOT EXISTS client_cars (" +
@@ -49,6 +51,7 @@ final class DatabaseSchema {
             "duration INTEGER DEFAULT 60 CHECK(duration >= 0), " +
             "part_number TEXT DEFAULT '', " +
             "category_id INTEGER DEFAULT 0, " +
+            "category TEXT DEFAULT 'REGULAR' CHECK(category IN ('REGULAR', 'MAINTENANCE', 'TUNING')), " +
             "oil_volume REAL DEFAULT 0 CHECK(oil_volume >= 0), " +
             "uses_oil INTEGER DEFAULT 0 CHECK(uses_oil IN (0, 1)), " +
             "spare_part_name TEXT DEFAULT '', " +
@@ -67,6 +70,7 @@ final class DatabaseSchema {
             "stock REAL DEFAULT 0 CHECK(stock >= 0), " +
             "min_stock REAL DEFAULT 0 CHECK(min_stock >= 0), " +
             "location TEXT DEFAULT '', " +
+            "category TEXT DEFAULT 'REGULAR' CHECK(category IN ('REGULAR', 'MAINTENANCE', 'TUNING')), " +
             "unit_type TEXT DEFAULT 'шт' CHECK(unit_type IN ('шт', 'л', 'компл'))" +
             ")";
 
