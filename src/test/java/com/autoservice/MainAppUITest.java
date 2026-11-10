@@ -1,5 +1,8 @@
 package com.autoservice;
 
+import com.autoservice.views.SettingsView;
+import javafx.scene.Node;
+import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TableView;
 import org.junit.jupiter.api.*;
@@ -57,6 +60,24 @@ class MainAppUITest extends BaseUITest {
         switchTab("Заказы");
         TableView<?> table = getTable("orderTable");
         assertThat(table.isVisible()).isTrue();
+    }
+
+    @Test
+    @DisplayName("В настройках есть вкладка 'Лояльность' с параметрами")
+    void settingsHaveLoyaltyTabWithFields() {
+        TabPane settingsPane = SettingsView.getSettingsPane();
+        assertThat(settingsPane).isNotNull();
+
+        Tab loyaltyTab = settingsPane.getTabs().stream()
+                .filter(tab -> "Лояльность".equals(tab.getText()))
+                .findFirst()
+                .orElse(null);
+        assertThat(loyaltyTab).isNotNull();
+
+        Node content = loyaltyTab.getContent();
+        assertThat(content.lookup("#loyaltyMinMileageField")).isNotNull();
+        assertThat(content.lookup("#loyaltyStage3DiscountField")).isNotNull();
+        assertThat(content.lookup("#saveLoyaltySettingsBtn")).isNotNull();
     }
 
     @Test

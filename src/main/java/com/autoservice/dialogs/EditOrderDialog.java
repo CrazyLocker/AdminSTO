@@ -66,9 +66,9 @@ public class EditOrderDialog {
         private DatePicker datePicker;
         private ComboBox<String> timeCombo;
         private ComboBox<String> masterCombo;
-        private ListView<String> servicesListView;
+        private TableView<OrderItemsTable.Item> servicesTable;
         private ComboBox<Service> serviceCombo;
-        private ListView<String> partsListView;
+        private TableView<OrderItemsTable.Item> partsTable;
         private ComboBox<SparePart> partCombo;
         private Label totalLabel;
         private Button addServiceBtn;
@@ -164,6 +164,7 @@ public class EditOrderDialog {
         buildServicesSection(form);
         buildPartsSection(form);
         buildSummarySection(form);
+        refreshItems(form);
     }
 
     // ==================== ИНФОРМАЦИЯ О ЗАКАЗЕ ====================
@@ -276,15 +277,10 @@ public class EditOrderDialog {
         Label servicesHeader = new Label("УСЛУГИ");
         servicesHeader.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
 
-        form.servicesListView = new ListView<>();
-        form.servicesListView.setPrefHeight(120);
+        form.servicesTable = OrderItemsTable.create("editOrderServicesTable");
 
         form.tempServices.addAll(form.order.getServices());
         form.tempServicePrices.addAll(form.order.getServicePrices());
-        for (int i = 0; i < form.tempServices.size(); i++) {
-            form.servicesListView.getItems().add((i + 1) + ". " + form.tempServices.get(i)
-                    + " — " + form.tempServicePrices.get(i) + " руб.");
-        }
 
         form.serviceCombo = new ComboBox<>(FXCollections.observableArrayList(DataStore.getServices()));
         form.serviceCombo.setPromptText("Выберите услугу");
@@ -297,7 +293,7 @@ public class EditOrderDialog {
         HBox serviceAddBox = new HBox(10, form.serviceCombo, form.addServiceBtn, form.removeServiceBtn);
 
         form.root.getChildren().addAll(
-                servicesHeader, form.servicesListView, serviceAddBox,
+                servicesHeader, form.servicesTable, serviceAddBox,
                 new Separator()
         );
     }
@@ -307,19 +303,10 @@ public class EditOrderDialog {
         Label partsHeader = new Label("ЗАПЧАСТИ");
         partsHeader.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
 
-        form.partsListView = new ListView<>();
-        form.partsListView.setPrefHeight(120);
+        form.partsTable = OrderItemsTable.create("editOrderPartsTable");
 
         form.tempParts.addAll(form.order.getSpareParts());
-        form.tempPartQuantities.addAll(form.order.getSparePartQuantities().stream()
-                .map(Double::valueOf).collect(java.util.stream.Collectors.toList()));
-        // ID запчастей теперь сохраняется в БД (spare_part_id в order_parts) — костыль поиска по имени не нужен
-        for (int i = 0; i < form.tempParts.size(); i++) {
-            SparePart p = form.tempParts.get(i);
-            double q = form.tempPartQuantities.get(i);
-            form.partsListView.getItems().add((i + 1) + ". " + p.getName() + " — " + p.getRetailPrice()
-                    + " руб. x " + (int) q + " = " + (p.getRetailPrice() * q) + " руб.");
-        }
+        form.tempPartQuantities.addAll(form.order.getSparePartQuantities());
 
         form.partCombo = new ComboBox<>(FXCollections.observableArrayList(DataStore.getSpareParts()));
         form.partCombo.setPromptText("Выберите запчасть");
@@ -332,7 +319,7 @@ public class EditOrderDialog {
         HBox partAddBox = new HBox(10, form.partCombo, form.addPartBtn, form.removePartBtn);
 
         form.root.getChildren().addAll(
-                partsHeader, form.partsListView, partAddBox,
+                partsHeader, form.partsTable, partAddBox,
                 new Separator()
         );
     }
@@ -426,9 +413,6 @@ public class EditOrderDialog {
                     if (StockHelper.reserve(part, qty)) {
                         form.tempParts.add(part);
                         form.tempPartQuantities.add(qty);
-                        form.partsListView.getItems().add(form.tempParts.size() + ". " + part.getName()
-                                + " — " + part.getRetailPrice() + " руб. x " + (int) qty
-                                + " = " + (part.getRetailPrice() * qty) + " руб.");
                     } else {
                         showAlert("Недостаточно запчастей на складе: " + part.getName());
                     }
@@ -438,10 +422,8 @@ public class EditOrderDialog {
 
         form.tempServices.add(selected.getName());
         form.tempServicePrices.add(selected.getPrice());
-        form.servicesListView.getItems().add(form.tempServices.size() + ". " + selected.getName()
-                + " — " + selected.getPrice() + " руб.");
         form.serviceCombo.setValue(null);
-        updateTotalLabel(form);
+        refreshItems(form);
     }
 
     /**
@@ -465,27 +447,19 @@ public class EditOrderDialog {
         form.tempParts.add(selected);
         form.tempPartQuantities.add(requestedQty);
         selected.setStock(selected.getStock() - requestedQty);
-        form.partsListView.getItems().add(form.tempParts.size() + ". " + selected.getName()
-                + " — " + selected.getRetailPrice() + " руб. x " + (int) requestedQty
-                + " = " + selected.getRetailPrice() + " руб.");
         form.partCombo.setValue(null);
-        updateTotalLabel(form);
+        refreshItems(form);
     }
 
     /**
      * Удалить выбранную услугу из заказа.
      */
     private static void removeService(Form form) {
-        int idx = form.servicesListView.getSelectionModel().getSelectedIndex();
+        int idx = form.servicesTable.getSelectionModel().getSelectedIndex();
         if (idx >= 0 && idx < form.tempServices.size()) {
             form.tempServices.remove(idx);
             form.tempServicePrices.remove(idx);
-            form.servicesListView.getItems().clear();
-            for (int i = 0; i < form.tempServices.size(); i++) {
-                form.servicesListView.getItems().add((i + 1) + ". " + form.tempServices.get(i)
-                        + " — " + form.tempServicePrices.get(i) + " руб.");
-            }
-            updateTotalLabel(form);
+            refreshItems(form);
         } else {
             showAlert("Выберите услугу для удаления");
         }
@@ -495,22 +469,15 @@ public class EditOrderDialog {
      * Вернуть остаток и удалить выбранную запчасть из заказа.
      */
     private static void removePart(Form form) {
-        int idx = form.partsListView.getSelectionModel().getSelectedIndex();
+        int idx = form.partsTable.getSelectionModel().getSelectedIndex();
         if (idx >= 0 && idx < form.tempParts.size()) {
             SparePart part = form.tempParts.get(idx);
             double qty = form.tempPartQuantities.get(idx);
             StockHelper.restore(part, qty);
             form.tempParts.remove(idx);
             form.tempPartQuantities.remove(idx);
-            form.partsListView.getItems().clear();
-            for (int i = 0; i < form.tempParts.size(); i++) {
-                SparePart p = form.tempParts.get(i);
-                double q = form.tempPartQuantities.get(i);
-                form.partsListView.getItems().add((i + 1) + ". " + p.getName() + " — " + p.getRetailPrice()
-                        + " руб. x " + (int) q + " = " + (p.getRetailPrice() * q) + " руб.");
-            }
             form.partCombo.setItems(FXCollections.observableArrayList(DataStore.getSpareParts()));
-            updateTotalLabel(form);
+            refreshItems(form);
         } else {
             showAlert("Выберите запчасть для удаления");
         }
@@ -675,6 +642,9 @@ public class EditOrderDialog {
         String mileageText = form.mileageField.getText().trim();
         int mileage = mileageText.isEmpty() ? 0 : Integer.parseInt(mileageText);
         form.order.setMileage(mileage);
+
+        // Итоговая сумма сохраняется уже с учётом скидок по лояльности.
+        form.order.applyLoyaltyDiscounts();
     }
 
     /**
@@ -737,17 +707,38 @@ public class EditOrderDialog {
         form.stage.close();
     }
 
+    /**
+     * Пересобрать таблицы позиций и показать итоговую сумму с учётом скидок.
+     */
+    private static void refreshItems(Form form) {
+        Client client = form.order.getClient();
+        form.servicesTable.getItems().setAll(
+                OrderItemsTable.serviceItems(form.tempServices, form.tempServicePrices, client));
+        form.partsTable.getItems().setAll(
+                OrderItemsTable.sparePartItems(form.tempParts, form.tempPartQuantities, client));
+        updateTotalLabel(form);
+    }
+
     private static void updateTotalLabel(Form form) {
-        form.totalLabel.setText("ИТОГО: " + String.format("%.2f", calculateTotal(form)) + " руб.");
+        List<OrderItemsTable.Item> items = orderItems(form);
+        String text = "ИТОГО: " + String.format("%.2f", OrderItemsTable.total(items)) + " руб.";
+        double discount = OrderItemsTable.discount(items);
+        if (discount > 0) {
+            text += String.format("  (скидка %.2f руб.)", discount);
+        }
+        form.totalLabel.setText(text);
+    }
+
+    private static List<OrderItemsTable.Item> orderItems(Form form) {
+        Client client = form.order.getClient();
+        List<OrderItemsTable.Item> items = new ArrayList<>();
+        items.addAll(OrderItemsTable.serviceItems(form.tempServices, form.tempServicePrices, client));
+        items.addAll(OrderItemsTable.sparePartItems(form.tempParts, form.tempPartQuantities, client));
+        return items;
     }
 
     private static double calculateTotal(Form form) {
-        double total = 0;
-        for (Double price : form.tempServicePrices) total += price;
-        for (int i = 0; i < form.tempParts.size(); i++) {
-            total += form.tempParts.get(i).getRetailPrice() * form.tempPartQuantities.get(i);
-        }
-        return total;
+        return OrderItemsTable.total(orderItems(form));
     }
 
     private static void showAlert(String msg) {

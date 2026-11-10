@@ -55,7 +55,14 @@ public class OrderDetailsDialog {
 
         ListView<String> servicesList = new ListView<>();
         for (int i = 0; i < order.getServices().size(); i++) {
-            servicesList.getItems().add((i+1) + ". " + order.getServices().get(i) + " — " + order.getServicePrices().get(i) + " руб.");
+            StringBuilder line = new StringBuilder()
+                    .append(i + 1).append(". ").append(order.getServices().get(i))
+                    .append(" — ").append(order.getServicePrices().get(i)).append(" руб.");
+            double discount = order.getServiceDiscountPercent(i);
+            if (discount > 0) {
+                line.append(" (скидка ").append(formatDiscount(discount)).append(")");
+            }
+            servicesList.getItems().add(line.toString());
         }
         servicesList.setPrefHeight(100);
 
@@ -66,11 +73,19 @@ public class OrderDetailsDialog {
         for (int i = 0; i < order.getSpareParts().size(); i++) {
             SparePart part = order.getSpareParts().get(i);
             double qty = order.getSparePartQuantities().get(i);
-            partsList.getItems().add((i+1) + ". " + part.getName() + " — " + part.getRetailPrice() + " руб. x " + (int)qty + " = " + (part.getRetailPrice() * qty) + " руб.");
+            StringBuilder line = new StringBuilder()
+                    .append(i + 1).append(". ").append(part.getName())
+                    .append(" — ").append(part.getRetailPrice()).append(" руб. x ").append((int) qty)
+                    .append(" = ").append(part.getRetailPrice() * qty).append(" руб.");
+            double discount = order.getSparePartDiscountPercent(i);
+            if (discount > 0) {
+                line.append(" (скидка ").append(formatDiscount(discount)).append(")");
+            }
+            partsList.getItems().add(line.toString());
         }
         partsList.setPrefHeight(100);
 
-        Label totalLabel = new Label("Итого: " + order.getTotal() + " руб.");
+        Label totalLabel = new Label("Итого: " + String.format("%.2f", order.getTotal()) + " руб.");
         totalLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
 
         Button closeBtn = new Button("Закрыть");
@@ -85,12 +100,27 @@ public class OrderDetailsDialog {
 
         content.getChildren().addAll(headerLabel, statusLabel, carLabel,
                 servicesLabel, servicesList,
-                partsLabel, partsList,
-                totalLabel, btnBox);
+                partsLabel, partsList);
+
+        if (order.getDiscountTotal() > 0) {
+            Label discountLabel = new Label("Скидка по лояльности: −"
+                    + String.format("%.2f", order.getDiscountTotal()) + " руб.");
+            discountLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #2E7D32;");
+            content.getChildren().add(discountLabel);
+        }
+
+        content.getChildren().addAll(totalLabel, btnBox);
 
         Scene scene = new Scene(content);
         stage.setScene(scene);
         closeBtn.setOnAction(e -> stage.close());
         stage.showAndWait();
+    }
+
+    private static String formatDiscount(double percent) {
+        if (Math.abs(percent - Math.rint(percent)) < 0.0001) {
+            return String.format("%.0f%%", percent);
+        }
+        return String.format("%.1f%%", percent);
     }
 }

@@ -861,7 +861,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             while (rs.next()) {
                 WorkOrder order = orders.get(rs.getString("order_id"));
                 if (order != null) {
-                    order.addService(rs.getInt("service_id"),
+                    order.addLoadedService(rs.getInt("service_id"),
                             rs.getString("service_name"), rs.getDouble("price"));
                 }
             }
@@ -892,7 +892,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                     );
                     part.setId(rs.getInt("spare_part_id"));
                     part.setUnitType(valueOrDefault(rs.getString("unit_type"), "шт"));
-                    order.addSparePart(part, rs.getInt("quantity"));
+                    order.addLoadedSparePart(part, rs.getInt("quantity"));
                 }
             }
         } catch (SQLException e) {

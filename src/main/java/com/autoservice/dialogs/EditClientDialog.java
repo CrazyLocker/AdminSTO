@@ -6,6 +6,7 @@ import com.autoservice.Client;
 import com.autoservice.DataStore;
 import com.autoservice.utils.Formatters;
 import com.autoservice.controllers.ClientController;
+import com.autoservice.services.LoyaltyService;
 import com.autoservice.services.WindowStateManager;
 import com.autoservice.utils.DialogValidator;
 import com.autoservice.utils.ValidationErrorIndicator;
@@ -100,6 +101,22 @@ public class EditClientDialog {
             phoneField.setText(Formatters.formatPhoneForDisplay(existingPhone));
         }
         Formatters.setupPhoneField(phoneField);
+
+        // ====== Статус лояльности ======
+        Label loyaltySectionLabel = new Label("Статус лояльности:");
+        loyaltySectionLabel.getStyleClass().add("dialog-title");
+
+        Label loyaltyStarsLabel = new Label(LoyaltyService.getMaintenanceStatusText(client));
+        loyaltyStarsLabel.setId("clientLoyaltyStarsLabel");
+        loyaltyStarsLabel.setStyle("-fx-font-size: 13px;");
+
+        Label loyaltyStageLabel = new Label(LoyaltyService.getTuningStatusText(client));
+        loyaltyStageLabel.setId("clientLoyaltyStageLabel");
+        loyaltyStageLabel.setStyle("-fx-font-size: 13px;");
+
+        VBox loyaltyBox = new VBox(6, loyaltyStarsLabel, loyaltyStageLabel);
+        loyaltyBox.setPadding(new Insets(10));
+        loyaltyBox.setStyle("-fx-background-color: #eef5ff; -fx-background-radius: 8;");
 
         // ====== Автомобили клиента ======
         Label carsSectionLabel = new Label("Автомобили клиента:");
@@ -293,7 +310,8 @@ public class EditClientDialog {
         grid.add(phoneLabel, 0, 2);
         grid.add(phoneField, 1, 2);
 
-        root.getChildren().addAll(titleLabel, grid, carsSectionLabel, carsBox, addCarBtn, btnBox);
+        root.getChildren().addAll(titleLabel, grid, loyaltySectionLabel, loyaltyBox,
+                carsSectionLabel, carsBox, addCarBtn, btnBox);
 
         Scene scene = new Scene(root);
         stage.setScene(scene);

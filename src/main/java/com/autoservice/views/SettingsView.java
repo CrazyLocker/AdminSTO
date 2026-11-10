@@ -16,6 +16,7 @@ import com.autoservice.model.Setting;
 import com.autoservice.model.ToPart;
 import com.autoservice.services.ExportService;
 import com.autoservice.services.ImportService;
+import com.autoservice.services.LoyaltyService;
 import com.autoservice.services.SettingService;
 import com.autoservice.services.BackupService;
 import com.autoservice.services.ScheduleService;
@@ -46,10 +47,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Представление для управления настройками приложения.
@@ -152,6 +157,11 @@ public class SettingsView {
         autoPartsTab.setContent(createAutoPartsPanel());
         autoPartsTab.setClosable(false);
 
+        Tab loyaltyTab = new Tab("Лояльность");
+        loyaltyTab.setId("loyaltySettingsTab");
+        loyaltyTab.setContent(createLoyaltyPanel());
+        loyaltyTab.setClosable(false);
+
         Tab serviceSparePartsTab = new Tab("Связи");
         serviceSparePartsTab.setContent(ServicePartsTreeTableView.create());
         serviceSparePartsTab.setClosable(false);
@@ -168,7 +178,8 @@ public class SettingsView {
         importExportTab.setContent(createImportExportPanel());
         importExportTab.setClosable(false);
 
-        settingsPane.getTabs().addAll(settingsAppTab, autoPartsTab, serviceSparePartsTab, toPartsTab, backupTab, importExportTab);
+        settingsPane.getTabs().addAll(settingsAppTab, autoPartsTab, loyaltyTab, serviceSparePartsTab,
+                toPartsTab, backupTab, importExportTab);
 
         VBox vbox = new VBox(10);
         vbox.setPadding(new Insets(10));
@@ -536,6 +547,223 @@ public class SettingsView {
         panel.getChildren().addAll(introLabel, autoAddBox, confirmationBox, saveBtn);
 
         return panel;
+    }
+
+    // ==================== Вкладка: Лояльность ====================
+
+    /**
+     * Описание одного числового параметра лояльности на экране настроек.
+     */
+    private static final class LoyaltySetting {
+        private final String key;
+        private final String label;
+        private final TextField field;
+        private final boolean integer;
+
+        private LoyaltySetting(String key, String label, TextField field, boolean integer) {
+            this.key = key;
+            this.label = label;
+            this.field = field;
+            this.integer = integer;
+        }
+    }
+
+    private static VBox createLoyaltyPanel() {
+        VBox panel = new VBox(15);
+        panel.setPadding(new Insets(20));
+        panel.setStyle("-fx-background-color: #f5f7fa;");
+
+        Label titleLabel = new Label("Параметры программы лояльности");
+        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
+
+        Label introLabel = new Label("Пороги накоплений и проценты скидок применяются при оформлении заказов. "
+                + "Пустое значение заменяется значением по умолчанию.");
+        introLabel.getStyleClass().add("intro-label");
+        introLabel.setWrapText(true);
+
+        List<LoyaltySetting> settings = new ArrayList<>();
+
+        GridPane maintenanceGrid = createLoyaltyGrid();
+        addLoyaltyRow(maintenanceGrid, 0, "Минимальная разница пробега между ТО, км:",
+                createLoyaltySetting(settings, LoyaltyService.SETTING_MAINTENANCE_MIN_MILEAGE,
+                        "Минимальная разница пробега между ТО", "loyaltyMinMileageField",
+                        String.valueOf(LoyaltyService.DEFAULT_MAINTENANCE_MIN_MILEAGE), true));
+        addLoyaltyRow(maintenanceGrid, 1, "Максимальная разница пробега между ТО, км:",
+                createLoyaltySetting(settings, LoyaltyService.SETTING_MAINTENANCE_MAX_MILEAGE,
+                        "Максимальная разница пробега между ТО", "loyaltyMaxMileageField",
+                        String.valueOf(LoyaltyService.DEFAULT_MAINTENANCE_MAX_MILEAGE), true));
+        addLoyaltyRow(maintenanceGrid, 2, "Максимум звёзд ТО:",
+                createLoyaltySetting(settings, LoyaltyService.SETTING_MAINTENANCE_MAX_STARS,
+                        "Максимум звёзд ТО", "loyaltyMaxStarsField",
+                        String.valueOf(LoyaltyService.DEFAULT_MAINTENANCE_MAX_STARS), true));
+        addLoyaltyRow(maintenanceGrid, 3, "Скидка при 3 звёздах, %:",
+                createLoyaltySetting(settings, LoyaltyService.SETTING_MAINTENANCE_STARS3_DISCOUNT,
+                        "Скидка при 3 звёздах", "loyaltyStars3DiscountField",
+                        formatLoyaltyValue(LoyaltyService.DEFAULT_MAINTENANCE_STARS3_DISCOUNT), false));
+        addLoyaltyRow(maintenanceGrid, 4, "Скидка при 4 звёздах, %:",
+                createLoyaltySetting(settings, LoyaltyService.SETTING_MAINTENANCE_STARS4_DISCOUNT,
+                        "Скидка при 4 звёздах", "loyaltyStars4DiscountField",
+                        formatLoyaltyValue(LoyaltyService.DEFAULT_MAINTENANCE_STARS4_DISCOUNT), false));
+        addLoyaltyRow(maintenanceGrid, 5, "Скидка при 5 звёздах, %:",
+                createLoyaltySetting(settings, LoyaltyService.SETTING_MAINTENANCE_STARS5_DISCOUNT,
+                        "Скидка при 5 звёздах", "loyaltyStars5DiscountField",
+                        formatLoyaltyValue(LoyaltyService.DEFAULT_MAINTENANCE_STARS5_DISCOUNT), false));
+
+        GridPane tuningGrid = createLoyaltyGrid();
+        addLoyaltyRow(tuningGrid, 0, "Начало Stage 1, руб.:",
+                createLoyaltySetting(settings, LoyaltyService.SETTING_TUNING_STAGE1_MIN_AMOUNT,
+                        "Начало Stage 1", "loyaltyStage1AmountField",
+                        formatLoyaltyValue(LoyaltyService.DEFAULT_TUNING_STAGE1_MIN_AMOUNT), false));
+        addLoyaltyRow(tuningGrid, 1, "Скидка Stage 1, %:",
+                createLoyaltySetting(settings, LoyaltyService.SETTING_TUNING_STAGE1_DISCOUNT,
+                        "Скидка Stage 1", "loyaltyStage1DiscountField",
+                        formatLoyaltyValue(LoyaltyService.DEFAULT_TUNING_STAGE1_DISCOUNT), false));
+        addLoyaltyRow(tuningGrid, 2, "Порог Stage 2, руб.:",
+                createLoyaltySetting(settings, LoyaltyService.SETTING_TUNING_STAGE2_MIN_AMOUNT,
+                        "Порог Stage 2", "loyaltyStage2AmountField",
+                        formatLoyaltyValue(LoyaltyService.DEFAULT_TUNING_STAGE2_MIN_AMOUNT), false));
+        addLoyaltyRow(tuningGrid, 3, "Скидка Stage 2, %:",
+                createLoyaltySetting(settings, LoyaltyService.SETTING_TUNING_STAGE2_DISCOUNT,
+                        "Скидка Stage 2", "loyaltyStage2DiscountField",
+                        formatLoyaltyValue(LoyaltyService.DEFAULT_TUNING_STAGE2_DISCOUNT), false));
+        addLoyaltyRow(tuningGrid, 4, "Порог Stage 3, руб.:",
+                createLoyaltySetting(settings, LoyaltyService.SETTING_TUNING_STAGE3_MIN_AMOUNT,
+                        "Порог Stage 3", "loyaltyStage3AmountField",
+                        formatLoyaltyValue(LoyaltyService.DEFAULT_TUNING_STAGE3_MIN_AMOUNT), false));
+        addLoyaltyRow(tuningGrid, 5, "Скидка Stage 3, %:",
+                createLoyaltySetting(settings, LoyaltyService.SETTING_TUNING_STAGE3_DISCOUNT,
+                        "Скидка Stage 3", "loyaltyStage3DiscountField",
+                        formatLoyaltyValue(LoyaltyService.DEFAULT_TUNING_STAGE3_DISCOUNT), false));
+
+        VBox maintenanceSection = createLoyaltySection(
+                "Шкала ТО — звёзды за регулярное обслуживание", maintenanceGrid);
+        VBox tuningSection = createLoyaltySection(
+                "Шкала тюнинга — накопительная сумма", tuningGrid);
+
+        Button saveBtn = new Button("Сохранить параметры");
+        saveBtn.setId("saveLoyaltySettingsBtn");
+        saveBtn.getStyleClass().add("save-button");
+        saveBtn.setOnAction(e -> saveLoyaltySettings(settings));
+
+        panel.getChildren().addAll(titleLabel, introLabel, maintenanceSection, tuningSection, saveBtn);
+        return panel;
+    }
+
+    private static GridPane createLoyaltyGrid() {
+        GridPane grid = new GridPane();
+        grid.setHgap(15);
+        grid.setVgap(10);
+        return grid;
+    }
+
+    private static void addLoyaltyRow(GridPane grid, int row, String label, TextField field) {
+        Label nameLabel = new Label(label);
+        nameLabel.setPrefWidth(330);
+        grid.add(nameLabel, 0, row);
+        grid.add(field, 1, row);
+    }
+
+    private static VBox createLoyaltySection(String title, GridPane grid) {
+        Label titleLabel = new Label(title);
+        titleLabel.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #2980b9;");
+        VBox section = new VBox(10, titleLabel, grid);
+        section.setPadding(new Insets(15));
+        section.setStyle("-fx-background-color: white; -fx-background-radius: 8; "
+                + "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);");
+        return section;
+    }
+
+    private static TextField createLoyaltySetting(List<LoyaltySetting> settings, String key, String label,
+                                                  String id, String defaultValue, boolean integer) {
+        String stored = SettingService.getSettingValue(key);
+        TextField field = new TextField(stored != null && !stored.isBlank() ? stored : defaultValue);
+        field.setId(id);
+        field.setPrefWidth(150);
+        settings.add(new LoyaltySetting(key, label, field, integer));
+        return field;
+    }
+
+    private static void saveLoyaltySettings(List<LoyaltySetting> settings) {
+        Map<String, Double> values = new HashMap<>();
+        List<String> errors = new ArrayList<>();
+
+        for (LoyaltySetting setting : settings) {
+            String text = setting.field.getText().trim().replace(',', '.');
+            if (text.isEmpty()) {
+                errors.add(setting.label + ": значение не может быть пустым");
+                continue;
+            }
+            try {
+                double value = Double.parseDouble(text);
+                if (value < 0) {
+                    errors.add(setting.label + ": значение не может быть отрицательным");
+                    continue;
+                }
+                if (setting.integer && Math.abs(value - Math.rint(value)) > 0.0001) {
+                    errors.add(setting.label + ": требуется целое число");
+                    continue;
+                }
+                values.put(setting.key, value);
+            } catch (NumberFormatException ex) {
+                errors.add(setting.label + ": требуется число");
+            }
+        }
+
+        if (errors.isEmpty()) {
+            validateLoyaltyRanges(values, errors);
+        }
+
+        if (!errors.isEmpty()) {
+            showAlert("Проверьте параметры лояльности:\n• " + String.join("\n• ", errors));
+            return;
+        }
+
+        for (LoyaltySetting setting : settings) {
+            double value = values.get(setting.key);
+            String text = setting.integer
+                    ? String.valueOf((long) value)
+                    : formatLoyaltyValue(value);
+            SettingService.setSettingValue(setting.key, text);
+        }
+
+        refreshSettingsTable();
+        showAlert("Параметры лояльности сохранены", Alert.AlertType.INFORMATION);
+    }
+
+    private static void validateLoyaltyRanges(Map<String, Double> values, List<String> errors) {
+        Double minMileage = values.get(LoyaltyService.SETTING_MAINTENANCE_MIN_MILEAGE);
+        Double maxMileage = values.get(LoyaltyService.SETTING_MAINTENANCE_MAX_MILEAGE);
+        if (minMileage != null && maxMileage != null && maxMileage < minMileage) {
+            errors.add("Максимальная разница пробега не может быть меньше минимальной");
+        }
+
+        Double stage1 = values.get(LoyaltyService.SETTING_TUNING_STAGE1_MIN_AMOUNT);
+        Double stage2 = values.get(LoyaltyService.SETTING_TUNING_STAGE2_MIN_AMOUNT);
+        Double stage3 = values.get(LoyaltyService.SETTING_TUNING_STAGE3_MIN_AMOUNT);
+        if (stage1 != null && stage2 != null && stage2 <= stage1) {
+            errors.add("Порог Stage 2 должен быть больше начала Stage 1");
+        }
+        if (stage2 != null && stage3 != null && stage3 <= stage2) {
+            errors.add("Порог Stage 3 должен быть больше порога Stage 2");
+        }
+
+        for (String key : new String[]{
+                LoyaltyService.SETTING_MAINTENANCE_STARS3_DISCOUNT,
+                LoyaltyService.SETTING_MAINTENANCE_STARS4_DISCOUNT,
+                LoyaltyService.SETTING_MAINTENANCE_STARS5_DISCOUNT,
+                LoyaltyService.SETTING_TUNING_STAGE1_DISCOUNT,
+                LoyaltyService.SETTING_TUNING_STAGE2_DISCOUNT,
+                LoyaltyService.SETTING_TUNING_STAGE3_DISCOUNT}) {
+            Double discount = values.get(key);
+            if (discount != null && discount > 100) {
+                errors.add("Скидка не может превышать 100%");
+                break;
+            }
+        }
+    }
+
+    private static String formatLoyaltyValue(double value) {
+        return BigDecimal.valueOf(value).stripTrailingZeros().toPlainString();
     }
 
     // ==================== Вкладка: Связи услуг-запчастей ====================

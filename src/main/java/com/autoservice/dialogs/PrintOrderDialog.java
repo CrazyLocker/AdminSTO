@@ -311,10 +311,20 @@ public class PrintOrderDialog {
 
     private static void addTotalSection(Document doc, WorkOrder order, PdfFont regularFont, PdfFont boldFont) {
         double total = order.getTotal();
+        double discount = order.getDiscountTotal();
 
         Table table = new Table(UnitValue.createPercentArray(new float[]{50, 50}));
         table.setWidth(UnitValue.createPercentValue(100));
         table.setFontSize(9);
+
+        if (discount > 0) {
+            table.addCell(new Cell().add(new Paragraph("СУММА ПО ПРАЙСУ, РУБ:").setFont(regularFont)));
+            table.addCell(new Cell().add(new Paragraph(String.format("%,.2f", order.getSubtotal()))
+                    .setFont(regularFont)).setTextAlignment(TextAlignment.RIGHT));
+            table.addCell(new Cell().add(new Paragraph("СКИДКА ПО ЛОЯЛЬНОСТИ, РУБ:").setFont(regularFont)));
+            table.addCell(new Cell().add(new Paragraph("-" + String.format("%,.2f", discount))
+                    .setFont(regularFont)).setTextAlignment(TextAlignment.RIGHT));
+        }
 
         table.addCell(new Cell().add(new Paragraph("ИТОГО, ЗА РАБОТЫ И МАТЕРИАЛЫ, РУБ:").setFont(boldFont)));
         table.addCell(new Cell().add(new Paragraph(String.format("%,.2f", total)).setFont(boldFont)).setTextAlignment(TextAlignment.RIGHT));
