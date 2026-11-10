@@ -210,6 +210,10 @@ public class DashboardView extends ScrollPane {
     private DashboardView() {
         currencyFormat = NumberFormat.getCurrencyInstance(new Locale.Builder().setLanguage("ru").setRegion("RU").build());
 
+        // Класс ограничивает правила dashboard-custom.css только дашбордом,
+        // чтобы они не перекрашивали GridPane других вкладок и диалогов.
+        getStyleClass().add("dashboard-view");
+
         // Dashboard CSS теперь управляется ThemeManager — не загружаем здесь
 
         gridPane = new GridPane();
