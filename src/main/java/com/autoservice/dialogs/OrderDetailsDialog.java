@@ -55,14 +55,8 @@ public class OrderDetailsDialog {
 
         ListView<String> servicesList = new ListView<>();
         for (int i = 0; i < order.getServices().size(); i++) {
-            StringBuilder line = new StringBuilder()
-                    .append(i + 1).append(". ").append(order.getServices().get(i))
-                    .append(" — ").append(order.getServicePrices().get(i)).append(" руб.");
-            double discount = order.getServiceDiscountPercent(i);
-            if (discount > 0) {
-                line.append(" (скидка ").append(formatDiscount(discount)).append(")");
-            }
-            servicesList.getItems().add(line.toString());
+            servicesList.getItems().add((i+1) + ". " + order.getServices().get(i)
+                    + " — " + order.getServicePrices().get(i) + " руб.");
         }
         servicesList.setPrefHeight(100);
 
@@ -73,15 +67,8 @@ public class OrderDetailsDialog {
         for (int i = 0; i < order.getSpareParts().size(); i++) {
             SparePart part = order.getSpareParts().get(i);
             double qty = order.getSparePartQuantities().get(i);
-            StringBuilder line = new StringBuilder()
-                    .append(i + 1).append(". ").append(part.getName())
-                    .append(" — ").append(part.getRetailPrice()).append(" руб. x ").append((int) qty)
-                    .append(" = ").append(part.getRetailPrice() * qty).append(" руб.");
-            double discount = order.getSparePartDiscountPercent(i);
-            if (discount > 0) {
-                line.append(" (скидка ").append(formatDiscount(discount)).append(")");
-            }
-            partsList.getItems().add(line.toString());
+            partsList.getItems().add((i+1) + ". " + part.getName() + " — " + part.getRetailPrice()
+                    + " руб. x " + (int)qty + " = " + (part.getRetailPrice() * qty) + " руб.");
         }
         partsList.setPrefHeight(100);
 
@@ -115,12 +102,5 @@ public class OrderDetailsDialog {
         stage.setScene(scene);
         closeBtn.setOnAction(e -> stage.close());
         stage.showAndWait();
-    }
-
-    private static String formatDiscount(double percent) {
-        if (Math.abs(percent - Math.rint(percent)) < 0.0001) {
-            return String.format("%.0f%%", percent);
-        }
-        return String.format("%.1f%%", percent);
     }
 }
