@@ -10,11 +10,15 @@ import com.autoservice.dialogs.OrderDetailsDialog;
 import com.autoservice.views.AppointmentView;
 import com.autoservice.views.DashboardView;
 import com.autoservice.views.OrderView;
+import com.autoservice.services.LoyaltyService;
+import com.autoservice.DateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.TableView;
+
+import java.time.LocalDate;
 
 import com.autoservice.Client;
 import com.autoservice.Service;
@@ -68,13 +72,36 @@ public class OrderController {
         OrderDetailsDialog.show(order);
     }
 
+    /**
+     * Изменить статус заказа и обновить данные в базе.
+     *
+     * <p>При первом закрытии заказа фиксируется дата закрытия и начисляются
+     * показатели лояльности клиента. Дата закрытия служит признаком того, что
+     * заказ уже учтён в лояльности: повторное закрытие после открытия не
+     * начисляет звёзды и сумму тюнинга второй раз.</p>
+     * @param order заказ
+     * @param newStatus новый статус
+     */
     public static void changeOrderStatus(WorkOrder order, String newStatus) {
-        if (order == null) return;
+        if (order == null) {
+            return;
+        }
         if (newStatus != null && !newStatus.equals(order.getStatus())) {
+            boolean firstClosing = WorkOrder.STATUS_CLOSED.equals(newStatus) && isClosedDateEmpty(order);
             order.setStatus(newStatus);
+            if (firstClosing) {
+                order.setClosedDate(DateUtils.formatDateForDB(LocalDate.now()));
+            }
             DataStore.updateOrder(order);
+            if (firstClosing) {
+                LoyaltyService.applyCompletedOrder(order);
+            }
             refreshTable();
         }
+    }
+
+    private static boolean isClosedDateEmpty(WorkOrder order) {
+        return order.getClosedDate() == null || order.getClosedDate().isEmpty();
     }
 
     public static void deleteOrder(WorkOrder order) {

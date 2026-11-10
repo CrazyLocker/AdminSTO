@@ -11,6 +11,17 @@ public class Client {
     private String carModel;
     private String carNumber;
     private String lastRepairDate;
+
+    /**
+     * Звёзды ТО, накопленные клиентом (шкала регулярности обслуживания).
+     */
+    private int maintenanceStars;
+
+    /**
+     * Накопленная сумма покупок категории «Тюнинг», руб.
+     */
+    private double tuningTotal;
+
     private boolean dirty = false;
     private List<Car> cars = new ArrayList<>();
 
@@ -24,6 +35,8 @@ public class Client {
         this.carModel = "";
         this.carNumber = "";
         this.lastRepairDate = "";
+        this.maintenanceStars = 0;
+        this.tuningTotal = 0;
         this.dirty = true;
     }
 
@@ -35,6 +48,8 @@ public class Client {
         this.carModel = carModel;
         this.carNumber = carNumber;
         this.lastRepairDate = lastRepairDate;
+        this.maintenanceStars = 0;
+        this.tuningTotal = 0;
         this.dirty = false;
     }
 
@@ -55,6 +70,8 @@ public class Client {
     public String getCarModel() { return carModel; }
     public String getCarNumber() { return carNumber; }
     public String getLastRepairDate() { return lastRepairDate; }
+    public int getMaintenanceStars() { return maintenanceStars; }
+    public double getTuningTotal() { return tuningTotal; }
     public boolean isDirty() { return dirty; }
 
     // ==================== СЕТТЕРЫ ====================
@@ -91,6 +108,16 @@ public class Client {
 
     public void setLastRepairDate(String lastRepairDate) {
         this.lastRepairDate = lastRepairDate;
+        this.dirty = true;
+    }
+
+    public void setMaintenanceStars(int maintenanceStars) {
+        this.maintenanceStars = maintenanceStars;
+        this.dirty = true;
+    }
+
+    public void setTuningTotal(double tuningTotal) {
+        this.tuningTotal = tuningTotal;
         this.dirty = true;
     }
 

@@ -32,3 +32,31 @@
 Вывод двух плашек:
 - Статус ТО: [★★★★☆] — Скидка 10% на работы.
 - Статус Тюнинга: [Stage 2] — Скидка 10% на тюнинг.
+
+## 5. Настройки этапа 1
+
+Все числовые параметры системы читаются из `SettingService` (таблица
+`app_settings`). Если настройка отсутствует, используется значение по
+умолчанию из этого документа. Ключи и значения по умолчанию объявлены
+константами `LoyaltyService`.
+
+| Ключ | По умолчанию | Назначение |
+|---|---|---|
+| `loyalty.maintenance.min_mileage` | `5000` | Минимальная разница пробега между ТО, км |
+| `loyalty.maintenance.max_mileage` | `10000` | Максимальная разница пробега между ТО, км |
+| `loyalty.maintenance.max_stars` | `5` | Максимум звёзд ТО |
+| `loyalty.maintenance.stars3.discount` | `5` | Скидка на ТО при 3 звёздах, % |
+| `loyalty.maintenance.stars4.discount` | `10` | Скидка на ТО при 4 звёздах, % |
+| `loyalty.maintenance.stars5.discount` | `15` | Скидка на ТО при 5 звёздах, % |
+| `loyalty.tuning.stage1.min_amount` | `30000` | Начало Stage 1, руб. |
+| `loyalty.tuning.stage1.discount` | `5` | Скидка Stage 1, % |
+| `loyalty.tuning.stage2.min_amount` | `100000` | Порог Stage 2 (скидка действует при сумме больше порога), руб. |
+| `loyalty.tuning.stage2.discount` | `10` | Скидка Stage 2, % |
+| `loyalty.tuning.stage3.min_amount` | `300000` | Порог Stage 3 (скидка действует при сумме больше порога), руб. |
+| `loyalty.tuning.stage3.discount` | `15` | Скидка Stage 3, % |
+
+Накопленные показатели хранятся в `clients.maintenance_stars` и
+`clients.tuning_total`, категории — в `services.category` и
+`spare_parts.category` (значения `REGULAR`, `MAINTENANCE`, `TUNING`).
+Экран редактирования этих настроек появится позже; логика уже читает их
+по ключам и не требует изменений при добавлении UI.

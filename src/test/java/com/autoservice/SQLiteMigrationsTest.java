@@ -60,6 +60,7 @@ class SQLiteMigrationsTest {
                     + "VALUES ('Иван', '+79001234567', 'Lada', 'А123ВС163')");
             execute(conn, "INSERT INTO orders (id, client_id, status, total, created_date) "
                     + "VALUES ('ZAK-01/01/24-0001', 1, 'NEW', 0, '2024-01-01')");
+            execute(conn, "INSERT INTO services (name, price) VALUES ('Замена масла', 1500)");
 
             SQLiteMigrations.migrate(conn);
 
@@ -69,15 +70,17 @@ class SQLiteMigrationsTest {
             assertThat(indexNames(conn)).contains(
                     "idx_service_parts_service_id", "idx_service_parts_spare_part_id",
                     "idx_client_cars_client_id");
-            assertThat(columnNames(conn, "spare_parts")).contains("unit_type", "note");
+            assertThat(columnNames(conn, "spare_parts")).contains("unit_type", "note", "category");
             assertThat(columnNames(conn, "services")).contains(
-                    "uses_oil", "spare_part_name", "spare_part_quantity", "category_id");
+                    "uses_oil", "spare_part_name", "spare_part_quantity", "category_id", "category");
             assertThat(columnNames(conn, "to_parts")).contains("note");
             assertThat(columnNames(conn, "order_services")).contains("service_id");
             assertThat(columnNames(conn, "order_parts")).contains(
                     "spare_part_id", "unit_type", "purchase_price");
             assertThat(columnNames(conn, "appointments")).contains("service_id");
             assertThat(columnNames(conn, "orders")).contains("closed_date", "notes", "mileage");
+            assertThat(columnNames(conn, "clients"))
+                    .contains("maintenance_stars", "tuning_total");
 
             // Миграция clients пересоздаёт таблицу: CHECK на car_model/car_number снят,
             // а данные сохранены.
@@ -87,6 +90,13 @@ class SQLiteMigrationsTest {
             assertThat(count(conn, "clients")).isEqualTo(1);
             assertThat(singleString(conn, "SELECT car_model FROM clients"))
                     .isEqualTo("Lada");
+            // Старые записи получают обычную категорию и нулевые показатели лояльности.
+            assertThat(singleString(conn, "SELECT category FROM services"))
+                    .isEqualTo("REGULAR");
+            assertThat(singleString(conn, "SELECT maintenance_stars FROM clients"))
+                    .isEqualTo("0");
+            assertThat(singleString(conn, "SELECT tuning_total FROM clients"))
+                    .isEqualTo("0.0");
         }
     }
 

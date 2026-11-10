@@ -58,6 +58,17 @@ final class SQLiteMigrations {
             "ALTER TABLE services ADD COLUMN category_id INTEGER DEFAULT 0";
     private static final String ADD_ORDERS_MILEAGE =
             "ALTER TABLE orders ADD COLUMN mileage INTEGER DEFAULT 0 CHECK(mileage >= 0)";
+    private static final String ADD_SERVICES_CATEGORY =
+            "ALTER TABLE services ADD COLUMN category TEXT DEFAULT 'REGULAR' "
+                    + "CHECK(category IN ('REGULAR', 'MAINTENANCE', 'TUNING'))";
+    private static final String ADD_SPARE_PARTS_CATEGORY =
+            "ALTER TABLE spare_parts ADD COLUMN category TEXT DEFAULT 'REGULAR' "
+                    + "CHECK(category IN ('REGULAR', 'MAINTENANCE', 'TUNING'))";
+    private static final String ADD_CLIENTS_MAINTENANCE_STARS =
+            "ALTER TABLE clients ADD COLUMN maintenance_stars INTEGER DEFAULT 0 "
+                    + "CHECK(maintenance_stars >= 0)";
+    private static final String ADD_CLIENTS_TUNING_TOTAL =
+            "ALTER TABLE clients ADD COLUMN tuning_total REAL DEFAULT 0 CHECK(tuning_total >= 0)";
 
     // ==================== DDL: ТАБЛИЦЫ ====================
 
@@ -160,7 +171,13 @@ final class SQLiteMigrations {
             SQLiteMigrations::addCategoryIdToServices,
             SQLiteMigrations::addMileageToOrders,
             SQLiteMigrations::createClientCars,
-            SQLiteMigrations::migrateClientsRemoveCheckConstraints
+            SQLiteMigrations::migrateClientsRemoveCheckConstraints,
+            // Миграции лояльности идут после пересоздания clients: оно копирует
+            // только старые колонки, поэтому новые нужно добавлять уже после него.
+            SQLiteMigrations::addCategoryToServices,
+            SQLiteMigrations::addCategoryToSpareParts,
+            SQLiteMigrations::addMaintenanceStarsToClients,
+            SQLiteMigrations::addTuningTotalToClients
     );
 
     private SQLiteMigrations() {
@@ -237,6 +254,22 @@ final class SQLiteMigrations {
 
     private static void addMileageToOrders(Connection conn) throws SQLException {
         addColumnIfMissing(conn, "orders", "mileage", ADD_ORDERS_MILEAGE);
+    }
+
+    private static void addCategoryToServices(Connection conn) throws SQLException {
+        addColumnIfMissing(conn, "services", "category", ADD_SERVICES_CATEGORY);
+    }
+
+    private static void addCategoryToSpareParts(Connection conn) throws SQLException {
+        addColumnIfMissing(conn, "spare_parts", "category", ADD_SPARE_PARTS_CATEGORY);
+    }
+
+    private static void addMaintenanceStarsToClients(Connection conn) throws SQLException {
+        addColumnIfMissing(conn, "clients", "maintenance_stars", ADD_CLIENTS_MAINTENANCE_STARS);
+    }
+
+    private static void addTuningTotalToClients(Connection conn) throws SQLException {
+        addColumnIfMissing(conn, "clients", "tuning_total", ADD_CLIENTS_TUNING_TOTAL);
     }
 
     // ==================== ТАБЛИЦЫ ====================

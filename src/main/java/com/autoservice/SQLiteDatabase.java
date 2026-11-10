@@ -63,8 +63,8 @@ public class SQLiteDatabase extends AbstractDatabase {
     public void addSparePart(SparePart part) {
         // Сначала проверяем, существует ли запчасть с таким именем
         String sqlCheck = "SELECT id FROM spare_parts WHERE name = ?";
-        String sqlInsert = "INSERT INTO spare_parts (name, purchase_price, retail_price, stock, part_number, manufacturer, compatible_models, note, min_stock, location, unit_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        String sqlUpdate = "UPDATE spare_parts SET purchase_price = ?, retail_price = ?, stock = ?, part_number = ?, manufacturer = ?, compatible_models = ?, note = ?, min_stock = ?, location = ?, unit_type = ? WHERE name = ?";
+        String sqlInsert = "INSERT INTO spare_parts (name, purchase_price, retail_price, stock, part_number, manufacturer, compatible_models, note, min_stock, location, unit_type, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sqlUpdate = "UPDATE spare_parts SET purchase_price = ?, retail_price = ?, stock = ?, part_number = ?, manufacturer = ?, compatible_models = ?, note = ?, min_stock = ?, location = ?, unit_type = ?, category = ? WHERE name = ?";
 
         try (Connection conn = getConnection()) {
             // Проверяем существование
@@ -91,7 +91,8 @@ public class SQLiteDatabase extends AbstractDatabase {
                     pstmt.setDouble(8, part.getMinStock());
                     pstmt.setString(9, part.getLocation());
                     pstmt.setString(10, part.getUnitType());
-                    pstmt.setString(11, part.getName());
+                    pstmt.setString(11, part.getCategory().name());
+                    pstmt.setString(12, part.getName());
                     pstmt.executeUpdate();
                     // Обновляем id запчасти
                     part.setId(existingId);
@@ -110,6 +111,7 @@ public class SQLiteDatabase extends AbstractDatabase {
                     pstmt.setDouble(9, part.getMinStock());
                     pstmt.setString(10, part.getLocation());
                     pstmt.setString(11, part.getUnitType());
+                    pstmt.setString(12, part.getCategory().name());
                     pstmt.executeUpdate();
                     
                     // Получаем ID через last_insert_rowid() (SQLite-specific)
@@ -208,15 +210,16 @@ public class SQLiteDatabase extends AbstractDatabase {
 
                 conn.setAutoCommit(false);
 
-                String sql = "INSERT INTO orders (id, client_id, status, total, created_date, closed_date, notes) VALUES (?, ?, ?, ?, ?, ?, ?)";
+                String sql = "INSERT INTO orders (id, client_id, status, total, created_date, mileage, closed_date, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
                 try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                     pstmt.setString(1, orderId);
                     pstmt.setInt(2, clientId);
                     pstmt.setString(3, order.getStatus());
                     pstmt.setDouble(4, order.getTotal());
                     pstmt.setString(5, currentDate);
-                    pstmt.setString(6, order.getClosedDate() != null ? order.getClosedDate() : "");
-                    pstmt.setString(7, order.getNotes() != null ? order.getNotes() : "");
+                    pstmt.setInt(6, order.getMileage());
+                    pstmt.setString(7, order.getClosedDate() != null ? order.getClosedDate() : "");
+                    pstmt.setString(8, order.getNotes() != null ? order.getNotes() : "");
                     pstmt.executeUpdate();
                 }
 
@@ -248,15 +251,16 @@ public class SQLiteDatabase extends AbstractDatabase {
             conn.setAutoCommit(false);
             
             // Update order header
-            String orderSql = "UPDATE orders SET client_id = ?, status = ?, total = ?, closed_date = ?, notes = ? WHERE id = ?";
+            String orderSql = "UPDATE orders SET client_id = ?, status = ?, total = ?, mileage = ?, closed_date = ?, notes = ? WHERE id = ?";
             try (PreparedStatement pstmt = conn.prepareStatement(orderSql)) {
                 int clientId = findClientId(conn, order.getClient());
                 pstmt.setInt(1, clientId);
                 pstmt.setString(2, order.getStatus());
                 pstmt.setDouble(3, order.getTotal());
-                pstmt.setString(4, order.getClosedDate() != null ? order.getClosedDate() : "");
-                pstmt.setString(5, order.getNotes() != null ? order.getNotes() : "");
-                pstmt.setString(6, order.getId());
+                pstmt.setInt(4, order.getMileage());
+                pstmt.setString(5, order.getClosedDate() != null ? order.getClosedDate() : "");
+                pstmt.setString(6, order.getNotes() != null ? order.getNotes() : "");
+                pstmt.setString(7, order.getId());
                 pstmt.executeUpdate();
             }
             

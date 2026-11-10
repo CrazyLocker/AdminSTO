@@ -1,5 +1,7 @@
 package com.autoservice;
 
+import com.autoservice.model.ServiceCategory;
+
 public class Service {
     private int id;
     private String name;
@@ -7,6 +9,11 @@ public class Service {
     private int duration;
     private String partNumber;
     private int categoryId;
+
+    /**
+     * Категория для системы лояльности. По умолчанию {@link ServiceCategory#REGULAR}.
+     */
+    private ServiceCategory category = ServiceCategory.REGULAR;
 
     // ====== СТАРЫЕ ПОЛЯ ДЛЯ СОВМЕСТИМОСТИ С БАЗОЙ ДАННЫХ ======
     // Они используются только при миграции данных, в новой системе не используются
@@ -54,6 +61,7 @@ public class Service {
     public int getDuration() { return duration; }
     public String getPartNumber() { return partNumber; }
     public int getCategoryId() { return categoryId; }
+    public ServiceCategory getCategory() { return category; }
     
     // ====== ГЕТТЕРЫ ДЛЯ СТАРЫХ ПОЛЕЙ (ДЛЯ СОВМЕСТИМОСТИ) ======
     public double getOilVolume() { return oilVolume; }
@@ -71,6 +79,11 @@ public class Service {
     public void setDuration(int duration) { this.duration = duration; this.dirty = true; }
     public void setPartNumber(String partNumber) { this.partNumber = partNumber; this.dirty = true; }
     public void setCategoryId(int categoryId) { this.categoryId = categoryId; this.dirty = true; }
+
+    public void setCategory(ServiceCategory category) {
+        this.category = category != null ? category : ServiceCategory.REGULAR;
+        this.dirty = true;
+    }
     
     // ====== СЕТТЕРЫ ДЛЯ СТАРЫХ ПОЛЕЙ (ДЛЯ СОВМЕСТИМОСТИ) ======
     public void setOilVolume(double oilVolume) { this.oilVolume = oilVolume; this.dirty = true; }
