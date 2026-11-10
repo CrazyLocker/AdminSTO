@@ -269,7 +269,6 @@ public class SettingsView {
         Label chooseLabel = new Label("Тема:");
 
         ComboBox<ThemeManager.AppTheme> themeCombo = new ComboBox<>();
-        themeCombo.setId("themeCombo");
         themeCombo.setItems(FXCollections.observableArrayList(ThemeManager.getAvailableThemes()));
         themeCombo.setValue(ThemeManager.getCurrentTheme());
         themeCombo.setPrefWidth(250);

@@ -24,7 +24,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TableView;
-import javafx.scene.layout.VBox;
 import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
@@ -128,7 +127,6 @@ public abstract class BaseUITest {
         runOnFxThread(() -> {
             try {
                 Stage stage = new Stage();
-                primaryStage = stage;
                 createUI(stage);
                 stage.show();
                 stage.toFront();
@@ -196,21 +194,6 @@ public abstract class BaseUITest {
         
         // Восстановление состояния главного окна
         WindowStateManager.getInstance().restoreWindowState("mainWindow", stage);
-    }
-
-    /**
-     * Загружает вкладку «Запись» из FXML. Вынесено из App, чтобы тестовая
-     * сцена повторяла состав вкладок реального приложения.
-     */
-    private VBox createAppointmentView() {
-        try {
-            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/fxml/AppointmentView.fxml"));
-            return loader.load();
-        } catch (Exception e) {
-            VBox errorBox = new VBox();
-            errorBox.getChildren().add(new Label("Ошибка загрузки календаря: " + e.getMessage()));
-            return errorBox;
-        }
     }
 
     private static Tab createTab(String title, SVGPath icon) {
