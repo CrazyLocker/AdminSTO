@@ -16,8 +16,11 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.Background;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.canvas.Canvas;
@@ -25,6 +28,7 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.shape.Circle;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.LinearGradient;
+import javafx.scene.paint.Paint;
 import javafx.scene.paint.Stop;
 import javafx.scene.paint.CycleMethod;
 import javafx.scene.text.Font;
@@ -88,53 +92,46 @@ public class DashboardView extends ScrollPane {
 
     // ==================== СТИЛИ (CSS) ====================
 
-    /** Цвет фона дашборда. */
-    private static final String DARK_BG = "#15172A";
-    /** Цвет фона карточек-виджетов. */
-    private static final String CARD_BG = "#1E2139";
-    /** Основной цвет текста (белый). */
-    private static final String TEXT_WHITE = "#FFFFFF";
-    /** Приглушённый серый цвет для второстепенного текста. */
-    private static final String TEXT_GRAY = "#9CA3AF";
-    /** Акцентный синий цвет. */
-    private static final String ACCENT_BLUE = "#3B82F6";
-    /** Акцентный голубой (циановый) цвет. */
-    private static final String ACCENT_CYAN = "#22D3EE";
-    /** Акцентный розовый цвет (статус «В работе»). */
-    private static final String ACCENT_PINK = "#F472B6";
-    /** Акцентный оранжевый цвет. */
-    private static final String ACCENT_ORANGE = "#FB923C";
-    /** Акцентный зеленый цвет. */
-    private static final String ACCENT_GREEN = "#34D399";
-    /** Акцентный фиолетовый цвет. */
-    private static final String ACCENT_PURPLE = "#A78BFA";
+    /** CSS-класс карточки-виджета: цвета берутся из активной темы. */
+    private static final String CARD_CLASS = "dashboard-card";
+    /** CSS-класс вложенной карточки. */
+    private static final String SUB_CARD_CLASS = "dashboard-subcard";
+    /** CSS-класс заголовка. */
+    private static final String TITLE_CLASS = "dashboard-title";
+    /** CSS-класс обычного текста. */
+    private static final String TEXT_CLASS = "dashboard-text";
+    /** CSS-класс приглушённого текста. */
+    private static final String MUTED_CLASS = "dashboard-muted";
+    /** CSS-класс акцентного текста. */
+    private static final String ACCENT_CLASS = "dashboard-accent";
+    /** CSS-класс успешного значения. */
+    private static final String SUCCESS_CLASS = "dashboard-success";
+    /** CSS-класс предупреждающего значения. */
+    private static final String WARNING_CLASS = "dashboard-warning";
+    /** CSS-класс опасного значения. */
+    private static final String DANGER_CLASS = "dashboard-danger";
 
     /**
-     * Применяет тёмную тему (цвет фона и скругление) к карточкам VBox/HBox.
-     *
-     * @param node узел, к которому применяется стиль карточки
+     * Цвета для Canvas-графиков. Canvas рисует пиксели напрямую и не умеет
+     * читать CSS, поэтому палитра разрешается из looked-up переменных темы
+     * через пробные узлы (см. {@link DashboardPalette}).
      */
-    private void applyDarkTheme(Node node) {
-        if (node instanceof VBox) {
-            ((VBox) node).setStyle("-fx-background-color: " + CARD_BG + "; -fx-background-radius: 16px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 4);");
-        } else if (node instanceof HBox) {
-            ((HBox) node).setStyle("-fx-background-color: " + CARD_BG + "; -fx-background-radius: 16px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 4);");
-        }
-    }
+    private DashboardPalette palette = DashboardPalette.fallback();
 
     /**
-     * Создаёт подпись с заданным текстом, цветом, размером и жирностью шрифта.
+     * Создаёт подпись с заданным CSS-классом цвета, размером и жирностью.
      *
-     * @param text   отображаемый текст
-     * @param color  цвет текста в hex-формате (например, "#FFFFFF")
-     * @param fontSize размер шрифта в пунктах
-     * @param bold   признак жирного начертания
+     * @param text       отображаемый текст
+     * @param styleClass CSS-класс цвета из {@code dashboard-custom.css}
+     * @param fontSize   размер шрифта в пунктах
+     * @param bold       признак жирного начертания
      * @return настроенная метка {@link Label} с переносом текста
      */
-    private Label styledLabel(String text, String color, double fontSize, boolean bold) {
+    private Label styledLabel(String text, String styleClass, double fontSize, boolean bold) {
         Label label = new Label(text);
-        label.setTextFill(javafx.scene.paint.Color.web(color));
-        label.setFont(javafx.scene.text.Font.font("Segoe UI", bold ? javafx.scene.text.FontWeight.BOLD : javafx.scene.text.FontWeight.NORMAL, fontSize));
+        label.getStyleClass().add(styleClass);
+        label.setFont(javafx.scene.text.Font.font("Segoe UI",
+                bold ? javafx.scene.text.FontWeight.BOLD : javafx.scene.text.FontWeight.NORMAL, fontSize));
         label.setWrapText(true);
         return label;
     }
@@ -217,20 +214,15 @@ public class DashboardView extends ScrollPane {
         // Dashboard CSS теперь управляется ThemeManager — не загружаем здесь
 
         gridPane = new GridPane();
+        gridPane.getStyleClass().add("dashboard-grid");
         gridPane.setPadding(new Insets(24));
         gridPane.setHgap(20);
         gridPane.setVgap(20);
         gridPane.setAlignment(Pos.TOP_CENTER);
-        // Фон на весь контейнер
-        gridPane.setStyle("-fx-background-color: " + DARK_BG + "; -fx-background-insets: 0; -fx-padding: 24;");
-        gridPane.setBackground(new javafx.scene.layout.Background(
-                new javafx.scene.layout.BackgroundFill(javafx.scene.paint.Color.web(DARK_BG), null, null)));
 
         setContent(gridPane);
         setFitToWidth(true);
         setFitToHeight(true);
-        // Фон самого ScrollPane тоже тёмный, чтобы не было светлых полос
-        setStyle("-fx-background-color: " + DARK_BG + "; -fx-background-insets: 0; -fx-padding: 0;");
 
         // Первичная отрисовка — отложена, чтобы не блокировать создание UI
         javafx.application.Platform.runLater(() -> doRefreshAsync());
@@ -283,9 +275,7 @@ public class DashboardView extends ScrollPane {
         long start = System.currentTimeMillis();
         gridPane.getChildren().clear();
         gridPane.getColumnConstraints().clear();
-        gridPane.setStyle("-fx-background-color: " + DARK_BG + "; -fx-background-insets: 0; -fx-padding: 24;");
-        gridPane.setBackground(new javafx.scene.layout.Background(
-                new javafx.scene.layout.BackgroundFill(javafx.scene.paint.Color.web(DARK_BG), null, null)));
+        palette = DashboardPalette.resolve(gridPane);
 
         // ====== АДАПТИВНЫЕ КОЛОНКИ: 30% / 40% / 30% ======
         ColumnConstraints colLeft = new ColumnConstraints();
@@ -342,17 +332,17 @@ public class DashboardView extends ScrollPane {
         VBox extraInfo = new VBox(10);
         extraInfo.setAlignment(Pos.CENTER_LEFT);
         extraInfo.setPadding(new Insets(10));
-        extraInfo.setStyle("-fx-background-color: " + CARD_BG + "; -fx-background-radius: 12px; -fx-padding: 16;");
+        extraInfo.getStyleClass().add(SUB_CARD_CLASS);
 
-        Label infoTitle = styledLabel("Общая статистика", TEXT_WHITE, 13, true);
+        Label infoTitle = styledLabel("Общая статистика", TITLE_CLASS, 13, true);
         extraInfo.getChildren().add(infoTitle);
 
         HBox statsRow = new HBox(20);
         statsRow.setAlignment(Pos.CENTER);
         statsRow.getChildren().addAll(
-                createStatColumn("Заказов", String.valueOf(data.totalOrders), ACCENT_CYAN),
-                createStatColumn("Клиентов", String.valueOf(data.totalClients), ACCENT_BLUE),
-                createStatColumn("В работе", String.valueOf(data.activeOrders), ACCENT_PINK)
+                createStatColumn("Заказов", String.valueOf(data.totalOrders), ACCENT_CLASS),
+                createStatColumn("Клиентов", String.valueOf(data.totalClients), ACCENT_CLASS),
+                createStatColumn("В работе", String.valueOf(data.activeOrders), DANGER_CLASS)
         );
         extraInfo.getChildren().add(statsRow);
 
@@ -360,9 +350,9 @@ public class DashboardView extends ScrollPane {
         HBox statsRow2 = new HBox(20);
         statsRow2.setAlignment(Pos.CENTER);
         statsRow2.getChildren().addAll(
-                createStatColumn("Средний чек", String.format("%,.0f ₽", data.averageCheck), ACCENT_GREEN),
-                createStatColumn("Новых клиентов", String.valueOf(data.newClientsThisMonth), ACCENT_ORANGE),
-                createStatColumn("Прогноз на месяц", String.format("%,.0f ₽", data.monthForecast), ACCENT_PURPLE)
+                createStatColumn("Средний чек", String.format("%,.0f ₽", data.averageCheck), SUCCESS_CLASS),
+                createStatColumn("Новых клиентов", String.valueOf(data.newClientsThisMonth), WARNING_CLASS),
+                createStatColumn("Прогноз на месяц", String.format("%,.0f ₽", data.monthForecast), ACCENT_CLASS)
         );
         extraInfo.getChildren().add(statsRow2);
 
@@ -371,7 +361,7 @@ public class DashboardView extends ScrollPane {
             HBox topClientRow = new HBox(10);
             topClientRow.setAlignment(Pos.CENTER_LEFT);
             topClientRow.setPadding(new Insets(4, 0, 0, 0));
-            Label topClientLabel = styledLabel("🏆 Лучший клиент: " + data.topClient, ACCENT_ORANGE, 12, true);
+            Label topClientLabel = styledLabel("🏆 Лучший клиент: " + data.topClient, WARNING_CLASS, 12, true);
             topClientRow.getChildren().add(topClientLabel);
             extraInfo.getChildren().add(topClientRow);
         }
@@ -756,10 +746,10 @@ public class DashboardView extends ScrollPane {
         VBox card = new VBox(5);
         card.setAlignment(Pos.CENTER);
         card.setPadding(new Insets(12));
-        card.setStyle("-fx-background-color: " + CARD_BG + "; -fx-background-radius: 16px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 4);");
+        card.getStyleClass().add(CARD_CLASS);
 
-        Label title = styledLabel("Записей на сегодня", TEXT_GRAY, 11, false);
-        Label value = styledLabel(String.valueOf(count), ACCENT_CYAN, 28, true);
+        Label title = styledLabel("Записей на сегодня", MUTED_CLASS, 11, false);
+        Label value = styledLabel(String.valueOf(count), ACCENT_CLASS, 28, true);
 
         card.getChildren().addAll(title, value);
         return card;
@@ -772,15 +762,15 @@ public class DashboardView extends ScrollPane {
         VBox card = new VBox(10);
         card.setAlignment(Pos.CENTER);
         card.setPadding(new Insets(12));
-        card.setStyle("-fx-background-color: " + CARD_BG + "; -fx-background-radius: 16px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 4);");
+        card.getStyleClass().add(CARD_CLASS);
 
-        Label title = styledLabel("Загрузка мастеров", TEXT_WHITE, 13, true);
+        Label title = styledLabel("Загрузка мастеров", TITLE_CLASS, 13, true);
 
         Canvas canvas = new Canvas(160, 160);
         GraphicsContext gc = canvas.getGraphicsContext2D();
 
         if (masterLoad.isEmpty()) {
-            gc.setFill(Color.web(TEXT_GRAY));
+            gc.setFill(palette.muted());
             gc.setFont(Font.font("Segoe UI", 13));
             gc.setTextAlign(TextAlignment.CENTER);
             gc.fillText("Нет данных", 80, 85);
@@ -790,7 +780,7 @@ public class DashboardView extends ScrollPane {
 
         double total = masterLoad.values().stream().mapToInt(Integer::intValue).sum();
         if (total == 0) {
-            gc.setFill(Color.web(TEXT_GRAY));
+            gc.setFill(palette.muted());
             gc.setFont(Font.font("Segoe UI", 13));
             gc.setTextAlign(TextAlignment.CENTER);
             gc.fillText("Нет данных", 80, 85);
@@ -801,14 +791,7 @@ public class DashboardView extends ScrollPane {
         double cx = 80, cy = 80, radius = 56;
         double startAngle = 90;
 
-        Color[] colors = {
-                Color.web(ACCENT_CYAN),
-                Color.web(ACCENT_PINK),
-                Color.web(ACCENT_ORANGE),
-                Color.web(ACCENT_GREEN),
-                Color.web(ACCENT_PURPLE),
-                Color.web(ACCENT_BLUE)
-        };
+        Color[] colors = palette.series();
 
         int colorIndex = 0;
         List<Map.Entry<String, Integer>> entries = new ArrayList<>(masterLoad.entrySet());
@@ -830,7 +813,7 @@ public class DashboardView extends ScrollPane {
             legendRow.setAlignment(Pos.CENTER_LEFT);
             Circle dot = new Circle(5);
             dot.setFill(color);
-            Label legendLabel = styledLabel(entry.getKey() + " (" + entry.getValue() + ")", TEXT_GRAY, 10, false);
+            Label legendLabel = styledLabel(entry.getKey() + " (" + entry.getValue() + ")", MUTED_CLASS, 10, false);
             legendRow.getChildren().addAll(dot, legendLabel);
             legendBox.getChildren().add(legendRow);
 
@@ -838,12 +821,12 @@ public class DashboardView extends ScrollPane {
         }
 
         // Центр
-        gc.setFill(Color.web(TEXT_WHITE));
+        gc.setFill(palette.text());
         gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 18));
         gc.setTextAlign(TextAlignment.CENTER);
         gc.fillText(String.valueOf((int) total), cx, cy - 4);
 
-        gc.setFill(Color.web(TEXT_GRAY));
+        gc.setFill(palette.muted());
         gc.setFont(Font.font("Segoe UI", 10));
         gc.fillText("всего записей", cx, cy + 18);
 
@@ -861,13 +844,13 @@ public class DashboardView extends ScrollPane {
         VBox card = new VBox(10);
         card.setAlignment(Pos.CENTER);
         card.setPadding(new Insets(12));
-        card.setStyle("-fx-background-color: " + CARD_BG + "; -fx-background-radius: 16px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 4);");
+        card.getStyleClass().add(CARD_CLASS);
 
-        Label title = styledLabel("ТОП-5 услуг", TEXT_WHITE, 13, true);
+        Label title = styledLabel("ТОП-5 услуг", TITLE_CLASS, 13, true);
         card.getChildren().add(title);
 
         if (topServices.isEmpty()) {
-            Label empty = styledLabel("Нет данных", TEXT_GRAY, 12, false);
+            Label empty = styledLabel("Нет данных", MUTED_CLASS, 12, false);
             card.getChildren().add(empty);
             return card;
         }
@@ -878,13 +861,7 @@ public class DashboardView extends ScrollPane {
         barsBox.setAlignment(Pos.CENTER_LEFT);
 
         int index = 0;
-        Color[] barColors = {
-                Color.web(ACCENT_CYAN),
-                Color.web(ACCENT_BLUE),
-                Color.web(ACCENT_PURPLE),
-                Color.web(ACCENT_PINK),
-                Color.web(ACCENT_ORANGE)
-        };
+        Color[] barColors = palette.series();
 
         for (Map.Entry<String, Integer> entry : topServices.entrySet()) {
             HBox barRow = new HBox(8);
@@ -894,7 +871,7 @@ public class DashboardView extends ScrollPane {
             if (serviceName.length() > 20) {
                 serviceName = serviceName.substring(0, 18) + "...";
             }
-            Label nameLabel = styledLabel(serviceName, TEXT_WHITE, 11, false);
+            Label nameLabel = styledLabel(serviceName, TEXT_CLASS, 11, false);
             nameLabel.setPrefWidth(100);
 
             int count = entry.getValue();
@@ -909,7 +886,7 @@ public class DashboardView extends ScrollPane {
             bar.setArcWidth(6);
             bar.setArcHeight(6);
 
-            Label countLabel = styledLabel(String.valueOf(count), TEXT_GRAY, 10, false);
+            Label countLabel = styledLabel(String.valueOf(count), MUTED_CLASS, 10, false);
             countLabel.setPrefWidth(25);
 
             barContainer.getChildren().add(bar);
@@ -929,13 +906,13 @@ public class DashboardView extends ScrollPane {
         VBox card = new VBox(10);
         card.setAlignment(Pos.CENTER);
         card.setPadding(new Insets(12));
-        card.setStyle("-fx-background-color: " + CARD_BG + "; -fx-background-radius: 16px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 4);");
+        card.getStyleClass().add(CARD_CLASS);
 
-        Label title = styledLabel("⚠️ Низкий остаток запчастей", ACCENT_ORANGE, 13, true);
+        Label title = styledLabel("⚠️ Низкий остаток запчастей", WARNING_CLASS, 13, true);
         card.getChildren().add(title);
 
         if (lowStockParts.isEmpty()) {
-            Label empty = styledLabel("✅ Все запчасти в норме", ACCENT_GREEN, 12, false);
+            Label empty = styledLabel("✅ Все запчасти в норме", SUCCESS_CLASS, 12, false);
             card.getChildren().add(empty);
             return card;
         }
@@ -947,12 +924,12 @@ public class DashboardView extends ScrollPane {
             HBox row = new HBox(8);
             row.setAlignment(Pos.CENTER_LEFT);
 
-            String color = part.getStock() < part.getMinStock() * 0.5 ? "#EF4444" : ACCENT_ORANGE;
+            Color color = part.getStock() < part.getMinStock() * 0.5 ? palette.danger() : palette.warning();
             Circle indicator = new Circle(4);
-            indicator.setFill(Color.web(color));
+            indicator.setFill(color);
 
             String text = part.getName() + " (" + String.format("%.0f", part.getStock()) + "/" + String.format("%.0f", part.getMinStock()) + " " + part.getUnitType() + ")";
-            Label label = styledLabel(text, TEXT_GRAY, 11, false);
+            Label label = styledLabel(text, MUTED_CLASS, 11, false);
             row.getChildren().addAll(indicator, label);
             listBox.getChildren().add(row);
         }
@@ -968,9 +945,9 @@ public class DashboardView extends ScrollPane {
         VBox card = new VBox(10);
         card.setAlignment(Pos.CENTER);
         card.setPadding(new Insets(12));
-        card.setStyle("-fx-background-color: " + CARD_BG + "; -fx-background-radius: 16px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 4);");
+        card.getStyleClass().add(CARD_CLASS);
 
-        Label title = styledLabel("Заказы по дням недели", TEXT_WHITE, 13, true);
+        Label title = styledLabel("Заказы по дням недели", TITLE_CLASS, 13, true);
         card.getChildren().add(title);
 
         Canvas canvas = new Canvas(200, 140);
@@ -1013,20 +990,20 @@ public class DashboardView extends ScrollPane {
             // Бар
             LinearGradient gradient = new LinearGradient(0, 0, 0, 1, true,
                     CycleMethod.NO_CYCLE,
-                    new Stop(0, Color.web(ACCENT_CYAN)),
-                    new Stop(1, Color.web(ACCENT_BLUE)));
+                    new Stop(0, palette.accent()),
+                    new Stop(1, palette.accent().darker()));
             gc.setFill(gradient);
             gc.fillRoundRect(x, y, barWidth, barHeight, 4, 4);
 
             // Подпись дня
-            gc.setFill(Color.web(TEXT_GRAY));
+            gc.setFill(palette.muted());
             gc.setFont(Font.font("Segoe UI", 10));
             gc.setTextAlign(TextAlignment.CENTER);
             gc.fillText(days[i], x + barWidth / 2, padding + chartH + 16);
 
             // Значение
             if (count > 0) {
-                gc.setFill(Color.web(TEXT_WHITE));
+                gc.setFill(palette.text());
                 gc.setFont(Font.font("Segoe UI", FontWeight.BOLD, 10));
                 gc.fillText(String.valueOf(count), x + barWidth / 2, y - 6);
             }
@@ -1047,10 +1024,10 @@ public class DashboardView extends ScrollPane {
         VBox card = new VBox(10);
         card.setAlignment(Pos.CENTER);
         card.setPadding(new Insets(12));
-        card.setStyle("-fx-background-color: " + CARD_BG + "; -fx-background-radius: 16px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 4);");
+        card.getStyleClass().add(CARD_CLASS);
 
-        Label title = styledLabel("Выручка", TEXT_WHITE, 14, true);
-        Label subtitle = styledLabel("Потрачено / Бюджет", TEXT_GRAY, 11, false);
+        Label title = styledLabel("Выручка", TITLE_CLASS, 14, true);
+        Label subtitle = styledLabel("Потрачено / Бюджет", MUTED_CLASS, 11, false);
 
         Canvas canvas = new Canvas(180, 180);
         GraphicsContext gc = canvas.getGraphicsContext2D();
@@ -1059,24 +1036,24 @@ public class DashboardView extends ScrollPane {
         double progress = Math.min(spent / total, 1.0);
         double angle = 360 * progress;
 
-        gc.setStroke(javafx.scene.paint.Color.web("#2A2F4F"));
+        gc.setStroke(palette.grid());
         gc.setLineWidth(16);
         gc.strokeArc(cx - radius, cy - radius, radius * 2, radius * 2, 90, 360, javafx.scene.shape.ArcType.OPEN);
 
-        // Градиент для выручки (зелёно-синий)
-        javafx.scene.paint.Color startColor = javafx.scene.paint.Color.web("#22D3EE");
-        javafx.scene.paint.Color endColor = javafx.scene.paint.Color.web("#3B82F6");
+        // Градиент для выручки в цветах текущей темы
+        javafx.scene.paint.Color startColor = palette.accent();
+        javafx.scene.paint.Color endColor = palette.accent().darker();
         javafx.scene.paint.Stop[] stops = {new javafx.scene.paint.Stop(0, startColor), new javafx.scene.paint.Stop(1, endColor)};
         javafx.scene.paint.LinearGradient gradient = new javafx.scene.paint.LinearGradient(0, 0, 1, 0, true, CycleMethod.NO_CYCLE, stops);
         gc.setStroke(gradient);
         gc.strokeArc(cx - radius, cy - radius, radius * 2, radius * 2, 90, -angle, javafx.scene.shape.ArcType.OPEN);
 
-        gc.setFill(javafx.scene.paint.Color.web(TEXT_WHITE));
+        gc.setFill(palette.text());
         gc.setFont(javafx.scene.text.Font.font("Segoe UI", javafx.scene.text.FontWeight.BOLD, 23));
         gc.setTextAlign(javafx.scene.text.TextAlignment.CENTER);
         gc.fillText(String.format("%,.0f ₽", spent), cx, cy - 6);
 
-        gc.setFill(javafx.scene.paint.Color.web(TEXT_GRAY));
+        gc.setFill(palette.muted());
         gc.setFont(javafx.scene.text.Font.font("Segoe UI", 12));
         gc.fillText("Общий доход", cx, cy + 20);
 
@@ -1096,9 +1073,9 @@ public class DashboardView extends ScrollPane {
         VBox card = new VBox(10);
         card.setAlignment(Pos.CENTER);
         card.setPadding(new Insets(12));
-        card.setStyle("-fx-background-color: " + CARD_BG + "; -fx-background-radius: 16px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 4);");
+        card.getStyleClass().add(CARD_CLASS);
 
-        Label title = styledLabel("Статусы заказов", TEXT_WHITE, 13, true);
+        Label title = styledLabel("Статусы заказов", TITLE_CLASS, 13, true);
 
         Canvas canvas = new Canvas(160, 160);
         GraphicsContext gc = canvas.getGraphicsContext2D();
@@ -1108,27 +1085,27 @@ public class DashboardView extends ScrollPane {
         double closedAngle = total > 0 ? 360 * ((double)closed / total) : 0;
 
         // Фон (серая дуга для "Новый" или без статуса)
-        gc.setStroke(javafx.scene.paint.Color.web("#2A2F4F"));
+        gc.setStroke(palette.grid());
         gc.setLineWidth(14);
         gc.strokeArc(cx - radius, cy - radius, radius * 2, radius * 2, 90, 360, javafx.scene.shape.ArcType.OPEN);
 
         // Сектор "В работе" (розовый)
         if (activeAngle > 0) {
-            gc.setStroke(javafx.scene.paint.Color.web(ACCENT_PINK));
+            gc.setStroke(palette.danger());
             gc.strokeArc(cx - radius, cy - radius, radius * 2, radius * 2, 90, -activeAngle, javafx.scene.shape.ArcType.OPEN);
         }
         // Сектор "Закрыт" (синий) — начинается там, где закончился розовый
         if (closedAngle > 0) {
-            gc.setStroke(javafx.scene.paint.Color.web(ACCENT_CYAN));
+            gc.setStroke(palette.accent());
             gc.strokeArc(cx - radius, cy - radius, radius * 2, radius * 2, 90 - activeAngle, -closedAngle, javafx.scene.shape.ArcType.OPEN);
         }
 
-        gc.setFill(javafx.scene.paint.Color.web(TEXT_WHITE));
+        gc.setFill(palette.text());
         gc.setFont(javafx.scene.text.Font.font("Segoe UI", javafx.scene.text.FontWeight.BOLD, 19));
         gc.setTextAlign(javafx.scene.text.TextAlignment.CENTER);
         gc.fillText(String.valueOf(total), cx, cy - 6);
 
-        gc.setFill(javafx.scene.paint.Color.web(TEXT_GRAY));
+        gc.setFill(palette.muted());
         gc.setFont(javafx.scene.text.Font.font("Segoe UI", 10));
         gc.fillText("Всего заказов", cx, cy + 18);
 
@@ -1140,9 +1117,9 @@ public class DashboardView extends ScrollPane {
         legendBox.setPadding(new Insets(4, 0, 0, 0));
 
         legendBox.getChildren().addAll(
-                createLegendRow(ACCENT_PINK, "В работе: " + active),
-                createLegendRow(ACCENT_CYAN, "Закрыт: " + closed),
-                createLegendRow("#2A2F4F", "Новый: " + newCount)
+                createLegendRow(palette.danger(), "В работе: " + active),
+                createLegendRow(palette.accent(), "Закрыт: " + closed),
+                createLegendRow(palette.grid(), "Новый: " + newCount)
         );
 
         HBox chartWithLegend = new HBox(12, canvas, legendBox);
@@ -1155,12 +1132,12 @@ public class DashboardView extends ScrollPane {
     /**
      * Строка легенды: цветной кружок + текст.
      */
-    private HBox createLegendRow(String color, String text) {
+    private HBox createLegendRow(Color color, String text) {
         HBox row = new HBox(8);
         row.setAlignment(Pos.CENTER_LEFT);
         javafx.scene.shape.Circle dot = new javafx.scene.shape.Circle(6);
-        dot.setFill(javafx.scene.paint.Color.web(color));
-        Label lbl = styledLabel(text, TEXT_GRAY, 11, false);
+        dot.setFill(color);
+        Label lbl = styledLabel(text, MUTED_CLASS, 11, false);
         row.getChildren().addAll(dot, lbl);
         return row;
     }
@@ -1176,27 +1153,27 @@ public class DashboardView extends ScrollPane {
         VBox card = new VBox(8);
         card.setAlignment(Pos.CENTER);
         card.setPadding(new Insets(16));
-        card.setStyle("-fx-background-color: " + CARD_BG + "; -fx-background-radius: 16px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 4);");
+        card.getStyleClass().add(CARD_CLASS);
 
-        Label title = styledLabel("Общая выручка", TEXT_WHITE, 13, true);
-        Label amount = styledLabel(String.format("%,.0f ₽", revenue), ACCENT_CYAN, 21, true);
+        Label title = styledLabel("Общая выручка", TITLE_CLASS, 13, true);
+        Label amount = styledLabel(String.format("%,.0f ₽", revenue), ACCENT_CLASS, 21, true);
 
         // Маленькая декоративная линия (просто красоты ради)
         javafx.scene.shape.Line line = new javafx.scene.shape.Line(0, 0, 80, 0);
-        line.setStroke(javafx.scene.paint.Color.web(ACCENT_CYAN));
+        line.setStroke(palette.accent());
         line.setStrokeWidth(2);
 
         // Декоративный Canvas-индикатор, чтобы плитка визуально совпадала по высоте с календарём
         Canvas miniCanvas = new Canvas(120, 120);
         GraphicsContext gc = miniCanvas.getGraphicsContext2D();
         double cx = 60, cy = 60, radius = 44;
-        gc.setStroke(javafx.scene.paint.Color.web("#2A2F4F"));
+        gc.setStroke(palette.grid());
         gc.setLineWidth(12);
         gc.strokeArc(cx - radius, cy - radius, radius * 2, radius * 2, 90, 360, javafx.scene.shape.ArcType.OPEN);
         javafx.scene.paint.LinearGradient grad = new javafx.scene.paint.LinearGradient(0, 0, 1, 1, true,
                 CycleMethod.NO_CYCLE,
-                new javafx.scene.paint.Stop(0, javafx.scene.paint.Color.web(ACCENT_CYAN)),
-                new javafx.scene.paint.Stop(1, javafx.scene.paint.Color.web(ACCENT_BLUE)));
+                new javafx.scene.paint.Stop(0, palette.accent()),
+                new javafx.scene.paint.Stop(1, palette.accent().darker()));
         gc.setStroke(grad);
         gc.setLineWidth(12);
         gc.strokeArc(cx - radius, cy - radius, radius * 2, radius * 2, 90, -270, javafx.scene.shape.ArcType.OPEN);
@@ -1206,11 +1183,11 @@ public class DashboardView extends ScrollPane {
     }
 
     // Вспомогательный метод для центральной колонки
-    private VBox createStatColumn(String label, String value, String color) {
+    private VBox createStatColumn(String label, String value, String styleClass) {
         VBox v = new VBox(2);
         v.setAlignment(Pos.CENTER);
-        Label val = styledLabel(value, color, 19, true);
-        Label lbl = styledLabel(label, TEXT_GRAY, 10, false);
+        Label val = styledLabel(value, styleClass, 19, true);
+        Label lbl = styledLabel(label, MUTED_CLASS, 10, false);
         v.getChildren().addAll(val, lbl);
         return v;
     }
@@ -1232,40 +1209,30 @@ public class DashboardView extends ScrollPane {
         VBox card = new VBox(12);
         card.setAlignment(Pos.CENTER);
         card.setPadding(new Insets(16));
-        card.setStyle("-fx-background-color: " + CARD_BG + "; -fx-background-radius: 16px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 4);");
+        card.getStyleClass().add(CARD_CLASS);
 
-        Label title = styledLabel(titleText, TEXT_WHITE, 13, true);
+        Label title = styledLabel(titleText, TITLE_CLASS, 13, true);
 
         // ====== Переключатель месяца ======
         java.time.YearMonth currentMonth = java.time.YearMonth.now();
         java.time.YearMonth[] selectedMonth = {currentMonth};
 
         DateTimeFormatter monthFmt = DateTimeFormatter.ofPattern("LLLL yyyy", new Locale("ru"));
-        Label monthLabel = styledLabel(selectedMonth[0].format(monthFmt), TEXT_WHITE, 13, true);
+        Label monthLabel = styledLabel(selectedMonth[0].format(monthFmt), TEXT_CLASS, 13, true);
         monthLabel.setMinWidth(120);
         monthLabel.setAlignment(Pos.CENTER);
 
-        // Инлайн-стиль для кнопок навигации по месяцам (CSS-файл отсутствует)
-        String btnStyle = "-fx-background-color: #2A2F4F; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 4 10 4 10; -fx-background-radius: 8px; -fx-cursor: hand;";
-        String btnHoverStyle = "-fx-background-color: #3B82F6; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 4 10 4 10; -fx-background-radius: 8px; -fx-cursor: hand;";
-
         Button leftBtn = new Button("←");
-        leftBtn.setStyle(btnStyle);
+        leftBtn.getStyleClass().add("dashboard-nav-btn");
         leftBtn.setPrefSize(36, 30);
-        leftBtn.setOnMouseEntered(e -> leftBtn.setStyle(btnHoverStyle));
-        leftBtn.setOnMouseExited(e -> leftBtn.setStyle(btnStyle));
 
         Button rightBtn = new Button("→");
-        rightBtn.setStyle(btnStyle);
+        rightBtn.getStyleClass().add("dashboard-nav-btn");
         rightBtn.setPrefSize(36, 30);
-        rightBtn.setOnMouseEntered(e -> rightBtn.setStyle(btnHoverStyle));
-        rightBtn.setOnMouseExited(e -> rightBtn.setStyle(btnStyle));
 
         // Кнопка создания тестового заказа для проверки графика выручки
         Button testOrderBtn = new Button("Создать тестовый заказ");
-        testOrderBtn.setStyle("-fx-background-color: #22D3EE; -fx-text-fill: #15172A; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 4 10 4 10; -fx-background-radius: 8px; -fx-cursor: hand;");
-        testOrderBtn.setOnMouseEntered(e -> testOrderBtn.setStyle("-fx-background-color: #3B82F6; -fx-text-fill: white; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 4 10 4 10; -fx-background-radius: 8px; -fx-cursor: hand;"));
-        testOrderBtn.setOnMouseExited(e -> testOrderBtn.setStyle("-fx-background-color: #22D3EE; -fx-text-fill: #15172A; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 4 10 4 10; -fx-background-radius: 8px; -fx-cursor: hand;"));
+        testOrderBtn.getStyleClass().add("dashboard-test-btn");
         testOrderBtn.setOnAction(e -> createTestOrder());
 
         HBox topControls = new HBox(10, leftBtn, monthLabel, rightBtn, testOrderBtn);
@@ -1351,7 +1318,7 @@ public class DashboardView extends ScrollPane {
         gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
 
         if (data == null || data.isEmpty()) {
-            gc.setFill(javafx.scene.paint.Color.web(TEXT_GRAY));
+            gc.setFill(palette.muted());
             gc.setFont(javafx.scene.text.Font.font(13));
             gc.setTextAlign(javafx.scene.text.TextAlignment.CENTER);
             gc.fillText("Нет данных", canvas.getWidth() / 2, canvas.getHeight() / 2);
@@ -1361,7 +1328,7 @@ public class DashboardView extends ScrollPane {
         // Если все значения равны 0.0 — нет закрытых заказов за период
         boolean allZero = data.stream().allMatch(v -> v == 0.0);
         if (allZero) {
-            gc.setFill(javafx.scene.paint.Color.web(TEXT_GRAY));
+            gc.setFill(palette.muted());
             gc.setFont(javafx.scene.text.Font.font("Segoe UI", 14));
             gc.setTextAlign(javafx.scene.text.TextAlignment.CENTER);
             gc.fillText("Нет закрытых заказов", canvas.getWidth() / 2, canvas.getHeight() / 2);
@@ -1377,10 +1344,10 @@ public class DashboardView extends ScrollPane {
         double graphW = canvas.getWidth() - padding * 2;
         double graphH = canvas.getHeight() - padding * 2;
 
-        // Цвета — приглушённый сине-фиолетовый
-        javafx.scene.paint.Color lineColor = javafx.scene.paint.Color.web("#7C8BDB");
-        javafx.scene.paint.Color areaTop = javafx.scene.paint.Color.web("#7C8BDB");
-        javafx.scene.paint.Color areaBottom = javafx.scene.paint.Color.web("#15172A");
+        // Цвета линии и заливки берутся из палитры текущей темы
+        javafx.scene.paint.Color lineColor = palette.accent();
+        javafx.scene.paint.Color areaTop = palette.accent();
+        javafx.scene.paint.Color areaBottom = palette.cardBackground();
 
         // Расчёт точек
         double[] xs = new double[n];
@@ -1429,7 +1396,7 @@ public class DashboardView extends ScrollPane {
         }
 
         // 4. Сетка (очень бледная)
-        gc.setStroke(javafx.scene.paint.Color.web("#2A2F4F"));
+        gc.setStroke(palette.grid());
         gc.setLineWidth(0.5);
         for (int i = 0; i < 5; i++) {
             double y = padding + (graphH / 4) * i;
@@ -1450,9 +1417,9 @@ public class DashboardView extends ScrollPane {
         VBox card = new VBox(10);
         card.setAlignment(Pos.CENTER);
         card.setPadding(new Insets(12));
-        card.setStyle("-fx-background-color: " + CARD_BG + "; -fx-background-radius: 16px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 4);");
+        card.getStyleClass().add(CARD_CLASS);
 
-        Label title = styledLabel("Записи на сервис (" + currentMonth.format(DateTimeFormatter.ofPattern("MMM")) + ")", TEXT_WHITE, 13, true);
+        Label title = styledLabel("Записи на сервис (" + currentMonth.format(DateTimeFormatter.ofPattern("MMM")) + ")", TITLE_CLASS, 13, true);
         card.getChildren().add(title);
 
         GridPane grid = new GridPane();
@@ -1463,7 +1430,7 @@ public class DashboardView extends ScrollPane {
         // Шрифт дней недели
         String[] days = {"Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"};
         for (int i = 0; i < 7; i++) {
-            Label dayLabel = styledLabel(days[i], TEXT_GRAY, 11, true);
+            Label dayLabel = styledLabel(days[i], MUTED_CLASS, 11, true);
             dayLabel.setAlignment(Pos.CENTER);
             dayLabel.setPrefSize(34, 24);
             grid.add(dayLabel, i, 0);
@@ -1492,11 +1459,11 @@ public class DashboardView extends ScrollPane {
             cell.setPrefSize(34, 34);
             cell.setAlignment(Pos.CENTER);
 
-            Label dayNum = styledLabel(String.valueOf(day), hasAppointment ? ACCENT_CYAN : TEXT_GRAY, 12, hasAppointment);
+            Label dayNum = styledLabel(String.valueOf(day), hasAppointment ? ACCENT_CLASS : MUTED_CLASS, 12, hasAppointment);
 
             if (hasAppointment) {
                 javafx.scene.shape.Circle circle = new javafx.scene.shape.Circle(13);
-                circle.setFill(javafx.scene.paint.Color.web(ACCENT_PINK));
+                circle.setFill(palette.danger());
                 cell.getChildren().addAll(circle, dayNum);
             } else {
                 cell.getChildren().add(dayNum);
@@ -1691,6 +1658,126 @@ public class DashboardView extends ScrollPane {
             monthlyRevenue.add(total);
         }
         return monthlyRevenue;
+    }
+
+    // ==================== ПАЛИТРА CANVAS-ГРАФИКОВ ====================
+
+    /**
+     * Палитра Canvas-графиков, разрешённая из looked-up переменных AtlantaFX.
+     *
+     * <p>Canvas рисует пиксели напрямую и не участвует в CSS, поэтому цвета
+     * берутся из тех же переменных темы через пробные узлы: после
+     * {@code applyCss()} у узла уже вычислен итоговый {@link Color}.</p>
+     */
+    private static final class DashboardPalette {
+
+        private final Color text;
+        private final Color muted;
+        private final Color cardBackground;
+        private final Color grid;
+        private final Color accent;
+        private final Color success;
+        private final Color warning;
+        private final Color danger;
+
+        private DashboardPalette(Color text, Color muted, Color cardBackground, Color grid,
+                                 Color accent, Color success, Color warning, Color danger) {
+            this.text = text;
+            this.muted = muted;
+            this.cardBackground = cardBackground;
+            this.grid = grid;
+            this.accent = accent;
+            this.success = success;
+            this.warning = warning;
+            this.danger = danger;
+        }
+
+        /**
+         * Нейтральная палитра на время до применения CSS. В
+         * {@link #buildDashboardUI} она заменяется реальной палитрой темы.
+         */
+        static DashboardPalette fallback() {
+            return new DashboardPalette(Color.BLACK, Color.GRAY, Color.WHITE, Color.LIGHTGRAY,
+                    Color.BLUE, Color.GREEN, Color.ORANGE, Color.RED);
+        }
+
+        /**
+         * Разрешает цвета темы через пробные узлы внутри {@code root}.
+         * {@code root} должен быть прикреплён к показанной сцене.
+         */
+        static DashboardPalette resolve(Pane root) {
+            return new DashboardPalette(
+                    textFill(root, "-color-fg-default", Color.BLACK),
+                    textFill(root, "-color-fg-muted", Color.GRAY),
+                    background(root, "-color-bg-subtle", Color.WHITE),
+                    background(root, "-color-border-subtle", Color.LIGHTGRAY),
+                    background(root, "-color-accent-emphasis", Color.BLUE),
+                    background(root, "-color-success-emphasis", Color.GREEN),
+                    background(root, "-color-warning-emphasis", Color.ORANGE),
+                    background(root, "-color-danger-emphasis", Color.RED));
+        }
+
+        private static Color textFill(Pane root, String lookup, Color fallback) {
+            Label probe = new Label(" ");
+            probe.setStyle("-fx-text-fill: " + lookup + ";");
+            root.getChildren().add(probe);
+            root.applyCss();
+            Paint fill = probe.getTextFill();
+            root.getChildren().remove(probe);
+            return fill instanceof Color color ? color : fallback;
+        }
+
+        private static Color background(Pane root, String lookup, Color fallback) {
+            Region probe = new Region();
+            probe.setStyle("-fx-background-color: " + lookup + ";");
+            root.getChildren().add(probe);
+            root.applyCss();
+            Background background = probe.getBackground();
+            Color color = fallback;
+            if (background != null && !background.getFills().isEmpty()
+                    && background.getFills().get(0).getFill() instanceof Color fill) {
+                color = fill;
+            }
+            root.getChildren().remove(probe);
+            return color;
+        }
+
+        Color text() {
+            return text;
+        }
+
+        Color muted() {
+            return muted;
+        }
+
+        Color cardBackground() {
+            return cardBackground;
+        }
+
+        Color grid() {
+            return grid;
+        }
+
+        Color accent() {
+            return accent;
+        }
+
+        Color success() {
+            return success;
+        }
+
+        Color warning() {
+            return warning;
+        }
+
+        Color danger() {
+            return danger;
+        }
+
+        /** Цвета серий для диаграмм: акценты текущей темы. */
+        Color[] series() {
+            return new Color[]{accent, success, warning, danger, muted, text};
+        }
     }
 
     // ==================== ВНУТРЕННИЙ КЛАСС ДЛЯ ТАБЛИЦЫ ====================
