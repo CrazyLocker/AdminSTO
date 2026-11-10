@@ -259,7 +259,7 @@ public class SettingsView {
         themeLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
 
         Label themeDesc = new Label("Выберите цветовую тему для всего приложения. " +
-                "Тема применяется мгновенно без перезапуска.");
+                "Выбор сохраняется и применяется при следующем запуске.");
         themeDesc.setWrapText(true);
         themeDesc.setStyle("-fx-text-fill: #94A3B8;");
 
@@ -269,28 +269,26 @@ public class SettingsView {
         Label chooseLabel = new Label("Тема:");
 
         ComboBox<ThemeManager.AppTheme> themeCombo = new ComboBox<>();
+        themeCombo.setId("themeCombo");
         themeCombo.setItems(FXCollections.observableArrayList(ThemeManager.getAvailableThemes()));
-        themeCombo.setValue(ThemeManager.getCurrentTheme());
+        themeCombo.setValue(ThemeManager.getSavedTheme());
         themeCombo.setPrefWidth(250);
 
+        // Выбор темы только сохраняется: динамическая смена темы не поддерживается.
         themeCombo.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
-                ThemeManager.setTheme(newVal);
+                ThemeManager.saveTheme(newVal);
             }
         });
 
         themeRow.getChildren().addAll(chooseLabel, themeCombo);
 
-        Label currentLabel = new Label("Текущая тема: " + ThemeManager.getCurrentTheme().displayName);
-        currentLabel.setStyle("-fx-text-fill: #94A3B8; -fx-font-size: 11px;");
+        Label restartHint = new Label("Для применения темы перезапустите приложение");
+        restartHint.setId("themeRestartHint");
+        restartHint.setWrapText(true);
+        restartHint.setStyle("-fx-text-fill: #94A3B8; -fx-font-size: 11px;");
 
-        themeCombo.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
-            if (newVal != null) {
-                currentLabel.setText("Текущая тема: " + newVal.displayName);
-            }
-        });
-
-        themeSection.getChildren().addAll(themeLabel, themeDesc, themeRow, currentLabel);
+        themeSection.getChildren().addAll(themeLabel, themeDesc, themeRow, restartHint);
 
         // --- Разделитель ---
         Separator sep = new Separator();

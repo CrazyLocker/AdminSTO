@@ -39,6 +39,10 @@ public class App extends Application {
         SettingsManager.load();
         logger.info("Запуск приложения Администратор СТО");
 
+        // Тема применяется только при запуске: читаем config/theme.txt до
+        // создания Scene, чтобы всё окно сразу открылось в выбранной теме.
+        ThemeManager.applySavedTheme();
+
         try {
             Database.init();
             logger.info("База данных инициализирована");
@@ -98,7 +102,7 @@ public class App extends Application {
         });
 
         Scene scene = new Scene(tabPane, 1500, 1000);
-        ThemeManager.init(scene);
+        ThemeManager.applySceneStyles(scene);
         // Подключение стилей для календаря
         scene.getStylesheets().add(getClass().getResource("/css/appointment.css").toExternalForm());
         primaryStage.setTitle("Администратор СТО");
