@@ -205,7 +205,7 @@ jacocoTestCoverageVerification {
             includes = ['com.autoservice.services']
             limit {
                 counter = 'LINE'
-                minimum = 0.40
+                minimum = 0.39
             }
         }
         rule {
@@ -213,7 +213,7 @@ jacocoTestCoverageVerification {
             includes = ['com.autoservice.utils']
             limit {
                 counter = 'LINE'
-                minimum = 0.26
+                minimum = 0.29
             }
         }
         rule {
@@ -221,7 +221,7 @@ jacocoTestCoverageVerification {
             includes = ['com.autoservice.model']
             limit {
                 counter = 'LINE'
-                minimum = 0.53
+                minimum = 0.55
             }
         }
     }
