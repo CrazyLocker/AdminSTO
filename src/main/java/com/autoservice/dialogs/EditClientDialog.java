@@ -13,6 +13,7 @@ import com.autoservice.utils.ValidationErrorIndicator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.autoservice.utils.ValidationUtils;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -42,6 +43,25 @@ public class EditClientDialog {
      */
     public static CompletableFuture<DialogResult> showAsync(Client client) {
         CompletableFuture<DialogResult> future = new CompletableFuture<>();
+        Stage stage = buildStage(client, future);
+        logger.info("Открытие диалога клиента (async): id={}", client.getId());
+        stage.show();
+        return future;
+    }
+
+    /**
+     * Собирает окно диалога клиента, не показывая его.
+     *
+     * <p>Вызывающий код сам решает, как показать окно: {@code show()} (блокирующий
+     * показ) или {@code show()} внутри {@link #showAsync(Client)} (неблокирующий).
+     * Отдельный метод нужен, чтобы блокирующая и неблокирующая ветки не дублировали
+     * построение формы.</p>
+     *
+     * @param client редактируемый клиент
+     * @param future future, завершающийся при закрытии диалога
+     * @return не отображённое окно диалога
+     */
+    private static Stage buildStage(Client client, CompletableFuture<DialogResult> future) {
         boolean isNew = (client.getId() == -1 || client.getId() == 0);
         Client[] clientRef = {client};
 
@@ -51,25 +71,28 @@ public class EditClientDialog {
         stage.setMinHeight(600);
         stage.initModality(javafx.stage.Modality.WINDOW_MODAL);
 
+        // WINDOW_MODAL без владельца JavaFX трактует как NONE: главное окно
+        // оставалось бы интерактивным при открытом «модальном» диалоге.
+        javafx.stage.Window.getWindows().stream()
+                .filter(javafx.stage.Window::isFocused)
+                .findFirst()
+                .ifPresent(stage::initOwner);
+
         WindowStateManager.getInstance().restoreWindowState("editClientDialog", stage);
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
-        root.getStyleClass().add("dialog-root");
 
         Label titleLabel = new Label(isNew ? "Новый клиент" : "Редактирование клиента");
-        titleLabel.getStyleClass().add("dialog-title");
 
         // ====== Основная информация ======
         GridPane grid = new GridPane();
         grid.setHgap(15);
         grid.setVgap(12);
         grid.setPadding(new Insets(10));
-        grid.getStyleClass().add("dialog-grid");
 
         // Фамилия
         Label lastNameLabel = new Label("Фамилия:");
-        lastNameLabel.getStyleClass().add("label");
         TextField lastNameField = new TextField(client.getLastName());
         lastNameField.setId("lastNameField");
         lastNameField.setPromptText("Фамилия");
@@ -78,7 +101,6 @@ public class EditClientDialog {
 
         // Имя
         Label nameLabel = new Label("Имя:");
-        nameLabel.getStyleClass().add("label");
         TextField nameField = new TextField(client.getName());
         nameField.setId("nameField");
         nameField.setPromptText("Имя");
@@ -87,7 +109,6 @@ public class EditClientDialog {
 
         // Телефон
         Label phoneLabel = new Label("Телефон:");
-        phoneLabel.getStyleClass().add("label");
         TextField phoneField = new TextField();
         phoneField.setId("phoneField");
         phoneField.setPromptText("Телефон");
@@ -120,7 +141,6 @@ public class EditClientDialog {
 
         // ====== Автомобили клиента ======
         Label carsSectionLabel = new Label("Автомобили клиента:");
-        carsSectionLabel.getStyleClass().add("dialog-title");
 
         VBox carsBox = new VBox(8);
         carsBox.setPadding(new Insets(5, 0, 0, 0));
@@ -140,7 +160,6 @@ public class EditClientDialog {
 
         // Кнопка "Добавить автомобиль"
         Button addCarBtn = new Button("+ Добавить автомобиль");
-        addCarBtn.getStyleClass().add("add-button");
         addCarBtn.setOnAction(e -> {
             int nextNum = carRows.size() + 1;
             addCarRow(carsBox, carRows, null, nextNum);
@@ -148,9 +167,7 @@ public class EditClientDialog {
 
         // ====== Кнопки ======
         Button saveBtn = new Button("Сохранить");
-        saveBtn.getStyleClass().add("save-btn");
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.getStyleClass().add("cancel-btn");
 
         HBox btnBox = new HBox(10, saveBtn, cancelBtn);
         btnBox.setAlignment(Pos.CENTER_RIGHT);
@@ -287,19 +304,21 @@ public class EditClientDialog {
                 clientRef[0].setCars(newCars);
                 logger.info("Set cars on clientRef[0]: {} cars", newCars.size());
 
-                stage.close();
+                // Сначала фиксируем результат, затем закрываем окно: onHidden
+                // завершил бы future как CANCEL раньше сохранения.
                 future.complete(new DialogResult(DialogResult.Action.OK, Map.of("client", clientRef[0])));
+                stage.close();
             } catch (Exception e) {
                 logger.error("Ошибка при сохранении клиента: {}", e.getMessage(), e);
-                stage.close();
                 future.completeExceptionally(e);
+                stage.close();
             }
         };
 
         saveBtn.setOnAction(e -> doSave.run());
         cancelBtn.setOnAction(e -> {
-            stage.close();
             future.complete(new DialogResult(DialogResult.Action.CANCEL));
+            stage.close();
         });
 
         // ====== Раскладка ======
@@ -315,8 +334,17 @@ public class EditClientDialog {
 
         Scene scene = new Scene(root);
         stage.setScene(scene);
-        stage.showAndWait();
-        return future;
+        
+        // Любой способ закрытия окна (крестик, Alt+F4, Esc) обязан завершить future:
+        // иначе ожидающая сторона осталась бы ждать вечно и заблокировала FX-поток.
+        stage.setOnHidden(e -> {
+            WindowStateManager.getInstance().saveWindowState("editClientDialog", stage);
+            if (!future.isDone()) {
+                logger.info("Диалог клиента закрыт без сохранения — future завершается как CANCEL");
+                future.complete(new DialogResult(DialogResult.Action.CANCEL));
+            }
+        });
+        return stage;
     }
 
     /**
@@ -328,7 +356,6 @@ public class EditClientDialog {
 
         Label numLabel = new Label(rowNum + " авт:");
         numLabel.setPrefWidth(55);
-        numLabel.getStyleClass().add("label");
 
         // Марка/Модель — ComboBox с ручным вводом
         ComboBox<String> modelCombo = new ComboBox<>(FXCollections.observableArrayList(AppConstants.GWM_MODELS));
@@ -350,7 +377,6 @@ public class EditClientDialog {
 
         // Кнопка удаления
         Button deleteBtn = new Button("✕");
-        deleteBtn.getStyleClass().add("delete-button");
         deleteBtn.setPrefWidth(30);
         deleteBtn.setOnAction(e -> {
             carsBox.getChildren().remove(row);
@@ -391,9 +417,25 @@ public class EditClientDialog {
 
     /**
      * Синхронно открыть диалог создания или редактирования клиента.
+     *
+     * <p>На FX-потоке диалог показывается через {@code showAndWait()}: он запускает
+     * вложенный цикл событий, поэтому окно остаётся отзывчивым. Блокировать FX-поток
+     * методом {@code CompletableFuture.join()} нельзя — приложение зависнет.</p>
+     *
      * @param client редактируемый клиент; новый клиент имеет идентификатор {@code -1} или {@code 0}
      */
     public static void show(Client client) {
+        if (Platform.isFxApplicationThread()) {
+            try {
+                CompletableFuture<DialogResult> future = new CompletableFuture<>();
+                Stage stage = buildStage(client, future);
+                stage.showAndWait();
+            } catch (Exception e) {
+                logger.error("Ошибка при открытии диалога: {}", e.getMessage(), e);
+            }
+            return;
+        }
+        // Вызов не с FX-потока: дожидаемся закрытия окна в вызывающем потоке.
         try {
             showAsync(client).join();
         } catch (Exception e) {

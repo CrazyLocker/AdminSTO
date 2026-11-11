@@ -1,0 +1,260 @@
+/* =====================================================================
+   dashboard-custom.css — стили дашборда на looked-up переменных AtlantaFX.
+
+   Ни один цвет здесь не задан жёстко: фон, текст, границы и акценты
+   берутся из активной темы (primer-light, dracula и другие). Благодаря
+   этому при запуске со светлой темой дашборд светлый, а с тёмной — тёмный.
+   ===================================================================== */
+
+/* ==================== КОНТЕЙНЕР ДАШБОРДА ==================== */
+.dashboard-view,
+.dashboard-view > .viewport {
+    -fx-background-color: -color-bg-default;
+    -fx-background-insets: 0;
+}
+
+.dashboard-grid {
+    -fx-background-color: -color-bg-default;
+    -fx-background-insets: 0;
+    -fx-padding: 24;
+}
+
+/* ==================== КАРТОЧКИ ==================== */
+.dashboard-card,
+.stat-card,
+.appointments-container,
+.profile-card {
+    -fx-background-color: -color-bg-subtle;
+    -fx-background-radius: 16px;
+    -fx-effect: dropshadow(gaussian, -color-shadow-default, 10, 0.0, 0, 4);
+}
+
+.dashboard-subcard {
+    -fx-background-color: -color-bg-subtle;
+    -fx-background-radius: 12px;
+    -fx-effect: dropshadow(gaussian, -color-shadow-default, 6, 0.0, 0, 2);
+}
+
+.dashboard-card:hover {
+    -fx-effect: dropshadow(gaussian, -color-shadow-default, 14, 0.0, 0, 6);
+}
+
+/* Цветная полоса-индикатор сверху стат-карточки. */
+.stat-card-blue   { -fx-background-color: linear-gradient(to bottom, -color-accent-emphasis 3%, -color-bg-subtle 3%); }
+.stat-card-green  { -fx-background-color: linear-gradient(to bottom, -color-success-emphasis 3%, -color-bg-subtle 3%); }
+.stat-card-red    { -fx-background-color: linear-gradient(to bottom, -color-danger-emphasis 3%, -color-bg-subtle 3%); }
+.stat-card-orange { -fx-background-color: linear-gradient(to bottom, -color-warning-emphasis 3%, -color-bg-subtle 3%); }
+.stat-card-purple { -fx-background-color: linear-gradient(to bottom, -color-accent-emphasis 3%, -color-bg-subtle 3%); }
+.stat-card-yellow { -fx-background-color: linear-gradient(to bottom, -color-warning-emphasis 3%, -color-bg-subtle 3%); }
+
+/* ==================== ТЕКСТ ==================== */
+.dashboard-title {
+    -fx-text-fill: -color-fg-default;
+}
+
+.dashboard-text {
+    -fx-text-fill: -color-fg-default;
+}
+
+.dashboard-muted {
+    -fx-text-fill: -color-fg-muted;
+}
+
+.dashboard-accent {
+    -fx-text-fill: -color-accent-emphasis;
+}
+
+.dashboard-success {
+    -fx-text-fill: -color-success-fg;
+}
+
+.dashboard-warning {
+    -fx-text-fill: -color-warning-fg;
+}
+
+.dashboard-danger {
+    -fx-text-fill: -color-danger-fg;
+}
+
+.stat-card-title {
+    -fx-font-size: 11px;
+    -fx-text-fill: -color-fg-muted;
+}
+
+.stat-card-value {
+    -fx-font-size: 23px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-fg-default;
+}
+
+/* ==================== КНОПКИ ДЕЙСТВИЙ (только дашборд) ==================== */
+.action-btn {
+    -fx-text-fill: -color-fg-emphasis;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-padding: 8 22 8 22;
+    -fx-cursor: hand;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+    -fx-background-color: -color-accent-emphasis;
+    -fx-background-radius: 8px;
+}
+
+.action-btn:hover {
+    -fx-background-color: derive(-color-accent-emphasis, -10%);
+}
+
+.action-btn:pressed {
+    -fx-background-color: derive(-color-accent-emphasis, -20%);
+}
+
+.action-btn-blue,
+.action-btn-purple {
+    -fx-background-color: -color-accent-emphasis;
+    -fx-text-fill: -color-fg-emphasis;
+}
+
+.action-btn-blue:hover,
+.action-btn-purple:hover {
+    -fx-background-color: derive(-color-accent-emphasis, -10%);
+}
+
+.action-btn-blue:pressed,
+.action-btn-purple:pressed {
+    -fx-background-color: derive(-color-accent-emphasis, -20%);
+}
+
+.action-btn-green {
+    -fx-background-color: -color-success-emphasis;
+    -fx-text-fill: -color-fg-emphasis;
+}
+
+.action-btn-green:hover {
+    -fx-background-color: derive(-color-success-emphasis, -10%);
+}
+
+.action-btn-green:pressed {
+    -fx-background-color: derive(-color-success-emphasis, -20%);
+}
+
+.action-btn-orange {
+    -fx-background-color: -color-warning-emphasis;
+    -fx-text-fill: -color-fg-emphasis;
+}
+
+.action-btn-orange:hover {
+    -fx-background-color: derive(-color-warning-emphasis, -10%);
+}
+
+.action-btn-orange:pressed {
+    -fx-background-color: derive(-color-warning-emphasis, -20%);
+}
+
+.action-btn-red {
+    -fx-background-color: -color-danger-emphasis;
+    -fx-text-fill: -color-fg-emphasis;
+}
+
+.action-btn-red:hover {
+    -fx-background-color: derive(-color-danger-emphasis, -10%);
+}
+
+.action-btn-red:pressed {
+    -fx-background-color: derive(-color-danger-emphasis, -20%);
+}
+
+/* Кнопки навигации по месяцам и тестовая кнопка внутри графика. */
+.dashboard-nav-btn {
+    -fx-background-color: -color-bg-inset;
+    -fx-text-fill: -color-fg-default;
+    -fx-font-size: 14px;
+    -fx-padding: 4 10 4 10;
+    -fx-background-radius: 8px;
+    -fx-border-color: -color-border-subtle;
+    -fx-border-width: 1;
+    -fx-border-radius: 8px;
+    -fx-cursor: hand;
+}
+
+.dashboard-nav-btn:hover {
+    -fx-background-color: -color-accent-muted;
+    -fx-border-color: -color-accent-emphasis;
+}
+
+.dashboard-test-btn {
+    -fx-background-color: -color-accent-emphasis;
+    -fx-text-fill: -color-fg-emphasis;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-padding: 4 10 4 10;
+    -fx-background-radius: 8px;
+    -fx-cursor: hand;
+}
+
+.dashboard-test-btn:hover {
+    -fx-background-color: derive(-color-accent-emphasis, -10%);
+}
+
+/* ==================== КОНТЕЙНЕР ЗАПИСЕЙ ==================== */
+.appointments-header,
+.profile-title,
+.profile-section-title {
+    -fx-text-fill: -color-fg-default;
+}
+
+.appointments-hint,
+.profile-stat {
+    -fx-text-fill: -color-fg-muted;
+}
+
+/* Дашборд-таблица — перекрывает глобальную для более компактного вида */
+.table-view.appointments-table {
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+    -fx-border-radius: 8px;
+    -fx-background-color: transparent;
+    -fx-effect: null;
+}
+
+.table-view.appointments-table > .column-header-background {
+    -fx-background-color: -color-bg-subtle;
+}
+
+.table-view.appointments-table .column-header {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent -color-border-subtle transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 8 12;
+}
+
+.table-view.appointments-table .column-header .label {
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-fg-muted;
+}
+
+.table-view.appointments-table .table-row-cell {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent -color-border-subtle transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-cursor: hand;
+}
+
+.table-view.appointments-table .table-row-cell:odd {
+    -fx-background-color: -color-bg-subtle;
+}
+
+.table-view.appointments-table .table-row-cell:hover {
+    -fx-background-color: -color-accent-muted;
+}
+
+.table-view.appointments-table .table-cell {
+    -fx-font-size: 11px;
+    -fx-text-fill: -color-fg-default;
+    -fx-padding: 6 12;
+    -fx-border-color: transparent;
+}
+
+.profile-card .separator {
+    -fx-padding: 6 0;
+}

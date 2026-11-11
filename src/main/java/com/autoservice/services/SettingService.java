@@ -103,6 +103,72 @@ public class SettingService {
         }
     }
 
+    /**
+     * Инициализирует настройки по умолчанию при первом запуске (пустая БД).
+     * Проверяет, какие настройки отсутствуют в БД напрямую (через DatabaseFactory),
+     * и создаёт их с дефолтными значениями. Вызывается один раз при запуске приложения.
+     */
+    public static void initDefaultSettings() {
+        String[] defaultKeys = {
+                "app_theme",
+                "interface_language",
+                "date_format",
+                "auto_add_spare_parts",
+                "spare_part_confirmation",
+                "reports_path",
+                "backup_enabled",
+                "backup_time",
+                "backup_retention"
+        };
+
+        String[] defaultValues = {
+                "PRIMER_DARK",
+                "ru",
+                "dd/MM/yyyy",
+                "true",
+                "true",
+                "reports",
+                "true",
+                "02:00",
+                "14"
+        };
+
+        String[] descriptions = {
+                "Тема оформления приложения",
+                "Основной язык интерфейса (ru/en)",
+                "Формат отображения даты",
+                "Автоматически добавлять запчасти при выборе услуги",
+                "Требовать подтверждение при добавлении запчастей",
+                "Путь к папке с генерируемыми отчётами",
+                "Включить автоматическое резервное копирование",
+                "Время ежедневного бэкапа (HH:mm)",
+                "Количество хранимых копий бэкапов"
+        };
+
+        // Проверяем настройки напрямую из БД, а не из кэша,
+        // чтобы избежать конфликтов с DataStore.load() (который перезаписывает
+        // кэш из БД в фоновом потоке).
+        List<com.autoservice.model.Setting> allSettings =
+                com.autoservice.DatabaseFactory.getDatabase().getAllSettings();
+
+        for (int i = 0; i < defaultKeys.length; i++) {
+            String key = defaultKeys[i];
+
+            // Проверяем, есть ли уже такая настройка в БД
+            boolean exists = allSettings.stream()
+                    .anyMatch(s -> s.getKey().equals(key));
+
+            if (!exists) {
+                Setting newSetting = new Setting(key, defaultValues[i], descriptions[i]);
+                DataStore.addSetting(newSetting);
+                logger.info("Инициализирована настройка по умолчанию: key={}, value=[REDACTED]", key);
+            }
+        }
+
+        // Перезагрузить кэш после добавления новых настроек
+        loadSettings();
+    }
+
     // ==================== ЧАСТО ИСПОЛЬЗУЕМЫЕ НАСТРОЙКИ ====================
 
     /**

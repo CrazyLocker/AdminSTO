@@ -7,7 +7,11 @@ import org.junit.jupiter.api.*;
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * Тесты для EditOrderDialog
+ * Тесты для EditOrderDialog.
+ * 
+ * <p>Проверяют работу с заказом-нарядом: добавление и удаление услуг и запчастей,
+ * пересчёт общей стоимости, проверку статуса заказа (нельзя редактировать закрытый).
+ * Тесты не зависят от JavaFX и могут запускаться без инициализации UI.</p>
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Tag(TestTags.UI)

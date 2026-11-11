@@ -49,10 +49,10 @@ AdminSTO — настольное приложение для автоматиз
 ### Сборка из исходников (Gradle):
 
 ```bash
-# Сборка JAR
-./gradlew build
+# Сборка fat JAR (автономное приложение)
+./gradlew fatJar
 
-# Сборка портативной версии (Windows)
+# Сборка портативной версии (Windows, автоматически собирает fat JAR)
 .\build-portable.ps1
 
 # Запуск тестов
@@ -72,12 +72,17 @@ java -jar build/libs/autoservice-admin.jar
 ```
 AdminSTO_Portable/
 ├── STO.bat                  # Запуск приложения
+├── autoservice-admin.jar    # Fat JAR приложения
+├── styles.css               # Стили
 ├── jre/                     # Встроенный JRE 21
 ├── lib/                     # Библиотеки JavaFX
+├── native/                  # Нативные библиотеки (DLL)
 ├── data/                    # Данные приложения
 ├── config/                  # Конфигурация
 ├── logs/                    # Логи
-└── AdminSTO_Portable.zip    # Архив дистрибутива
+└── backups/                 # Резервные копии
+
+AdminSTO_Portable.zip        # Архив дистрибутива (в корне проекта)
 ```
 
 ### Структура исходного кода:

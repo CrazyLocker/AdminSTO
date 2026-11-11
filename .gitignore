@@ -7,6 +7,7 @@ caches/
 jdks/
 daemon/
 native/
+wrapper/dists/
 
 # ===== JAVA =====
 *.class
@@ -26,12 +27,23 @@ javafx-sdk-21.0.6/
 test_jre/
 test_jre2/
 AdminSTO_Portable/
+AdminSTO_Portable.zip
 
 # ===== DATABASE =====
 *.db
 *.db-shm
 *.db-wal
 *.sqbpro
+
+# ===== RUNTIME STATE (пересоздаётся приложением при запуске) =====
+config/table-state/
+config/window-state/
+config/file-paths/
+config/theme.txt
+
+# ===== BACKUPS & IMPORTS =====
+backups/
+Import_export/
 
 # ===== LOGS =====
 logs/
@@ -49,18 +61,18 @@ desktop.ini
 .gitverse/
 .scanrc.yml
 
-# ===== DOCUMENTATION (keep README.md, track docs/) =====
-!README.md
+# ===== DOCUMENTATION (track README.md и docs/) =====
 *.md
 !README.md
 !docs/**/*.md
+# рабочие материалы и артефакты (не публикуются)
+docs/Prompt/
+docs/*.txt
+docs/*.doc
+# выгрузка реальных заказов: содержит данные клиентов
+docs/closed_orders*.sql
 
-# ===== BUILD SCRIPTS (if any temp artifacts) =====
+# ===== BUILD SCRIPTS =====
 build-portable.ps1
 create-runbat.ps1
-
-# ===== BAD FOLDERS FROM YOUR STATUS =====
-backups/
-Import_export/
-wrapper/dists/
 STO.bat

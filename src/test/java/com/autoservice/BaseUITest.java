@@ -172,7 +172,7 @@ public abstract class BaseUITest {
         sparePartsTab.setContent(SparePartPanel.create());
         stockTab.setContent(StockPanel.create());
         settingsTab.setContent(SettingsView.create());
-        appointmentTab.setContent(AppointmentView.create());
+        appointmentTab.setContent(createAppointmentView());
 
         tabPane.getTabs().addAll(dashTab, clientTab, orderTab, servicesTab, sparePartsTab, stockTab, appointmentTab, settingsTab);
 
@@ -195,6 +195,22 @@ public abstract class BaseUITest {
         
         // Восстановление состояния главного окна
         WindowStateManager.getInstance().restoreWindowState("mainWindow", stage);
+    }
+
+    /**
+     * Создаёт вкладку «Запись» так же, как реальное приложение, чтобы тестовая
+     * сцена повторяла состав вкладок.
+     *
+     * @return корневой контейнер вкладки «Запись»
+     */
+    private VBox createAppointmentView() {
+        try {
+            return AppointmentView.create();
+        } catch (Exception e) {
+            VBox errorBox = new VBox();
+            errorBox.getChildren().add(new Label("Ошибка загрузки календаря: " + e.getMessage()));
+            return errorBox;
+        }
     }
 
     private static Tab createTab(String title, SVGPath icon) {
@@ -505,3 +521,4 @@ public abstract class BaseUITest {
         return table;
     }
 }
+

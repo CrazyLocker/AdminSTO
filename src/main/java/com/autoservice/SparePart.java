@@ -19,7 +19,8 @@ public class SparePart {
     private ServiceCategory category = ServiceCategory.REGULAR;
 
     // ====== ПОЛЯ ДЛЯ ГИБРИДНОГО УЧЁТА ======
-    private double stock;              // остаток (в литрах или штуках)
+    private double stock;              // физический остаток
+    private double reserved;           // зарезервировано под заказы
     private double minStock;           // минимальный остаток
     private String unitType;           // "л", "шт", "компл"
 
@@ -39,6 +40,7 @@ public class SparePart {
         this.purchasePrice = 0;
         this.retailPrice = 0;
         this.stock = 0;
+        this.reserved = 0;
         this.minStock = 0;
         this.unitType = "шт";
         this.location = "";
@@ -60,6 +62,7 @@ public class SparePart {
         this.purchasePrice = purchasePrice;
         this.retailPrice = retailPrice;
         this.stock = stock;
+        this.reserved = 0;
         this.minStock = minStock;
         this.unitType = unitType;
         this.location = location;
@@ -93,6 +96,8 @@ public class SparePart {
     public double getPurchasePrice() { return purchasePrice; }
     public double getRetailPrice() { return retailPrice; }
     public double getStock() { return stock; }
+    public double getReserved() { return reserved; }
+    public double getAvailableStock() { return stock - reserved; }
     public double getMinStock() { return minStock; }
     public String getUnitType() { return unitType; }
     public String getLocation() { return location; }
@@ -118,6 +123,13 @@ public class SparePart {
         }
     }
 
+    public void setReserved(double reserved) {
+        if (Double.compare(this.reserved, reserved) != 0) {
+            this.reserved = reserved;
+            this.dirty = true;
+        }
+    }
+
     public void setMinStock(double minStock) { this.minStock = minStock; this.dirty = true; }
     public void setUnitType(String unitType) { this.unitType = unitType; this.dirty = true; }
     public void setLocation(String location) { this.location = location; this.dirty = true; }
@@ -130,6 +142,43 @@ public class SparePart {
     public void setDirty(boolean dirty) { this.dirty = dirty; }
 
     // ==================== МЕТОДЫ ====================
+
+    /**
+     * Резервирует указанное количество запчастей.
+     * @param qty количество для резервирования
+     * @return true, если успешно зарезервировано
+     */
+    public boolean reserve(double qty) {
+        if (qty <= 0) return true;
+        if (this.getAvailableStock() < qty) return false;
+        this.reserved += qty;
+        this.dirty = true;
+        return true;
+    }
+
+    /**
+     * Снимает резерв с указанного количества запчастей.
+     * @param qty количество для снятия резерва
+     */
+    public void unreserve(double qty) {
+        if (qty <= 0) return;
+        this.reserved = Math.max(0, this.reserved - qty);
+        this.dirty = true;
+    }
+
+    /**
+     * Списывает запчасти со склада (уменьшает stock и reserved).
+     * @param qty количество для списания
+     * @return true, если успешно списано
+     */
+    public boolean deduct(double qty) {
+        if (qty <= 0) return true;
+        if (this.stock < qty) return false;
+        this.stock -= qty;
+        this.unreserve(qty); // Снимаем резерв при списании
+        this.dirty = true;
+        return true;
+    }
 
     public boolean deductStock(double quantity) {
         if (quantity <= 0) return false;
@@ -146,7 +195,7 @@ public class SparePart {
     }
 
     public boolean needsRestock() {
-        return this.stock < this.minStock;
+        return this.getAvailableStock() < this.minStock;
     }
 
     public String getStockFormatted() {

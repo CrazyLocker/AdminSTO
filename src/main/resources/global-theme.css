@@ -1,0 +1,412 @@
+/* =====================================================================
+   global-theme.css — Глобальная палитра поверх PrimerDark
+   Загружается в App.java через scene.getStylesheets()
+   ===================================================================== */
+
+/* ==================== БАЗОВЫЕ ЦВЕТА СЦЕНЫ ==================== */
+.root {
+    -fx-background: #1E1F2E;
+}
+
+/* ==================== SCROLLPANE ==================== */
+.scroll-pane {
+    -fx-background-color: #1E1F2E;
+    -fx-background-insets: 0;
+}
+.scroll-pane > .viewport {
+    -fx-background-color: #1E1F2E;
+}
+.scroll-pane > .scroll-bar:vertical,
+.scroll-pane > .scroll-bar:horizontal {
+    -fx-background-color: transparent;
+}
+.scroll-pane > .scroll-bar > .thumb {
+    -fx-background-color: #4A4B5E;
+    -fx-background-radius: 4px;
+}
+.scroll-pane > .scroll-bar > .thumb:hover {
+    -fx-background-color: #5B8DEF;
+}
+
+/* ==================== КНОПКИ ==================== */
+.button {
+    -fx-background-color: #2A2B3D;
+    -fx-text-fill: #E2E8F0;
+    -fx-border-color: #333451;
+    -fx-border-width: 1;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-font-size: 13px;
+    -fx-padding: 6 16 6 16;
+    -fx-cursor: hand;
+}
+.button:hover {
+    -fx-background-color: #333451;
+    -fx-border-color: #5B8DEF;
+}
+.button:pressed {
+    -fx-background-color: #5B8DEF;
+    -fx-text-fill: white;
+}
+.button:focused {
+    -fx-border-color: #5B8DEF;
+    -fx-border-width: 1;
+}
+.button:disabled {
+    -fx-opacity: 0.4;
+}
+
+/* Первичная кнопка (класс .primary) */
+.button.primary {
+    -fx-background-color: #5B8DEF;
+    -fx-text-fill: white;
+    -fx-border-color: transparent;
+}
+.button.primary:hover {
+    -fx-background-color: #4A7ED7;
+}
+.button.primary:pressed {
+    -fx-background-color: #3A6BC2;
+}
+
+/* ==================== ВКЛАДКИ ==================== */
+.tab-pane {
+    -fx-tab-min-width: 120px;
+    -fx-tab-max-height: 36px;
+    -fx-border-color: transparent;
+}
+.tab-pane > .tab-header-area {
+    -fx-background-color: #252637;
+    -fx-border-color: transparent transparent #333451 transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 0;
+}
+.tab-pane > .tab-header-area > .tab-header-background {
+    -fx-background-color: transparent;
+}
+.tab {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+    -fx-background-radius: 0;
+    -fx-padding: 8 20 8 20;
+}
+.tab:hover {
+    -fx-background-color: #2A2B3D;
+}
+.tab:selected {
+    -fx-background-color: #1E1F2E;
+    -fx-border-color: transparent transparent #5B8DEF transparent;
+    -fx-border-width: 0 0 2 0;
+}
+.tab:selected .tab-label {
+    -fx-text-fill: #5B8DEF;
+    -fx-font-weight: bold;
+}
+.tab .tab-label {
+    -fx-text-fill: #94A3B8;
+    -fx-font-size: 13px;
+}
+.tab-pane > .tab-content-area {
+    -fx-background-color: #1E1F2E;
+    -fx-border-color: transparent;
+}
+
+/* ==================== ТАБЛИЦЫ ==================== */
+.table-view {
+    -fx-background-color: #272838;
+    -fx-border-color: #333451;
+    -fx-border-width: 1;
+    -fx-border-radius: 8px;
+    -fx-effect: null;
+}
+.table-view > .column-header-background {
+    -fx-background-color: #2A2B3D;
+}
+.table-view .column-header {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent #333451 transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 8 12;
+}
+.table-view .column-header .label {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #94A3B8;
+}
+.table-view .table-row-cell {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent #2D2E42 transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-text-fill: #E2E8F0;
+}
+.table-view .table-row-cell:odd {
+    -fx-background-color: rgba(255,255,255,0.015);
+}
+.table-view .table-row-cell:hover {
+    -fx-background-color: rgba(91,141,239,0.08);
+}
+.table-view .table-row-cell:selected {
+    -fx-background-color: rgba(91,141,239,0.15);
+    -fx-text-fill: #FFFFFF;
+}
+.table-view .table-cell {
+    -fx-font-size: 13px;
+    -fx-text-fill: #E2E8F0;
+    -fx-padding: 6 12;
+    -fx-border-color: transparent;
+}
+.table-view:focused {
+    -fx-border-color: #5B8DEF;
+}
+
+/* ==================== ТЕКСТОВЫЕ ПОЛЯ ==================== */
+.text-field, .text-area {
+    -fx-background-color: #2A2B3D;
+    -fx-text-fill: #E2E8F0;
+    -fx-border-color: #333451;
+    -fx-border-width: 1;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-prompt-text-fill: #64748B;
+    -fx-font-size: 13px;
+    -fx-padding: 6 10;
+}
+.text-field:focused, .text-area:focused {
+    -fx-border-color: #5B8DEF;
+    -fx-border-width: 1;
+}
+
+/* ==================== КОМБОБОКС ==================== */
+.combo-box {
+    -fx-background-color: #2A2B3D;
+    -fx-border-color: #333451;
+    -fx-border-width: 1;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+}
+.combo-box:focused {
+    -fx-border-color: #5B8DEF;
+}
+.combo-box .list-cell {
+    -fx-background-color: #2A2B3D;
+    -fx-text-fill: #E2E8F0;
+}
+.combo-box .list-cell:hover {
+    -fx-background-color: #333451;
+}
+.combo-box-popup > .list-view {
+    -fx-background-color: #272838;
+    -fx-border-color: #333451;
+    -fx-border-width: 1;
+    -fx-border-radius: 6px;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 12, 0.0, 0, 4);
+}
+.combo-box-popup > .list-view > .virtual-flow > .clipped-container > .sheet > .list-cell {
+    -fx-background-color: #272838;
+    -fx-text-fill: #E2E8F0;
+    -fx-padding: 8 12;
+    -fx-border-color: transparent transparent #2D2E42 transparent;
+    -fx-border-width: 0 0 1 0;
+}
+.combo-box-popup > .list-view > .virtual-flow > .clipped-container > .sheet > .list-cell:hover {
+    -fx-background-color: rgba(91,141,239,0.1);
+}
+.combo-box-popup > .list-view > .virtual-flow > .clipped-container > .sheet > .list-cell:selected {
+    -fx-background-color: rgba(91,141,239,0.2);
+}
+
+/* ==================== СПИСКИ ==================== */
+.list-view {
+    -fx-background-color: #272838;
+    -fx-border-color: #333451;
+    -fx-border-width: 1;
+    -fx-border-radius: 8px;
+}
+.list-view .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #E2E8F0;
+    -fx-padding: 8 12;
+    -fx-border-color: transparent transparent #2D2E42 transparent;
+    -fx-border-width: 0 0 1 0;
+}
+.list-view .list-cell:hover {
+    -fx-background-color: rgba(91,141,239,0.08);
+}
+.list-view .list-cell:selected {
+    -fx-background-color: rgba(91,141,239,0.15);
+}
+
+/* ==================== РАЗДЕЛИТЕЛИ ==================== */
+.separator {
+    -fx-border-color: #333451;
+}
+
+/* ==================== ЧЕКБОКС / РАДИО ==================== */
+.check-box {
+    -fx-text-fill: #E2E8F0;
+    -fx-font-size: 13px;
+}
+.check-box > .box {
+    -fx-background-color: #2A2B3D;
+    -fx-border-color: #333451;
+    -fx-border-radius: 4px;
+}
+.check-box:selected > .box {
+    -fx-background-color: #5B8DEF;
+    -fx-border-color: #5B8DEF;
+}
+.check-box > .mark {
+    -fx-background-color: white;
+}
+.radio-button {
+    -fx-text-fill: #E2E8F0;
+    -fx-font-size: 13px;
+}
+.radio-button > .radio {
+    -fx-background-color: #2A2B3D;
+    -fx-border-color: #333451;
+}
+.radio-button:selected > .radio > .dot {
+    -fx-background-color: #5B8DEF;
+}
+
+/* ==================== TOGGLE BUTTON ==================== */
+.toggle-button {
+    -fx-background-color: #2A2B3D;
+    -fx-text-fill: #94A3B8;
+    -fx-border-color: #333451;
+    -fx-border-width: 1;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+}
+.toggle-button:selected {
+    -fx-background-color: rgba(91,141,239,0.2);
+    -fx-text-fill: #5B8DEF;
+    -fx-border-color: #5B8DEF;
+}
+.toggle-button:hover {
+    -fx-background-color: #333451;
+}
+
+/* ==================== ПРОГРЕСС-БАР ==================== */
+.progress-bar > .track {
+    -fx-background-color: #2A2B3D;
+    -fx-border-color: #333451;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+}
+.progress-bar > .bar {
+    -fx-background-color: #5B8DEF;
+    -fx-background-radius: 4px;
+    -fx-background-insets: 0;
+}
+
+/* ==================== СЛАЙДЕР ==================== */
+.slider > .track {
+    -fx-background-color: #2A2B3D;
+    -fx-border-color: transparent;
+}
+.slider > .thumb {
+    -fx-background-color: #5B8DEF;
+    -fx-background-radius: 8px;
+    -fx-border-color: transparent;
+}
+
+/* ==================== TOOLTIP ==================== */
+.tooltip {
+    -fx-background-color: #272838;
+    -fx-text-fill: #E2E8F0;
+    -fx-border-color: #333451;
+    -fx-border-width: 1;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-font-size: 12px;
+    -fx-padding: 6 10;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 8, 0.0, 0, 2);
+}
+
+/* ==================== DATE PICKER ==================== */
+.date-picker {
+    -fx-background-color: #2A2B3D;
+    -fx-border-color: #333451;
+    -fx-border-width: 1;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+}
+.date-picker:focused {
+    -fx-border-color: #5B8DEF;
+}
+.date-picker-popup {
+    -fx-background-color: #272838;
+    -fx-border-color: #333451;
+    -fx-border-width: 1;
+    -fx-border-radius: 8px;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 12, 0.0, 0, 4);
+}
+
+/* ==================== TREE VIEW ==================== */
+.tree-view {
+    -fx-background-color: #272838;
+    -fx-border-color: #333451;
+    -fx-border-width: 1;
+    -fx-border-radius: 8px;
+}
+.tree-view .tree-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #E2E8F0;
+    -fx-padding: 6 12;
+    -fx-border-color: transparent;
+}
+.tree-view .tree-cell:hover {
+    -fx-background-color: rgba(91,141,239,0.08);
+}
+.tree-view .tree-cell:selected {
+    -fx-background-color: rgba(91,141,239,0.15);
+}
+.tree-view .tree-cell > .tree-disclosure-node > .arrow {
+    -fx-background-color: #94A3B8;
+}
+
+/* ==================== ТИТУЛИРОВАННАЯ ПАНЕЛЬ ==================== */
+.titled-pane > .title {
+    -fx-background-color: #252637;
+    -fx-text-fill: #E2E8F0;
+    -fx-border-color: #333451;
+    -fx-border-width: 0 0 1 0;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+.titled-pane > .content {
+    -fx-background-color: #272838;
+    -fx-border-color: transparent;
+}
+
+/* ==================== LABEL ==================== */
+.label {
+    -fx-text-fill: #E2E8F0;
+}
+
+/* ==================== SCROLLBAR (глобальный) ==================== */
+.scroll-bar:vertical > .track-background,
+.scroll-bar:horizontal > .track-background {
+    -fx-background-color: transparent;
+}
+.scroll-bar:vertical > .thumb,
+.scroll-bar:horizontal > .thumb {
+    -fx-background-color: #4A4B5E;
+    -fx-background-radius: 4px;
+}
+.scroll-bar:vertical > .thumb:hover,
+.scroll-bar:horizontal > .thumb:hover {
+    -fx-background-color: #5B8DEF;
+}
+.scroll-bar > .increment-button,
+.scroll-bar > .decrement-button {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+.scroll-bar > .increment-button > .increment-arrow,
+.scroll-bar > .decrement-button > .decrement-arrow {
+    -fx-background-color: #4A4B5E;
+}

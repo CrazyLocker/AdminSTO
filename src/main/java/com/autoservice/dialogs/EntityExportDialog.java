@@ -164,7 +164,10 @@ public final class EntityExportDialog<T> {
         root.getChildren().addAll(titleLabel, centerBox);
 
         Scene scene = new Scene(root);
-        scene.getStylesheets().add(EntityExportDialog.class.getResource(STYLESHEET).toExternalForm());
+        java.net.URL cssUrl = EntityExportDialog.class.getResource(STYLESHEET);
+        if (cssUrl != null) {
+            scene.getStylesheets().add(cssUrl.toExternalForm());
+        }
         stage.setScene(scene);
         stage.showAndWait();
     }

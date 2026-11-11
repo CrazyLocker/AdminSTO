@@ -51,29 +51,23 @@ public class ServicePartsView {
      */
     public static VBox create() {
         VBox root = new VBox(10);
-        root.getStyleClass().add("main-container");
 
         HBox topPanel = new HBox(15);
         topPanel.setAlignment(Pos.CENTER_LEFT);
         topPanel.setPadding(new Insets(10));
-        topPanel.getStyleClass().add("top-panel");
 
         HBox searchBox = createSearchPanel();
 
         addBtn = new Button("Добавить");
-        addBtn.getStyleClass().add("add-button");
         addBtn.setOnAction(e -> onAdd());
 
         editBtn = new Button("Изменить");
-        editBtn.getStyleClass().add("edit-button");
         editBtn.setDisable(true);
 
         deleteBtn = new Button("Удалить");
-        deleteBtn.getStyleClass().add("delete-button");
         deleteBtn.setDisable(true);
 
         Button refreshBtn = new Button("Обновить");
-        refreshBtn.getStyleClass().add("save-button");
         refreshBtn.setOnAction(e -> refreshTable());
 
         topPanel.getChildren().addAll(searchBox, addBtn, editBtn, deleteBtn, refreshBtn);
@@ -101,12 +95,9 @@ public class ServicePartsView {
         searchField = new TextField();
         searchField.setPromptText("Поиск по услуге или запчасти...");
         searchField.setPrefWidth(300);
-        searchField.getStyleClass().add("search-field");
         searchField.textProperty().addListener((obs, oldVal, newVal) -> filterServiceParts(newVal));
 
         Button clearBtn = new Button("✕");
-        clearBtn.setStyle("-fx-background-color: #dc3545; -fx-text-fill: white; -fx-font-weight: bold; " +
-                "-fx-padding: 4 8 4 8; -fx-background-radius: 4;");
         clearBtn.setOnAction(e -> {
             searchField.clear();
             filterServiceParts("");
@@ -117,7 +108,6 @@ public class ServicePartsView {
 
     private static TableView<ServicePart> createTable() {
         TableView<ServicePart> table = new TableView<>();
-        table.getStyleClass().add("table-view");
         table.setId("servicePartsTable");
         table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
 
@@ -150,7 +140,6 @@ public class ServicePartsView {
         colQuantity.setId("colQuantity");
         colQuantity.setCellValueFactory(new PropertyValueFactory<>("quantity"));
         colQuantity.setPrefWidth(100);
-        colQuantity.getStyleClass().add("center-column");
         colQuantity.setSortable(true);
 
         // Колонка: Обязательная

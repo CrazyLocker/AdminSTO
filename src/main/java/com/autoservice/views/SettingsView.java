@@ -23,6 +23,7 @@ import com.autoservice.services.ScheduleService;
 import com.autoservice.services.TableStateManager;
 import com.autoservice.services.WindowStateManager;
 import com.autoservice.utils.IconHelper;
+import com.autoservice.utils.ThemeManager;
 import com.autoservice.utils.ValidationErrorIndicator;
 import com.autoservice.utils.ValidationUtils;
 import javafx.beans.binding.Bindings;
@@ -127,7 +128,6 @@ public class SettingsView {
 
         VBox root = create();
         Scene scene = new Scene(root);
-        scene.getStylesheets().add("com/autoservice/styles/styles.css");
         stage.setScene(scene);
         
         // Центрирование на экране
@@ -147,6 +147,11 @@ public class SettingsView {
         TabPane settingsPaneLocal = new TabPane();
         settingsPaneLocal.getStyleClass().add("settings-tabpane");
         settingsPane = settingsPaneLocal;
+
+        // Вкладка "Внешний вид" (тема оформления)
+        Tab appearanceTab = new Tab("Внешний вид");
+        appearanceTab.setClosable(false);
+        appearanceTab.setContent(createAppearancePanel());
 
         // Вкладка "Настройки приложения" (новая)
         Tab settingsAppTab = new Tab("Настройки приложения");
@@ -178,7 +183,7 @@ public class SettingsView {
         importExportTab.setContent(createImportExportPanel());
         importExportTab.setClosable(false);
 
-        settingsPane.getTabs().addAll(settingsAppTab, autoPartsTab, loyaltyTab, serviceSparePartsTab,
+        settingsPane.getTabs().addAll(appearanceTab, settingsAppTab, autoPartsTab, loyaltyTab, serviceSparePartsTab,
                 toPartsTab, backupTab, importExportTab);
 
         VBox vbox = new VBox(10);
@@ -190,15 +195,74 @@ public class SettingsView {
         return vbox;
     }
 
+    // ==================== Вкладка: Внешний вид ====================
+
+    /**
+     * Панель выбора темы оформления. Выбор только сохраняется в
+     * {@code config/theme.txt}; смена темы применяется при следующем запуске.
+     *
+     * @return панель вкладки «Внешний вид»
+     */
+    private static VBox createAppearancePanel() {
+        VBox container = new VBox(20);
+        container.setPadding(new Insets(20));
+
+        Label titleLabel = new Label("Внешний вид");
+        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
+
+        // --- Секция: Тема оформления ---
+        VBox themeSection = new VBox(12);
+
+        Label themeLabel = new Label("Тема оформления");
+        themeLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
+
+        Label themeDesc = new Label("Выберите цветовую тему для всего приложения. "
+                + "Выбор сохраняется и применяется при следующем запуске.");
+        themeDesc.setWrapText(true);
+        themeDesc.setStyle("-fx-text-fill: -fx-mid-text-color;");
+
+        HBox themeRow = new HBox(12);
+        themeRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label chooseLabel = new Label("Тема:");
+
+        ComboBox<ThemeManager.AppTheme> themeCombo = new ComboBox<>();
+        themeCombo.setId("themeCombo");
+        themeCombo.setItems(FXCollections.observableArrayList(ThemeManager.getAvailableThemes()));
+        themeCombo.setValue(ThemeManager.getSavedTheme());
+        themeCombo.setPrefWidth(250);
+
+        // Выбор темы только сохраняется: динамическая смена темы не поддерживается.
+        themeCombo.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null) {
+                ThemeManager.saveTheme(newVal);
+            }
+        });
+
+        themeRow.getChildren().addAll(chooseLabel, themeCombo);
+
+        Label restartHint = new Label("Для применения темы перезапустите приложение");
+        restartHint.setId("themeRestartHint");
+        restartHint.setWrapText(true);
+        restartHint.setStyle("-fx-text-fill: -fx-mid-text-color; -fx-font-size: 11px;");
+
+        themeSection.getChildren().addAll(themeLabel, themeDesc, themeRow, restartHint);
+
+        Separator sep = new Separator();
+
+        container.getChildren().addAll(titleLabel, themeSection, sep);
+
+        return container;
+    }
+
     // ==================== Вкладка: Настройки приложения ====================
 
     private static VBox createSettingsAppPanel() {
         VBox mainContainer = new VBox(15);
         mainContainer.setPadding(new Insets(20));
-        mainContainer.setStyle("-fx-background-color: #f5f7fa;");
-
+        
         Label titleLabel = new Label("Настройки приложения");
-        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
+        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
 
         HBox topPanel = new HBox(15);
         topPanel.setAlignment(Pos.CENTER_LEFT);
@@ -571,10 +635,9 @@ public class SettingsView {
     private static VBox createLoyaltyPanel() {
         VBox panel = new VBox(15);
         panel.setPadding(new Insets(20));
-        panel.setStyle("-fx-background-color: #f5f7fa;");
-
+        
         Label titleLabel = new Label("Параметры программы лояльности");
-        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
+        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
 
         Label introLabel = new Label("Пороги накоплений и проценты скидок применяются при оформлении заказов. "
                 + "Пустое значение заменяется значением по умолчанию.");
@@ -668,7 +731,7 @@ public class SettingsView {
         titleLabel.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #2980b9;");
         VBox section = new VBox(10, titleLabel, grid);
         section.setPadding(new Insets(15));
-        section.setStyle("-fx-background-color: white; -fx-background-radius: 8; "
+        section.setStyle("-fx-background-color: -fx-control-inner-background; -fx-background-radius: 8; "
                 + "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);");
         return section;
     }
@@ -1534,7 +1597,6 @@ public class SettingsView {
         cancelBtn.setOnAction(e -> stage.close());
 
         Scene scene = new Scene(root);
-        scene.getStylesheets().add("styles.css");
         stage.setScene(scene);
         stage.show();
     }
@@ -1661,7 +1723,6 @@ public class SettingsView {
         cancelBtn.setOnAction(e -> stage.close());
 
         Scene scene = new Scene(root);
-        scene.getStylesheets().add("styles.css");
         stage.setScene(scene);
         stage.show();
     }
@@ -1736,7 +1797,6 @@ public class SettingsView {
         root.getStyleClass().add("dialog-root");
 
         Scene scene = new Scene(root);
-        scene.getStylesheets().add("com/autoservice/styles/styles.css");
         stage.setScene(scene);
         return stage;
     }
@@ -2130,7 +2190,6 @@ public class SettingsView {
         root.getStyleClass().add("dialog-root");
 
         Scene scene = new Scene(root);
-        scene.getStylesheets().add("com/autoservice/styles/styles.css");
         stage.setScene(scene);
         return stage;
     }
@@ -2813,11 +2872,10 @@ public class SettingsView {
     private static VBox createImportExportPanel() {
         VBox panel = new VBox(20);
         panel.setPadding(new Insets(20));
-        panel.setStyle("-fx-background-color: #f5f7fa;");
-
+        
         // Заголовок
         Label titleLabel = new Label("Импорт и экспорт данных");
-        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
+        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
 
         // ==================== СЕКЦИЯ: ИМПОРТ ====================
         Label importSectionTitle = new Label("Импорт данных");
@@ -2875,7 +2933,7 @@ public class SettingsView {
 
         VBox importSection = new VBox(10, importSectionTitle, importButtons, importInfoLabel);
         importSection.setPadding(new Insets(15));
-        importSection.setStyle("-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);");
+        importSection.setStyle("-fx-background-color: -fx-control-inner-background; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);");
 
         // ==================== СЕКЦИЯ: ЭКСПОРТ ====================
         Label exportSectionTitle = new Label("Экспорт данных");
@@ -2923,7 +2981,7 @@ public class SettingsView {
 
         VBox exportSection = new VBox(10, exportSectionTitle, exportButtons, exportInfoLabel);
         exportSection.setPadding(new Insets(15));
-        exportSection.setStyle("-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);");
+        exportSection.setStyle("-fx-background-color: -fx-control-inner-background; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);");
 
         panel.getChildren().addAll(titleLabel, importSection, exportSection);
 

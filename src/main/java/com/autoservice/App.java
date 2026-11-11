@@ -2,6 +2,7 @@ package com.autoservice;
 
 import com.autoservice.utils.ExceptionHandler;
 import com.autoservice.utils.LoggerManager;
+import com.autoservice.utils.ThemeManager;
 import com.autoservice.services.ScheduleService;
 import com.autoservice.services.TableStateManager;
 import com.autoservice.services.WindowStateManager;
@@ -21,7 +22,7 @@ import javafx.scene.shape.SVGPath;
 import javafx.stage.Stage;
 
 public class App extends Application {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(App.class);
 
     @Override
@@ -29,13 +30,20 @@ public class App extends Application {
         // Инициализация логгирования
         LoggerManager.init();
         logger.info("Запуск приложения Администратор СТО");
-        
+
+        // Тема применяется только при запуске: читаем config/theme.txt до
+        // создания Scene, чтобы всё окно сразу открылось в выбранной теме.
+        ThemeManager.applySavedTheme();
+
         try {
             DatabaseFactory.init();
             logger.info("База данных инициализирована");
-            DataStore.load();
-            logger.info("Данные загружены");
-            
+
+            new Thread(() -> {
+                DataStore.load();
+                Platform.runLater(() -> logger.info("Данные загружены"));
+            }).start();
+
             // Инициализация ScheduleService и проверка авто-бэкапа
             ScheduleService.init();
             ScheduleService.checkAndRunBackupOnStartup();
@@ -62,46 +70,40 @@ public class App extends Application {
         servicesTab.setContent(ServicePanel.create());
         sparePartsTab.setContent(SparePartPanel.create());
         stockTab.setContent(StockPanel.create());
-        settingsTab.setContent(SettingsView.create());
         appointmentTab.setContent(AppointmentView.create());
+        settingsTab.setContent(SettingsView.create());
 
         tabPane.getTabs().addAll(dashTab, clientTab, orderTab, servicesTab, sparePartsTab, stockTab, appointmentTab, settingsTab);
 
         tabPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, tab) -> {
+            logger.info("🔄 Переключение вкладки: {} -> {}", oldTab != null ? oldTab.getText() : "null", tab != null ? tab.getText() : "null");
             if (tab == dashTab) {
-                DashboardView.refresh();
+                Platform.runLater(() -> DashboardView.refresh());
             } else if (tab == appointmentTab) {
-                AppointmentView.refresh();
+                Platform.runLater(() -> AppointmentView.refresh());
             }
         });
 
         Scene scene = new Scene(tabPane, 1500, 1000);
-        scene.getStylesheets().add(
-                App.class.getResource("/styles.css").toExternalForm()
-        );
+        ThemeManager.applySceneStyles(scene);
 
         primaryStage.setTitle("Администратор СТО");
         primaryStage.setScene(scene);
-        
-        // Восстановление состояния главного окна
         WindowStateManager.getInstance().restoreWindowState("mainWindow", primaryStage);
 
         primaryStage.setOnCloseRequest(e -> {
             logger.info("Закрытие приложения");
-            
-            // Сохранение состояния главного окна
             WindowStateManager.getInstance().saveWindowState("mainWindow", primaryStage);
-            
-            // Сохранение состояний всех таблиц (синхронно, до System.exit)
             TableStateManager.saveTableState(ClientView.getTable(), "clientTable");
             TableStateManager.saveTableState(OrderView.getTable(), "orderTable");
             TableStateManager.saveTableState(ServicePanel.getTable(), "servicesTable");
             TableStateManager.saveTableState(SparePartPanel.getTable(), "sparePartsTable");
             TableStateManager.saveTableState(StockPanel.getTable(), "stockTable");
             TableStateManager.saveTableState(SettingsView.getSettingsTable(), "settingsTable");
-            TableStateManager.saveTableState(SettingsView.getServiceSparePartsTable(), "serviceSparePartsTable");
+            if (SettingsView.getServiceSparePartsTable() != null) {
+                TableStateManager.saveTableState(SettingsView.getServiceSparePartsTable(), "serviceSparePartsTable");
+            }
             TableStateManager.saveTableState(SettingsView.getToPartsTable(), "toPartsTable");
-            
             DataStore.save();
             DatabaseFactory.close();
             ScheduleService.shutdown();
@@ -111,9 +113,8 @@ public class App extends Application {
         });
 
         primaryStage.show();
-
         logger.info("Приложение запущено успешно");
-        
+
         com.autoservice.controllers.ClientController.refreshTable();
         com.autoservice.controllers.OrderController.refreshTable();
         ServicePanelController.refreshTable();

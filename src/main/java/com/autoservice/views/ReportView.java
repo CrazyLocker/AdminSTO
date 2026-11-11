@@ -166,9 +166,10 @@ public class ReportView {
         root.getChildren().addAll(headerBox, periodBox, cardsBox, chartsGrid);
         scrollPane.setContent(root);
 
-        scene.getStylesheets().add(
-                ReportView.class.getResource("/styles.css").toExternalForm()
-        );
+        java.net.URL cssUrl = ReportView.class.getResource("/styles.css");
+        if (cssUrl != null) {
+            scene.getStylesheets().add(cssUrl.toExternalForm());
+        }
 
         stage.setScene(scene);
         stage.showAndWait();

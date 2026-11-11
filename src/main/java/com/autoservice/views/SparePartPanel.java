@@ -282,6 +282,18 @@ public class SparePartPanel {
     }
 
     /**
+     * Диалог редактирования существующей запчасти. Используется другими
+     * разделами (например, складом) для правки запчасти из их таблиц.
+     *
+     * @param sparePart запчасть для редактирования; если {@code null} — ничего не делается
+     */
+    public static void showEditSparePartDialog(SparePart sparePart) {
+        if (sparePart != null) {
+            showSparePartDialog(sparePart);
+        }
+    }
+
+    /**
      * Диалог создания или редактирования запчасти.
      * @param initial {@code null} для создания; существующая запчасть для редактирования
      */

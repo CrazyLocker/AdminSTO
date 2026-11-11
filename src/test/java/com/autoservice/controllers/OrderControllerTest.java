@@ -7,7 +7,11 @@ import org.junit.jupiter.api.*;
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * Тесты для OrderController
+ * Тесты для OrderController.
+ * 
+ * <p>Проверяют базовую функциональность управления заказами: создание,
+ * редактирование, изменение статуса, удаление. Некоторые тесты отмечены
+ * как {@code @Disabled}, так как требуют инициализации JavaFX.</p>
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Tag(TestTags.CONTROLLER)
@@ -182,3 +186,4 @@ class OrderControllerTest extends BaseTest {
         assertThat(order.getTotal()).isEqualTo(6000);
     }
 }
+

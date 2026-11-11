@@ -184,7 +184,10 @@ public final class EntityImportDialog {
         root.getChildren().addAll(titleLabel, centerBox, separator2, errorsBox, closeBtn);
 
         Scene scene = new Scene(root);
-        scene.getStylesheets().add(EntityImportDialog.class.getResource(STYLESHEET).toExternalForm());
+        java.net.URL cssUrl = EntityImportDialog.class.getResource(STYLESHEET);
+        if (cssUrl != null) {
+            scene.getStylesheets().add(cssUrl.toExternalForm());
+        }
         stage.setScene(scene);
         stage.showAndWait();
     }

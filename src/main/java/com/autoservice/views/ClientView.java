@@ -29,14 +29,44 @@ import javafx.scene.layout.VBox;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * Экран управления клиентами СТО.
+ * 
+ * Ответственность: отображение списка клиентов в таблице, поиск и фильтрация,
+ * а также операции добавления, редактирования и удаления клиентов.
+ * 
+ * Зависимости: JavaFX (TableView, FilteredList, SortedList), DataStore, Client,
+ * Car, ClientController, EditClientDialog, TableStateManager, Validators.
+ * 
+ * Особенности: поиск реализован через {@link FilteredList} поверх единого
+ * источника {@code masterData}; состояние таблицы сохраняется через
+ * {@link TableStateManager}.
+ * 
+ * @author AdminSTO Team
+ * @since 1.0
+ * @see DataStore
+ * @see Client
+ * @see ClientController
+ */
 public class ClientView {
 
+    /** Таблица клиентов (общий доступ для сохранения состояния). */
     private static TableView<Client> clientTable;
+    /** Фильтрованный список клиентов для поиска. */
     private static FilteredList<Client> filteredClients;
+    /** Сортированный список клиентов для таблицы. */
     private static SortedList<Client> sortedClients;
+    /** Поле текстового поиска. */
     private static TextField searchField;
+    /** Единый источник данных о клиентах. */
     private static ObservableList<Client> masterData;
 
+    /**
+     * Возвращает таблицу клиентов для внешнего использования
+     * (например, сохранение состояния таблицы).
+     * 
+     * @return таблица клиентов {@link TableView}
+     */
     // Getter для получения таблицы извне
     public static TableView<Client> getTable() {
         return clientTable;
@@ -48,13 +78,16 @@ public class ClientView {
 
     // GWM_MODELS перенесены в AppConstants
 
+    /**
+     * Строит главный экран клиентов: заголовок, панель кнопок и таблицу.
+     * 
+     * @return корневой контейнер VBox с интерфейсом клиентов
+     */
     public static VBox create() {
         VBox mainContainer = new VBox(15);
         mainContainer.setPadding(new Insets(20));
-        mainContainer.setStyle("-fx-background-color: #f5f7fa;");
 
         Label titleLabel = new Label("Управление клиентами");
-        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
 
         HBox topPanel = new HBox(15);
         topPanel.setAlignment(Pos.CENTER_LEFT);
@@ -63,12 +96,10 @@ public class ClientView {
         // ====== КНОПКИ БЕЗ ИКОНОК ======
         addBtn = new Button("Новый клиент");
         addBtn.setId("addClientBtn");
-        addBtn.getStyleClass().add("add-button");
         addBtn.setOnAction(e -> showAddClientDialog());
 
         editBtn = new Button("Изменить");
         editBtn.setId("editClientBtn");
-        editBtn.getStyleClass().add("edit-button");
         editBtn.setDisable(true);
         editBtn.setOnAction(e -> {
             Client selected = clientTable.getSelectionModel().getSelectedItem();
@@ -79,7 +110,6 @@ public class ClientView {
 
         deleteBtn = new Button("Удалить");
         deleteBtn.setId("deleteClientBtn");
-        deleteBtn.getStyleClass().add("delete-button");
         deleteBtn.setDisable(true);
         deleteBtn.setOnAction(e -> {
             Client selected = clientTable.getSelectionModel().getSelectedItem();
@@ -116,6 +146,26 @@ public class ClientView {
 
         refreshClientList();
 
+        // ========== ГОРЯЧИЕ КЛАВИШИ НА ROOT КОНТЕЙНЕРЕ ==========
+        // Работают независимо от того, где сейчас фокус (таблица, поиск, кнопки)
+        mainContainer.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> {
+            if (e.isControlDown() && e.getCode() == KeyCode.N) {
+                e.consume();
+                showAddClientDialog();
+            } else if (e.isControlDown() && e.getCode() == KeyCode.S) {
+                e.consume();
+                Client selected = clientTable.getSelectionModel().getSelectedItem();
+                if (selected != null) showEditClientDialog(selected);
+            } else if (e.getCode() == javafx.scene.input.KeyCode.DELETE) {
+                e.consume();
+                Client selected = clientTable.getSelectionModel().getSelectedItem();
+                if (selected != null) deleteBtn.fire();
+            } else if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
+                e.consume();
+                searchField.clear();
+            }
+        });
+
         // Загружаем состояние таблицы ПОСЛЕ отрисовки — иначе setAll() и setPrefWidth()
         // сбрасываются при первом layout pass
         Platform.runLater(() -> {
@@ -129,25 +179,15 @@ public class ClientView {
 
     private static HBox createSearchPanel() {
         Label searchLabel = new Label("Поиск:");
-        searchLabel.setStyle("-fx-font-weight: bold;");
 
         searchField = new TextField();
         searchField.setId("clientSearchField");
         searchField.setPromptText("Поиск по имени, фамилии, телефону...");
         searchField.setPrefWidth(350);
-        searchField.getStyleClass().add("search-field");
 
         searchField.textProperty().addListener((observable, oldValue, newValue) -> filterClients(newValue));
 
         Button clearBtn = new Button("✖");
-        clearBtn.setStyle(
-                "-fx-background-color: #dc3545;" +
-                        "-fx-text-fill: white;" +
-                        "-fx-font-weight: bold;" +
-                        "-fx-padding: 4 8 4 8;" +
-                        "-fx-background-radius: 4;"
-        );
-        clearBtn.getStyleClass().add("clear-button");
         clearBtn.setOnAction(e -> {
             searchField.clear();
             filterClients("");
@@ -160,7 +200,6 @@ public class ClientView {
 
     private static TableView<Client> createClientTable() {
         TableView<Client> table = new TableView<>();
-        table.getStyleClass().add("table-view");
         table.setId("clientTable");
 
         TableColumn<Client, String> colLastName = new TableColumn<>("Фамилия");
@@ -309,6 +348,8 @@ public class ClientView {
     }
 
     public static void refreshClientList() {
+        long start = System.currentTimeMillis();
+        // TODO: Оптимизировать TableView через FilteredList или пагинацию (при > 500 записей)
         masterData = FXCollections.observableArrayList(DataStore.getClients());
         filteredClients = new FilteredList<>(masterData, p -> true);
         
@@ -321,6 +362,11 @@ public class ClientView {
         
         if (searchField != null && searchField.getText() != null && !searchField.getText().isEmpty()) {
             filterClients(searchField.getText());
+        }
+
+        long duration = System.currentTimeMillis() - start;
+        if (duration > 300) {
+            System.out.println("⚠️ Медленная операция в ClientView.refreshClientList: " + duration + " мс");
         }
     }
 

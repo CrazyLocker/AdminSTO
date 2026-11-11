@@ -168,6 +168,10 @@ public class AppointmentView {
     }
 
     private static void refreshView() {
+        if (datePicker == null || scheduleGrid == null) {
+            // Представление ещё не построено (create() не вызывался) — обновлять нечего.
+            return;
+        }
         if ("week".equals(currentView)) {
             loadWeekView();
         } else {
@@ -617,7 +621,10 @@ public class AppointmentView {
 
         Scene scene = new Scene(root);
         if (mode.attachStylesheet) {
-            scene.getStylesheets().add(AppointmentView.class.getResource("/styles.css").toExternalForm());
+            java.net.URL cssUrl = AppointmentView.class.getResource("/styles.css");
+            if (cssUrl != null) {
+                scene.getStylesheets().add(cssUrl.toExternalForm());
+            }
         }
         stage.setScene(scene);
         stage.setOnHiding(e -> WindowStateManager.getInstance().saveWindowState(mode.windowStateKey, stage));

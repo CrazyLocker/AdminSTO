@@ -19,6 +19,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.KeyCode;
+import javafx.scene.input.MouseButton;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -28,6 +29,20 @@ import javafx.stage.Stage;
 /**
  * Панель управления складом.
  * Автономная панель со своим контроллером.
+ * 
+ * Ответственность: отображение остатков запчастей на складе в таблице, поиск
+ * и фильтрация, операции прихода товара на склад, редактирования и удаления
+ * позиций склада.
+ * 
+ * Зависимости: JavaFX (TableView, FilteredList, SortedList, GridPane), DataStore,
+ * SparePart, StockPanelController, TableStateManager, WindowStateManager,
+ * ValidationUtils, TooltipHelper.
+ * 
+ * @author AdminSTO Team
+ * @since 1.0
+ * @see DataStore
+ * @see SparePart
+ * @see StockPanelController
  */
 public class StockPanel {
 
@@ -49,7 +64,6 @@ public class StockPanel {
     private static VBox createStockPanel() {
         table = new TableView<>();
         table.getSelectionModel().setSelectionMode(SelectionMode.SINGLE);
-        table.getStyleClass().add("table-view");
         table.setId("stockTable");
 
         TableColumn<SparePart, String> colName = new TableColumn<>("Название запчасти");
@@ -57,39 +71,47 @@ public class StockPanel {
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
         colName.setPrefWidth(200);
         colName.setSortable(true);
-        colName.setStyle("-fx-alignment: CENTER-LEFT;");
 
         TableColumn<SparePart, String> colPartNumber = new TableColumn<>("Артикул");
         colPartNumber.setId("colStockPartNumber");
         colPartNumber.setCellValueFactory(new PropertyValueFactory<>("partNumber"));
         colPartNumber.setPrefWidth(120);
         colPartNumber.setSortable(true);
-        colPartNumber.setStyle("-fx-alignment: CENTER-LEFT;");
 
         TableColumn<SparePart, Double> colStock = new TableColumn<>("Текущий остаток");
         colStock.setId("colCurrentStock");
         colStock.setCellValueFactory(new PropertyValueFactory<>("stock"));
-        colStock.setPrefWidth(120);
+        colStock.setPrefWidth(100);
         colStock.setSortable(true);
-        colStock.getStyleClass().add("center-column");
-        colStock.setStyle("-fx-alignment: CENTER-LEFT;");
+
+        TableColumn<SparePart, Double> colReserved = new TableColumn<>("Зарезервировано");
+        colReserved.setId("colReserved");
+        colReserved.setCellValueFactory(new PropertyValueFactory<>("reserved"));
+        colReserved.setPrefWidth(120);
+        colReserved.setSortable(true);
+
+        TableColumn<SparePart, Double> colAvailable = new TableColumn<>("Доступно");
+        colAvailable.setId("colAvailable");
+        colAvailable.setCellValueFactory(cellData -> {
+            SparePart part = cellData.getValue();
+            return new javafx.beans.property.SimpleDoubleProperty(part.getAvailableStock()).asObject();
+        });
+        colAvailable.setPrefWidth(100);
+        colAvailable.setSortable(true);
 
         TableColumn<SparePart, Double> colMinStock = new TableColumn<>("Мин. остаток");
         colMinStock.setId("colMinStock");
         colMinStock.setCellValueFactory(new PropertyValueFactory<>("minStock"));
         colMinStock.setPrefWidth(100);
         colMinStock.setSortable(true);
-        colMinStock.getStyleClass().add("center-column");
-        colMinStock.setStyle("-fx-alignment: CENTER-LEFT;");
 
         TableColumn<SparePart, String> colUnitType = new TableColumn<>("Ед. изм.");
         colUnitType.setId("colStockUnitType");
         colUnitType.setCellValueFactory(new PropertyValueFactory<>("unitType"));
         colUnitType.setPrefWidth(80);
         colUnitType.setSortable(true);
-        colUnitType.setStyle("-fx-alignment: CENTER-LEFT;");
 
-        table.getColumns().addAll(colName, colPartNumber, colStock, colMinStock, colUnitType);
+        table.getColumns().addAll(colName, colPartNumber, colStock, colReserved, colAvailable, colMinStock, colUnitType);
         table.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
         VBox.setVgrow(table, Priority.ALWAYS);
 
@@ -101,7 +123,8 @@ public class StockPanel {
         table.setItems(sortedData);
 
         table.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
-            if (stockIncomeBtn != null) stockIncomeBtn.setDisable(newVal == null);
+            boolean hasSelection = newVal != null;
+            if (stockIncomeBtn != null) stockIncomeBtn.setDisable(!hasSelection);
         });
 
         // ========== ГОЯЧИЕ КЛАВИШИ ==========
@@ -119,9 +142,35 @@ public class StockPanel {
         table.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2) {
                 SparePart selected = table.getSelectionModel().getSelectedItem();
-                if (selected != null) editStockDialog(selected);
+                if (selected != null) {
+                    StockOperationDialog.show(selected, "ПРИХОД");
+                }
             }
         });
+        
+        // Контекстное меню для таблицы
+        ContextMenu contextMenu = new ContextMenu();
+        MenuItem incomeMenuItem = new MenuItem("Приход");
+        MenuItem expenseMenuItem = new MenuItem("Списание");
+        MenuItem editMenuItem = new MenuItem("Редактировать");
+        
+        incomeMenuItem.setOnAction(e -> {
+            SparePart selected = table.getSelectionModel().getSelectedItem();
+            if (selected != null) StockOperationDialog.show(selected, "ПРИХОД");
+        });
+        
+        expenseMenuItem.setOnAction(e -> {
+            SparePart selected = table.getSelectionModel().getSelectedItem();
+            if (selected != null) StockOperationDialog.show(selected, "СПИСАНИЕ");
+        });
+        
+        editMenuItem.setOnAction(e -> {
+            SparePart selected = table.getSelectionModel().getSelectedItem();
+            if (selected != null) SparePartPanel.showEditSparePartDialog(selected);
+        });
+        
+        contextMenu.getItems().addAll(incomeMenuItem, expenseMenuItem, editMenuItem);
+        table.setContextMenu(contextMenu);
 
         // ========== ВЕРХНЯЯ ПАНЕЛЬ С КНОПКАМИ И ПОИСКОМ ==========
         HBox topPanel = new HBox(10);
@@ -134,31 +183,42 @@ public class StockPanel {
         searchField.textProperty().addListener((observable, oldValue, newValue) -> filterStock(newValue));
 
         Button clearBtn = new Button("✖");
-        clearBtn.setStyle(
-                "-fx-background-color: #dc3545;" +
-                "-fx-text-fill: white;" +
-                "-fx-font-weight: bold;" +
-                "-fx-padding: 4 8 4 8;" +
-                "-fx-background-radius: 4;"
-        );
-        clearBtn.getStyleClass().add("clear-button");
         clearBtn.setOnAction(e -> {
             searchField.clear();
             filterStock("");
         });
 
         stockIncomeBtn = new Button("Внести приход");
-        stockIncomeBtn.getStyleClass().add("income-button");
         stockIncomeBtn.setDisable(true);
         stockIncomeBtn.setOnAction(e -> {
             SparePart selected = table.getSelectionModel().getSelectedItem();
-            if (selected != null) editStockDialog(selected);
+            if (selected != null) StockOperationDialog.show(selected, "ПРИХОД");
         });
 
-        topPanel.getChildren().addAll(searchField, clearBtn, stockIncomeBtn);
+        Button expenseBtn = new Button("Списание");
+        expenseBtn.setDisable(true);
+        expenseBtn.setOnAction(e -> {
+            SparePart selected = table.getSelectionModel().getSelectedItem();
+            if (selected != null) StockOperationDialog.show(selected, "СПИСАНИЕ");
+        });
+
+        topPanel.getChildren().addAll(searchField, clearBtn, stockIncomeBtn, expenseBtn);
 
         // Создаем панель с верхней панелью и таблицей
         VBox panel = new VBox(10, topPanel, table);
+
+        // ========== ГОРЯЧИЕ КЛАВИШИ НА ROOT КОНТЕЙНЕРЕ ==========
+        // Работают независимо от того, где сейчас фокус (таблица, поиск)
+        panel.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> {
+            if (e.isControlDown() && e.getCode() == KeyCode.S) {
+                e.consume();
+                SparePart selected = table.getSelectionModel().getSelectedItem();
+                if (selected != null) editStockDialog(selected);
+            } else if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
+                e.consume();
+                if (searchField != null) searchField.clear();
+            }
+        });
 
         // Загружаем состояние таблицы ПОСЛЕ отрисовки
         Platform.runLater(() -> {
@@ -191,7 +251,9 @@ public class StockPanel {
      * Вызывается контроллером, НЕ вызывает setItems напрямую.
      */
     public static void refreshTable() {
+        long start = System.currentTimeMillis();
         if (table == null) return;
+        // TODO: Оптимизировать TableView через FilteredList или пагинацию (при > 500 записей)
         masterData = FXCollections.observableArrayList(DataStore.getSpareParts());
         filteredData = new FilteredList<>(masterData, p -> true);
         sortedData = new SortedList<>(filteredData);
@@ -199,6 +261,10 @@ public class StockPanel {
         table.setItems(sortedData);
         if (searchField != null) {
             filterStock(searchField.getText());
+        }
+        long duration = System.currentTimeMillis() - start;
+        if (duration > 300) {
+            System.out.println("⚠️ Медленная операция в StockPanel.refreshTable: " + duration + " мс");
         }
     }
 
@@ -213,13 +279,10 @@ public class StockPanel {
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
-        root.getStyleClass().add("dialog-root");
 
         Label titleLabel = new Label("Запчасть: " + part.getName());
-        titleLabel.getStyleClass().add("dialog-title");
 
         Label currentStockLabel = new Label("Текущий остаток: " + part.getStockFormatted());
-        currentStockLabel.getStyleClass().add("info-label");
 
         GridPane grid = new GridPane();
         grid.setHgap(15);
@@ -242,10 +305,8 @@ public class StockPanel {
         grid.add(amountField, 1, 1);
 
         Button saveBtn = new Button("Применить");
-        saveBtn.getStyleClass().add("save-button");
 
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.getStyleClass().add("cancel-button");
 
         HBox btnBox = new HBox(15, saveBtn, cancelBtn);
         btnBox.setAlignment(Pos.CENTER);
@@ -299,7 +360,7 @@ public class StockPanel {
         });
 
         cancelBtn.setOnAction(e -> stage.close());
-        stage.setOnHiding(e -> WindowStateManager.getInstance().saveWindowState("editStockDialog", stage));
+        stage.setOnHidden(e -> WindowStateManager.getInstance().saveWindowState("editStockDialog", stage));
         stage.showAndWait();
     }
 

@@ -1,0 +1,53 @@
+/* =====================================================================
+   global-custom.css — Глобальные стили для всего приложения
+   ===================================================================== */
+
+/* ==================== ГЛОБАЛЬНЫЙ РАЗМЕР ШРИФТА ==================== */
+.root {
+    -fx-font-size: 13px;
+}
+
+/* ==================== КНОПКИ ==================== */
+.button {
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+}
+
+/* ==================== ТАБЛИЦЫ ==================== */
+.table-view .column-header .label {
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+
+/* ==================== ВКЛАДКИ ==================== */
+.tab-pane {
+    -fx-tab-min-height: 38;
+    -fx-tab-max-height: 38;
+}
+
+/* ==================== ФОКУС ==================== */
+.text-field:focused,
+.text-area:focused {
+    -fx-border-color: #5B8DEF;
+    -fx-border-width: 2;
+}
+.combo-box:focused {
+    -fx-border-color: #5B8DEF;
+    -fx-border-width: 2;
+}
+
+/* ==================== СКРОЛЛБАРЫ ==================== */
+.scroll-bar {
+    -fx-background-color: transparent;
+}
+.scroll-bar > .thumb {
+    -fx-background-radius: 4;
+}
+.scroll-bar > .track {
+    -fx-background-color: transparent;
+}
+.scroll-bar > .increment-button,
+.scroll-bar > .decrement-button {
+    -fx-background-color: transparent;
+    -fx-shape: "";
+}
