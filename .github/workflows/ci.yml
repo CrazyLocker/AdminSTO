@@ -4,14 +4,20 @@ on:
   push:
     branches:
       - main
+      - develop
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
-    name: Build
+    name: Build & unit tests
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -27,4 +33,49 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build with Gradle
-        run: ./gradlew build
+        run: ./gradlew build --console=plain
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            build/reports/tests/test
+            build/test-results/test
+          retention-days: 7
+
+  ui-test:
+    name: JavaFX UI tests (headless)
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # UI-тесты идут с Monocle Headless (чистая Java), но Xvfb страхует
+      # загрузку нативных библиотек JavaFX на образе без X-сервера.
+      - name: Install Xvfb
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+
+      - name: Run JavaFX UI tests
+        run: xvfb-run -a ./gradlew uiTest --console=plain
+
+      - name: Upload UI test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-test-reports
+          path: |
+            build/reports/tests/uiTest
+            build/test-results/uiTest
+          retention-days: 7
