@@ -1782,60 +1782,6 @@ public class DashboardView extends ScrollPane {
         }
     }
 
-    // ==================== ВНУТРЕННИЙ КЛАСС ДЛЯ ТАБЛИЦЫ ====================
-
-    /**
-     * Модель строки таблицы записей (Appointment). Содержит отображаемые
-     * поля записи и ссылку на связанный заказ (если есть).
-     */
-    public static class AppointmentRow {
-        /** Идентификатор записи (заказа). */
-        private final String orderId;
-        /** Имя клиента. */
-        private final String clientName;
-        /** Модель автомобиля. */
-        private final String carModel;
-        /** Название услуги. */
-        private final String serviceName;
-        /** Дата и время записи. */
-        private final String dateTime;
-        /** Связанный заказ (может быть null, если запись не привязана к заказу). */
-        private final WorkOrder linkedOrder;
-
-        /**
-         * Создаёт строку таблицы записей.
-         *
-         * @param orderId    идентификатор записи
-         * @param clientName имя клиента
-         * @param carModel   модель автомобиля
-         * @param serviceName название услуги
-         * @param dateTime   дата и время
-         * @param linkedOrder связанный заказ (или null)
-         */
-        public AppointmentRow(String orderId, String clientName, String carModel,
-                              String serviceName, String dateTime, WorkOrder linkedOrder) {
-            this.orderId = orderId;
-            this.clientName = clientName;
-            this.carModel = carModel;
-            this.serviceName = serviceName;
-            this.dateTime = dateTime;
-            this.linkedOrder = linkedOrder;
-        }
-
-        /** @return идентификатор записи */
-        public String getOrderId() { return orderId; }
-        /** @return имя клиента */
-        public String getClientName() { return clientName; }
-        /** @return модель автомобиля */
-        public String getCarModel() { return carModel; }
-        /** @return название услуги */
-        public String getServiceName() { return serviceName; }
-        /** @return дата и время записи */
-        public String getDateTime() { return dateTime; }
-        /** @return связанный заказ (может быть null) */
-        public WorkOrder getLinkedOrder() { return linkedOrder; }
-    }
-
     // ==================== КЛАСС ДАННЫХ ДАШБОРДА ====================
 
     /**
