@@ -12,6 +12,7 @@ import com.autoservice.utils.ValidationUtils;
 import com.autoservice.utils.TooltipHelper;
 import com.autoservice.utils.StockHelper;
 import com.autoservice.services.WindowStateManager;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -89,13 +90,31 @@ public class CreateOrderDialog {
      */
     public static CompletableFuture<DialogResult> showAsync() {
         CompletableFuture<DialogResult> future = new CompletableFuture<>();
+        Form form = createForm(future);
+        form.stage.show();
+        return future;
+    }
 
+    /**
+     * Собирает форму диалога, не показывая окно.
+     *
+     * <p>Окно обязано завершать {@code future} при закрытии любым способом,
+     * иначе ожидающая сторона заблокирует FX-поток.</p>
+     *
+     * @param future future результата диалога
+     * @return готовая, но не отображённая форма
+     */
+    private static Form createForm(CompletableFuture<DialogResult> future) {
         Form form = new Form(createWindow());
         buildForm(form);
         attachHandlers(form, future);
-
-        form.stage.showAndWait(); // Используем showAndWait вместо show + join()
-        return future;
+        form.stage.setOnHidden(e -> {
+            WindowStateManager.getInstance().saveWindowState("createOrderDialog", form.stage);
+            if (!future.isDone()) {
+                future.complete(new DialogResult(DialogResult.Action.CANCEL));
+            }
+        });
+        return form;
     }
 
     /**
@@ -672,8 +691,10 @@ public class CreateOrderDialog {
         SparePartPanelController.refreshTable();
         StockPanelController.refreshTable();
 
-        form.stage.close();
+        // Сначала фиксируем результат, затем закрываем окно: onHidden
+        // завершил бы future как CANCEL раньше сохранения.
         future.complete(new DialogResult(DialogResult.Action.OK, Map.of("order", order)));
+        form.stage.close();
     }
 
     /**
@@ -685,14 +706,29 @@ public class CreateOrderDialog {
             StockHelper.restore(form.tempParts.get(i), form.tempPartQuantities.get(i));
         }
         form.stage.close();
-        future.complete(new DialogResult(DialogResult.Action.CANCEL));
     }
 
     /**
      * Синхронно открыть диалог создания заказа и дождаться его завершения.
+     *
+     * <p>На FX-потоке окно показывается через {@code showAndWait()}: он запускает
+     * вложенный цикл событий, поэтому диалог остаётся отзывчивым. Блокировать
+     * FX-поток методом {@code CompletableFuture.join()} нельзя — приложение зависнет.</p>
      */
     public static void show() {
-        showAsync().join();
+        if (Platform.isFxApplicationThread()) {
+            try {
+                createForm(new CompletableFuture<>()).stage.showAndWait();
+            } catch (Exception e) {
+                System.err.println("Ошибка при открытии диалога создания заказа: " + e.getMessage());
+            }
+            return;
+        }
+        try {
+            showAsync().join();
+        } catch (Exception e) {
+            System.err.println("Ошибка при открытии диалога создания заказа: " + e.getMessage());
+        }
     }
 
     private static void showAlert(String msg) {
