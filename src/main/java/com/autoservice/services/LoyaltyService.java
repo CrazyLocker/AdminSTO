@@ -141,20 +141,39 @@ public final class LoyaltyService {
      * @return процент скидки; {@code 0}, если сумма меньше нижней границы Stage 1
      */
     public static double getTuningDiscountPercent(double tuningTotal) {
+        return switch (getTuningStage(tuningTotal)) {
+            case 3 -> getDoubleSetting(SETTING_TUNING_STAGE3_DISCOUNT, DEFAULT_TUNING_STAGE3_DISCOUNT);
+            case 2 -> getDoubleSetting(SETTING_TUNING_STAGE2_DISCOUNT, DEFAULT_TUNING_STAGE2_DISCOUNT);
+            case 1 -> getDoubleSetting(SETTING_TUNING_STAGE1_DISCOUNT, DEFAULT_TUNING_STAGE1_DISCOUNT);
+            default -> 0.0;
+        };
+    }
+
+    /**
+     * Текущая стадия тюнинга по накопленной сумме.
+     *
+     * <p>Границы совпадают с {@link #getTuningDiscountPercent(double)}:
+     * 1 — от Stage 1 до Stage 2, 2 — свыше Stage 2 до Stage 3, 3 — свыше
+     * Stage 3. Значение {@code 0} означает, что скидка на тюнинг ещё не
+     * действует.</p>
+     * @param tuningTotal накопленная сумма тюнинга, руб.
+     * @return номер стадии от 0 до 3
+     */
+    public static int getTuningStage(double tuningTotal) {
         double stage1 = getDoubleSetting(SETTING_TUNING_STAGE1_MIN_AMOUNT, DEFAULT_TUNING_STAGE1_MIN_AMOUNT);
         double stage2 = getDoubleSetting(SETTING_TUNING_STAGE2_MIN_AMOUNT, DEFAULT_TUNING_STAGE2_MIN_AMOUNT);
         double stage3 = getDoubleSetting(SETTING_TUNING_STAGE3_MIN_AMOUNT, DEFAULT_TUNING_STAGE3_MIN_AMOUNT);
 
         if (tuningTotal > stage3) {
-            return getDoubleSetting(SETTING_TUNING_STAGE3_DISCOUNT, DEFAULT_TUNING_STAGE3_DISCOUNT);
+            return 3;
         }
         if (tuningTotal > stage2) {
-            return getDoubleSetting(SETTING_TUNING_STAGE2_DISCOUNT, DEFAULT_TUNING_STAGE2_DISCOUNT);
+            return 2;
         }
         if (tuningTotal >= stage1) {
-            return getDoubleSetting(SETTING_TUNING_STAGE1_DISCOUNT, DEFAULT_TUNING_STAGE1_DISCOUNT);
+            return 1;
         }
-        return 0.0;
+        return 0;
     }
 
     /**
@@ -164,6 +183,92 @@ public final class LoyaltyService {
      */
     public static double getTuningDiscountPercent(Client client) {
         return getTuningDiscountPercent(client != null ? client.getTuningTotal() : 0.0);
+    }
+
+    // ==================== ОТОБРАЖЕНИЕ СТАТУСА ====================
+
+    /**
+     * Показать количество звёзд ТО символами с учётом максимума из настроек.
+     * @param stars количество звёзд клиента
+     * @return строка вида {@code ★★★★☆}
+     */
+    public static String formatMaintenanceStars(int stars) {
+        int maxStars = getMaintenanceMaxStars();
+        if (maxStars <= 0) {
+            return "";
+        }
+        int filled = Math.max(0, Math.min(stars, maxStars));
+        StringBuilder result = new StringBuilder(maxStars);
+        for (int i = 0; i < maxStars; i++) {
+            result.append(i < filled ? '★' : '☆');
+        }
+        return result.toString();
+    }
+
+    /**
+     * Полный текст статуса ТО для карточки клиента.
+     * @param client клиент; {@code null} трактуется как 0 звёзд
+     * @return например, {@code ★★★★☆ — скидка 10% на работы}
+     */
+    public static String getMaintenanceStatusText(Client client) {
+        int stars = client != null ? client.getMaintenanceStars() : 0;
+        double discount = getMaintenanceDiscountPercent(client);
+        if (discount <= 0) {
+            return formatMaintenanceStars(stars) + " — скидки на работы нет";
+        }
+        return formatMaintenanceStars(stars) + " — скидка " + formatPercent(discount) + " на работы";
+    }
+
+    /**
+     * Короткий текст статуса ТО для строки таблицы клиентов.
+     * @param client клиент
+     * @return звёзды и, если скидка действует, её процент
+     */
+    public static String getMaintenanceShortStatus(Client client) {
+        int stars = client != null ? client.getMaintenanceStars() : 0;
+        double discount = getMaintenanceDiscountPercent(client);
+        return formatMaintenanceStars(stars) + (discount > 0 ? " · " + formatPercent(discount) : "");
+    }
+
+    /**
+     * Название текущей стадии тюнинга.
+     * @param client клиент; {@code null} трактуется как 0 руб.
+     * @return {@code Stage 1}, {@code Stage 2}, {@code Stage 3} или
+     *         {@code Без stage}, если скидка ещё не действует
+     */
+    public static String getTuningStageName(Client client) {
+        int stage = getTuningStage(client != null ? client.getTuningTotal() : 0.0);
+        return stage > 0 ? "Stage " + stage : "Без stage";
+    }
+
+    /**
+     * Полный текст статуса тюнинга для карточки клиента.
+     * @param client клиент
+     * @return например, {@code Stage 2 — скидка 10% на тюнинг}
+     */
+    public static String getTuningStatusText(Client client) {
+        double discount = getTuningDiscountPercent(client);
+        if (discount <= 0) {
+            return getTuningStageName(client) + " — скидки на тюнинг нет";
+        }
+        return getTuningStageName(client) + " — скидка " + formatPercent(discount) + " на тюнинг";
+    }
+
+    /**
+     * Короткий текст статуса тюнинга для строки таблицы клиентов.
+     * @param client клиент
+     * @return стадия и, если скидка действует, её процент
+     */
+    public static String getTuningShortStatus(Client client) {
+        double discount = getTuningDiscountPercent(client);
+        return getTuningStageName(client) + (discount > 0 ? " · " + formatPercent(discount) : "");
+    }
+
+    private static String formatPercent(double value) {
+        if (Math.abs(value - Math.rint(value)) < 0.0001) {
+            return String.format("%.0f%%", value);
+        }
+        return String.format("%.1f%%", value);
     }
 
     /**

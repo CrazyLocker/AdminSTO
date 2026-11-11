@@ -95,6 +95,47 @@ class LoyaltyServiceTest extends BaseTest {
         assertThat(LoyaltyService.calculateDiscount(client, ServiceCategory.MAINTENANCE, 0)).isZero();
     }
 
+    @Test
+    void tuningStageMatchesDiscountStages() {
+        assertThat(LoyaltyService.getTuningStage(0)).isZero();
+        assertThat(LoyaltyService.getTuningStage(29_999)).isZero();
+        assertThat(LoyaltyService.getTuningStage(30_000)).isEqualTo(1);
+        assertThat(LoyaltyService.getTuningStage(100_000)).isEqualTo(1);
+        assertThat(LoyaltyService.getTuningStage(100_001)).isEqualTo(2);
+        assertThat(LoyaltyService.getTuningStage(300_000)).isEqualTo(2);
+        assertThat(LoyaltyService.getTuningStage(300_001)).isEqualTo(3);
+    }
+
+    @Test
+    void maintenanceStatusShowsStarsAndDiscount() {
+        Client client = new Client("Иван", "Петров", "+79001234567", "Lada", "А123ВС163");
+
+        assertThat(LoyaltyService.formatMaintenanceStars(0)).isEqualTo("☆☆☆☆☆");
+        assertThat(LoyaltyService.getMaintenanceStatusText(client))
+                .isEqualTo("☆☆☆☆☆ — скидки на работы нет");
+
+        client.setMaintenanceStars(4);
+        assertThat(LoyaltyService.formatMaintenanceStars(4)).isEqualTo("★★★★☆");
+        assertThat(LoyaltyService.getMaintenanceStatusText(client))
+                .isEqualTo("★★★★☆ — скидка 10% на работы");
+        assertThat(LoyaltyService.getMaintenanceShortStatus(client))
+                .isEqualTo("★★★★☆ · 10%");
+    }
+
+    @Test
+    void tuningStatusShowsStageAndDiscount() {
+        Client client = new Client("Иван", "Петров", "+79001234567", "Lada", "А123ВС163");
+        assertThat(LoyaltyService.getTuningStageName(client)).isEqualTo("Без stage");
+        assertThat(LoyaltyService.getTuningStatusText(client)).contains("скидки на тюнинг нет");
+
+        client.setTuningTotal(150_000);
+        assertThat(LoyaltyService.getTuningStageName(client)).isEqualTo("Stage 2");
+        assertThat(LoyaltyService.getTuningStatusText(client))
+                .isEqualTo("Stage 2 — скидка 10% на тюнинг");
+        assertThat(LoyaltyService.getTuningShortStatus(client))
+                .isEqualTo("Stage 2 · 10%");
+    }
+
     // ==================== ЗВЁЗДЫ ТО ====================
 
     @Test

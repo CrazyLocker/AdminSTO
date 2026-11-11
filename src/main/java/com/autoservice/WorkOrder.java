@@ -1,5 +1,7 @@
 package com.autoservice;
 
+import com.autoservice.services.LoyaltyService;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -155,6 +157,20 @@ public class WorkOrder {
         recalculateTotal();
     }
 
+    /**
+     * Добавить услугу при загрузке заказа из базы без пересчёта итоговой
+     * суммы: сохранённая сумма заказа уже учитывает скидки на момент
+     * оформления и не должна меняться при последующем чтении.
+     * @param serviceId идентификатор услуги
+     * @param name название услуги
+     * @param price цена услуги без скидки
+     */
+    public void addLoadedService(int serviceId, String name, double price) {
+        this.services.add(name);
+        this.servicePrices.add(price);
+        this.serviceIds.add(serviceId);
+    }
+
     public void removeService(int index) {
         if (index >= 0 && index < services.size()) {
             services.remove(index);
@@ -172,6 +188,17 @@ public class WorkOrder {
         recalculateTotal();
     }
 
+    /**
+     * Добавить запчасть при загрузке заказа из базы без пересчёта итоговой
+     * суммы (см. {@link #addLoadedService(int, String, double)}).
+     * @param part запчасть
+     * @param quantity количество
+     */
+    public void addLoadedSparePart(SparePart part, double quantity) {
+        this.spareParts.add(part);
+        this.sparePartQuantities.add(quantity);
+    }
+
     public void removeSparePart(int index) {
         if (index >= 0 && index < spareParts.size()) {
             spareParts.remove(index);
@@ -181,18 +208,95 @@ public class WorkOrder {
         }
     }
 
+    /**
+     * Пересчитать сумму заказа по прайсу позиций без скидок по лояльности.
+     *
+     * <p>Скидки применяются отдельно методом {@link #applyLoyaltyDiscounts()},
+     * поэтому сумма сохраняется в базе уже с их учётом.</p>
+     */
     public void recalculateTotal() {
-        double newTotal = 0;
-        for (Double price : servicePrices) {
-            newTotal += price;
-        }
-        for (int i = 0; i < spareParts.size(); i++) {
-            newTotal += spareParts.get(i).getRetailPrice() * sparePartQuantities.get(i);
-        }
+        double newTotal = getSubtotal();
         if (Double.compare(this.total, newTotal) != 0) {
             this.total = newTotal;
             this.dirty = true;
         }
+    }
+
+    /**
+     * Сумма позиций заказа по прайсу, без скидок по лояльности.
+     * @return сумма услуг и запчастей по прайсу, руб.
+     */
+    public double getSubtotal() {
+        double subtotal = 0;
+        for (Double price : servicePrices) {
+            subtotal += price;
+        }
+        for (int i = 0; i < spareParts.size(); i++) {
+            SparePart part = spareParts.get(i);
+            double quantity = i < sparePartQuantities.size() ? sparePartQuantities.get(i) : 1.0;
+            subtotal += part.getRetailPrice() * quantity;
+        }
+        return subtotal;
+    }
+
+    /**
+     * Процент скидки по лояльности на услугу в строке заказа.
+     * @param index индекс услуги
+     * @return процент скидки; {@code 0}, если скидка не действует
+     */
+    public double getServiceDiscountPercent(int index) {
+        if (index < 0 || index >= servicePrices.size()) {
+            return 0.0;
+        }
+        return LoyaltyService.getDiscountPercent(client, LoyaltyService.resolveServiceCategory(this, index));
+    }
+
+    /**
+     * Процент скидки по лояльности на запчасть в строке заказа.
+     * @param index индекс запчасти
+     * @return процент скидки; {@code 0}, если скидка не действует
+     */
+    public double getSparePartDiscountPercent(int index) {
+        if (index < 0 || index >= spareParts.size()) {
+            return 0.0;
+        }
+        return LoyaltyService.getDiscountPercent(client, LoyaltyService.resolveSparePartCategory(spareParts.get(index)));
+    }
+
+    /**
+     * Рассчитать сумму заказа с учётом скидок по лояльности.
+     * @return сумма к оплате, руб.
+     */
+    public double calculateLoyaltyTotal() {
+        double result = 0;
+        for (int i = 0; i < servicePrices.size(); i++) {
+            double price = servicePrices.get(i);
+            result += price - LoyaltyService.calculateDiscount(client,
+                    LoyaltyService.resolveServiceCategory(this, i), price);
+        }
+        for (int i = 0; i < spareParts.size(); i++) {
+            SparePart part = spareParts.get(i);
+            double quantity = i < sparePartQuantities.size() ? sparePartQuantities.get(i) : 1.0;
+            double amount = part.getRetailPrice() * quantity;
+            result += amount - LoyaltyService.calculateDiscount(client,
+                    LoyaltyService.resolveSparePartCategory(part), amount);
+        }
+        return result;
+    }
+
+    /**
+     * Применить скидки по лояльности к итоговой сумме заказа.
+     */
+    public void applyLoyaltyDiscounts() {
+        setTotal(calculateLoyaltyTotal());
+    }
+
+    /**
+     * Сумма скидок по лояльности, уже учтённая в итоговой сумме заказа.
+     * @return сумма скидки, руб.
+     */
+    public double getDiscountTotal() {
+        return Math.max(0.0, getSubtotal() - total);
     }
 
     public void markClean() {
