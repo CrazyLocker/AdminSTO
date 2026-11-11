@@ -421,8 +421,10 @@ pitest {
     timestampedReports = false
     outputFormats = ['HTML', 'XML']
     failWhenNoMutations = true
-    // Базовая линия на 2026-11-11: 1054 мутации, 325 убито, 622 без покрытия,
-    // test strength 75% (killed / covered). Порог — на 5 п.п. ниже, чтобы ловить
-    // деградацию, но не падать от одного нового непокрытого класса.
-    mutationThreshold = 70
+    // Базовая линия на 2026-11-11: 1054 мутации, 325 убито, 622 без покрытия.
+    // Гейт держим по test strength (killed / covered = 75%), а не по общему
+    // mutation score (31%): второе падает от любого нового непокрытого класса,
+    // хотя качество тестов не изменилось. Порог — на 5 п.п. ниже факта.
+    mutationThreshold = 0
+    testStrengthThreshold = 70
 }
