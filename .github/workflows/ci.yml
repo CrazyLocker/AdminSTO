@@ -35,6 +35,11 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew build --console=plain
 
+      # build уже проверяет пороги покрытия (check зависит от
+      # jacocoTestCoverageVerification), а сам отчёт строится отдельно.
+      - name: Coverage report (JaCoCo)
+        run: ./gradlew jacocoTestReport --console=plain
+
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v7
@@ -43,6 +48,15 @@ jobs:
           path: |
             build/reports/tests/test
             build/test-results/test
+          retention-days: 7
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: |
+            build/reports/jacoco
           retention-days: 7
 
   ui-test:
@@ -79,3 +93,34 @@ jobs:
             build/reports/tests/uiTest
             build/test-results/uiTest
           retention-days: 7
+
+  # Мутационное тестирование: прогон долгий (единицы минут и больше), поэтому
+  # запускается вручную — Actions → CI → Run workflow, либо локально
+  # `./gradlew pitest`. В обычную сборку не входит намеренно.
+  mutation:
+    name: Mutation testing (PIT, manual)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 21 (Temurin)
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Run mutation analysis
+        run: ./gradlew pitest --console=plain
+
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mutation-report
+          path: build/reports/pitest
+          retention-days: 14
