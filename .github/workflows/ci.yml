@@ -38,6 +38,7 @@ jobs:
       # build уже проверяет пороги покрытия (check зависит от
       # jacocoTestCoverageVerification), а сам отчёт строится отдельно.
       - name: Coverage report (JaCoCo)
+        if: always()
         run: ./gradlew jacocoTestReport --console=plain
 
       - name: Upload test reports
