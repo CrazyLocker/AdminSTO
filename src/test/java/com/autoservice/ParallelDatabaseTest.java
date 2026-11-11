@@ -19,8 +19,8 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ParallelDatabaseTest extends BaseTest {
 
-    private static final int PARALLEL_THREADS = 3;
-    private static final int OPERATIONS_PER_THREAD = 5;
+    private static final int PARALLEL_THREADS = 5;
+    private static final int OPERATIONS_PER_THREAD = 10;
 
     @DisplayName("Параллельное добавление клиентов")
     @Test
@@ -55,9 +55,9 @@ class ParallelDatabaseTest extends BaseTest {
         }
 
         // Ждем завершения всех операций
-        boolean completed = latch.await(60, TimeUnit.SECONDS);
+        boolean completed = latch.await(30, TimeUnit.SECONDS);
         executor.shutdown();
-        executor.awaitTermination(15, TimeUnit.SECONDS);
+        executor.awaitTermination(10, TimeUnit.SECONDS);
 
         assertTrue(completed, "Не все операции завершились за отведённое время");
         
@@ -100,9 +100,9 @@ class ParallelDatabaseTest extends BaseTest {
             });
         }
 
-        boolean completed = latch.await(60, TimeUnit.SECONDS);
+        boolean completed = latch.await(30, TimeUnit.SECONDS);
         executor.shutdown();
-        executor.awaitTermination(15, TimeUnit.SECONDS);
+        executor.awaitTermination(10, TimeUnit.SECONDS);
 
         assertTrue(completed, "Не все операции завершились за отведённое время");
         assertEquals(totalParts, successCount.get(),
@@ -122,23 +122,32 @@ class ParallelDatabaseTest extends BaseTest {
         DatabaseFactory.getDatabase().addSparePart(part);
         
         int initialStock = (int) part.getStock();
-        int totalOperations = 10;
+        int totalOperations = 20;
         int incrementPerOperation = 5;
         
-        ExecutorService executor = Executors.newFixedThreadPool(5);
+        ExecutorService executor = Executors.newFixedThreadPool(10);
         CountDownLatch latch = new CountDownLatch(totalOperations);
         
+        // Список для хранения запчастей, чтобы избежать race condition при получении
+        var partHolder = new Object() { SparePart p = null; };
+        partHolder.p = part; // Инициализируем
+
         for (int i = 0; i < totalOperations; i++) {
             executor.submit(() -> {
                 try {
-                    var spareParts = DatabaseFactory.getDatabase().getAllSpareParts();
-                    var testPart = spareParts.stream()
-                        .filter(p -> p.getPartNumber().equals("STOCK001"))
-                        .findFirst()
-                        .orElse(null);
-                    if (testPart != null) {
-                        double newStock = testPart.getStock() + incrementPerOperation;
-                        DatabaseFactory.getDatabase().updateSparePartStock(testPart, newStock);
+                    synchronized (partHolder) {
+                        // Получаем актуальную копию запчасти из БД
+                        var spareParts = DatabaseFactory.getDatabase().getAllSpareParts();
+                        var testPart = spareParts.stream()
+                            .filter(p -> p.getPartNumber().equals("STOCK001"))
+                            .findFirst()
+                            .orElse(null);
+                        if (testPart != null) {
+                            double newStock = testPart.getStock() + incrementPerOperation;
+                            DatabaseFactory.getDatabase().updateSparePartStock(testPart, newStock);
+                            // Обновляем нашу копию
+                            partHolder.p = testPart;
+                        }
                     }
                 } catch (Exception e) {
                     System.err.println("Ошибка обновления запаса: " + e.getMessage());
@@ -148,9 +157,9 @@ class ParallelDatabaseTest extends BaseTest {
             });
         }
 
-        boolean completed = latch.await(60, TimeUnit.SECONDS);
+        boolean completed = latch.await(30, TimeUnit.SECONDS);
         executor.shutdown();
-        executor.awaitTermination(15, TimeUnit.SECONDS);
+        executor.awaitTermination(10, TimeUnit.SECONDS);
 
         assertTrue(completed, "Не все операции обновления завершились");
         
@@ -163,22 +172,21 @@ class ParallelDatabaseTest extends BaseTest {
         assertNotNull(updatedPart);
         int finalStock = (int) updatedPart.getStock();
         
-        // Финальный запас должен быть >= начального (хотя бы некоторые операции прошли)
-        assertTrue(finalStock >= initialStock,
-            "Финальный запас должен быть не меньше начального. Ожидалось: >= " + initialStock + 
-            ", получено: " + finalStock);
+        int expectedStock = initialStock + (totalOperations * incrementPerOperation);
+        assertEquals(expectedStock, finalStock,
+            "Финальный запас не совпадает с ожидаемым (возможна потеря данных)");
     }
 
     @DisplayName("Многопоточное чтение и запись заказов")
     @Test
     void testConcurrentReadWriteOrders() throws InterruptedException {
-        ExecutorService executor = Executors.newFixedThreadPool(6);
-        CountDownLatch latch = new CountDownLatch(12);
+        ExecutorService executor = Executors.newFixedThreadPool(8);
+        CountDownLatch latch = new CountDownLatch(16);
         AtomicInteger readCount = new AtomicInteger(0);
         AtomicInteger writeCount = new AtomicInteger(0);
 
-        // Запись заказов (6 потоков)
-        for (int i = 0; i < 6; i++) {
+        // Запись заказов (8 потоков)
+        for (int i = 0; i < 8; i++) {
             final int orderId = i;
             executor.submit(() -> {
                 try {
@@ -202,13 +210,13 @@ class ParallelDatabaseTest extends BaseTest {
             });
         }
 
-        // Чтение заказов (6 потоков)
-        for (int i = 0; i < 6; i++) {
+        // Чтение заказов (8 потоков)
+        for (int i = 0; i < 8; i++) {
             final int readAttempt = i;
             executor.submit(() -> {
                 try {
-                    var orders = DatabaseFactory.getDatabase().getAllOrders();
-                    readCount.addAndGet(orders.size());
+                    DatabaseFactory.getDatabase().getAllOrders();
+                    readCount.incrementAndGet();
                 } catch (Exception e) {
                     System.err.println("Ошибка чтения заказов " + readAttempt + ": " + e.getMessage());
                 } finally {
@@ -217,20 +225,22 @@ class ParallelDatabaseTest extends BaseTest {
             });
         }
 
-        boolean completed = latch.await(60, TimeUnit.SECONDS);
+        boolean completed = latch.await(30, TimeUnit.SECONDS);
         executor.shutdown();
-        executor.awaitTermination(15, TimeUnit.SECONDS);
+        executor.awaitTermination(10, TimeUnit.SECONDS);
 
         assertTrue(completed, "Не все операции завершились");
-        assertTrue(writeCount.get() > 0, "Хотя бы несколько заказов должно быть создано");
-        assertThat(readCount.get()).isGreaterThanOrEqualTo(0);
+        assertEquals(8, readCount.get(), "Количество успешных чтений не совпадает");
+        assertEquals(8, writeCount.get(), "Количество операций записи не совпадает");
+        assertEquals(8, DatabaseFactory.getDatabase().getAllOrders().size(),
+            "Количество сохранённых заказов не совпадает");
     }
 
     @DisplayName("Параллельное удаление данных с проверкой целостности")
     @Test
     void testParallelDeleteWithIntegrityCheck() throws InterruptedException {
         // Предварительно добавляем данные
-        int initialClients = 5;
+        int initialClients = 10;
         for (int i = 0; i < initialClients; i++) {
             var client = new com.autoservice.builders.ClientBuilder()
                 .withName("Delete Test Client " + i)
@@ -239,38 +249,33 @@ class ParallelDatabaseTest extends BaseTest {
             DatabaseFactory.getDatabase().addClient(client);
         }
 
-        ExecutorService executor = Executors.newFixedThreadPool(3);
+        ExecutorService executor = Executors.newFixedThreadPool(5);
         CountDownLatch latch = new CountDownLatch(initialClients);
 
-        for (int i = 0; i < initialClients; i++) {
-            final int clientId = i + 1;
+        // Удаляем именно существующих клиентов: ID не начинаются с 1,
+        // так как H2 продолжает нумерацию между тестами (DELETE не сбрасывает identity).
+        var clientsToDelete = DatabaseFactory.getDatabase().getAllClients();
+        assertEquals(initialClients, clientsToDelete.size());
+        for (var clientToDelete : clientsToDelete) {
             executor.submit(() -> {
                 try {
-                    var clients = DatabaseFactory.getDatabase().getAllClients();
-                    var clientToDelete = clients.stream()
-                        .filter(c -> c.getId() == clientId)
-                        .findFirst()
-                        .orElse(null);
-                    if (clientToDelete != null) {
-                        DatabaseFactory.getDatabase().deleteClient(clientToDelete);
-                    }
+                    DatabaseFactory.getDatabase().deleteClient(clientToDelete);
                 } catch (Exception e) {
-                    System.err.println("Ошибка удаления клиента " + clientId + ": " + e.getMessage());
+                    System.err.println("Ошибка удаления клиента " + clientToDelete.getId() + ": " + e.getMessage());
                 } finally {
                     latch.countDown();
                 }
             });
         }
 
-        boolean completed = latch.await(60, TimeUnit.SECONDS);
+        boolean completed = latch.await(30, TimeUnit.SECONDS);
         executor.shutdown();
-        executor.awaitTermination(15, TimeUnit.SECONDS);
+        executor.awaitTermination(10, TimeUnit.SECONDS);
 
         assertTrue(completed, "Не все операции удаления завершились");
         
-        // Проверяем, что количество клиентов уменьшилось
-        var remainingClients = DatabaseFactory.getDatabase().getAllClients();
-        assertTrue(remainingClients.size() < initialClients,
-            "Количество клиентов должно уменьшиться. Было: " + initialClients + ", осталось: " + remainingClients.size());
+        // Проверяем целостность - все клиенты должны быть удалены
+        assertEquals(0, DatabaseFactory.getDatabase().getAllClients().size(),
+            "Не все клиенты были удалены или обнаружены дубликаты");
     }
 }

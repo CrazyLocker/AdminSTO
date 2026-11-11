@@ -42,7 +42,6 @@ app_log.txt
 # ===== REPORTS & TEMP =====
 report*.json
 test_output.txt
-versions.properties
 Thumbs.db
 desktop.ini
 .DS_Store
@@ -51,11 +50,11 @@ desktop.ini
 .gitverse/
 .scanrc.yml
 
-# ===== DOCUMENTATION (keep README.md) =====
-docs/
+# ===== DOCUMENTATION (keep README.md, track docs/) =====
 !README.md
 *.md
 !README.md
+!docs/**/*.md
 
 # ===== BUILD SCRIPTS (if any temp artifacts) =====
 build-portable.ps1
@@ -64,7 +63,5 @@ create-runbat.ps1
 # ===== BAD FOLDERS FROM YOUR STATUS =====
 backups/
 Import_export/
-config/
 wrapper/dists/
-.github/
 STO.bat

@@ -101,8 +101,8 @@ class ClientControllerTest extends BaseTest {
     @Test
     @Order(7)
     void testClientValidation() {
-        assertThat(com.autoservice.Validators.isValidPhone("+79001234567")).isTrue();
-        assertThat(com.autoservice.Validators.isValidCarNumber("А123ВС163")).isTrue();
+        assertThat(com.autoservice.utils.ValidationUtils.isValidPhone("+79001234567")).isTrue();
+        assertThat(com.autoservice.utils.ValidationUtils.isValidCarNumber("А123ВС163")).isTrue();
     }
 
     @Test

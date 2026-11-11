@@ -98,8 +98,10 @@ class ImportServiceTest extends BaseTest {
     }
 
     private File createTempFile(String name, String content) throws IOException {
-        // Use secure temp file creation instead of new File() to avoid CWE-377
-        Path tempFile = Files.createTempFile("test-", "-" + name);
+        // Use secure temp file creation instead of new File() to avoid CWE-377.
+        // Каталог передаётся отдельным аргументом: путь с разделителями
+        // в prefix запрещён JDK (IllegalArgumentException: Invalid prefix or suffix).
+        Path tempFile = Files.createTempFile(tempDir, "test-", "-" + name);
         Files.writeString(tempFile, content, StandardCharsets.UTF_8);
         return tempFile.toFile();
     }

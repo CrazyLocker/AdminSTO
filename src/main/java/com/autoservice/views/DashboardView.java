@@ -156,24 +156,14 @@ public class DashboardView extends ScrollPane {
      * обновление UI — в JavaFX-потоке.
      */
     private void doRefreshAsync() {
-        // Показываем индикатор загрузки
-        try {
-            com.autoservice.utils.LoadingIndicator.show();
-        } catch (Exception ignored) {
-        }
-
         CompletableFuture.supplyAsync(this::loadDashboardData)
-                .thenAcceptAsync(data -> {
-                    Platform.runLater(() -> {
-                        try {
-                            com.autoservice.utils.LoadingIndicator.hide();
-                            buildDashboardUI(data);
-                        } catch (Exception e) {
-                            com.autoservice.utils.LoadingIndicator.hide();
-                            e.printStackTrace();
-                        }
-                    });
-                });
+                .thenAcceptAsync(data -> Platform.runLater(() -> {
+                    try {
+                        buildDashboardUI(data);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }));
     }
 
     /**
@@ -693,17 +683,29 @@ public class DashboardView extends ScrollPane {
 
     /**
      * Вычисляет количество новых клиентов в текущем месяце.
+     *
+     * <p>Даты регистрации клиента в схеме БД нет, поэтому «новым» считается
+     * клиент, чей самый первый заказ создан в текущем месяце.</p>
      */
     private static int calculateNewClientsThisMonth(List<Client> clients) {
         YearMonth currentMonth = YearMonth.now();
-        int count = 0;
-        for (Client client : clients) {
-            String createdDate = client.getCreatedDate();
-            if (createdDate == null || createdDate.trim().isEmpty()) {
+        Map<Integer, LocalDate> firstOrderByClient = new HashMap<>();
+        for (WorkOrder order : DataStore.getOrders()) {
+            int clientId = order.getClientId() > 0 ? order.getClientId()
+                    : (order.getClient() != null ? order.getClient().getId() : 0);
+            if (clientId <= 0) {
                 continue;
             }
-            LocalDate date = DateUtils.parseDate(createdDate);
-            if (date != null && YearMonth.from(date).equals(currentMonth)) {
+            LocalDate date = DateUtils.parseDate(order.getCreatedDate());
+            if (date == null) {
+                continue;
+            }
+            firstOrderByClient.merge(clientId, date, (a, b) -> a.isBefore(b) ? a : b);
+        }
+        int count = 0;
+        for (Client client : clients) {
+            LocalDate firstOrder = firstOrderByClient.get(client.getId());
+            if (firstOrder != null && YearMonth.from(firstOrder).equals(currentMonth)) {
                 count++;
             }
         }

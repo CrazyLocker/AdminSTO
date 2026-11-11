@@ -16,7 +16,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import javafx.application.Platform;
-import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
@@ -199,15 +198,14 @@ public abstract class BaseUITest {
     }
 
     /**
-     * Загружает вкладку «Запись» из FXML, чтобы тестовая сцена повторяла
-     * состав вкладок реального приложения.
+     * Создаёт вкладку «Запись» так же, как реальное приложение, чтобы тестовая
+     * сцена повторяла состав вкладок.
      *
      * @return корневой контейнер вкладки «Запись»
      */
     private VBox createAppointmentView() {
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/AppointmentView.fxml"));
-            return loader.load();
+            return AppointmentView.create();
         } catch (Exception e) {
             VBox errorBox = new VBox();
             errorBox.getChildren().add(new Label("Ошибка загрузки календаря: " + e.getMessage()));

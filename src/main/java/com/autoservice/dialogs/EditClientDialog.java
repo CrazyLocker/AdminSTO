@@ -4,9 +4,11 @@ import com.autoservice.AppConstants;
 import com.autoservice.Car;
 import com.autoservice.Client;
 import com.autoservice.DataStore;
-import com.autoservice.Validators;
+import com.autoservice.utils.Formatters;
 import com.autoservice.controllers.ClientController;
+import com.autoservice.services.LoyaltyService;
 import com.autoservice.services.WindowStateManager;
+import com.autoservice.utils.DialogValidator;
 import com.autoservice.utils.ValidationErrorIndicator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,12 +28,17 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.Map;
 
+/**
+ * Диалог создания и редактирования клиента, включая список его автомобилей.
+ */
 public class EditClientDialog {
 
     private static final Logger logger = LoggerFactory.getLogger(EditClientDialog.class);
 
     /**
-     * Асинхронное открытие диалога (для тестирования).
+     * Асинхронно открыть диалог создания или редактирования клиента.
+     * @param client редактируемый клиент; новый клиент имеет идентификатор {@code -1} или {@code 0}
+     * @return future, завершающийся результатом диалога
      */
     public static CompletableFuture<DialogResult> showAsync(Client client) {
         CompletableFuture<DialogResult> future = new CompletableFuture<>();
@@ -63,7 +70,7 @@ public class EditClientDialog {
         lastNameField.setId("lastNameField");
         lastNameField.setPromptText("Фамилия");
         lastNameField.setPrefWidth(250);
-        Validators.setupLastNameField(lastNameField);
+        Formatters.setupLastNameField(lastNameField);
 
         // Имя
         Label nameLabel = new Label("Имя:");
@@ -71,7 +78,7 @@ public class EditClientDialog {
         nameField.setId("nameField");
         nameField.setPromptText("Имя");
         nameField.setPrefWidth(250);
-        Validators.setupNameField(nameField);
+        Formatters.setupNameField(nameField);
 
         // Телефон
         Label phoneLabel = new Label("Телефон:");
@@ -85,9 +92,25 @@ public class EditClientDialog {
         if (existingPhone == null || existingPhone.trim().isEmpty()) {
             phoneField.setText("+7");
         } else {
-            phoneField.setText(Validators.formatPhoneForDisplay(existingPhone));
+            phoneField.setText(Formatters.formatPhoneForDisplay(existingPhone));
         }
-        Validators.setupPhoneField(phoneField);
+        Formatters.setupPhoneField(phoneField);
+
+        // ====== Статус лояльности ======
+        Label loyaltySectionLabel = new Label("Статус лояльности:");
+        loyaltySectionLabel.getStyleClass().add("dialog-title");
+
+        Label loyaltyStarsLabel = new Label(LoyaltyService.getMaintenanceStatusText(client));
+        loyaltyStarsLabel.setId("clientLoyaltyStarsLabel");
+        loyaltyStarsLabel.setStyle("-fx-font-size: 13px;");
+
+        Label loyaltyStageLabel = new Label(LoyaltyService.getTuningStatusText(client));
+        loyaltyStageLabel.setId("clientLoyaltyStageLabel");
+        loyaltyStageLabel.setStyle("-fx-font-size: 13px;");
+
+        VBox loyaltyBox = new VBox(6, loyaltyStarsLabel, loyaltyStageLabel);
+        loyaltyBox.setPadding(new Insets(10));
+        loyaltyBox.setStyle("-fx-background-color: #eef5ff; -fx-background-radius: 8;");
 
         // ====== Автомобили клиента ======
         Label carsSectionLabel = new Label("Автомобили клиента:");
@@ -126,34 +149,63 @@ public class EditClientDialog {
         // ====== Валидация и сохранение ======
         Runnable doSave = () -> {
             try {
-                boolean isValid = true;
+                ValidationErrorIndicator.clearAllErrors(root);
+
+                DialogValidator validator = new DialogValidator();
 
                 // Получаем "сырой" номер для валидации
-                String rawPhone = Validators.cleanPhone(phoneField.getText());
-                if (!ValidationUtils.isValidPhone(rawPhone)) {
-                    ValidationErrorIndicator.showError(phoneField, "Неверный формат телефона");
-                    isValid = false;
+                String rawPhone = Formatters.cleanPhone(phoneField.getText());
+                ValidationUtils.ValidationError phoneError = ValidationUtils.validatePhone(rawPhone);
+                if (phoneError != null) {
+                    ValidationErrorIndicator.showError(phoneField, phoneError.getErrorMessage());
+                    validator.add(phoneError);
                 }
 
                 String lastName = lastNameField.getText().trim();
                 if (lastName.isEmpty()) {
                     ValidationErrorIndicator.showError(lastNameField, "Введите фамилию (минимум 2 буквы)");
-                    isValid = false;
+                    validator.add("Введите фамилию (минимум 2 буквы)");
                 } else if (!lastName.matches("^[\u0400-\u04FF]{2,}$")) {
                     ValidationErrorIndicator.showError(lastNameField, "Фамилия должна содержать только русские буквы (минимум 2)");
-                    isValid = false;
+                    validator.add("Фамилия должна содержать только русские буквы (минимум 2)");
                 }
 
                 String name = nameField.getText().trim();
                 if (name.isEmpty()) {
                     ValidationErrorIndicator.showError(nameField, "Введите имя (минимум 2 буквы)");
-                    isValid = false;
+                    validator.add("Введите имя (минимум 2 буквы)");
                 } else if (!name.matches("^[\u0400-\u04FF]{2,}$")) {
                     ValidationErrorIndicator.showError(nameField, "Имя должно содержать только русские буквы (минимум 2)");
-                    isValid = false;
+                    validator.add("Имя должно содержать только русские буквы (минимум 2)");
                 }
 
-                if (!isValid) {
+                // Валидируем автомобили до сохранения клиента, чтобы данные не сохранялись частично
+                List<CarRow> validCarRows = new ArrayList<>();
+                for (CarRow row : carRows) {
+                    String model = row.modelCombo.getEditor().getText().trim();
+                    String number = row.numberField.getText().trim().toUpperCase();
+
+                    // Пропускаем полностью пустые строки
+                    if (model.isEmpty() && number.isEmpty()) continue;
+
+                    boolean carValid = true;
+                    if (model.isEmpty()) {
+                        ValidationErrorIndicator.showError(row.modelCombo.getEditor(), "Введите марку/модель");
+                        validator.add("Введите марку/модель автомобиля");
+                        carValid = false;
+                    }
+                    if (!ValidationUtils.isValidCarNumber(number)) {
+                        ValidationErrorIndicator.showError(row.numberField, "Неверный формат госномера (пример: А123БВ777)");
+                        validator.add("Неверный формат госномера (пример: А123БВ777)");
+                        carValid = false;
+                    }
+                    if (carValid) {
+                        validCarRows.add(row);
+                    }
+                }
+
+                if (validator.hasErrors()) {
+                    showAlert(validator.getMessage());
                     return;
                 }
 
@@ -188,38 +240,14 @@ public class EditClientDialog {
                     ClientController.updateClient(clientRef[0]);
                 }
 
-                // Валидация и сбор автомобилей из UI
-                List<Car> newCars = new ArrayList<>();
-                for (CarRow row : carRows) {
-                    String model = row.modelCombo.getEditor().getText().trim();
-                    String number = row.numberField.getText().trim().toUpperCase();
-
-                    // Пропускаем полностью пустые строки
-                    if (model.isEmpty() && number.isEmpty()) continue;
-
-                    // Валидация модели
-                    if (model.isEmpty()) {
-                        ValidationErrorIndicator.showError(row.modelCombo.getEditor(), "Введите марку/модель");
-                        isValid = false;
-                    }
-
-                    // Валидация госномера
-                    if (!ValidationUtils.isValidCarNumber(number)) {
-                        ValidationErrorIndicator.showError(row.numberField, "Неверный формат госномера (пример: А123БВ777)");
-                        isValid = false;
-                    }
-                }
-                if (!isValid) return;
-
                 // Создаём объекты Car (теперь clientRef[0].getId() точно корректен и ссылка актуальна)
-                logger.info("Saving {} car(s) for client id={}", carRows.size(), clientRef[0].getId());
-                for (CarRow row : carRows) {
+                List<Car> newCars = new ArrayList<>();
+                logger.info("Saving {} car(s) for client id={}", validCarRows.size(), clientRef[0].getId());
+                for (CarRow row : validCarRows) {
                     String model = row.modelCombo.getEditor().getText().trim();
                     String number = row.numberField.getText().trim().toUpperCase();
 
                     logger.info("  Car row: model='{}', number='{}', existingId={}", model, number, row.car != null ? row.car.getId() : -1);
-
-                    if (model.isEmpty() && number.isEmpty()) continue;
 
                     if (row.car != null && row.car.getId() > 0) {
                         row.car.setCarModel(model);
@@ -236,11 +264,14 @@ public class EditClientDialog {
                         } catch (Exception e) {
                             logger.error("  Failed to save car: {}", e.getMessage(), e);
                             ValidationErrorIndicator.showError(row.modelCombo.getEditor(), "Ошибка сохранения автомобиля: " + e.getMessage());
-                            isValid = false;
+                            validator.add("Ошибка сохранения автомобиля: " + e.getMessage());
                         }
                     }
                 }
-                if (!isValid) return;
+                if (validator.hasErrors()) {
+                    showAlert(validator.getMessage());
+                    return;
+                }
 
                 // Обновляем список автомобилей у клиента в кэше (ссылка уже актуальна)
                 clientRef[0].setCars(newCars);
@@ -269,7 +300,8 @@ public class EditClientDialog {
         grid.add(phoneLabel, 0, 2);
         grid.add(phoneField, 1, 2);
 
-        root.getChildren().addAll(titleLabel, grid, carsSectionLabel, carsBox, addCarBtn, btnBox);
+        root.getChildren().addAll(titleLabel, grid, loyaltySectionLabel, loyaltyBox,
+                carsSectionLabel, carsBox, addCarBtn, btnBox);
 
         Scene scene = new Scene(root);
         stage.setScene(scene);
@@ -308,7 +340,7 @@ public class EditClientDialog {
         if (car != null && car.getCarNumber() != null) {
             numberField.setText(car.getCarNumber());
         }
-        Validators.setupCarNumberField(numberField);
+        Formatters.setupCarNumberField(numberField);
 
         // Кнопка удаления
         Button deleteBtn = new Button("✕");
@@ -345,6 +377,15 @@ public class EditClientDialog {
         TextField numberField;
     }
 
+    private static void showAlert(String message) {
+        Alert alert = new Alert(Alert.AlertType.WARNING, message, ButtonType.OK);
+        alert.showAndWait();
+    }
+
+    /**
+     * Синхронно открыть диалог создания или редактирования клиента.
+     * @param client редактируемый клиент; новый клиент имеет идентификатор {@code -1} или {@code 0}
+     */
     public static void show(Client client) {
         try {
             showAsync(client).join();

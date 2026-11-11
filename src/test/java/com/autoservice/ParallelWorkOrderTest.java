@@ -19,13 +19,13 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ParallelWorkOrderTest extends BaseTest {
 
-    private static final int PARALLEL_THREADS = 3;
-    private static final int ORDERS_PER_THREAD = 2;
+    private static final int PARALLEL_THREADS = 5;
+    private static final int ORDERS_PER_THREAD = 4;
 
     @BeforeEach
     void setupTestData() {
         // Подготовка тестовых данных: создаем клиентов и запчасти
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 10; i++) {
             var client = new com.autoservice.builders.ClientBuilder()
                 .withName("Client " + i)
                 .withPhone("+7900" + String.format("%09d", i))
@@ -33,7 +33,7 @@ class ParallelWorkOrderTest extends BaseTest {
             DatabaseFactory.getDatabase().addClient(client);
         }
 
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 5; i++) {
             var part = new com.autoservice.builders.SparePartBuilder()
                 .withName("Part " + i)
                 .withPartNumber("PART" + String.format("%06d", i))
@@ -47,69 +47,22 @@ class ParallelWorkOrderTest extends BaseTest {
     @DisplayName("Параллельное создание заказов с уникальными ID")
     @Test
     void testParallelOrderCreation() throws InterruptedException {
-        // Создаем заказы последовательно для избежания race condition в H2
-        // (generateOrderId не атомарен в in-memory H2)
-        int totalOrders = 5;
-        AtomicInteger successCount = new AtomicInteger(0);
-
-        for (int i = 0; i < totalOrders; i++) {
-            try {
-                int clientId = (i % 5) + 1;
-                
-                var client = DatabaseFactory.getDatabase().getAllClients().stream()
-                    .filter(c -> c.getId() == clientId)
-                    .findFirst()
-                    .orElse(null);
-                if (client == null) continue;
-                
-                var order = new com.autoservice.builders.WorkOrderBuilder()
-                    .withClient(client)
-                    .withStatus("active")
-                    .build();
-                
-                DatabaseFactory.getDatabase().addOrder(order);
-                successCount.incrementAndGet();
-            } catch (Exception e) {
-                System.err.println("Ошибка создания заказа " + i + ": " + e.getMessage());
-            }
-        }
-
-        // При последовательном создании H2 может генерировать дубликаты ID
-        // (race condition в generateOrderId). Проверяем, что хотя бы один заказ создан.
-        assertTrue(successCount.get() >= 0,
-            "Создание заказов завершено");
-        
-        // Проверяем, что все заказы имеют уникальные ID
-        var orders = DatabaseFactory.getDatabase().getAllOrders();
-        
-        // Проверяем уникальность ID заказов
-        var idSet = orders.stream()
-            .map(com.autoservice.WorkOrder::getId)
-            .distinct()
-            .count();
-        assertTrue(idSet >= 0,
-            "Все заказы должны иметь уникальные ID");
-    }
-
-    @DisplayName("Параллельное создание заказов с запчастями")
-    @Test
-    void testParallelOrderWithParts() throws InterruptedException {
-        int totalOrders = 4;
-        ExecutorService executor = Executors.newFixedThreadPool(2);
+        int totalOrders = PARALLEL_THREADS * ORDERS_PER_THREAD;
+        ExecutorService executor = Executors.newFixedThreadPool(PARALLEL_THREADS);
         CountDownLatch latch = new CountDownLatch(totalOrders);
         AtomicInteger successCount = new AtomicInteger(0);
+        AtomicInteger errorCount = new AtomicInteger(0);
 
         for (int i = 0; i < totalOrders; i++) {
             final int orderId = i;
             executor.submit(() -> {
                 try {
-                    // Создание заказа
-                    int clientId = (orderId % 5) + 1;
-                    var client = DatabaseFactory.getDatabase().getAllClients().stream()
-                        .filter(c -> c.getId() == clientId)
-                        .findFirst()
-                        .orElse(null);
-                    if (client == null) return;
+                    // Используем разного клиента для каждого заказа.
+                    // ID в БД не начинаются с 1 (identity не сбрасывается DELETE),
+                    // поэтому выбираем клиента по индексу списка.
+                    var clients = DatabaseFactory.getDatabase().getAllClients();
+                    assertFalse(clients.isEmpty(), "Нет клиентов для создания заказа");
+                    var client = clients.get(orderId % clients.size());
                     
                     var order = new com.autoservice.builders.WorkOrderBuilder()
                         .withClient(client)
@@ -117,6 +70,80 @@ class ParallelWorkOrderTest extends BaseTest {
                         .build();
                     
                     DatabaseFactory.getDatabase().addOrder(order);
+                    successCount.incrementAndGet();
+                } catch (Exception e) {
+                    errorCount.incrementAndGet();
+                    System.err.println("Ошибка создания заказа " + orderId + ": " + e.getMessage());
+                } finally {
+                    latch.countDown();
+                }
+            });
+        }
+
+        boolean completed = latch.await(45, TimeUnit.SECONDS);
+        executor.shutdown();
+        executor.awaitTermination(15, TimeUnit.SECONDS);
+
+        assertTrue(completed, "Не все заказы были созданы за отведённое время");
+        assertEquals(totalOrders, successCount.get(),
+            "Количество успешно созданных заказов не совпадает");
+        assertEquals(0, errorCount.get(), "Обнаружены ошибки при создании заказов");
+
+        // Проверяем, что все заказы имеют уникальные ID
+        var orders = DatabaseFactory.getDatabase().getAllOrders();
+        assertEquals(totalOrders, orders.size(),
+            "Количество заказов в БД не совпадает");
+        
+        // Проверяем уникальность ID заказов
+        var idSet = orders.stream()
+            .map(com.autoservice.WorkOrder::getId)
+            .distinct()
+            .count();
+        assertEquals(totalOrders, idSet,
+            "Обнаружены дубликаты ID заказов (race condition)");
+    }
+
+    @DisplayName("Параллельное создание заказов с запчастями")
+    @Test
+    void testParallelOrderWithParts() throws InterruptedException {
+        int totalOrders = 8;
+        ExecutorService executor = Executors.newFixedThreadPool(4);
+        CountDownLatch latch = new CountDownLatch(totalOrders);
+        AtomicInteger successCount = new AtomicInteger(0);
+
+        for (int i = 0; i < totalOrders; i++) {
+            final int orderId = i;
+            executor.submit(() -> {
+                try {
+                    // Создание заказа. Клиентов выбираем по индексу:
+                    // identity в БД не сбрасывается при DELETE.
+                    var clients = DatabaseFactory.getDatabase().getAllClients();
+                    assertFalse(clients.isEmpty(), "Нет клиентов для создания заказа");
+                    var client = clients.get(orderId % clients.size());
+                    
+                    var order = new com.autoservice.builders.WorkOrderBuilder()
+                        .withClient(client)
+                        .withStatus("active")
+                        .build();
+                    
+                    DatabaseFactory.getDatabase().addOrder(order);
+                    
+                    // Получаем только что созданный заказ
+                    var createdOrder = DatabaseFactory.getDatabase().getAllOrders().stream()
+                        .filter(o -> o.getId().equals(order.getId()))
+                        .findFirst()
+                        .orElse(null);
+                    assertNotNull(createdOrder);
+                    
+                    // Добавляем часть к заказу через WorkOrder.addSparePart.
+                    // ID запчастей также не обязательно начинаются с 1.
+                    var spareParts = DatabaseFactory.getDatabase().getAllSpareParts();
+                    assertFalse(spareParts.isEmpty(), "Нет запчастей для заказа");
+                    var sparePart = spareParts.get(orderId % spareParts.size());
+                    
+                    // WorkOrder хранит запчасти внутри себя, добавляем к существующему заказу
+                    createdOrder.addSparePart(sparePart, 1);
+                    DatabaseFactory.getDatabase().updateOrder(createdOrder);
                     
                     successCount.incrementAndGet();
                 } catch (Exception e) {
@@ -127,11 +154,13 @@ class ParallelWorkOrderTest extends BaseTest {
             });
         }
 
-        boolean completed = latch.await(30, TimeUnit.SECONDS);
+        boolean completed = latch.await(45, TimeUnit.SECONDS);
         executor.shutdown();
-        executor.awaitTermination(10, TimeUnit.SECONDS);
+        executor.awaitTermination(15, TimeUnit.SECONDS);
 
         assertTrue(completed, "Не все заказы были созданы");
+        assertEquals(totalOrders, successCount.get(),
+            "Количество заказов с запчастями не совпадает");
     }
 
     @DisplayName("Конкурентное обновление запасов при создании заказов")
@@ -147,10 +176,10 @@ class ParallelWorkOrderTest extends BaseTest {
         DatabaseFactory.getDatabase().addSparePart(part);
         
         int initialStock = (int) part.getStock();
-        int totalOrders = 5;
-        int partsPerOrder = 1;
+        int totalOrders = 20;
+        int partsPerOrder = 2;
         
-        ExecutorService executor = Executors.newFixedThreadPool(3);
+        ExecutorService executor = Executors.newFixedThreadPool(10);
         CountDownLatch latch = new CountDownLatch(totalOrders);
         AtomicInteger successOrders = new AtomicInteger(0);
 
@@ -172,6 +201,17 @@ class ParallelWorkOrderTest extends BaseTest {
                         .build();
                     DatabaseFactory.getDatabase().addOrder(order);
                     
+                    // Получаем запчасть и обновляем запас
+                    var orderParts = DatabaseFactory.getDatabase().getAllSpareParts();
+                    var testPart = orderParts.stream()
+                        .filter(p -> p.getPartNumber().equals("LIMITED001"))
+                        .findFirst()
+                        .orElse(null);
+                    assertNotNull(testPart);
+                    
+                    double newStock = testPart.getStock() - partsPerOrder;
+                    DatabaseFactory.getDatabase().updateSparePartStock(testPart, newStock);
+                    
                     successOrders.incrementAndGet();
                 } catch (Exception e) {
                     System.err.println("Ошибка заказа " + orderId + ": " + e.getMessage());
@@ -181,18 +221,37 @@ class ParallelWorkOrderTest extends BaseTest {
             });
         }
 
-        boolean completed = latch.await(30, TimeUnit.SECONDS);
+        boolean completed = latch.await(45, TimeUnit.SECONDS);
         executor.shutdown();
-        executor.awaitTermination(10, TimeUnit.SECONDS);
+        executor.awaitTermination(15, TimeUnit.SECONDS);
 
         assertTrue(completed, "Не все заказы были созданы");
+        assertEquals(totalOrders, successOrders.get(),
+            "Количество созданных заказов не совпадает");
+
+        // Проверяем остаток на складе
+        var updatedPart = DatabaseFactory.getDatabase().getAllSpareParts().stream()
+            .filter(p -> p.getPartNumber().equals("LIMITED001"))
+            .findFirst()
+            .orElse(null);
+        assertNotNull(updatedPart);
+        int finalStock = (int) updatedPart.getStock();
+        
+        // Каждый поток делает read-modify-write без общей блокировки, поэтому
+        // точное значение недетерминировано; проверяем инварианты склада.
+        assertTrue(finalStock >= 0,
+            "Запас не может быть отрицательным: " + finalStock);
+        assertTrue(finalStock < initialStock,
+            "Хотя бы одно списание должно примениться: было " + initialStock + ", стало " + finalStock);
+        assertTrue(initialStock - finalStock <= totalOrders * partsPerOrder,
+            "Списано больше, чем заказано: " + (initialStock - finalStock));
     }
 
     @DisplayName("Параллельное получение последовательных Order ID")
     @Test
     void testSequentialOrderIdGeneration() throws InterruptedException {
-        int totalOrders = 5;
-        ExecutorService executor = Executors.newFixedThreadPool(3);
+        int totalOrders = 15;
+        ExecutorService executor = Executors.newFixedThreadPool(5);
         CountDownLatch latch = new CountDownLatch(totalOrders);
         var orderIds = new java.util.concurrent.ConcurrentLinkedQueue<String>();
         var timestamps = new java.util.concurrent.ConcurrentLinkedQueue<Long>();
@@ -232,25 +291,27 @@ class ParallelWorkOrderTest extends BaseTest {
         assertTrue(completed, "Не все Order ID были сгенерированы");
         
         // Проверяем уникальность
-        assertTrue(orderIds.size() > 0, "Должны быть сгенерированы Order ID");
+        assertEquals(totalOrders, orderIds.size(),
+            "Количество Order ID не совпадает");
         
         var uniqueIds = orderIds.stream().distinct().count();
-        assertTrue(uniqueIds > 0, "Обнаружены уникальные Order ID");
+        assertEquals(totalOrders, uniqueIds,
+            "Обнаружены дубликаты Order ID (race condition в генерации)");
         
         // Проверяем формат ID
         for (String orderId : orderIds) {
-            if (orderId != null && !orderId.isEmpty()) {
-                assertTrue(orderId.startsWith("ZAK-"),
-                    "Order ID должен начинаться с 'ZAK-': " + orderId);
-            }
+            assertTrue(orderId.startsWith("ZAK-"),
+                "Order ID должен начинаться с 'ZAK-': " + orderId);
+            assertTrue(orderId.matches("ZAK-\\d{2}/\\d{2}/\\d{2}-\\d{4}"),
+                "Order ID должен иметь формат ZAK-DD/MM/YY-XXXX: " + orderId);
         }
     }
 
     @AfterEach
     void verifyDataIntegrity() {
-        // Синхронизируем DataStore перед проверкой
+        // Синхронизируем кэш: тесты работают напрямую через DatabaseFactory.getDatabase().
         DataStore.load();
-        
+
         // Проверка целостности данных после каждого теста
         var orders = DatabaseFactory.getDatabase().getAllOrders();
         var clients = DatabaseFactory.getDatabase().getAllClients();

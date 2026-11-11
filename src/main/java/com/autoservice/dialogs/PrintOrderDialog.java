@@ -1,6 +1,9 @@
 package com.autoservice.dialogs;
 
 import com.autoservice.*;
+import com.autoservice.utils.Formatters;
+import com.itextpdf.io.font.PdfEncodings;
+import com.itextpdf.io.font.constants.StandardFonts;
 import com.itextpdf.kernel.font.PdfFont;
 import com.itextpdf.kernel.font.PdfFontFactory;
 import com.itextpdf.kernel.geom.PageSize;
@@ -14,15 +17,35 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
+/**
+ * Диалог сохранения заказа-наряда в PDF-файл.
+ */
 public class PrintOrderDialog {
+
+    private static final Logger logger = LoggerFactory.getLogger(PrintOrderDialog.class);
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
+    // Шрифты с поддержкой кириллицы лежат в ресурсах проекта, чтобы PDF
+    // формировался одинаково на Windows, Linux и macOS.
+    private static final String REGULAR_FONT_RESOURCE = "/fonts/LiberationSans-Regular.ttf";
+    private static final String BOLD_FONT_RESOURCE = "/fonts/LiberationSans-Bold.ttf";
+
+    /**
+     * Открыть диалог сохранения заказа-наряда в PDF.
+     * @param order заказ, для которого формируется заказ-наряд
+     */
     public static void show(WorkOrder order) {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Сохранить заказ-наряд");
@@ -42,20 +65,41 @@ public class PrintOrderDialog {
 
     private static void generatePDF(WorkOrder order, String filePath) {
         try {
-            PdfWriter writer = new PdfWriter(filePath);
-            PdfDocument pdfDoc = new PdfDocument(writer);
+            generatePdf(order, Paths.get(filePath), REGULAR_FONT_RESOURCE, BOLD_FONT_RESOURCE);
 
-            // А4 альбомная ориентация
-            Document doc = new Document(pdfDoc, PageSize.A4.rotate());
+            Alert alert = new Alert(Alert.AlertType.INFORMATION, "Заказ-наряд сохранён:\n" + filePath, ButtonType.OK);
+            alert.showAndWait();
+
+        } catch (Exception e) {
+            Alert alert = new Alert(Alert.AlertType.ERROR, "Ошибка при создании PDF:\n" + e.getMessage(), ButtonType.OK);
+            alert.showAndWait();
+        }
+    }
+
+    /**
+     * Сформировать PDF-файл заказа-наряда.
+     *
+     * <p>Все ресурсы iText ({@link PdfWriter}, {@link PdfDocument}, {@link Document})
+     * закрываются автоматически, поэтому файл не остаётся заблокированным при
+     * исключении. Шрифты загружаются из classpath; если ресурс отсутствует или
+     * повреждён, используется стандартный шрифт iText.
+     *
+     * @param order заказ, для которого формируется заказ-наряд
+     * @param filePath путь к создаваемому PDF-файлу
+     * @param regularFontResource путь к ресурсу обычного шрифта (может быть {@code null})
+     * @param boldFontResource путь к ресурсу полужирного шрифта (может быть {@code null})
+     * @throws IOException если не удалось создать или записать PDF
+     */
+    static void generatePdf(WorkOrder order, Path filePath, String regularFontResource, String boldFontResource)
+            throws IOException {
+        try (PdfWriter writer = new PdfWriter(filePath.toString());
+             PdfDocument pdfDoc = new PdfDocument(writer);
+             // А4 альбомная ориентация
+             Document doc = new Document(pdfDoc, PageSize.A4.rotate())) {
             doc.setMargins(12, 12, 12, 12);
 
-            // Шрифты с поддержкой кириллицы через TTF (Arial)
-            String windowsFontsPath = "C:/Windows/Fonts/";
-            String arialPath = windowsFontsPath + "arial.ttf";
-            String arialBoldPath = windowsFontsPath + "arialbd.ttf";
-            
-            PdfFont regularFont = PdfFontFactory.createFont(arialPath, "Identity-H");
-            PdfFont boldFont = PdfFontFactory.createFont(arialBoldPath, "Identity-H");
+            PdfFont regularFont = loadFont(regularFontResource, false);
+            PdfFont boldFont = loadFont(boldFontResource, true);
 
             // Заголовок
             addHeader(doc, order, regularFont, boldFont);
@@ -77,16 +121,37 @@ public class PrintOrderDialog {
 
             // Подписи
             addSignatures(doc, regularFont);
-
-            doc.close();
-
-            Alert alert = new Alert(Alert.AlertType.INFORMATION, "Заказ-наряд сохранён:\n" + filePath, ButtonType.OK);
-            alert.showAndWait();
-
-        } catch (Exception e) {
-            Alert alert = new Alert(Alert.AlertType.ERROR, "Ошибка при создании PDF:\n" + e.getMessage(), ButtonType.OK);
-            alert.showAndWait();
         }
+    }
+
+    /**
+     * Загрузить шрифт из ресурсов проекта.
+     *
+     * <p>Если ресурс не найден или не может быть прочитан, возвращается
+     * стандартный шрифт iText, чтобы генерация PDF не завершалась ошибкой.
+     *
+     * @param resourcePath путь к ресурсу шрифта в classpath; {@code null} допустим
+     * @param bold нужен ли полужирный вариант стандартного шрифта
+     * @return загруженный или стандартный шрифт
+     * @throws IOException если не удалось создать стандартный шрифт iText
+     */
+    static PdfFont loadFont(String resourcePath, boolean bold) throws IOException {
+        if (resourcePath != null) {
+            try (InputStream fontStream = PrintOrderDialog.class.getResourceAsStream(resourcePath)) {
+                if (fontStream != null) {
+                    byte[] fontData = fontStream.readAllBytes();
+                    if (fontData.length > 0) {
+                        return PdfFontFactory.createFont(fontData, PdfEncodings.IDENTITY_H);
+                    }
+                }
+            } catch (IOException | RuntimeException e) {
+                logger.warn("Не удалось загрузить шрифт {}, используется шрифт iText по умолчанию",
+                        resourcePath, e);
+            }
+        }
+
+        logger.debug("Шрифт {} не найден, используется шрифт iText по умолчанию", resourcePath);
+        return PdfFontFactory.createFont(bold ? StandardFonts.HELVETICA_BOLD : StandardFonts.HELVETICA);
     }
 
     private static void addHeader(Document doc, WorkOrder order, PdfFont regularFont, PdfFont boldFont) {
@@ -119,12 +184,18 @@ public class PrintOrderDialog {
         Paragraph clientTitle = new Paragraph("ЗАКАЗЧИК").setFont(boldFont).setFontSize(9);
         doc.add(clientTitle);
 
-        String fullName = (client.getLastName() != null && !client.getLastName().isEmpty())
-                ? client.getLastName() + " " + client.getName()
-                : client.getName();
+        String fullName = AppConstants.NO_CLIENT;
+        String phone = "—";
+        if (client != null) {
+            String clientFullName = client.getFullName();
+            if (clientFullName != null && !clientFullName.isEmpty()) {
+                fullName = clientFullName;
+            }
+            phone = Formatters.formatPhoneForDisplay(client.getPhone());
+        }
         Paragraph clientInfo = new Paragraph()
                 .add(new Text(fullName + "\n").setFont(regularFont).setFontSize(7))
-                .add(new Text("Тел: " + Validators.formatPhoneForDisplay(client.getPhone()) + "\n\n").setFont(regularFont).setFontSize(7));
+                .add(new Text("Тел: " + phone + "\n\n").setFont(regularFont).setFontSize(7));
         doc.add(clientInfo);
     }
 
@@ -164,6 +235,7 @@ public class PrintOrderDialog {
         table.setFontSize(7);
 
         // Заголовки
+
         table.addCell(new Cell().add(new Paragraph("Марка").setFont(boldFont)));
         table.addCell(new Cell().add(new Paragraph(carModel).setFont(regularFont)));
         table.addCell(new Cell().add(new Paragraph("Гос. номер").setFont(boldFont)));
@@ -266,10 +338,20 @@ public class PrintOrderDialog {
 
     private static void addTotalSection(Document doc, WorkOrder order, PdfFont regularFont, PdfFont boldFont) {
         double total = order.getTotal();
+        double discount = order.getDiscountTotal();
 
         Table table = new Table(UnitValue.createPercentArray(new float[]{50, 50}));
         table.setWidth(UnitValue.createPercentValue(100));
         table.setFontSize(9);
+
+        if (discount > 0) {
+            table.addCell(new Cell().add(new Paragraph("СУММА ПО ПРАЙСУ, РУБ:").setFont(regularFont)));
+            table.addCell(new Cell().add(new Paragraph(String.format("%,.2f", order.getSubtotal()))
+                    .setFont(regularFont)).setTextAlignment(TextAlignment.RIGHT));
+            table.addCell(new Cell().add(new Paragraph("СКИДКА ПО ЛОЯЛЬНОСТИ, РУБ:").setFont(regularFont)));
+            table.addCell(new Cell().add(new Paragraph("-" + String.format("%,.2f", discount))
+                    .setFont(regularFont)).setTextAlignment(TextAlignment.RIGHT));
+        }
 
         table.addCell(new Cell().add(new Paragraph("ИТОГО, ЗА РАБОТЫ И МАТЕРИАЛЫ, РУБ:").setFont(boldFont)));
         table.addCell(new Cell().add(new Paragraph(String.format("%,.2f", total)).setFont(boldFont)).setTextAlignment(TextAlignment.RIGHT));

@@ -11,7 +11,17 @@ public class Client {
     private String carModel;
     private String carNumber;
     private String lastRepairDate;
-    private String createdDate;
+
+    /**
+     * Звёзды ТО, накопленные клиентом (шкала регулярности обслуживания).
+     */
+    private int maintenanceStars;
+
+    /**
+     * Накопленная сумма покупок категории «Тюнинг», руб.
+     */
+    private double tuningTotal;
+
     private boolean dirty = false;
     private List<Car> cars = new ArrayList<>();
 
@@ -25,15 +35,12 @@ public class Client {
         this.carModel = "";
         this.carNumber = "";
         this.lastRepairDate = "";
-        this.createdDate = "";
+        this.maintenanceStars = 0;
+        this.tuningTotal = 0;
         this.dirty = true;
     }
 
     public Client(int id, String name, String lastName, String phone, String carModel, String carNumber, String lastRepairDate) {
-        this(id, name, lastName, phone, carModel, carNumber, lastRepairDate, "");
-    }
-
-    public Client(int id, String name, String lastName, String phone, String carModel, String carNumber, String lastRepairDate, String createdDate) {
         this.id = id;
         this.name = name;
         this.lastName = lastName;
@@ -41,7 +48,8 @@ public class Client {
         this.carModel = carModel;
         this.carNumber = carNumber;
         this.lastRepairDate = lastRepairDate;
-        this.createdDate = createdDate;
+        this.maintenanceStars = 0;
+        this.tuningTotal = 0;
         this.dirty = false;
     }
 
@@ -62,7 +70,8 @@ public class Client {
     public String getCarModel() { return carModel; }
     public String getCarNumber() { return carNumber; }
     public String getLastRepairDate() { return lastRepairDate; }
-    public String getCreatedDate() { return createdDate; }
+    public int getMaintenanceStars() { return maintenanceStars; }
+    public double getTuningTotal() { return tuningTotal; }
     public boolean isDirty() { return dirty; }
 
     // ==================== СЕТТЕРЫ ====================
@@ -102,8 +111,13 @@ public class Client {
         this.dirty = true;
     }
 
-    public void setCreatedDate(String createdDate) {
-        this.createdDate = createdDate;
+    public void setMaintenanceStars(int maintenanceStars) {
+        this.maintenanceStars = maintenanceStars;
+        this.dirty = true;
+    }
+
+    public void setTuningTotal(double tuningTotal) {
+        this.tuningTotal = tuningTotal;
         this.dirty = true;
     }
 

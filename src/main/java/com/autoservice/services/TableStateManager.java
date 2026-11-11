@@ -10,6 +10,7 @@ import com.google.gson.GsonBuilder;
 import javafx.collections.ObservableList;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.*;
@@ -24,6 +25,11 @@ public class TableStateManager {
     private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     private static final double DEFAULT_COLUMN_WIDTH = 100.0;
     
+    /**
+     * Сохранить состояние таблицы (ширину и видимость колонок, сортировку) в JSON-файл.
+     * @param table таблица JavaFX
+     * @param tableId идентификатор таблицы
+     */
     @SuppressWarnings("unchecked")
     public static void saveTableState(Object table, String tableId) {
         logger.debug("saveTableState called for: {}", tableId);
@@ -52,15 +58,11 @@ public class TableStateManager {
                 // prefWidth при перетаскивании НЕ обновляется, поэтому getPrefWidth() вернёт
                 // исходное значение из кода, а не изменённое.
                 double w = (Double) column.getClass().getMethod("getWidth").invoke(column);
+                boolean visible = (Boolean) column.getClass().getMethod("isVisible").invoke(column);
                 
                 logger.debug("[{}] {} width={}", i, colId, w);
                 
-                ColumnState columnState = new ColumnState();
-                columnState.setId(colId);
-                columnState.setWidth(w);
-                columnState.setVisible((Boolean) column.getClass().getMethod("isVisible").invoke(column));
-                columnState.setIndex(i);
-                columnStates.add(columnState);
+                columnStates.add(new ColumnState(colId, w, visible, i));
             }
             
             tableState.setColumns(columnStates);
@@ -81,16 +83,13 @@ public class TableStateManager {
                 
                 logger.debug("Sorted by: {} {}", colId, order);
                 
-                SortState sortState = new SortState();
-                sortState.setColumnId(colId);
-                sortState.setOrder(order);
-                sortStates.add(sortState);
+                sortStates.add(new SortState(colId, order));
             }
             
             tableState.setSortOrder(sortStates);
             
             String filePath = STORAGE_DIR + "/" + tableId + ".json";
-            try (Writer writer = new FileWriter(filePath)) {
+            try (Writer writer = new FileWriter(filePath, StandardCharsets.UTF_8)) {
                 gson.toJson(tableState, writer);
             }
             
@@ -100,6 +99,11 @@ public class TableStateManager {
         }
     }
     
+    /**
+     * Загрузить состояние таблицы из JSON-файла и применить его.
+     * @param table таблица JavaFX
+     * @param tableId идентификатор таблицы
+     */
     @SuppressWarnings("unchecked")
     public static void loadTableState(Object table, String tableId) {
         String filePath = STORAGE_DIR + "/" + tableId + ".json";
@@ -112,7 +116,7 @@ public class TableStateManager {
         
             logger.debug("Loading state from: {}", filePath);
             
-            try (Reader reader = new FileReader(file)) {
+            try (Reader reader = new FileReader(file, StandardCharsets.UTF_8)) {
                 TableState tableState = gson.fromJson(reader, TableState.class);
                 
                 if (tableState == null || tableState.getColumns() == null) {
@@ -133,6 +137,10 @@ public class TableStateManager {
             }
     }
     
+    /**
+     * Удалить сохранённое состояние таблицы.
+     * @param tableId идентификатор таблицы
+     */
     public static void resetTableState(String tableId) {
         String filePath = STORAGE_DIR + "/" + tableId + ".json";
         File file = new File(filePath);
@@ -146,6 +154,11 @@ public class TableStateManager {
         }
     }
     
+    /**
+     * Проверить, сохранено ли состояние таблицы.
+     * @param tableId идентификатор таблицы
+     * @return {@code true}, если файл состояния существует
+     */
     public static boolean hasSavedState(String tableId) {
         String filePath = STORAGE_DIR + "/" + tableId + ".json";
         File file = new File(filePath);
@@ -172,9 +185,12 @@ public class TableStateManager {
                 }
             }
             
-            // Сортируем колонки из JSON по индексу
+            // Сортируем колонки из JSON по индексу.
+            // index может быть null (старый файл или ручная правка JSON):
+            // такие колонки помещаем в конец, чтобы не распаковывать null в int.
             List<ColumnState> sortedColumns = new ArrayList<>(tableState.getColumns());
-            sortedColumns.sort(Comparator.comparingInt(ColumnState::getIndex));
+            sortedColumns.removeIf(Objects::isNull);
+            sortColumnStates(sortedColumns);
             
             // ШАГ 1: Собираем колонки в новом порядке (БЕЗ установки ширины)
             List<Object> newOrder = new ArrayList<>();
@@ -183,12 +199,12 @@ public class TableStateManager {
             Map<String, Boolean> visibleMap = new HashMap<>();
             
             for (ColumnState cs : sortedColumns) {
-                Object col = columnMap.get(cs.getId());
+                Object col = columnMap.get(cs.id());
                 if (col != null) {
                     newOrder.add(col);
-                    processedIds.add(cs.getId());
-                    widthMap.put(cs.getId(), cs.getWidth());
-                    visibleMap.put(cs.getId(), cs.isVisible());
+                    processedIds.add(cs.id());
+                    widthMap.put(cs.id(), cs.width());
+                    visibleMap.put(cs.id(), cs.visible());
                 }
             }
             
@@ -254,6 +270,19 @@ public class TableStateManager {
         }
     }
     
+    /**
+     * Отсортировать состояния колонок по индексу.
+     * Колонки без индекса ({@code null}) помещаются в конец списка.
+     *
+     * @param columns состояния колонок; изменяется на месте
+     */
+    static void sortColumnStates(List<ColumnState> columns) {
+        columns.sort(Comparator.comparingInt(
+                (ColumnState column) -> column.index() == null
+                        ? Integer.MAX_VALUE
+                        : column.index()));
+    }
+
     @SuppressWarnings("unchecked")
     private static void restoreSortOrder(Object table, TableState tableState) {
         if (tableState.getSortOrder() == null || tableState.getSortOrder().isEmpty()) {
@@ -271,8 +300,8 @@ public class TableStateManager {
             ObservableList<Object> columns = (ObservableList<Object>) getColumnsMethod.invoke(table);
             
             for (SortState sortState : tableState.getSortOrder()) {
-                String columnId = sortState.getColumnId();
-                String order = sortState.getOrder();
+                String columnId = sortState.columnId();
+                String order = sortState.order();
                 
                 // Находим колонку
                 Object targetColumn = null;

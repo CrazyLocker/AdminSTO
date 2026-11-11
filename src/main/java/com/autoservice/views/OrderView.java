@@ -1,10 +1,11 @@
 package com.autoservice.views;
 
+import com.autoservice.AppConstants;
+import com.autoservice.Client;
 import com.autoservice.DataStore;
 import com.autoservice.DateUtils;
-import com.autoservice.Validators;
+import com.autoservice.utils.Formatters;
 import com.autoservice.WorkOrder;
-import com.autoservice.Client;
 import com.autoservice.Appointment;
 import com.autoservice.controllers.OrderController;
 import com.autoservice.dialogs.PrintOrderDialog;
@@ -30,44 +31,13 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Экран управления заказами СТО.
- * 
- * Ответственность: отображение списка заказов в таблице, поиск по заказам,
- * расширенный фильтр (по статусу, диапазону дат и суммы), а также операции
- * создания, редактирования, удаления и печати заказа.
- * 
- * Зависимости: JavaFX (TableView, ComboBox, DatePicker, ToggleButton),
- * DataStore, WorkOrder, Client, Appointment, OrderController, PrintOrderDialog,
- * TableStateManager (сохранение состояния таблицы), Validators, DateUtils.
- * 
- * Особенности: реализован как набор статических методов (singleton-подход без
- * экземпляра); использует единый источник данных {@code masterData}
- * (ObservableList) с обёрткой {@code SortedList} для сортировки таблицы; панель
- * расширенного фильтра скрывается/показывается через {@code setManaged}.
- * 
- * @author AdminSTO Team
- * @since 1.0
- * @see DataStore
- * @see WorkOrder
- * @see OrderController
- */
 @SuppressWarnings({"unchecked", "deprecation"})
 public class OrderView {
 
-    /** Таблица заказов (общий доступ для сохранения состояния). */
     private static TableView<WorkOrder> orderTable;
-    /** Поле текстового поиска по заказам. */
     private static TextField searchField;
-    /** Метка с количеством найденных результатов. */
     private static Label resultLabel;
 
-    /**
-     * Возвращает таблицу заказов для внешнего использования
-     * (например, сохранение состояния таблицы).
-     * 
-     * @return таблица заказов {@link TableView}
-     */
     // Getter для получения таблицы извне
     public static TableView<WorkOrder> getTable() {
         return orderTable;
@@ -91,18 +61,14 @@ public class OrderView {
 
     private static final Logger logger = LoggerFactory.getLogger(OrderView.class);
 
-    /**
-     * Строит главный экран заказов: верхнюю панель с поиском и кнопками
-     * действий, панель расширенного фильтра и таблицу заказов.
-     * 
-     * @return корневой контейнер VBox с интерфейсом заказов
-     */
     public static VBox create() {
         VBox root = new VBox(10);
+        root.getStyleClass().add("main-container");
 
         HBox topPanel = new HBox(15);
         topPanel.setAlignment(Pos.CENTER_LEFT);
         topPanel.setPadding(new Insets(10));
+        topPanel.getStyleClass().add("top-panel");
 
         HBox searchBox = createSearchPanel();
 
@@ -113,9 +79,13 @@ public class OrderView {
         createOrderBtn = createActionButton("Новый");
 
         editBtn.setId("editBtn");
+        editBtn.setStyle("-fx-background-color: #f39c12;");
         deleteBtn.setId("deleteBtn");
+        deleteBtn.setStyle("-fx-background-color: #e74c3c;");
         printBtn.setId("printBtn");
+        printBtn.setStyle("-fx-background-color: #9b59b6;");
         createOrderBtn.setId("createOrderBtn");
+        createOrderBtn.setStyle("-fx-background-color: #2ecc71;");
 
         editBtn.setOnAction(e -> onEdit());
         deleteBtn.setOnAction(e -> onDelete());
@@ -132,6 +102,7 @@ public class OrderView {
         // ========== ПАНЕЛЬ РАСШИРЕННЫХ ФИЛЬТРОВ ==========
         advancedToggleBtn = new ToggleButton("Расширенный фильтр");
         advancedToggleBtn.setId("advancedToggleBtn");
+        advancedToggleBtn.getStyleClass().add("toggle-button");
         advancedToggleBtn.setSelected(false);
 
         advancedFilterPanel = createAdvancedFilterPanel();
@@ -148,6 +119,7 @@ public class OrderView {
 
         // ========== ТАБЛИЦА ==========
         orderTable = new TableView<>();
+        orderTable.getStyleClass().add("table-view");
         orderTable.setId("orderTable");
         setupTableColumns();
 
@@ -180,24 +152,6 @@ public class OrderView {
             }
         });
 
-        // ========== ГОРЯЧИЕ КЛАВИШИ НА ROOT КОНТЕЙНЕРЕ ==========
-        // Работают независимо от того, где сейчас фокус (таблица, поиск, фильтры)
-        root.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> {
-            if (e.isControlDown() && e.getCode() == javafx.scene.input.KeyCode.S) {
-                e.consume();
-                onEdit();
-            } else if (e.isControlDown() && e.getCode() == KeyCode.N) {
-                e.consume();
-                OrderController.createOrder();
-            } else if (e.getCode() == javafx.scene.input.KeyCode.DELETE) {
-                e.consume();
-                onDelete();
-            } else if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
-                e.consume();
-                searchField.clear();
-            }
-        });
-
         root.getChildren().addAll(topPanel, advancedToggleBtn, advancedFilterPanel, orderTable);
         VBox.setVgrow(orderTable, Priority.ALWAYS);
 
@@ -214,20 +168,24 @@ public class OrderView {
     // Вспомогательный метод для создания разделителя
     private static Label createSeparator() {
         Label separator = new Label("|");
+        separator.getStyleClass().add("separator");
         return separator;
     }
 
     private static VBox createAdvancedFilterPanel() {
         VBox filterBox = new VBox(10);
         filterBox.setPadding(new Insets(10));
+        filterBox.getStyleClass().add("filter-panel");
 
         Label titleLabel = new Label("Фильтры");
+        titleLabel.getStyleClass().add("filter-title");
 
         // Строка 1: Статус
         HBox row1 = new HBox(15);
         row1.setAlignment(Pos.CENTER_LEFT);
 
         Label statusLabel = new Label("Статус:");
+        statusLabel.getStyleClass().add("filter-label");
         statusFilterCombo = new ComboBox<>();
         statusFilterCombo.setId("statusFilterCombo");
         statusFilterCombo.getItems().addAll("Все", WorkOrder.STATUS_NEW, WorkOrder.STATUS_IN_PROGRESS, WorkOrder.STATUS_CLOSED);
@@ -242,6 +200,7 @@ public class OrderView {
         row2.setAlignment(Pos.CENTER_LEFT);
 
         Label dateFromLabel = new Label("Дата от:");
+        dateFromLabel.getStyleClass().add("filter-label");
         dateFromPicker = new DatePicker();
         dateFromPicker.setId("dateFromPicker");
         dateFromPicker.setPromptText("дд.мм.гггг");
@@ -249,6 +208,7 @@ public class OrderView {
         dateFromPicker.setOnAction(e -> applyFilters());
 
         Label dateToLabel = new Label("Дата до:");
+        dateToLabel.getStyleClass().add("filter-label");
         dateToPicker = new DatePicker();
         dateToPicker.setId("dateToPicker");
         dateToPicker.setPromptText("дд.мм.гггг");
@@ -262,6 +222,7 @@ public class OrderView {
         row3.setAlignment(Pos.CENTER_LEFT);
 
         Label minTotalLabel = new Label("Сумма от:");
+        minTotalLabel.getStyleClass().add("filter-label");
         minTotalField = new TextField();
         minTotalField.setId("minTotalField");
         minTotalField.setPromptText("0");
@@ -269,6 +230,7 @@ public class OrderView {
         minTotalField.textProperty().addListener((obs, oldVal, newVal) -> applyFilters());
 
         Label maxTotalLabel = new Label("Сумма до:");
+        maxTotalLabel.getStyleClass().add("filter-label");
         maxTotalField = new TextField();
         maxTotalField.setId("maxTotalField");
         maxTotalField.setPromptText("100000");
@@ -301,8 +263,9 @@ public class OrderView {
         colId.setPrefWidth(160);
         colId.setSortable(true);
         
-        // Пользовательский компаратор для сортировки по дате (из ID), затем по порядковому номеру
+        // Пользовательский компаратор для сортировки по порядковому номеру (4 последних цифры)
         colId.setComparator((id1, id2) -> {
+            // Если один из ID пустой, он будет в конце
             if (id1 == null && id2 == null) return 0;
             if (id1 == null) return 1;
             if (id2 == null) return -1;
@@ -311,38 +274,35 @@ public class OrderView {
             if (id1.isEmpty()) return 1;
             if (id2.isEmpty()) return -1;
             
+            // Извлекаем порядковый номер (4 последних цифры)
             try {
-                // Формат: ZAK-DD/MM/YY-XXXX или ZAK-DD/MM/YYYY-XXXX
-                int lastDash1 = id1.lastIndexOf('-');
-                int lastDash2 = id2.lastIndexOf('-');
+                String[] parts1 = id1.split("-");
+                String[] parts2 = id2.split("-");
                 
-                String datePart1 = id1.substring(4, lastDash1);
-                String numPart1 = id1.substring(lastDash1 + 1);
-                
-                String datePart2 = id2.substring(4, lastDash2);
-                String numPart2 = id2.substring(lastDash2 + 1);
-                
-                // Преобразуем дату в сортируемый формат: YYYYMMDD
-                String sortDate1 = toSortableDate(datePart1);
-                String sortDate2 = toSortableDate(datePart2);
-                
-                int dateCompare = sortDate1.compareTo(sortDate2);
-                if (dateCompare != 0) return dateCompare;
-                
-                // При одинаковой дате — по порядковому номеру
-                return Integer.compare(Integer.parseInt(numPart1), Integer.parseInt(numPart2));
+                if (parts1.length >= 2 && parts2.length >= 2) {
+                    // Берём последнюю часть как порядковый номер
+                    int num1 = Integer.parseInt(parts1[parts1.length - 1]);
+                    int num2 = Integer.parseInt(parts2[parts2.length - 1]);
+                    return Integer.compare(num1, num2);
+                }
             } catch (Exception e) {
                 logger.error("Ошибка парсинга ID для сортировки", e);
-                return id1.compareTo(id2);
             }
+            
+            // Fallback: лексикографическая сортировка
+            return id1.compareTo(id2);
         });
 
         TableColumn<WorkOrder, String> colClient = new TableColumn<>("Клиент");
         colClient.setId("colClient");
         colClient.setCellValueFactory(cellData -> {
             WorkOrder order = cellData.getValue();
-            String lastName = order.getClient().getLastName();
-            String firstName = order.getClient().getName();
+            Client client = order.getClient();
+            if (client == null) {
+                return new SimpleStringProperty(AppConstants.NO_CLIENT);
+            }
+            String lastName = client.getLastName();
+            String firstName = client.getName();
             return new SimpleStringProperty((lastName != null && !lastName.isEmpty()) ? lastName + " " + firstName : firstName);
         });
         colClient.setPrefWidth(180);
@@ -351,21 +311,13 @@ public class OrderView {
         TableColumn<WorkOrder, String> colCar = new TableColumn<>("Автомобиль");
         colCar.setId("colCar");
         colCar.setCellValueFactory(cellData -> {
-            WorkOrder order = cellData.getValue();
-            // Приоритет: автомобиль, записанный в заказ (если задан)
-            if (order.getCarModel() != null && !order.getCarModel().isEmpty()) {
-                String number = order.getCarNumber();
-                return new SimpleStringProperty(order.getCarModel() + (number != null && !number.isEmpty() ? " (" + number + ")" : ""));
+            Client client = cellData.getValue().getClient();
+            if (client == null) {
+                return new SimpleStringProperty("—");
             }
-            // Иначе: автомобили клиента (актуальные из client_cars, fallback — старые поля клиента)
-            Client client = order.getClient();
-            if (client != null) {
-                String display = client.getCarDisplay();
-                if (display != null && !display.isEmpty()) {
-                    return new SimpleStringProperty(display);
-                }
-            }
-            return new SimpleStringProperty("");
+            String model = client.getCarModel();
+            String number = client.getCarNumber();
+            return new SimpleStringProperty(model + " (" + number + ")");
         });
         colCar.setPrefWidth(200);
         colCar.setSortable(true);
@@ -432,12 +384,12 @@ public class OrderView {
         colStatus.setSortable(true);
         colStatus.setCellFactory(col -> new TableCell<WorkOrder, String>() {
             private final ComboBox<String> comboBox = new ComboBox<>(FXCollections.observableArrayList("Новый", "В работе", "Закрыт"));
-            private boolean updating = false;
             {
                 comboBox.setOnAction(e -> {
-                    if (updating) return;
                     WorkOrder order = getTableView().getItems().get(getIndex());
                     if (order != null) {
+                        // Статус меняет контроллер: он же сохраняет заказ и
+                        // начисляет лояльность при закрытии.
                         OrderController.changeOrderStatus(order, comboBox.getValue());
                     }
                 });
@@ -446,13 +398,7 @@ public class OrderView {
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || item == null) { setGraphic(null); setText(null); }
-                else {
-                    updating = true;
-                    comboBox.setValue(item);
-                    updating = false;
-                    setGraphic(comboBox);
-                    setText(null);
-                }
+                else { comboBox.setValue(item); setGraphic(comboBox); setText(null); }
             }
         });
 
@@ -469,6 +415,7 @@ public class OrderView {
     private static Button createActionButton(String text) {
         Button btn = new Button(text);
         btn.setPrefWidth(100);
+        btn.getStyleClass().add("action-button");
         return btn;
     }
 
@@ -477,16 +424,26 @@ public class OrderView {
         searchField.setId("searchField");
         searchField.setPromptText("Поиск по имени, телефону или номеру авто...");
         searchField.setPrefWidth(300);
+        searchField.getStyleClass().add("search-field");
         searchField.textProperty().addListener((obs, oldVal, newVal) -> applyFilters());
 
         Button clearBtn = new Button("✕");
         clearBtn.setId("clearSearchBtn");
+        clearBtn.setStyle(
+                "-fx-background-color: #dc3545;" +
+                        "-fx-text-fill: white;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-padding: 4 8 4 8;" +
+                        "-fx-background-radius: 4;"
+        );
+        clearBtn.getStyleClass().add("clear-button");
         clearBtn.setOnAction(e -> {
             searchField.clear();
             applyFilters();
         });
 
         resultLabel = new Label();
+        resultLabel.getStyleClass().add("result-label");
 
         HBox searchBox = new HBox(10, new Label("Поиск:"), searchField, clearBtn, resultLabel);
         searchBox.setAlignment(Pos.CENTER_LEFT);
@@ -502,22 +459,28 @@ public class OrderView {
     }
     
     /**
-     * Преобразует дату из формата DD/MM/YY или DD/MM/YYYY в сортируемый формат YYYYMMDD.
-     * 
-     * @param datePart дата в формате DD/MM/YY или DD/MM/YYYY
-     * @return строка в формате YYYYMMDD для строковой сортировки
+     * Извлекает дату из номера заказа и преобразует её в формат для сортировки.
+     * Формат заказа: ZAK-dd-MM-yy-0001
+     * Выход: dd-MM-yyyy (подходит для строковой сортировки)
      */
-    private static String toSortableDate(String datePart) {
-        if (datePart == null || datePart.isEmpty()) return "";
-        String[] parts = datePart.split("/");
-        if (parts.length < 3) return "";
-        String day = parts[0];
-        String month = parts[1];
-        String year = parts[2];
-        if (year.length() == 2) {
-            year = "20" + year;
+    private static String extractSortDate(String[] parts) {
+        if (parts.length < 5) return "";
+        
+        String day = parts[1]; // dd
+        String month = parts[2]; // MM
+        String yearSuffix = parts[3]; // yy
+        
+        // Преобразуем год в 4-значный формат
+        int year;
+        if (yearSuffix.length() == 2) {
+            year = 2000 + Integer.parseInt(yearSuffix);
+        } else if (yearSuffix.length() == 4) {
+            year = Integer.parseInt(yearSuffix);
+        } else {
+            return "";
         }
-        return year + month + day;
+        
+        return String.format("%s-%s-%04d", day, month, year);
     }
 
     private static void applyFilters() {
@@ -539,8 +502,8 @@ public class OrderView {
                 if (order.getClient() != null) {
                     boolean match = (order.getClient().getName() != null && order.getClient().getName().toLowerCase().contains(lowerFilter)) ||
                             (order.getClient().getLastName() != null && order.getClient().getLastName().toLowerCase().contains(lowerFilter)) ||
-                            (order.getClient().getPhone() != null && Validators.formatPhoneForDisplay(order.getClient().getPhone()).toLowerCase().contains(lowerFilter)) ||
-                            (order.getCarNumber() != null && order.getCarNumber().toLowerCase().contains(lowerFilter));
+                            (order.getClient().getPhone() != null && Formatters.formatPhoneForDisplay(order.getClient().getPhone()).toLowerCase().contains(lowerFilter)) ||
+                            (order.getClient().getCarNumber() != null && order.getClient().getCarNumber().toLowerCase().contains(lowerFilter));
                     if (!match) continue;
                 } else continue;
             }
@@ -571,7 +534,6 @@ public class OrderView {
             filtered.add(order);
         }
 
-        // TODO: Оптимизировать TableView через FilteredList или пагинацию (при > 500 записей)
         masterData.clear();
         masterData.addAll(filtered);
         orderTable.refresh();
@@ -600,136 +562,19 @@ public class OrderView {
     }
 
     /**
-     * Извлекает LocalDateTime из строки с датой и временем.
-     * Поддерживает несколько форматов:
-     * 1. "18 июля 2026 г. в 12-00" (русский формат)
-     * 2. "2026-07-18 12-00" (ISO формат даты)
-     * 3. "18/07/2026 12-00" (dd/MM/yyyy формат даты)
-     * Время может быть с дефисом (-) или двоеточием (:)
+     * Извлекает LocalDateTime из строки с датой и временем в нестрогом режиме
+     * (русский формат, ISO-дата или dd/MM/yyyy; время через дефис или двоеточие).
      */
     private static java.time.LocalDateTime extractLocalDateTime(String s) {
-        if (s == null || s.isEmpty()) return null;
-        
-        try {
-            java.time.LocalDate date;
-            String timeStr;
-            
-            // Проверяем русский формат: "18 июля 2026 г. в 12-00"
-            int idx = s.indexOf(" г. в ");
-            if (idx > 0) {
-                String dateStr = s.substring(0, idx).trim();
-                timeStr = s.substring(idx + 5).trim();
-                java.time.format.DateTimeFormatter dateFormatter = java.time.format.DateTimeFormatter.ofPattern("d MMMM yyyy", new java.util.Locale.Builder().setLanguage("ru").build());
-                date = java.time.LocalDate.parse(dateStr, dateFormatter);
-            } else {
-                // Формат БД: "2026-07-18 12-00" или "18/07/2026 12-00"
-                // Ищем пробел, разделяющий дату и время
-                int spaceIdx = s.lastIndexOf(" ");
-                if (spaceIdx > 0) {
-                    String dateStr = s.substring(0, spaceIdx).trim();
-                    timeStr = s.substring(spaceIdx + 1).trim();
-                    
-                    // Парсим дату в разных форматах
-                    if (dateStr.contains("-") && !dateStr.contains("/")) {
-                        // ISO формат: yyyy-MM-dd
-                        date = java.time.LocalDate.parse(dateStr);
-                    } else if (dateStr.contains("/")) {
-                        // dd/MM/yyyy формат
-                        java.time.format.DateTimeFormatter dateFormatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
-                        date = java.time.LocalDate.parse(dateStr, dateFormatter);
-                    } else {
-                        return null;
-                    }
-                } else {
-                    return null;
-                }
-            }
-            
-            // Парсим время - поддерживаем как дефис (-), так и двоеточие (:)
-            String[] timeParts;
-            if (timeStr.contains("-")) {
-                timeParts = timeStr.split("-");
-            } else {
-                timeParts = timeStr.split(":");
-            }
-            
-            if (timeParts.length >= 2) {
-                return date.atTime(Integer.parseInt(timeParts[0]), Integer.parseInt(timeParts[1]));
-            }
-            
-        } catch (Exception e) {
-            // Логируем ошибку для отладки
-            logger.debug("Ошибка парсинга даты-времени из строки '{}': {}", s, e.getMessage());
-        }
-        return null;
+        return DateUtils.parseDateTime(s, false);
     }
 
     /**
-     * Парсит дату и время из строки формата "dd/MM/yyyy HH:mm" (из БД).
-     * Поддерживает как дефис (-), так и двоеточие (:) в формате времени.
-     * Использует lastIndexOf для поиска последнего пробела между датой и временем.
+     * Парсит дату и время из строки формата "dd/MM/yyyy HH:mm" (из БД)
+     * в строгом режиме с проверкой диапазона времени.
      */
     private static java.time.LocalDateTime parseAppointmentDateTime(String s) {
-        if (s == null || s.isEmpty()) return null;
-        
-        try {
-            // Ищем последний пробел, разделяющий дату и время
-            int spaceIdx = s.lastIndexOf(" ");
-            if (spaceIdx > 0 && spaceIdx < s.length() - 1) {
-                String dateStr = s.substring(0, spaceIdx).trim();
-                String timeStr = s.substring(spaceIdx + 1).trim();
-                
-                // Валидация: дата должна быть в формате dd/MM/yyyy (минимум 10 символов)
-                if (dateStr.length() < 10) {
-                    logger.debug("Некорректная дата: {} (слишком короткая)", dateStr);
-                    return null;
-                }
-                
-                // Проверяем, что дата в формате dd/MM/yyyy (содержит два слеша)
-                int slashCount = 0;
-                for (char c : dateStr.toCharArray()) {
-                    if (c == '/') slashCount++;
-                }
-                if (slashCount != 2) {
-                    logger.debug("Некорректный формат даты: {} (ожидается dd/MM/yyyy)", dateStr);
-                    return null;
-                }
-                
-                // Парсим дату в формате dd/MM/yyyy
-                java.time.format.DateTimeFormatter dateFormatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy");
-                java.time.LocalDate date = java.time.LocalDate.parse(dateStr, dateFormatter);
-                
-                // Валидация времени (должно быть не короче 4 символов, например 12:00)
-                if (timeStr.length() < 4) {
-                    logger.debug("Некорректное время: {} (слишком короткое)", timeStr);
-                    return null;
-                }
-                
-                // Парсим время - поддерживаем как дефис (-), так и двоеточие (:)
-                String[] timeParts;
-                if (timeStr.contains("-")) {
-                    timeParts = timeStr.split("-");
-                } else {
-                    timeParts = timeStr.split(":");
-                }
-                
-                if (timeParts.length >= 2) {
-                    int hour = Integer.parseInt(timeParts[0]);
-                    int minute = Integer.parseInt(timeParts[1]);
-                    
-                    // Валидация: час от 0 до 23, минута от 0 до 59
-                    if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
-                        return date.atTime(hour, minute);
-                    } else {
-                        logger.debug("Некорректное время: {} (ожидается 00:00-23:59)", timeStr);
-                        return null;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            logger.debug("Ошибка парсинга даты-времени записи из строки '{}': {}", s, e.getMessage());
-        }
-        return null;
+        return DateUtils.parseDateTime(s, true);
     }
 
     private static void onEdit() {
@@ -748,13 +593,8 @@ public class OrderView {
     }
 
     public static void refreshOrderList() {
-        long start = System.currentTimeMillis();
         if (orderTable != null) {
             applyFilters();
-        }
-        long duration = System.currentTimeMillis() - start;
-        if (duration > 300) {
-            logger.warn("⚠️ Медленная операция в OrderView.refreshOrderList: " + duration + " мс");
         }
     }
 }

@@ -1,8 +1,7 @@
 package com.autoservice.views;
 
-import com.autoservice.DataStore;
-import com.autoservice.WorkOrder;
-import com.autoservice.SparePart;
+import com.autoservice.model.ReportData;
+import com.autoservice.services.StatisticsService;
 import com.autoservice.services.WindowStateManager;
 import com.autoservice.utils.IconHelper;
 import javafx.beans.value.ChangeListener;
@@ -29,17 +28,9 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.stream.Collectors;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class ReportView {
-    private static final Logger logger = LoggerFactory.getLogger(ReportView.class);
-
     private static final String[] MONTHS = {
             "Янв", "Фев", "Мар", "Апр", "Май", "Июн",
             "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"
@@ -60,11 +51,16 @@ public class ReportView {
         // Восстановление состояния диалога
         WindowStateManager.getInstance().restoreWindowState("reportDialog", stage);
 
+        // ====== СБОР ДАННЫХ ======
+        currentData = StatisticsService.buildReport();
+
         ScrollPane scrollPane = new ScrollPane();
         scrollPane.setFitToWidth(true);
+        scrollPane.setStyle("-fx-background-color: #f5f7fa;");
 
         root = new VBox(20);
         root.setPadding(new Insets(20));
+        root.setStyle("-fx-background-color: #f5f7fa;");
 
         // ====== ЗАГОЛОВОК ======
         HBox headerBox = new HBox(20);
@@ -72,9 +68,10 @@ public class ReportView {
 
         Label titleLabel = new Label("ОТЧЁТ АВТОСЕРВИСА");
         titleLabel.setGraphic(IconHelper.report(24, "#2c3e50"));
+        titleLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #2c3e50; -fx-graphic-text-gap: 10;");
 
-        Label dateLabel = new Label("Дата генерации: " +
-                LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")));
+        Label dateLabel = new Label("Дата генерации: " + currentData.generatedDate());
+        dateLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #7f8c8d;");
 
         headerBox.getChildren().addAll(titleLabel, dateLabel);
 
@@ -84,16 +81,15 @@ public class ReportView {
         periodBox.setPadding(new Insets(10, 0, 10, 0));
 
         Label periodLabel = new Label("Период:");
+        periodLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
 
         ComboBox<String> periodCombo = new ComboBox<>();
         periodCombo.getItems().addAll("Последние 3 месяца", "Последние 6 месяцев", "Последние 12 месяцев", "Всё время");
         periodCombo.setValue("Последние 6 месяцев");
         periodCombo.setPrefWidth(200);
+        periodCombo.setStyle("-fx-font-size: 14px; -fx-padding: 5;");
 
         periodBox.getChildren().addAll(periodLabel, periodCombo);
-
-        // ====== СБОР ДАННЫХ ======
-        currentData = collectData();
 
         // ====== СТАТИСТИЧЕСКИЕ КАРТОЧКИ ======
         HBox cardsBox = createStatCards(currentData);
@@ -113,14 +109,15 @@ public class ReportView {
 
         Label revenueLabel = new Label("ДИНАМИКА ВЫРУЧКИ");
         revenueLabel.setGraphic(IconHelper.report(20, "#2c3e50"));
+        revenueLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 16px; -fx-text-fill: #2c3e50; -fx-graphic-text-gap: 8;");
         revenueBox.getChildren().addAll(revenueLabel, revenueChart);
         VBox.setVgrow(revenueBox, Priority.ALWAYS);
         HBox.setHgrow(revenueBox, Priority.ALWAYS);
 
         // ====== ТРИ БЛОКА (ОДИНАКОВАЯ ВЫСОТА) ======
         VBox statusBox = createStatusListBox(currentData);
-        VBox topServicesBox = createTopListBox(currentData.topServices, "ТОП-5 УСЛУГ", IconHelper.settings(20, "#2c3e50"));
-        VBox topPartsBox = createTopListBox(currentData.topParts, "ТОП-5 ЗАПЧАСТЕЙ", IconHelper.settings(20, "#2c3e50"));
+        VBox topServicesBox = createTopListBox(currentData.topServices(), "ТОП-5 УСЛУГ", IconHelper.settings(20, "#2c3e50"));
+        VBox topPartsBox = createTopListBox(currentData.topParts(), "ТОП-5 ЗАПЧАСТЕЙ", IconHelper.settings(20, "#2c3e50"));
 
         // Устанавливаем одинаковую минимальную высоту для всех трёх блоков
         double fixedHeight = 280; // Фиксированная высота для выравнивания
@@ -157,18 +154,77 @@ public class ReportView {
         });
 
         // ====== СЛУШАТЕЛЬ ИЗМЕНЕНИЯ РАЗМЕРА ======
-
         Scene scene = new Scene(scrollPane);
+        scene.widthProperty().addListener(new ChangeListener<Number>() {
+            @Override
+            public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
+                double width = newValue.doubleValue();
+                adjustFontSize(width);
+            }
+        });
 
         root.getChildren().addAll(headerBox, periodBox, cardsBox, chartsGrid);
         scrollPane.setContent(root);
 
+        java.net.URL cssUrl = ReportView.class.getResource("/styles.css");
+        if (cssUrl != null) {
+            scene.getStylesheets().add(cssUrl.toExternalForm());
+        }
+
         stage.setScene(scene);
         stage.showAndWait();
         
-        stage.setOnHidden(e -> {
+        stage.setOnHiding(e -> {
             WindowStateManager.getInstance().saveWindowState("reportDialog", stage);
         });
+    }
+
+    // ==================== АДАПТИВНЫЙ ШРИФТ ====================
+
+    private static void adjustFontSize(double width) {
+        int fontSize;
+        if (width < 900) {
+            fontSize = 12;
+        } else if (width < 1100) {
+            fontSize = 14;
+        } else if (width < 1400) {
+            fontSize = 16;
+        } else {
+            fontSize = 18;
+        }
+        applyFontSizeToAll(root, fontSize);
+    }
+
+    private static void applyFontSizeToAll(javafx.scene.Node node, int size) {
+        if (node instanceof Label) {
+            Label label = (Label) node;
+            String style = label.getStyle();
+            if (style != null && !style.isEmpty() && style.contains("-fx-font-size:")) {
+                label.setStyle(style.replaceAll("-fx-font-size: \\d+px;", "-fx-font-size: " + size + "px;"));
+            } else if (style != null && !style.isEmpty()) {
+                label.setStyle(style + " -fx-font-size: " + size + "px;");
+            } else {
+                label.setStyle("-fx-font-size: " + size + "px;");
+            }
+        }
+        if (node instanceof VBox) {
+            for (javafx.scene.Node child : ((VBox) node).getChildren()) {
+                applyFontSizeToAll(child, size);
+            }
+        }
+        if (node instanceof HBox) {
+            for (javafx.scene.Node child : ((HBox) node).getChildren()) {
+                applyFontSizeToAll(child, size);
+            }
+        }
+        if (node instanceof GridPane) {
+            for (javafx.scene.Node child : ((GridPane) node).getChildren()) {
+                applyFontSizeToAll(child, size);
+            }
+        }
+        if (node instanceof ScrollPane) {
+            applyFontSizeToAll(((ScrollPane) node).getContent(), size);
+        }
     }
 
     // ==================== ОБНОВЛЕНИЕ ОТЧЁТА ====================
@@ -179,58 +235,6 @@ public class ReportView {
         revenueChart.getData().add(series);
     }
 
-    // ==================== СБОР ДАННЫХ ====================
-
-    private static ReportData collectData() {
-        ReportData data = new ReportData();
-        List<WorkOrder> orders = DataStore.getOrders();
-
-        data.totalOrders = orders.size();
-        data.totalClients = DataStore.getClients().size();
-        data.totalSpareParts = DataStore.getSpareParts().size();
-
-        for (WorkOrder order : orders) {
-            String status = order.getStatus() != null ? order.getStatus() : "Новый";
-            data.statusCount.put(status, data.statusCount.getOrDefault(status, 0) + 1);
-            if ("Закрыт".equals(status)) {
-                data.totalRevenue += order.getTotal();
-                data.closedOrders++;
-                String dateStr = order.getCreatedDate();
-                if (dateStr != null && !dateStr.isEmpty()) {
-                    try {
-                        String monthKey = dateStr.substring(0, 7);
-                        data.monthlyRevenue.put(monthKey, data.monthlyRevenue.getOrDefault(monthKey, 0.0) + order.getTotal());
-                    } catch (Exception ex) { logger.error("Error in report view", ex); }
-                }
-            }
-        }
-        data.averageOrderValue = data.closedOrders > 0 ? data.totalRevenue / data.closedOrders : 0;
-
-        Map<String, Integer> serviceCount = new HashMap<>();
-        for (WorkOrder order : orders) {
-            for (String service : order.getServices()) {
-                serviceCount.put(service, serviceCount.getOrDefault(service, 0) + 1);
-            }
-        }
-        data.topServices = serviceCount.entrySet().stream()
-                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
-                .limit(5)
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
-
-        Map<String, Integer> partCount = new HashMap<>();
-        for (WorkOrder order : orders) {
-            for (SparePart part : order.getSpareParts()) {
-                partCount.put(part.getName(), partCount.getOrDefault(part.getName(), 0) + 1);
-            }
-        }
-        data.topParts = partCount.entrySet().stream()
-                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
-                .limit(5)
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
-
-        return data;
-    }
-
     // ==================== КАРТОЧКИ ====================
 
     private static HBox createStatCards(ReportData data) {
@@ -239,10 +243,10 @@ public class ReportView {
         box.setPadding(new Insets(5, 0, 10, 0));
 
         box.getChildren().addAll(
-                createCard(IconHelper.assignment(24, "#3498db"), "Заказов", String.valueOf(data.totalOrders), "#3498db"),
-                createCard(IconHelper.people(24, "#2ecc71"), "Клиентов", String.valueOf(data.totalClients), "#2ecc71"),
-                createCard(IconHelper.report(24, "#f39c12"), "Выручка", String.format("%,.0f", data.totalRevenue), "#f39c12"),
-                createCard(IconHelper.save(24, "#9b59b6"), "Средний чек", String.format("%,.0f", data.averageOrderValue), "#9b59b6")
+                createCard(IconHelper.assignment(24, "#3498db"), "Заказов", String.valueOf(data.totalOrders()), "#3498db"),
+                createCard(IconHelper.people(24, "#2ecc71"), "Клиентов", String.valueOf(data.totalClients()), "#2ecc71"),
+                createCard(IconHelper.report(24, "#f39c12"), "Выручка", String.format("%,.0f", data.totalRevenue()), "#f39c12"),
+                createCard(IconHelper.save(24, "#9b59b6"), "Средний чек", String.format("%,.0f", data.averageOrderValue()), "#9b59b6")
         );
 
         return box;
@@ -252,10 +256,21 @@ public class ReportView {
         VBox card = new VBox(2);
         card.setAlignment(Pos.CENTER);
         card.setPadding(new Insets(8, 12, 8, 12));
+        card.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-border-radius: 8px;" +
+                        "-fx-background-radius: 8px;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 3);" +
+                        "-fx-border-width: 2px 0 0 0;" +
+                        "-fx-border-color: " + color + ";" +
+                        "-fx-min-width: 100px;"
+        );
 
         Label titleLabel = new Label(title);
+        titleLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #7f8c8d;");
 
         Label valueLabel = new Label(value);
+        valueLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
 
         card.getChildren().addAll(icon, titleLabel, valueLabel);
         return card;
@@ -291,7 +306,7 @@ public class ReportView {
             default -> 6;
         };
 
-        List<Map.Entry<String, Double>> sorted = data.monthlyRevenue.entrySet().stream()
+        List<Map.Entry<String, Double>> sorted = data.monthlyRevenue().entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
                 .toList();
 
@@ -323,13 +338,20 @@ public class ReportView {
 
         Label titleLabel = new Label("СТАТУСЫ ЗАКАЗОВ");
         titleLabel.setGraphic(IconHelper.assignment(20, "#2c3e50"));
+        titleLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #2c3e50; -fx-graphic-text-gap: 8;");
 
         VBox listBox = new VBox(5);
         listBox.setPadding(new Insets(8));
+        listBox.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-border-radius: 8px;" +
+                        "-fx-background-radius: 8px;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 6, 0, 0, 3);"
+        );
         listBox.setFillWidth(true);
 
-        int totalOrders = data.totalOrders;
-        for (Map.Entry<String, Integer> entry : data.statusCount.entrySet()) {
+        int totalOrders = data.totalOrders();
+        for (Map.Entry<String, Integer> entry : data.statusCount().entrySet()) {
             String status = entry.getKey();
             int count = entry.getValue();
             double percent = totalOrders > 0 ? (count * 100.0 / totalOrders) : 0;
@@ -339,10 +361,13 @@ public class ReportView {
             row.setPadding(new Insets(2, 0, 2, 0));
 
             Label statusLabel = new Label(status);
+            statusLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #2c3e50; -fx-min-width: 100px;");
 
             Label countLabel = new Label(String.valueOf(count));
+            countLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #3498db; -fx-min-width: 40px;");
 
             Label percentLabel = new Label(String.format("(%.1f%%)", percent));
+            percentLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #7f8c8d;");
 
             Region spacer = new Region();
             HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -363,9 +388,16 @@ public class ReportView {
 
         Label titleLabel = new Label(title);
         titleLabel.setGraphic(icon);
+        titleLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #2c3e50; -fx-graphic-text-gap: 8;");
 
         VBox listBox = new VBox(5);
         listBox.setPadding(new Insets(8));
+        listBox.setStyle(
+                "-fx-background-color: white;" +
+                        "-fx-border-radius: 8px;" +
+                        "-fx-background-radius: 8px;" +
+                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 6, 0, 0, 3);"
+        );
         listBox.setFillWidth(true);
 
         int rank = 1;
@@ -378,11 +410,14 @@ public class ReportView {
             row.setPadding(new Insets(2, 0, 2, 0));
 
             Label rankLabel = new Label(String.format("%d.", rank));
+            rankLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #7f8c8d; -fx-min-width: 25px;");
 
             Label nameLabel = new Label(name);
+            nameLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #2c3e50;");
             nameLabel.setWrapText(true);
 
             Label countLabel = new Label(String.valueOf(count));
+            countLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #3498db;");
 
             Region spacer = new Region();
             HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -394,20 +429,5 @@ public class ReportView {
 
         box.getChildren().addAll(titleLabel, listBox);
         return box;
-    }
-
-    // ==================== ВНУТРЕННИЙ КЛАСС ====================
-
-    private static class ReportData {
-        int totalOrders = 0;
-        int totalClients = 0;
-        int totalSpareParts = 0;
-        double totalRevenue = 0;
-        double averageOrderValue = 0;
-        int closedOrders = 0;
-        Map<String, Integer> statusCount = new LinkedHashMap<>();
-        Map<String, Double> monthlyRevenue = new LinkedHashMap<>();
-        Map<String, Integer> topServices = new LinkedHashMap<>();
-        Map<String, Integer> topParts = new LinkedHashMap<>();
     }
 }

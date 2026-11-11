@@ -3,7 +3,6 @@ package com.autoservice.controllers;
 import com.autoservice.DataStore;
 import com.autoservice.Service;
 import com.autoservice.SparePart;
-import com.autoservice.config.SettingsManager;
 import com.autoservice.model.ServiceSparePart;
 import com.autoservice.model.ServiceSparePartsList;
 import com.autoservice.model.ServiceSparePartsListItem;
@@ -11,7 +10,7 @@ import com.autoservice.model.ServicePart;
 import com.autoservice.model.ToPart;
 import com.autoservice.services.BackupService;
 import com.autoservice.services.ScheduleService;
-import com.autoservice.utils.LoadingIndicator;
+import com.autoservice.services.SettingService;
 import com.autoservice.views.ServiceSparePartsRow;
 import com.autoservice.views.ToPartsRow;
 import com.autoservice.views.SettingsView;
@@ -319,10 +318,10 @@ public class SettingsController {
     }
 
     public static void saveBackupSettings(boolean enabled, String time, int retention) {
-        // Сохраняем настройки резервного копирования в JSON
-        SettingsManager.setBackupEnabled(enabled);
-        SettingsManager.setBackupTime(time);
-        SettingsManager.setBackupRetention(retention);
+        // Сохраняем настройки резервного копирования
+        SettingService.setAutoBackupEnabled(enabled);
+        SettingService.setBackupTime(time);
+        SettingService.setBackupRetention(retention);
         
         ScheduleService.saveSettings(enabled, time, retention);
     }

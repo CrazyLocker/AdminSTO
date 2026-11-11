@@ -1,74 +1,39 @@
 package com.autoservice;
 
+import com.autoservice.services.LoyaltyService;
+
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Модель заказа на выполнение работ в СТО.
- * 
- * Ответственность: хранение данных заказа (клиент, статус, услуги с ценами,
- * запчасти с количеством, даты, пробег, примечания) и автоматический
- * пересчёт общей стоимости при изменении состава услуг и запчастей.
- * 
- * Зависимости: Client, SparePart.
- * 
- * Особенности: заказ может содержать несколько услуг (списки {@code services}
- * и {@code servicePrices}) и несколько запчастей с количеством; общая сумма
- * пересчитывается методом {@link #recalculateTotal()}. Содержит dirty-флаг для
- * отслеживания изменений перед сохранением в БД.
- * 
- * @author AdminSTO Team
- * @since 1.0
- * @see Client
- * @see SparePart
- * @see DataStore
- */
 public class WorkOrder {
-    /** Статус: новый заказ. */
     public static final String STATUS_NEW = "Новый";
-    /** Статус: заказ в работе. */
     public static final String STATUS_IN_PROGRESS = "В работе";
-    /** Статус: заказ закрыт (выполнен). */
     public static final String STATUS_CLOSED = "Закрыт";
 
-    /** Идентификатор заказа (строка). */
     private String id;
-    /** Клиент, оформивший заказ. */
+    /**
+     * Клиент заказа. Может быть {@code null} у нового заказа, которому клиент
+     * ещё не назначен; для сохранения в БД клиент обязателен.
+     */
     private Client client;
-    /** Текущий статус заказа (см. константы STATUS_*). */
     private String status;
-    /** Общая стоимость заказа (услуги + запчасти). */
     private double total;
-    /** Дата создания заказа (строка). */
     private String createdDate;
-    /** Названия услуг в заказе. */
     private List<String> services = new ArrayList<>();
-    /** Цены услуг (соответствует {@link #services}). */
     private List<Double> servicePrices = new ArrayList<>();
-    /** Запчасти в заказе. */
     private List<SparePart> spareParts = new ArrayList<>();
-    /** Количество каждой запчасти (соответствует {@link #spareParts}). */
     private List<Double> sparePartQuantities = new ArrayList<>();
-    /** Идентификаторы услуг (0, если услуга не привязана к каталогу). */
     private List<Integer> serviceIds = new ArrayList<>();
-    /** Дата закрытия заказа (пустая, если не закрыт). */
     private String closedDate = "";
-    /** Примечания к заказу. */
     private String notes = "";
-    /** Пробег автомобиля на момент заказа. */
     private int mileage = 0;
-    /** Идентификатор клиента. */
     private int clientId = 0;
-    /** Модель автомобиля. */
     private String carModel = "";
-    /** Госномер автомобиля. */
     private String carNumber = "";
-    /** Флаг наличия несохранённых изменений. */
     private boolean dirty = false;
 
     // ==================== КОНСТРУКТОРЫ ====================
 
-    /** Создаёт пустой заказ со статусом «Новый» и признаком изменения. */
     public WorkOrder() {
         this.id = "";
         this.client = null;
@@ -78,26 +43,12 @@ public class WorkOrder {
         this.dirty = true;
     }
 
-    /**
-     * Создаёт заказ для указанного клиента.
-     * 
-     * @param client клиент, оформляющий заказ
-     */
     public WorkOrder(Client client) {
         this();
         this.client = client;
-        this.clientId = client.getId();
+        this.clientId = client != null ? client.getId() : 0;
     }
 
-    /**
-     * Полный конструктор заказа (обычно используется при загрузке из БД).
-     * 
-     * @param id          идентификатор заказа
-     * @param client      клиент
-     * @param status      статус заказа
-     * @param total       общая стоимость
-     * @param createdDate дата создания
-     */
     public WorkOrder(String id, Client client, String status, double total, String createdDate) {
         this.id = id;
         this.client = client;
@@ -190,13 +141,6 @@ public class WorkOrder {
 
     // ==================== МЕТОДЫ ====================
 
-    /**
-     * Добавляет услугу в заказ по названию и цене (без привязки к каталогу
-     * услуг — id услуги = 0). После добавления пересчитывается общая сумма.
-     * 
-     * @param name  название услуги
-     * @param price цена услуги
-     */
     public void addService(String name, double price) {
         this.services.add(name);
         this.servicePrices.add(price);
@@ -205,13 +149,6 @@ public class WorkOrder {
         recalculateTotal();
     }
 
-    /**
-     * Добавляет услугу в заказ с привязкой к каталогу услуг.
-     * 
-     * @param serviceId идентификатор услуги в каталоге
-     * @param name      название услуги
-     * @param price     цена услуги
-     */
     public void addService(int serviceId, String name, double price) {
         this.services.add(name);
         this.servicePrices.add(price);
@@ -221,10 +158,19 @@ public class WorkOrder {
     }
 
     /**
-     * Удаляет услугу из заказа по индексу и пересчитывает сумму.
-     * 
-     * @param index индекс услуги в списке
+     * Добавить услугу при загрузке заказа из базы без пересчёта итоговой
+     * суммы: сохранённая сумма заказа уже учитывает скидки на момент
+     * оформления и не должна меняться при последующем чтении.
+     * @param serviceId идентификатор услуги
+     * @param name название услуги
+     * @param price цена услуги без скидки
      */
+    public void addLoadedService(int serviceId, String name, double price) {
+        this.services.add(name);
+        this.servicePrices.add(price);
+        this.serviceIds.add(serviceId);
+    }
+
     public void removeService(int index) {
         if (index >= 0 && index < services.size()) {
             services.remove(index);
@@ -235,12 +181,6 @@ public class WorkOrder {
         }
     }
 
-    /**
-     * Добавляет запчасть в заказ с указанным количеством и пересчитывает сумму.
-     * 
-     * @param part     запчасть
-     * @param quantity количество
-     */
     public void addSparePart(SparePart part, double quantity) {
         this.spareParts.add(part);
         this.sparePartQuantities.add(quantity);
@@ -249,10 +189,16 @@ public class WorkOrder {
     }
 
     /**
-     * Удаляет запчасть из заказа по индексу и пересчитывает сумму.
-     * 
-     * @param index индекс запчасти в списке
+     * Добавить запчасть при загрузке заказа из базы без пересчёта итоговой
+     * суммы (см. {@link #addLoadedService(int, String, double)}).
+     * @param part запчасть
+     * @param quantity количество
      */
+    public void addLoadedSparePart(SparePart part, double quantity) {
+        this.spareParts.add(part);
+        this.sparePartQuantities.add(quantity);
+    }
+
     public void removeSparePart(int index) {
         if (index >= 0 && index < spareParts.size()) {
             spareParts.remove(index);
@@ -263,28 +209,96 @@ public class WorkOrder {
     }
 
     /**
-     * Пересчитывает общую стоимость заказа как сумму цен услуг и стоимости
-     * запчастей (розничная цена × количество). Если сумма изменилась — заказ
-     * помечается как изменённый.
+     * Пересчитать сумму заказа по прайсу позиций без скидок по лояльности.
+     *
+     * <p>Скидки применяются отдельно методом {@link #applyLoyaltyDiscounts()},
+     * поэтому сумма сохраняется в базе уже с их учётом.</p>
      */
     public void recalculateTotal() {
-        double newTotal = 0;
-        for (Double price : servicePrices) {
-            newTotal += price;
-        }
-        for (int i = 0; i < spareParts.size(); i++) {
-            newTotal += spareParts.get(i).getRetailPrice() * sparePartQuantities.get(i);
-        }
-        if (this.total != newTotal) {
+        double newTotal = getSubtotal();
+        if (Double.compare(this.total, newTotal) != 0) {
             this.total = newTotal;
             this.dirty = true;
         }
     }
 
     /**
-     * Снимает флаг изменения с заказа и всех его запчастей. Вызывается после
-     * успешного сохранения в БД.
+     * Сумма позиций заказа по прайсу, без скидок по лояльности.
+     * @return сумма услуг и запчастей по прайсу, руб.
      */
+    public double getSubtotal() {
+        double subtotal = 0;
+        for (Double price : servicePrices) {
+            subtotal += price;
+        }
+        for (int i = 0; i < spareParts.size(); i++) {
+            SparePart part = spareParts.get(i);
+            double quantity = i < sparePartQuantities.size() ? sparePartQuantities.get(i) : 1.0;
+            subtotal += part.getRetailPrice() * quantity;
+        }
+        return subtotal;
+    }
+
+    /**
+     * Процент скидки по лояльности на услугу в строке заказа.
+     * @param index индекс услуги
+     * @return процент скидки; {@code 0}, если скидка не действует
+     */
+    public double getServiceDiscountPercent(int index) {
+        if (index < 0 || index >= servicePrices.size()) {
+            return 0.0;
+        }
+        return LoyaltyService.getDiscountPercent(client, LoyaltyService.resolveServiceCategory(this, index));
+    }
+
+    /**
+     * Процент скидки по лояльности на запчасть в строке заказа.
+     * @param index индекс запчасти
+     * @return процент скидки; {@code 0}, если скидка не действует
+     */
+    public double getSparePartDiscountPercent(int index) {
+        if (index < 0 || index >= spareParts.size()) {
+            return 0.0;
+        }
+        return LoyaltyService.getDiscountPercent(client, LoyaltyService.resolveSparePartCategory(spareParts.get(index)));
+    }
+
+    /**
+     * Рассчитать сумму заказа с учётом скидок по лояльности.
+     * @return сумма к оплате, руб.
+     */
+    public double calculateLoyaltyTotal() {
+        double result = 0;
+        for (int i = 0; i < servicePrices.size(); i++) {
+            double price = servicePrices.get(i);
+            result += price - LoyaltyService.calculateDiscount(client,
+                    LoyaltyService.resolveServiceCategory(this, i), price);
+        }
+        for (int i = 0; i < spareParts.size(); i++) {
+            SparePart part = spareParts.get(i);
+            double quantity = i < sparePartQuantities.size() ? sparePartQuantities.get(i) : 1.0;
+            double amount = part.getRetailPrice() * quantity;
+            result += amount - LoyaltyService.calculateDiscount(client,
+                    LoyaltyService.resolveSparePartCategory(part), amount);
+        }
+        return result;
+    }
+
+    /**
+     * Применить скидки по лояльности к итоговой сумме заказа.
+     */
+    public void applyLoyaltyDiscounts() {
+        setTotal(calculateLoyaltyTotal());
+    }
+
+    /**
+     * Сумма скидок по лояльности, уже учтённая в итоговой сумме заказа.
+     * @return сумма скидки, руб.
+     */
+    public double getDiscountTotal() {
+        return Math.max(0.0, getSubtotal() - total);
+    }
+
     public void markClean() {
         this.dirty = false;
         for (SparePart part : spareParts) {
@@ -292,14 +306,9 @@ public class WorkOrder {
         }
     }
 
-    /**
-     * Возвращает строковое представление заказа «id - ФИО клиента (статус)».
-     * 
-     * @return строка с данными заказа
-     * @throws NullPointerException если клиент не задан (client == null)
-     */
     @Override
     public String toString() {
-        return id + " - " + client.getFullName() + " (" + status + ")";
+        String clientName = client != null ? client.getFullName() : AppConstants.NO_CLIENT;
+        return id + " - " + clientName + " (" + status + ")";
     }
 }

@@ -2,17 +2,29 @@ package com.autoservice.controllers;
 
 import com.autoservice.Appointment;
 import com.autoservice.DataStore;
+import com.autoservice.SparePart;
 import com.autoservice.WorkOrder;
 import com.autoservice.dialogs.CreateOrderDialog;
 import com.autoservice.dialogs.EditOrderDialog;
 import com.autoservice.dialogs.OrderDetailsDialog;
+import com.autoservice.views.AppointmentView;
 import com.autoservice.views.DashboardView;
 import com.autoservice.views.OrderView;
+import com.autoservice.services.LoyaltyService;
+import com.autoservice.DateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.TableView;
+
+import java.time.LocalDate;
+
+import com.autoservice.Client;
+import com.autoservice.Service;
+import com.autoservice.SparePart;
+import com.autoservice.WorkOrder;
+import com.autoservice.Appointment;
 
 public class OrderController {
     private static final Logger logger = LoggerFactory.getLogger(OrderController.class);
@@ -25,7 +37,7 @@ public class OrderController {
 
     public static void refreshTable() {
         OrderView.refreshOrderList();
-        // AppointmentViewOld.refresh();
+        AppointmentView.refresh();
         DashboardView.refresh();
     }
 
@@ -60,18 +72,36 @@ public class OrderController {
         OrderDetailsDialog.show(order);
     }
 
+    /**
+     * Изменить статус заказа и обновить данные в базе.
+     *
+     * <p>При первом закрытии заказа фиксируется дата закрытия и начисляются
+     * показатели лояльности клиента. Дата закрытия служит признаком того, что
+     * заказ уже учтён в лояльности: повторное закрытие после открытия не
+     * начисляет звёзды и сумму тюнинга второй раз.</p>
+     * @param order заказ
+     * @param newStatus новый статус
+     */
     public static void changeOrderStatus(WorkOrder order, String newStatus) {
-        if (order == null) return;
+        if (order == null) {
+            return;
+        }
         if (newStatus != null && !newStatus.equals(order.getStatus())) {
-            // При закрытии заказа — списываем запчасти
-            if (WorkOrder.STATUS_CLOSED.equals(newStatus)) {
-                DataStore.deductSpareParts(order);
-            }
-            
+            boolean firstClosing = WorkOrder.STATUS_CLOSED.equals(newStatus) && isClosedDateEmpty(order);
             order.setStatus(newStatus);
+            if (firstClosing) {
+                order.setClosedDate(DateUtils.formatDateForDB(LocalDate.now()));
+            }
             DataStore.updateOrder(order);
+            if (firstClosing) {
+                LoyaltyService.applyCompletedOrder(order);
+            }
             refreshTable();
         }
+    }
+
+    private static boolean isClosedDateEmpty(WorkOrder order) {
+        return order.getClosedDate() == null || order.getClosedDate().isEmpty();
     }
 
     public static void deleteOrder(WorkOrder order) {
@@ -96,14 +126,25 @@ public class OrderController {
 
         confirm.showAndWait().ifPresent(response -> {
             if (response == ButtonType.YES) {
-                // Снимаем резерв с запчастей
-                DataStore.unreserveSpareParts(order);
+                returnSparePartsToStock(order);
                 deleteAssociatedAppointment(order);
                 DataStore.deleteOrder(order);
                 refreshTable();
                 showAlert("Заказ " + order.getId() + " удалён", Alert.AlertType.INFORMATION);
             }
         });
+    }
+
+    private static void returnSparePartsToStock(WorkOrder order) {
+        for (int i = 0; i < order.getSpareParts().size(); i++) {
+            SparePart part = order.getSpareParts().get(i);
+            double quantity = order.getSparePartQuantities().get(i);
+
+            // Используем double для расчёта нового остатка
+            double newStock = part.getStock() + quantity;
+            DataStore.updateSparePartStock(part, newStock);
+            logger.debug("Возвращено на склад: {} +{}", part.getName(), quantity);
+        }
     }
 
     private static void deleteAssociatedAppointment(WorkOrder order) {
@@ -127,4 +168,3 @@ public class OrderController {
         alert.showAndWait();
     }
 }
-

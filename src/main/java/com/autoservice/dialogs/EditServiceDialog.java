@@ -22,12 +22,19 @@ import javafx.stage.Stage;
  */
 public class EditServiceDialog {
 
+    /**
+     * Открыть диалог добавления новой услуги.
+     */
     public static void showAdd() {
         Service emptyService = new Service();
         emptyService.setId(-1);
         showEditDialog(emptyService, true);
     }
 
+    /**
+     * Открыть диалог редактирования существующей услуги.
+     * @param service редактируемая услуга
+     */
     public static void showEdit(Service service) {
         showEditDialog(service, false);
     }

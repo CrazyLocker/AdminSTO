@@ -5,9 +5,10 @@ import com.autoservice.Car;
 import com.autoservice.Client;
 import com.autoservice.DataStore;
 import com.autoservice.DateUtils;
-import com.autoservice.Validators;
+import com.autoservice.utils.Formatters;
 import com.autoservice.controllers.ClientController;
 import com.autoservice.dialogs.EditClientDialog;
+import com.autoservice.services.LoyaltyService;
 import com.autoservice.services.TableStateManager;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
@@ -217,7 +218,7 @@ public class ClientView {
         colPhone.setId("colPhone");
         colPhone.setCellValueFactory(cellData -> {
             String phone = cellData.getValue().getPhone();
-            return new SimpleStringProperty(Validators.formatPhoneForDisplay(phone));
+            return new SimpleStringProperty(Formatters.formatPhoneForDisplay(phone));
         });
         colPhone.setPrefWidth(180);
         colPhone.setSortable(true);
@@ -241,6 +242,20 @@ public class ClientView {
         colCar.setPrefWidth(260);
         colCar.setSortable(true);
 
+        TableColumn<Client, String> colLoyaltyMaintenance = new TableColumn<>("Статус ТО");
+        colLoyaltyMaintenance.setId("colLoyaltyMaintenance");
+        colLoyaltyMaintenance.setCellValueFactory(cellData ->
+                new SimpleStringProperty(LoyaltyService.getMaintenanceShortStatus(cellData.getValue())));
+        colLoyaltyMaintenance.setPrefWidth(150);
+        colLoyaltyMaintenance.setSortable(true);
+
+        TableColumn<Client, String> colLoyaltyTuning = new TableColumn<>("Stage тюнинга");
+        colLoyaltyTuning.setId("colLoyaltyTuning");
+        colLoyaltyTuning.setCellValueFactory(cellData ->
+                new SimpleStringProperty(LoyaltyService.getTuningShortStatus(cellData.getValue())));
+        colLoyaltyTuning.setPrefWidth(140);
+        colLoyaltyTuning.setSortable(true);
+
         TableColumn<Client, String> colLastRepair = new TableColumn<>("Последний ремонт");
         colLastRepair.setId("colLastRepair");
         colLastRepair.setCellValueFactory(cellData -> {
@@ -250,7 +265,8 @@ public class ClientView {
         colLastRepair.setPrefWidth(140);
         colLastRepair.setSortable(true);
 
-        table.getColumns().addAll(colLastName, colName, colPhone, colCar, colLastRepair);
+        table.getColumns().addAll(colLastName, colName, colPhone, colCar,
+                colLoyaltyMaintenance, colLoyaltyTuning, colLastRepair);
         // Отключаем CONSTRAINED_RESIZE_POLICY — он сбрасывает prefWidth при layout,
         // что мешает сохранению пользовательских настроек ширины колонок.
         // UNCONSTRAINED_RESIZE_POLICY позволяет колонкам сохранять заданную ширину.
@@ -313,7 +329,7 @@ public class ClientView {
             filteredClients.setPredicate(client -> {
                 if (client.getName() != null && client.getName().toLowerCase().contains(lowerFilter)) return true;
                 if (client.getLastName() != null && client.getLastName().toLowerCase().contains(lowerFilter)) return true;
-                if (Validators.formatPhoneForDisplay(client.getPhone()).toLowerCase().contains(lowerFilter)) return true;
+                if (Formatters.formatPhoneForDisplay(client.getPhone()).toLowerCase().contains(lowerFilter)) return true;
                 if (client.getCarNumber() != null && client.getCarNumber().toLowerCase().contains(lowerFilter)) return true;
                 return client.getCarModel() != null && client.getCarModel().toLowerCase().contains(lowerFilter);
             });

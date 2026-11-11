@@ -1,5 +1,7 @@
 package com.autoservice;
 
+import com.autoservice.model.ServiceCategory;
+
 public class SparePart {
     private int id;
     private int orderId;
@@ -10,6 +12,11 @@ public class SparePart {
     private String note;
     private double purchasePrice;
     private double retailPrice;
+
+    /**
+     * Категория для системы лояльности. По умолчанию {@link ServiceCategory#REGULAR}.
+     */
+    private ServiceCategory category = ServiceCategory.REGULAR;
 
     // ====== ПОЛЯ ДЛЯ ГИБРИДНОГО УЧЁТА ======
     private double stock;              // физический остаток
@@ -37,6 +44,7 @@ public class SparePart {
         this.minStock = 0;
         this.unitType = "шт";
         this.location = "";
+        this.category = ServiceCategory.REGULAR;
         this.dirty = true;
     }
 
@@ -93,6 +101,7 @@ public class SparePart {
     public double getMinStock() { return minStock; }
     public String getUnitType() { return unitType; }
     public String getLocation() { return location; }
+    public ServiceCategory getCategory() { return category; }
     public boolean isDirty() { return dirty; }
 
     // ==================== СЕТТЕРЫ ====================
@@ -108,14 +117,14 @@ public class SparePart {
     public void setRetailPrice(double retailPrice) { this.retailPrice = retailPrice; this.dirty = true; }
 
     public void setStock(double stock) {
-        if (this.stock != stock) {
+        if (Double.compare(this.stock, stock) != 0) {
             this.stock = stock;
             this.dirty = true;
         }
     }
 
     public void setReserved(double reserved) {
-        if (this.reserved != reserved) {
+        if (Double.compare(this.reserved, reserved) != 0) {
             this.reserved = reserved;
             this.dirty = true;
         }
@@ -124,6 +133,12 @@ public class SparePart {
     public void setMinStock(double minStock) { this.minStock = minStock; this.dirty = true; }
     public void setUnitType(String unitType) { this.unitType = unitType; this.dirty = true; }
     public void setLocation(String location) { this.location = location; this.dirty = true; }
+
+    public void setCategory(ServiceCategory category) {
+        this.category = category != null ? category : ServiceCategory.REGULAR;
+        this.dirty = true;
+    }
+
     public void setDirty(boolean dirty) { this.dirty = dirty; }
 
     // ==================== МЕТОДЫ ====================

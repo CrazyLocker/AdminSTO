@@ -1,5 +1,7 @@
 package com.autoservice;
 
+import com.autoservice.views.ClientView;
+import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import org.junit.jupiter.api.*;
@@ -66,7 +68,8 @@ class ClientViewUITest extends BaseUITest {
         seedClient("Иван", "Петров", "+79001234567", "Haval Jolion", "А123ВС163");
         seedClient("Сергей", "Смирнов", "+79009876543", "Haval F7", "В777ОР777");
 
-        writeText("clientSearchField", "9876543");
+        // Телефон отображается как "+7 (900) 987-65-43", поэтому ищем цифровую подстроку без разрывов
+        writeText("clientSearchField", "987");
         TableView<Client> table = getTable("clientTable");
         assertThat(getOnFxThread(() -> table.getItems().size())).isEqualTo(1);
     }
@@ -97,6 +100,36 @@ class ClientViewUITest extends BaseUITest {
 
         assertThat(findNode("editClientBtn").isDisabled()).isFalse();
         assertThat(findNode("deleteClientBtn").isDisabled()).isFalse();
+    }
+
+    @Test
+    @DisplayName("В таблице клиентов отображается статус лояльности")
+    void loyaltyColumnsShowClientStatus() {
+        seedClient("Иван", "Петров", "+79001234567", "Haval Jolion", "А123ВС163");
+
+        runOnFxThread(() -> {
+            Client client = DataStore.getClients().get(0);
+            client.setMaintenanceStars(4);
+            client.setTuningTotal(150_000);
+            DataStore.updateClient(client);
+            ClientView.refreshClientList();
+        });
+        waitForFxEvents();
+
+        TableView<Client> table = getTable("clientTable");
+        TableColumn<Client, ?> starsColumn = table.getColumns().stream()
+                .filter(column -> "colLoyaltyMaintenance".equals(column.getId()))
+                .findFirst()
+                .orElse(null);
+        TableColumn<Client, ?> stageColumn = table.getColumns().stream()
+                .filter(column -> "colLoyaltyTuning".equals(column.getId()))
+                .findFirst()
+                .orElse(null);
+
+        assertThat(starsColumn).isNotNull();
+        assertThat(stageColumn).isNotNull();
+        assertThat(getOnFxThread(() -> starsColumn.getCellData(0))).isEqualTo("★★★★☆ · 10%");
+        assertThat(getOnFxThread(() -> stageColumn.getCellData(0))).isEqualTo("Stage 2 · 10%");
     }
 
     @Test

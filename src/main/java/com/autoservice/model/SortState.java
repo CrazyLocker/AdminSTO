@@ -1,21 +1,10 @@
 package com.autoservice.model;
 
-public class SortState {
-    private String columnId;
-    private String order;
-
-    public SortState() {}
-
-    public String getColumnId() { return columnId; }
-    public void setColumnId(String columnId) { this.columnId = columnId; }
-    public String getOrder() { return order; }
-    public void setOrder(String order) { this.order = order; }
-
-    @Override
-    public String toString() {
-        return "SortState{" +
-                "columnId='" + columnId + "', " +
-                "order='" + order + "'" +
-                '}';
-    }
+/**
+ * Состояние сортировки таблицы.
+ *
+ * @param columnId идентификатор колонки
+ * @param order направление сортировки: {@code ASC} или {@code DESC}
+ */
+public record SortState(String columnId, String order) {
 }

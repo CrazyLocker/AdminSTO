@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.*;
  * 
  * <p>Проверяют базовую функциональность управления заказами: создание,
  * редактирование, изменение статуса, удаление. Некоторые тесты отмечены
- * как @Disabled, так как требуют инициализации JavaFX.</p>
+ * как {@code @Disabled}, так как требуют инициализации JavaFX.</p>
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Tag(TestTags.CONTROLLER)
@@ -39,7 +39,7 @@ class OrderControllerTest extends BaseTest {
 
     @Test
     @Order(2)
-    // @Disabled("Requires JavaFX initialization - AppointmentViewOld.datePicker is null")
+    @Disabled("Requires JavaFX initialization - AppointmentView.datePicker is null")
     void testRefreshTable() {
         OrderController.setTable(null);
         OrderController.refreshTable();
@@ -92,7 +92,7 @@ class OrderControllerTest extends BaseTest {
 
     @Test
     @Order(8)
-    // @Disabled("Requires JavaFX initialization - AppointmentViewOld.datePicker is null")
+    @Disabled("Requires JavaFX initialization - AppointmentView.datePicker is null")
     void testChangeStatus() {
         OrderController.setTable(null);
         OrderController.changeOrderStatus(testOrder, WorkOrder.STATUS_IN_PROGRESS);

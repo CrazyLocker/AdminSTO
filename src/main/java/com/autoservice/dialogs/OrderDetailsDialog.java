@@ -1,8 +1,10 @@
 package com.autoservice.dialogs;
 
+import com.autoservice.AppConstants;
+import com.autoservice.Client;
 import com.autoservice.DateUtils;
 import com.autoservice.SparePart;
-import com.autoservice.Validators;
+import com.autoservice.utils.Formatters;
 import com.autoservice.WorkOrder;
 import com.autoservice.services.WindowStateManager;
 import javafx.geometry.Insets;
@@ -14,30 +16,13 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 /**
- * Модальный диалог просмотра деталей заказа.
- * 
- * Ответственность: отображение полной информации о заказе — клиент, телефон,
- * автомобиль, список услуг с ценами, список запчастей с количеством и итоговая
- * сумма. Диалог доступен только для просмотра (редактирование не предусмотрено).
- * 
- * Зависимости: JavaFX (Stage, Scene, ListView), WorkOrder, Client, SparePart,
- * DateUtils, Validators, WindowStateManager (сохранение размера и позиции окна).
- * 
- * Особенности: состояние окна (размер, позиция) восстанавливается при открытии
- * и сохраняется при закрытии через {@link WindowStateManager}.
- * 
- * @author AdminSTO Team
- * @since 1.0
- * @see WorkOrder
- * @see WindowStateManager
+ * Диалог просмотра подробной информации о заказе.
  */
 public class OrderDetailsDialog {
 
     /**
-     * Открывает модальный диалог с деталями заказа и ожидает его закрытия.
-     * 
-     * @param order заказ, детали которого нужно показать
-     * @throws NullPointerException если order или order.getClient() == null
+     * Открыть диалог с подробностями заказа.
+     * @param order отображаемый заказ
      */
     public static void show(WorkOrder order) {
         Stage stage = new Stage();
@@ -52,39 +37,43 @@ public class OrderDetailsDialog {
         VBox content = new VBox(15);
         content.setPadding(new Insets(20));
 
-        Label headerLabel = new Label(order.getClient().getName() + " | " + Validators.formatPhoneForDisplay(order.getClient().getPhone()));
+        Client client = order.getClient();
+        String clientHeader = client == null
+                ? AppConstants.NO_CLIENT
+                : client.getName() + " | " + Formatters.formatPhoneForDisplay(client.getPhone());
+        Label headerLabel = new Label(clientHeader);
+        headerLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
 
         Label statusLabel = new Label("Статус: " + order.getStatus());
-        // Автомобиль: приоритет — автомобиль из заказа, иначе автомобили клиента
-        String carDisplay;
-        if (order.getCarModel() != null && !order.getCarModel().isEmpty()) {
-            carDisplay = order.getCarModel() + (order.getCarNumber() != null && !order.getCarNumber().isEmpty() ? " (" + order.getCarNumber() + ")" : "");
-        } else if (order.getClient() != null) {
-            carDisplay = order.getClient().getCarDisplay();
-        } else {
-            carDisplay = "";
-        }
-        Label carLabel = new Label("Авто: " + carDisplay);
+        String carInfo = client == null
+                ? "—"
+                : client.getCarModel() + " (" + client.getCarNumber() + ")";
+        Label carLabel = new Label("Авто: " + carInfo);
 
         Label servicesLabel = new Label("Услуги:");
+        servicesLabel.setStyle("-fx-font-weight: bold;");
 
         ListView<String> servicesList = new ListView<>();
         for (int i = 0; i < order.getServices().size(); i++) {
-            servicesList.getItems().add((i+1) + ". " + order.getServices().get(i) + " — " + order.getServicePrices().get(i) + " руб.");
+            servicesList.getItems().add((i+1) + ". " + order.getServices().get(i)
+                    + " — " + order.getServicePrices().get(i) + " руб.");
         }
         servicesList.setPrefHeight(100);
 
         Label partsLabel = new Label("Запчасти:");
+        partsLabel.setStyle("-fx-font-weight: bold;");
 
         ListView<String> partsList = new ListView<>();
         for (int i = 0; i < order.getSpareParts().size(); i++) {
             SparePart part = order.getSpareParts().get(i);
             double qty = order.getSparePartQuantities().get(i);
-            partsList.getItems().add((i+1) + ". " + part.getName() + " — " + part.getRetailPrice() + " руб. x " + (int)qty + " = " + (part.getRetailPrice() * qty) + " руб.");
+            partsList.getItems().add((i+1) + ". " + part.getName() + " — " + part.getRetailPrice()
+                    + " руб. x " + (int)qty + " = " + (part.getRetailPrice() * qty) + " руб.");
         }
         partsList.setPrefHeight(100);
 
-        Label totalLabel = new Label("Итого: " + order.getTotal() + " руб.");
+        Label totalLabel = new Label("Итого: " + String.format("%.2f", order.getTotal()) + " руб.");
+        totalLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
 
         Button closeBtn = new Button("Закрыть");
         HBox btnBox = new HBox(15, closeBtn);
@@ -92,14 +81,22 @@ public class OrderDetailsDialog {
         
         closeBtn.setOnAction(e -> stage.close());
         
-        stage.setOnHidden(e -> {
+        stage.setOnHiding(e -> {
             WindowStateManager.getInstance().saveWindowState("orderDetailsDialog", stage);
         });
 
         content.getChildren().addAll(headerLabel, statusLabel, carLabel,
                 servicesLabel, servicesList,
-                partsLabel, partsList,
-                totalLabel, btnBox);
+                partsLabel, partsList);
+
+        if (order.getDiscountTotal() > 0) {
+            Label discountLabel = new Label("Скидка по лояльности: −"
+                    + String.format("%.2f", order.getDiscountTotal()) + " руб.");
+            discountLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #2E7D32;");
+            content.getChildren().add(discountLabel);
+        }
+
+        content.getChildren().addAll(totalLabel, btnBox);
 
         Scene scene = new Scene(content);
         stage.setScene(scene);

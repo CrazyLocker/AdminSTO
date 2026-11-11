@@ -20,7 +20,7 @@ public class SettingService {
 
     /**
      * Получить все настройки из базы данных и кэшировать их.
-     * Загружает напрямую из Database, чтобы избежать рассинхронизации с DataStore.
+     * Загружает напрямую из DatabaseFactory.getDatabase(), чтобы избежать рассинхронизации с DataStore.
      */
     public static void loadSettings() {
         settingsCache = new HashMap<>();
@@ -66,7 +66,7 @@ public class SettingService {
         if (setting != null) {
             logger.info("  setting found: id={}, oldValue=[REDACTED], oldKey={}", setting.getId(), setting.getKey());
             setting.setValue(value);
-            logger.info("  after setValue: id={}, newValue={}, dirty={}", setting.getId(), setting.getValue(), setting.isDirty());
+            logger.info("  after setValue: id={}, newValue=[REDACTED], dirty={}", setting.getId(), setting.isDirty());
             DataStore.updateSetting(setting);
             logger.info("  DataStore.updateSetting completed");
             loadSettings();

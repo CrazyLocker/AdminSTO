@@ -43,16 +43,19 @@ import java.util.Map;
 public class AddServicePartDialog {
 
     /**
-     * Показывает диалог для добавления связей услуги с выбранными запчастями.
-     * Возвращает количество созданных связей.
+     * Показать диалог добавления связей услуги с выбранными запчастями.
+     * @param initialServiceName название услуги, выбранной по умолчанию
+     * @return количество созданных связей
      */
     public static int showAddDialog(String initialServiceName) {
         return showAddEditDialog(initialServiceName, null);
     }
 
     /**
-     * Показывает диалог для редактирования связей услуги.
-     * existingParts - список существующих связей для этой услуги (для предвыделения).
+     * Показать диалог редактирования связей услуги.
+     * @param serviceName название редактируемой услуги
+     * @param existingParts список существующих связей для предвыделения
+     * @return количество созданных, обновлённых и удалённых связей
      */
     public static int showEditDialog(String serviceName, List<ServicePart> existingParts) {
         return showAddEditDialog(serviceName, existingParts);
@@ -266,21 +269,57 @@ public class AddServicePartDialog {
 
     // ==================== КЛАСС ДЛЯ ДАННЫХ ЗАПЧАСТЕЙ ====================
 
+    /**
+     * Строка таблицы диалога: запчасть, её название и отметка выбора.
+     */
     private static class SparePartWithQuantity {
         private final SparePart part;
         private final BooleanProperty selected = new SimpleBooleanProperty(false);
         private final SimpleStringProperty name = new SimpleStringProperty();
 
+        /**
+         * Создать строку таблицы для запчасти.
+         * @param part запчасть
+         */
         public SparePartWithQuantity(SparePart part) {
             this.part = part;
             this.name.set(part.getName());
         }
 
+        /**
+         * Получить запчасть строки.
+         * @return запчасть
+         */
         public SparePart getPart() { return part; }
+
+        /**
+         * Получить свойство отметки выбора строки.
+         * @return свойство выбора
+         */
         public BooleanProperty selectedProperty() { return selected; }
+
+        /**
+         * Проверить, выбрана ли строка.
+         * @return {@code true}, если строка выбрана
+         */
         public boolean isSelected() { return selected.get(); }
+
+        /**
+         * Установить отметку выбора строки.
+         * @param selected {@code true}, чтобы выбрать строку
+         */
         public void setSelected(boolean selected) { this.selected.set(selected); }
+
+        /**
+         * Получить свойство названия запчасти.
+         * @return свойство названия
+         */
         public StringProperty nameProperty() { return name; }
+
+        /**
+         * Получить название запчасти.
+         * @return название запчасти
+         */
         public String getName() { return name.get(); }
     }
 }

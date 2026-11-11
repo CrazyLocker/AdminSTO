@@ -101,7 +101,7 @@ public class ValidationUtils {
         if (phone == null || phone.trim().isEmpty()) {
             return false;
         }
-        return phone.trim().matches("^\\+7\\d{10}$");
+        return PHONE_PATTERN.matcher(phone.trim()).matches();
     }
     
     /**
@@ -125,7 +125,7 @@ public class ValidationUtils {
         if (number == null || number.trim().isEmpty()) {
             return false;
         }
-        return number.trim().matches("^[АВЕКМНОРСТУХ]\\d{3}[АВЕКМНОРСТУХ]{2}\\d{2,3}$");
+        return PLATE_PATTERN.matcher(number.trim()).matches();
     }
     
     /**
@@ -270,6 +270,94 @@ public class ValidationUtils {
         return null;
     }
     
+    /**
+     * Валидировать неотрицательное целое число, введённое текстом.
+     *
+     * <p>Буквы, знак минус, дробная часть и переполнение отклоняются.
+     * Пустое значение допустимо, только если поле необязательное.
+     * @param value введённый текст
+     * @param fieldName название поля для сообщения об ошибке
+     * @param required обязательно ли поле
+     * @return ValidationError если невалидно, null если валидно
+     */
+    public static ValidationError validateIntegerText(String value, String fieldName, boolean required) {
+        if (value == null || value.trim().isEmpty()) {
+            return required ? new ValidationError(fieldName, fieldName + " обязательно для заполнения") : null;
+        }
+        String text = value.trim();
+        if (!text.matches("\\d+")) {
+            return new ValidationError(fieldName,
+                    fieldName + " должно быть целым неотрицательным числом (только цифры)");
+        }
+        try {
+            Integer.parseInt(text);
+        } catch (NumberFormatException ex) {
+            return new ValidationError(fieldName, fieldName + " слишком велико");
+        }
+        return null;
+    }
+
+    /**
+     * Валидировать положительное целое число, введённое текстом.
+     * @param value введённый текст
+     * @param fieldName название поля для сообщения об ошибке
+     * @return ValidationError если невалидно, null если валидно
+     */
+    public static ValidationError validatePositiveIntegerText(String value, String fieldName) {
+        ValidationError error = validateIntegerText(value, fieldName, true);
+        if (error != null) {
+            return error;
+        }
+        if (Integer.parseInt(value.trim()) <= 0) {
+            return new ValidationError(fieldName, fieldName + " должно быть больше нуля");
+        }
+        return null;
+    }
+
+    /**
+     * Валидировать неотрицательное вещественное число, введённое текстом.
+     *
+     * <p>Буквы и знак минус отклоняются, запятая считается десятичным
+     * разделителем. Пустое значение допустимо, только если поле необязательное.
+     * @param value введённый текст
+     * @param fieldName название поля для сообщения об ошибке
+     * @param required обязательно ли поле
+     * @return ValidationError если невалидно, null если валидно
+     */
+    public static ValidationError validateNonNegativeDecimalText(String value, String fieldName, boolean required) {
+        if (value == null || value.trim().isEmpty()) {
+            return required ? new ValidationError(fieldName, fieldName + " обязательно для заполнения") : null;
+        }
+        String text = value.trim().replace(',', '.');
+        if (!text.matches("\\d+(\\.\\d+)?")) {
+            return new ValidationError(fieldName,
+                    fieldName + " должно быть неотрицательным числом (только цифры и разделитель)");
+        }
+        try {
+            Double.parseDouble(text);
+        } catch (NumberFormatException ex) {
+            return new ValidationError(fieldName, fieldName + " слишком велико");
+        }
+        return null;
+    }
+
+    /**
+     * Валидировать положительное вещественное число, введённое текстом.
+     * @param value введённый текст
+     * @param fieldName название поля для сообщения об ошибке
+     * @return ValidationError если невалидно, null если валидно
+     */
+    public static ValidationError validatePositiveDecimalText(String value, String fieldName) {
+        ValidationError error = validateNonNegativeDecimalText(value, fieldName, true);
+        if (error != null) {
+            return error;
+        }
+        if (Double.parseDouble(value.trim().replace(',', '.')) <= 0) {
+            return new ValidationError(fieldName, fieldName + " должно быть больше нуля");
+        }
+        return null;
+    }
+
     /**
      * Валидировать единицу измерения.
      * @param unitType единица измерения

@@ -204,4 +204,17 @@ class WorkOrderTest extends BaseTest {
         order.setStatus(WorkOrder.STATUS_CLOSED);
         assertThat(order.getStatus()).isEqualTo(WorkOrder.STATUS_CLOSED);
     }
+
+    @Test
+    @Order(16)
+    void testRecalculateTotalWithUnchangedTotalKeepsCleanState() {
+        WorkOrder order = new WorkOrder(testClient);
+        order.addService("Замена масла", 1500);
+        order.markClean();
+
+        order.recalculateTotal();
+
+        assertThat(order.getTotal()).isEqualTo(1500);
+        assertThat(order.isDirty()).isFalse();
+    }
 }

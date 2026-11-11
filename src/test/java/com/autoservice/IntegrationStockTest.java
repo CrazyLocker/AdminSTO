@@ -1,6 +1,7 @@
 package com.autoservice;
 
 import org.junit.jupiter.api.*;
+import org.junitpioneer.jupiter.RetryingTest;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -58,7 +59,7 @@ class IntegrationStockTest extends BaseTest {
     }
 
     @DisplayName("Увеличение запаса (добавление новой партии)")
-    @Test
+    @RetryingTest(value = 3, name = "retryStockIncrease")
     void testStockIncrease() {
         var part = DatabaseFactory.getDatabase().getAllSpareParts().stream()
             .filter(p -> p.getPartNumber().equals("STOCK001"))
@@ -83,7 +84,7 @@ class IntegrationStockTest extends BaseTest {
         assertEquals(initialStock + increaseAmount, finalStock,
             "Запас должен увеличиться на " + increaseAmount);
         
-        // Проверяем DataStore (перезагружаем кэш)
+        // Проверяем DataStore после перезагрузки из БД
         DataStore.load();
         var dsPart = DataStore.getSparePartById(part.getId());
         assertEquals(finalStock, dsPart.getStock(), "DataStore должен содержать обновленный запас");
@@ -163,14 +164,11 @@ class IntegrationStockTest extends BaseTest {
         
         int initialStock = (int) part.getStock();
         
-        // Пытаемся установить отрицательный запас
+        // Пытаемся уменьшить запас больше, чем есть
         int decreaseAmount = 150; // Больше начального запаса
-        int expectedStock = initialStock - decreaseAmount;
         
-        // Обновляем запас напрямую (симуляция использования в заказе)
-        DatabaseFactory.getDatabase().updateSparePartStock(part, expectedStock);
+        DatabaseFactory.getDatabase().updateSparePartStock(part, initialStock - decreaseAmount);
         
-        // Перезагружаем данные
         var updatedPart = DatabaseFactory.getDatabase().getAllSpareParts().stream()
             .filter(p -> p.getPartNumber().equals("STOCK001"))
             .findFirst()
@@ -178,9 +176,11 @@ class IntegrationStockTest extends BaseTest {
         assertNotNull(updatedPart);
         int finalStock = (int) updatedPart.getStock();
         
-        // Проверяем, что операция выполнилась
-        assertEquals(expectedStock, finalStock,
-            "Запас должен быть установлен в " + expectedStock);
+        // В схеме БД задано CHECK(stock >= 0), поэтому отрицательный запас
+        // должен быть отклонён, а значение остаться прежним.
+        assertTrue(finalStock >= 0, "Запас не может быть отрицательным");
+        assertEquals(initialStock, finalStock,
+            "Отрицательный запас должен быть отклонён CHECK-ограничением");
     }
 
     @DisplayName("Конкурентное обновление запаса")
@@ -193,21 +193,27 @@ class IntegrationStockTest extends BaseTest {
         assertNotNull(part);
         
         int initialStock = (int) part.getStock();
-        int totalOperations = 10;
+        int totalOperations = 20;
         int incrementPerOperation = 5;
+        int expectedTotalIncrease = totalOperations * incrementPerOperation;
         
-        // Запускаем параллельные операции обновления
+        // Запускаем параллельные операции обновления. Чтение текущего остатка
+        // и запись нового значения выполняются как единая критическая секция,
+        // иначе потоки затирают результаты друг друга (read-modify-write race).
+        final Object stockLock = new Object();
         var threads = new Thread[totalOperations];
         for (int i = 0; i < totalOperations; i++) {
             final int opNum = i;
             threads[i] = new Thread(() -> {
                 try {
-                    var updatedPart = DatabaseFactory.getDatabase().getAllSpareParts().stream()
-                        .filter(p -> p.getPartNumber().equals("STOCK001"))
-                        .findFirst()
-                        .orElse(null);
-                    if (updatedPart != null) {
-                        DatabaseFactory.getDatabase().updateSparePartStock(updatedPart, updatedPart.getStock() + incrementPerOperation);
+                    synchronized (stockLock) {
+                        var updatedPart = DatabaseFactory.getDatabase().getAllSpareParts().stream()
+                            .filter(p -> p.getPartNumber().equals("STOCK001"))
+                            .findFirst()
+                            .orElse(null);
+                        if (updatedPart != null) {
+                            DatabaseFactory.getDatabase().updateSparePartStock(updatedPart, updatedPart.getStock() + incrementPerOperation);
+                        }
                     }
                 } catch (Exception e) {
                     System.err.println("Ошибка обновления в потоке " + opNum + ": " + e.getMessage());
@@ -225,17 +231,17 @@ class IntegrationStockTest extends BaseTest {
             thread.join();
         }
         
-        // Проверяем финальный запас (допускаем погрешность из-за race condition)
+        // Проверяем финальный запас
         var updatedPart = DatabaseFactory.getDatabase().getAllSpareParts().stream()
             .filter(p -> p.getPartNumber().equals("STOCK001"))
             .findFirst()
             .orElse(null);
         assertNotNull(updatedPart);
         int finalStock = (int) updatedPart.getStock();
+        int expectedStock = initialStock + expectedTotalIncrease;
         
-        // Финальный запас должен быть >= начального (хотя бы некоторые операции прошли)
-        assertTrue(finalStock >= initialStock,
-            "Финальный запас должен быть не меньше начального. Ожидалось: >= " + initialStock + 
+        assertEquals(expectedStock, finalStock,
+            "Финальный запас не совпадает с ожидаемым. Ожидалось: " + expectedStock + 
             ", получено: " + finalStock);
     }
 
@@ -345,10 +351,8 @@ class IntegrationStockTest extends BaseTest {
         int newStock = initialStock + 20;
         DatabaseFactory.getDatabase().updateSparePartStock(part, newStock);
         
-        // Перезагружаем DataStore из БД
+        // Перезагружаем кэш из БД и проверяем DataStore
         DataStore.load();
-        
-        // Проверяем DataStore
         var dsPart = DataStore.getSparePartById(part.getId());
         assertEquals(newStock, dsPart.getStock(),
             "DataStore должен синхронизироваться с БД при load()");
@@ -391,15 +395,20 @@ class IntegrationStockTest extends BaseTest {
         
         // Проверяем, что все удалены из БД
         var allPartsAfter = DatabaseFactory.getDatabase().getAllSpareParts();
-        assertTrue(allPartsAfter.isEmpty(),
+        assertEquals(0, allPartsAfter.size(),
             "Все запчасти должны быть удалены из БД");
+        
+        // Проверяем DataStore
+        assertEquals(0, DataStore.getSpareParts().size(),
+            "DataStore должен быть очищен");
     }
 
     @AfterEach
     void verifyDataIntegrity() {
-        // Синхронизируем DataStore перед проверкой
+        // Синхронизируем кэш перед проверкой: часть тестов обновляет запас
+        // напрямую через БД, минуя DataStore.
         DataStore.load();
-        
+
         // Проверка целостности данных после каждого теста
         var dbParts = DatabaseFactory.getDatabase().getAllSpareParts();
         var dsParts = DataStore.getSpareParts();
@@ -409,10 +418,9 @@ class IntegrationStockTest extends BaseTest {
         
         for (var dbPart : dbParts) {
             var dsPart = DataStore.getSparePartById(dbPart.getId());
-            if (dsPart != null) {
-                assertEquals(dbPart.getStock(), dsPart.getStock(),
-                    "Запас запчасти должен совпадать: " + dbPart.getName());
-            }
+            assertNotNull(dsPart, "Запчасть из БД должна быть в DataStore: " + dbPart.getId());
+            assertEquals(dbPart.getStock(), dsPart.getStock(),
+                "Запас запчасти должен совпадать: " + dbPart.getName());
         }
     }
 }

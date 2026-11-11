@@ -12,35 +12,95 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 import com.autoservice.utils.ExceptionHandler;
+import com.autoservice.utils.Formatters;
 import com.autoservice.Client;
 import com.autoservice.Car;
 import com.autoservice.Service;
 import com.autoservice.SparePart;
 import com.autoservice.WorkOrder;
 import com.autoservice.Appointment;
+import com.autoservice.model.ServiceCategory;
 
 /**
- * Абстрактный базовый класс для реализаций Database.
+ * Абстрактный базовый класс для реализаций DatabaseInterface.
  * Содержит общую логику для SQLite и H2.
  */
 public abstract class AbstractDatabase implements DatabaseInterface {
     
     protected HikariDataSource dataSource;
     
+    /**
+     * Блокировка генерации и вставки заказа.
+     * Генерация ID выполняется через SELECT MAX(id), поэтому параллельные
+     * вставки без синхронизации получают одинаковый номер и падают на PRIMARY KEY.
+     */
+    protected static final Object ORDER_ID_LOCK = new Object();
+
     private static final Logger logger = LoggerFactory.getLogger(AbstractDatabase.class);
     
     /**
-     * Создание таблиц базы данных.
+     * Создание таблиц базы данных. DDL общий для обеих СУБД,
+     * различия диалектов учитываются в {@link DatabaseSchema}.
      * @param conn соединение с базой данных
      */
-    protected abstract void createTables(Connection conn) throws SQLException;
+    protected void createTables(Connection conn) throws SQLException {
+        DatabaseSchema.createTables(conn, isSqlite(conn));
+    }
     
     /**
      * Генерация уникального ID заказа.
      * @param conn соединение с базой данных
      * @return сгенерированный ID заказа
      */
-    protected abstract String generateOrderId(Connection conn);
+    protected String generateOrderId(Connection conn) {
+        LocalDate today = LocalDate.now();
+
+        // Ищем максимальный порядковый номер среди ВСЕХ заказов (сквозная нумерация)
+        // Формат ID: ZAK-ДД/ММ/ГГ-0001
+        String sql = "SELECT MAX(id) as max_id FROM orders WHERE id LIKE 'ZAK-%-%'";
+        String lastOrderId = null;
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    lastOrderId = rs.getString("max_id");
+                }
+            }
+        } catch (SQLException e) {
+            logger.error("Ошибка генерации ID", e);
+        }
+
+        int newNumber = 1;
+        if (lastOrderId != null) {
+            try {
+                // Извлекаем номер после последнего дефиса
+                String[] parts = lastOrderId.split("-");
+                if (parts.length >= 2) {
+                    newNumber = Integer.parseInt(parts[parts.length - 1]) + 1;
+                } else {
+                    logger.warn("Неожиданный формат ID: {}", lastOrderId);
+                }
+            } catch (NumberFormatException e) {
+                logger.error("Ошибка парсинга ID: {}", lastOrderId, e);
+            }
+        } else {
+            logger.debug("Нет существующих заказов");
+        }
+
+        // Обработка переполнения (максимум 9999 заказов)
+        if (newNumber > 9999) {
+            logger.warn("Переполнение порядкового номера, сброс в 1");
+            newNumber = 1;
+        }
+
+        // Генерируем формат даты для ID: dd/MM/yy (с косыми чертами, как в существующих данных)
+        String date = today.format(DateTimeFormatter.ofPattern("dd/MM/yy"));
+        String orderId = String.format("ZAK-%s-%04d", date, newNumber);
+
+        logger.debug("Сгенерирован ID заказа: {} (последний: {}, номер: {})", orderId, lastOrderId, newNumber);
+
+        return orderId;
+    }
     
     // ==================== HELPER METHODS ====================
     
@@ -52,20 +112,16 @@ public abstract class AbstractDatabase implements DatabaseInterface {
      * @return сгенерированный ID
      */
     protected int getGeneratedKeyId(Connection conn, PreparedStatement stmt) throws SQLException {
-        // getGeneratedKeys() не поддерживается SQLite-драйвером и бросает
-        // SQLFeatureNotSupportedException — перехватываем и переходим к fallback.
-        try {
-            try (ResultSet rs = stmt.getGeneratedKeys()) {
-                if (rs.next()) {
-                    return rs.getInt(1);
+        try (ResultSet rs = stmt.getGeneratedKeys()) {
+            if (rs.next()) {
+                int id = rs.getInt(1);
+                if (id > 0) {
+                    return id;
                 }
             }
-        } catch (SQLException e) {
-            logger.debug("getGeneratedKeys не поддерживается, используем fallback", e);
         }
-        // Fallback для SQLite: last_insert_rowid()
-        String url = conn.getMetaData().getURL();
-        if (url != null && url.contains("sqlite")) {
+        // Fallback только для SQLite: H2 не знает функцию last_insert_rowid().
+        if (isSqlite(conn)) {
             try (PreparedStatement queryStmt = conn.prepareStatement("SELECT last_insert_rowid()");
                  ResultSet rs = queryStmt.executeQuery()) {
                 if (rs.next()) {
@@ -75,19 +131,52 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
         return -1;
     }
+
+    /**
+     * Проверяет, что соединение указывает на SQLite.
+     * Нужно, чтобы SQLite-специфичные вызовы (last_insert_rowid, PRAGMA)
+     * не попадали в H2 и другие СУБД.
+     */
+    protected boolean isSqlite(Connection conn) throws SQLException {
+        String url = conn.getMetaData().getURL();
+        return url != null && url.contains("sqlite");
+    }
+
+    /**
+     * Проверяет, что соединение указывает на H2.
+     */
+    protected boolean isH2(Connection conn) throws SQLException {
+        String url = conn.getMetaData().getURL();
+        return url != null && url.contains("h2");
+    }
     
     // ==================== DEFAULT IMPLEMENTATIONS ====================
     
+    /**
+     * Инициализировать production-базу данных.
+     *
+     * <p>Базовый класс не содержит реализации: метод должна переопределить конкретная СУБД.
+     * @throws UnsupportedOperationException если метод не переопределён
+     */
     @Override
     public void init() {
         throw new UnsupportedOperationException("init() must be implemented by concrete database class");
     }
     
+    /**
+     * Инициализировать тестовую базу данных.
+     *
+     * <p>Базовый класс не содержит реализации: метод должна переопределить конкретная СУБД.
+     * @throws UnsupportedOperationException если метод не переопределён
+     */
     @Override
     public void initForTest() {
         throw new UnsupportedOperationException("initForTest() must be implemented by concrete database class");
     }
     
+    /**
+     * Закрыть пул соединений и освободить ресурсы.
+     */
     @Override
     public void close() {
         if (dataSource != null && !dataSource.isClosed()) {
@@ -95,6 +184,11 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
     
+    /**
+     * Получить соединение из пула.
+     * @return соединение с базой данных
+     * @throws SQLException если соединение недоступно
+     */
     @Override
     public Connection getConnection() throws SQLException {
         return dataSource.getConnection();
@@ -102,26 +196,40 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     
     // ==================== CLIENTS ====================
     
+    /**
+     * Получить всех клиентов вместе с их автомобилями.
+     * @return список клиентов; пустой список, если клиентов нет
+     */
     @Override
     public List<Client> getAllClients() {
         List<Client> clients = new ArrayList<>();
-        String sql = "SELECT id, name, last_name, phone, car_model, car_number, last_repair_date FROM clients ORDER BY id";
+        String sql = "SELECT id, name, last_name, phone, car_model, car_number, last_repair_date, "
+                + "maintenance_stars, tuning_total FROM clients ORDER BY id";
 
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
-            while (rs.next()) {
-                Client client = new Client(
-                        rs.getInt("id"),
-                        rs.getString("name"),
-                        rs.getString("last_name"),
-                        rs.getString("phone"),
-                        rs.getString("car_model"),
-                        rs.getString("car_number"),
-                        rs.getString("last_repair_date")
-                );
-                client.setCars(getCarsByClientId(client.getId()));
-                clients.add(client);
+        // Все запросы выполняются на одном соединении: вложенный getConnection()
+        // на каждый автомобиль исчерпывал пул (H2: 5 соединений) и приводил к
+        // взаимной блокировке параллельных тестов.
+        try (Connection conn = getConnection()) {
+            try (PreparedStatement stmt = conn.prepareStatement(sql);
+                 ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Client client = new Client(
+                            rs.getInt("id"),
+                            rs.getString("name"),
+                            rs.getString("last_name"),
+                            rs.getString("phone"),
+                            rs.getString("car_model"),
+                            rs.getString("car_number"),
+                            rs.getString("last_repair_date")
+                    );
+                    client.setMaintenanceStars(rs.getInt("maintenance_stars"));
+                    client.setTuningTotal(rs.getDouble("tuning_total"));
+                    client.markClean();
+                    clients.add(client);
+                }
+            }
+            for (Client client : clients) {
+                client.setCars(loadCarsByClientId(conn, client.getId()));
             }
         } catch (SQLException e) {
             logger.error("Ошибка загрузки клиентов", e);
@@ -129,11 +237,16 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         return clients;
     }
     
+    /**
+     * Добавить клиента.
+     * @param client клиент для добавления; после вызова получает сгенерированный ID
+     */
     @Override
     public void addClient(Client client) {
-        String normalizedPhone = Validators.cleanPhone(client.getPhone());
-        String normalizedCarNumber = Validators.normalizeCarNumber(client.getCarNumber());
-        String sql = "INSERT INTO clients (name, last_name, phone, car_model, car_number, last_repair_date) VALUES (?, ?, ?, ?, ?, ?)";
+        String normalizedPhone = Formatters.cleanPhone(client.getPhone());
+        String normalizedCarNumber = Formatters.normalizeCarNumber(client.getCarNumber());
+        String sql = "INSERT INTO clients (name, last_name, phone, car_model, car_number, "
+                + "last_repair_date, maintenance_stars, tuning_total) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -143,6 +256,8 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setString(4, client.getCarModel());
             pstmt.setString(5, normalizedCarNumber);
             pstmt.setString(6, client.getLastRepairDate());
+            pstmt.setInt(7, client.getMaintenanceStars());
+            pstmt.setDouble(8, client.getTuningTotal());
             int affectedRows = pstmt.executeUpdate();
             
             if (affectedRows == 0) {
@@ -163,15 +278,14 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             }
             
             // Fallback: получаем ID через last_insert_rowid() для SQLite или MAX(id) для H2
-            String url = conn.getMetaData().getURL();
-            if (url != null && url.contains("h2")) {
+            if (isH2(conn)) {
                 try (Statement stmt = conn.createStatement();
                      ResultSet rs = stmt.executeQuery("SELECT MAX(id) FROM clients")) {
                     if (rs.next()) {
                         client.setId(rs.getInt(1));
                     }
                 }
-            } else if (url != null && url.contains("sqlite")) {
+            } else if (isSqlite(conn)) {
                 try (Statement stmt = conn.createStatement();
                      ResultSet rs = stmt.executeQuery("SELECT last_insert_rowid()")) {
                     if (rs.next()) {
@@ -185,11 +299,16 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
     
+    /**
+     * Обновить данные клиента.
+     * @param client клиент с обновлёнными данными
+     */
     @Override
     public void updateClient(Client client) {
-        String normalizedPhone = Validators.cleanPhone(client.getPhone());
-        String normalizedCarNumber = Validators.normalizeCarNumber(client.getCarNumber());
-        String sql = "UPDATE clients SET name = ?, last_name = ?, phone = ?, car_model = ?, car_number = ?, last_repair_date = ? WHERE id = ?";
+        String normalizedPhone = Formatters.cleanPhone(client.getPhone());
+        String normalizedCarNumber = Formatters.normalizeCarNumber(client.getCarNumber());
+        String sql = "UPDATE clients SET name = ?, last_name = ?, phone = ?, car_model = ?, "
+                + "car_number = ?, last_repair_date = ?, maintenance_stars = ?, tuning_total = ? WHERE id = ?";
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -199,13 +318,19 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setString(4, client.getCarModel());
             pstmt.setString(5, normalizedCarNumber);
             pstmt.setString(6, client.getLastRepairDate());
-            pstmt.setInt(7, client.getId());
+            pstmt.setInt(7, client.getMaintenanceStars());
+            pstmt.setDouble(8, client.getTuningTotal());
+            pstmt.setInt(9, client.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
             logger.error("Ошибка обновления клиента", e);
         }
     }
     
+    /**
+     * Удалить клиента.
+     * @param client удаляемый клиент
+     */
     @Override
     public void deleteClient(Client client) {
         String sql = "DELETE FROM clients WHERE id = ?";
@@ -221,33 +346,55 @@ public abstract class AbstractDatabase implements DatabaseInterface {
 
     // ==================== CAR CRUD ====================
 
+    /**
+     * Получить автомобили клиента.
+     * @param clientId идентификатор клиента
+     * @return список автомобилей; пустой список, если автомобилей нет
+     */
     @Override
     public List<Car> getCarsByClientId(int clientId) {
+        try (Connection conn = getConnection()) {
+            return loadCarsByClientId(conn, clientId);
+        } catch (SQLException e) {
+            logger.error("Ошибка загрузки автомобилей клиента", e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Загружает автомобили клиента через переданное соединение.
+     * Используется внутри методов, которые уже держат соединение,
+     * чтобы не занимать второе соединение из пула.
+     */
+    protected List<Car> loadCarsByClientId(Connection conn, int clientId) throws SQLException {
         List<Car> cars = new ArrayList<>();
         String sql = "SELECT id, client_id, car_model, car_number, mileage FROM client_cars WHERE client_id = ? ORDER BY id";
 
-        try (Connection conn = getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, clientId);
-            ResultSet rs = pstmt.executeQuery();
-            while (rs.next()) {
-                cars.add(new Car(
-                        rs.getInt("id"),
-                        rs.getInt("client_id"),
-                        rs.getString("car_model"),
-                        rs.getString("car_number"),
-                        rs.getInt("mileage")
-                ));
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    cars.add(new Car(
+                            rs.getInt("id"),
+                            rs.getInt("client_id"),
+                            rs.getString("car_model"),
+                            rs.getString("car_number"),
+                            rs.getInt("mileage")
+                    ));
+                }
             }
-        } catch (SQLException e) {
-            logger.error("Ошибка загрузки автомобилей клиента", e);
         }
         return cars;
     }
 
+    /**
+     * Добавить автомобиль клиента.
+     * @param car автомобиль для добавления
+     * @throws SQLException при ошибке сохранения
+     */
     @Override
     public void addCar(Car car) throws SQLException {
-        String normalizedNumber = Validators.normalizeCarNumber(car.getCarNumber());
+        String normalizedNumber = Formatters.normalizeCarNumber(car.getCarNumber());
         String sql = "INSERT INTO client_cars (client_id, car_model, car_number, mileage) VALUES (?, ?, ?, ?)";
 
         try (Connection conn = getConnection();
@@ -266,10 +413,12 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                 }
             } catch (SQLException e) {
                 logger.debug("getGeneratedKeys не поддерживается, используем fallback для car", e);
-                try (Statement stmt = conn.createStatement();
-                     ResultSet rs = stmt.executeQuery("SELECT last_insert_rowid()")) {
-                    if (rs.next()) {
-                        car.setId(rs.getInt(1));
+                if (isSqlite(conn)) {
+                    try (Statement stmt = conn.createStatement();
+                         ResultSet rs = stmt.executeQuery("SELECT last_insert_rowid()")) {
+                        if (rs.next()) {
+                            car.setId(rs.getInt(1));
+                        }
                     }
                 }
             }
@@ -279,9 +428,13 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Обновить данные автомобиля.
+     * @param car автомобиль с обновлёнными данными
+     */
     @Override
     public void updateCar(Car car) {
-        String normalizedNumber = Validators.normalizeCarNumber(car.getCarNumber());
+        String normalizedNumber = Formatters.normalizeCarNumber(car.getCarNumber());
         String sql = "UPDATE client_cars SET car_model = ?, car_number = ?, mileage = ? WHERE id = ?";
 
         try (Connection conn = getConnection();
@@ -296,6 +449,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Удалить автомобиль.
+     * @param car удаляемый автомобиль
+     */
     @Override
     public void deleteCar(Car car) {
         String sql = "DELETE FROM client_cars WHERE id = ?";
@@ -309,62 +466,95 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
     
+    /**
+     * Получить клиента по идентификатору.
+     * @param id идентификатор клиента
+     * @return клиент или {@code null}, если не найден
+     */
     @Override
     public Client getClientById(int id) {
-        String sql = "SELECT id, name, last_name, phone, car_model, car_number, last_repair_date FROM clients WHERE id = ?";
+        String sql = "SELECT id, name, last_name, phone, car_model, car_number, last_repair_date, "
+                + "maintenance_stars, tuning_total FROM clients WHERE id = ?";
 
-        try (Connection conn = getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setInt(1, id);
-            ResultSet rs = pstmt.executeQuery();
-            if (rs.next()) {
-                Client client = new Client(
-                        rs.getInt("id"),
-                        rs.getString("name"),
-                        rs.getString("last_name"),
-                        rs.getString("phone"),
-                        rs.getString("car_model"),
-                        rs.getString("car_number"),
-                        rs.getString("last_repair_date")
-                );
-                client.setCars(getCarsByClientId(id));
-                return client;
+        try (Connection conn = getConnection()) {
+            Client client = null;
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setInt(1, id);
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    if (rs.next()) {
+                        client = new Client(
+                                rs.getInt("id"),
+                                rs.getString("name"),
+                                rs.getString("last_name"),
+                                rs.getString("phone"),
+                                rs.getString("car_model"),
+                                rs.getString("car_number"),
+                                rs.getString("last_repair_date")
+                        );
+                        client.setMaintenanceStars(rs.getInt("maintenance_stars"));
+                        client.setTuningTotal(rs.getDouble("tuning_total"));
+                        client.markClean();
+                    }
+                }
             }
+            if (client != null) {
+                client.setCars(loadCarsByClientId(conn, id));
+            }
+            return client;
         } catch (SQLException e) {
             logger.error("Ошибка получения клиента по ID", e);
         }
         return null;
     }
     
+    /**
+     * Получить идентификатор клиента по его имени, фамилии и телефону.
+     * @param client клиент
+     * @return идентификатор или {@code -1}, если клиент не найден
+     */
     @Override
     public int getClientId(Client client) {
-        String normalizedPhone = Validators.cleanPhone(client.getPhone());
+        try (Connection conn = getConnection()) {
+            return findClientId(conn, client);
+        } catch (SQLException e) {
+            logger.error("Ошибка получения ID клиента", e);
+            return -1;
+        }
+    }
+
+    /**
+     * Ищет ID клиента через переданное соединение.
+     * Используется внутри транзакций (addOrder/updateOrder/addAppointment),
+     * чтобы не запрашивать второе соединение из пула и не блокировать его.
+     */
+    protected int findClientId(Connection conn, Client client) throws SQLException {
+        String normalizedPhone = Formatters.cleanPhone(client.getPhone());
         String normalizedLastName = client.getLastName() != null ? client.getLastName() : "";
         String sql = "SELECT id FROM clients WHERE name = ? AND last_name = ? AND phone = ?";
 
-        try (Connection conn = getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, client.getName());
             pstmt.setString(2, normalizedLastName);
             pstmt.setString(3, normalizedPhone);
-            ResultSet rs = pstmt.executeQuery();
-            if (rs.next()) {
-                return rs.getInt("id");
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("id");
+                }
             }
-        } catch (SQLException e) {
-            logger.error("Ошибка получения ID клиента", e);
         }
         return -1;
     }
     
     // ==================== SERVICES ====================
     
+    /**
+     * Добавить услугу; при совпадении названия существующая запись заменяется.
+     * @param service услуга для добавления; после вызова получает сгенерированный ID
+     */
     @Override
     public void addService(Service service) {
-        String sql = "INSERT INTO services (name, price, duration, part_number, category_id, oil_volume, uses_oil, spare_part_name, spare_part_quantity) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
         try (Connection conn = getConnection();
-              PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+              PreparedStatement pstmt = conn.prepareStatement(addServiceSql(conn), Statement.RETURN_GENERATED_KEYS)) {
             pstmt.setString(1, service.getName());
             pstmt.setDouble(2, service.getPrice());
             pstmt.setInt(3, service.getDuration());
@@ -374,19 +564,45 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setInt(7, service.isUsesOil() ? 1 : 0);
             pstmt.setString(8, service.getSparePartName());
             pstmt.setInt(9, service.getSparePartQuantity());
+            pstmt.setString(10, service.getCategory().name());
             pstmt.executeUpdate();
-            
-            // Получаем сгенерированный id (защищённый хелпер с fallback для SQLite)
-            service.setId(getGeneratedKeyId(conn, pstmt));
+
+            // Получаем сгенерированный id
+            int id = getGeneratedKeyId(conn, pstmt);
+            if (id > 0) {
+                service.setId(id);
+            }
         } catch (SQLException e) {
             logger.error("Ошибка добавления услуги", e);
         }
     }
+
+    /**
+     * SQL для добавления услуги с заменой записи с тем же названием.
+     * SQLite и H2 не поддерживают общий upsert-синтаксис ({@code INSERT OR REPLACE}
+     * и {@code MERGE ... KEY(name)} соответственно).
+     * @param conn соединение с базой данных
+     * @return SQL-запрос для текущего диалекта
+     */
+    private String addServiceSql(Connection conn) throws SQLException {
+        if (isSqlite(conn)) {
+            return "INSERT OR REPLACE INTO services (name, price, duration, part_number, category_id, oil_volume, uses_oil, spare_part_name, spare_part_quantity, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        }
+        if (isH2(conn)) {
+            return "MERGE INTO services (name, price, duration, part_number, category_id, oil_volume, uses_oil, spare_part_name, spare_part_quantity, category) KEY(name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        }
+        return "INSERT INTO services (name, price, duration, part_number, category_id, oil_volume, uses_oil, spare_part_name, spare_part_quantity, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    }
     
+    /**
+     * Получить все услуги.
+     * @return список услуг, отсортированный по названию
+     */
     @Override
     public List<Service> getAllServices() {
         List<Service> services = new ArrayList<>();
-        String sql = "SELECT id, name, price, duration, part_number, category_id, oil_volume, uses_oil, spare_part_name, spare_part_quantity FROM services ORDER BY name";
+        String sql = "SELECT id, name, price, duration, part_number, category_id, oil_volume, uses_oil, "
+                + "spare_part_name, spare_part_quantity, category FROM services ORDER BY name";
 
         try (Connection conn = getConnection();
               Statement stmt = conn.createStatement();
@@ -404,6 +620,7 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                 service.setUsesOil(rs.getInt("uses_oil") == 1);
                 service.setSparePartName(rs.getString("spare_part_name"));
                 service.setSparePartQuantity(rs.getInt("spare_part_quantity"));
+                service.setCategory(ServiceCategory.fromDatabase(rs.getString("category")));
                 services.add(service);
             }
         } catch (SQLException e) {
@@ -412,6 +629,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         return services;
     }
     
+    /**
+     * Удалить услугу.
+     * @param service удаляемая услуга
+     */
     @Override
     public void deleteService(Service service) {
         String sql = "DELETE FROM services WHERE id = ?";
@@ -425,9 +646,15 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
     
+    /**
+     * Обновить услугу.
+     * @param service услуга с обновлёнными данными
+     */
     @Override
     public void updateService(Service service) {
-        String sql = "UPDATE services SET name = ?, price = ?, duration = ?, part_number = ?, category_id = ?, oil_volume = ?, uses_oil = ?, spare_part_name = ?, spare_part_quantity = ? WHERE id = ?";
+        String sql = "UPDATE services SET name = ?, price = ?, duration = ?, part_number = ?, "
+                + "category_id = ?, oil_volume = ?, uses_oil = ?, spare_part_name = ?, "
+                + "spare_part_quantity = ?, category = ? WHERE id = ?";
 
         try (Connection conn = getConnection();
               PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -440,7 +667,8 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setInt(7, service.isUsesOil() ? 1 : 0);
             pstmt.setString(8, service.getSparePartName());
             pstmt.setInt(9, service.getSparePartQuantity());
-            pstmt.setInt(10, service.getId());
+            pstmt.setString(10, service.getCategory().name());
+            pstmt.setInt(11, service.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
             logger.error("Ошибка обновления услуги", e);
@@ -449,17 +677,23 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     
     // ==================== SPARE PARTS ====================
     
+    /**
+     * Получить все запчасти.
+     * @return список запчастей, отсортированный по названию
+     */
     @Override
     public List<SparePart> getAllSpareParts() {
         List<SparePart> parts = new ArrayList<>();
-        String sql = "SELECT id, name, part_number, manufacturer, compatible_models, note, purchase_price, retail_price, stock, min_stock, location, unit_type FROM spare_parts ORDER BY name";
+        String sql = "SELECT id, name, part_number, manufacturer, compatible_models, note, "
+                + "purchase_price, retail_price, stock, min_stock, location, unit_type, category "
+                + "FROM spare_parts ORDER BY name";
 
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             // Безопасно: запрос без параметров, Statement используется корректно
             while (rs.next()) {
-                parts.add(new SparePart(
+                SparePart part = new SparePart(
                         rs.getInt("id"),
                         0,
                         rs.getString("name"),
@@ -473,7 +707,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                         rs.getDouble("min_stock"),
                         rs.getString("unit_type"),
                         rs.getString("location")
-                ));
+                );
+                part.setCategory(ServiceCategory.fromDatabase(rs.getString("category")));
+                part.markClean();
+                parts.add(part);
             }
         } catch (SQLException e) {
             logger.error("Ошибка загрузки запчастей", e);
@@ -481,11 +718,15 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         return parts;
     }
     
+    /**
+     * Обновить запчасть.
+     * @param part запчасть с обновлёнными данными
+     */
     @Override
     public void updateSparePart(SparePart part) {
         String sql = "UPDATE spare_parts SET name = ?, purchase_price = ?, retail_price = ?, stock = ?, " +
                 "part_number = ?, manufacturer = ?, compatible_models = ?, note = ?, min_stock = ?, location = ?, " +
-                "unit_type = ? WHERE id = ?";
+                "unit_type = ?, category = ? WHERE id = ?";
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -500,13 +741,18 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setDouble(9, part.getMinStock());
             pstmt.setString(10, part.getLocation());
             pstmt.setString(11, part.getUnitType());
-            pstmt.setInt(12, part.getId());
+            pstmt.setString(12, part.getCategory().name());
+            pstmt.setInt(13, part.getId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
             logger.error("Ошибка обновления запчасти", e);
         }
     }
     
+    /**
+     * Удалить запчасть.
+     * @param part удаляемая запчасть
+     */
     @Override
     public void deleteSparePart(SparePart part) {
         String sql = "DELETE FROM spare_parts WHERE id = ?";
@@ -522,89 +768,121 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     
     // ==================== ORDERS ====================
     
+    /**
+     * Получить все заказы вместе с услугами и запчастями.
+     * @return список заказов, отсортированный по дате создания (новые первыми)
+     */
     @Override
     public List<WorkOrder> getAllOrders() {
-        Map<String, WorkOrder> orderMap = new LinkedHashMap<>();
+        Map<String, WorkOrder> orders = new LinkedHashMap<>();
+        if (!loadOrders(orders)) {
+            return new ArrayList<>();
+        }
+        loadOrderServices(orders);
+        loadOrderSpareParts(orders);
+        return new ArrayList<>(orders.values());
+    }
 
-        String ordersSql = """
+    /**
+     * Загрузить заказы и их клиентов.
+     * @param orders карта «ID заказа — заказ», которую нужно заполнить
+     * @return {@code true}, если заказы удалось загрузить
+     */
+    private boolean loadOrders(Map<String, WorkOrder> orders) {
+        String sql = """
             SELECT o.id as order_id, o.status, o.total, o.created_date, o.mileage,
-                    o.closed_date, o.notes, o.car_model as o_car_model, o.car_number as o_car_number,
+                    o.closed_date, o.notes,
                     c.id as client_id, c.name, c.last_name, c.phone, 
-                    c.car_model as c_car_model, c.car_number as c_car_number, c.last_repair_date
+                    c.car_model, c.car_number, c.last_repair_date,
+                    c.maintenance_stars, c.tuning_total
             FROM orders o
             LEFT JOIN clients c ON o.client_id = c.id
-            ORDER BY
-                CASE
-                    WHEN LENGTH(o.created_date) >= 10
-                        THEN substr(o.created_date, 7, 4) || substr(o.created_date, 4, 2) || substr(o.created_date, 1, 2)
-                    ELSE '20' || substr(o.created_date, 7, 2) || substr(o.created_date, 4, 2) || substr(o.created_date, 1, 2)
-                END DESC,
-                o.id ASC
+            ORDER BY o.created_date DESC
         """;
 
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(ordersSql)) {
+             ResultSet rs = stmt.executeQuery(sql)) {
             // Безопасно: запрос без параметров, Statement используется корректно
-
             while (rs.next()) {
-                Client client = new Client(
-                        rs.getInt("client_id"),
-                        rs.getString("name") != null ? rs.getString("name") : "",
-                        rs.getString("last_name") != null ? rs.getString("last_name") : "",
-                        rs.getString("phone") != null ? rs.getString("phone") : "",
-                        rs.getString("c_car_model") != null ? rs.getString("c_car_model") : "",
-                        rs.getString("c_car_number") != null ? rs.getString("c_car_number") : "",
-                        rs.getString("last_repair_date") != null ? rs.getString("last_repair_date") : ""
-                );
-                // Заполняем список автомобилей клиента (актуальные машины из client_cars)
-                client.setCars(getCarsByClientId(client.getId()));
-
-                WorkOrder order = new WorkOrder(
-                        rs.getString("order_id"),
-                        client,
-                        rs.getString("status"),
-                        rs.getDouble("total"),
-                        rs.getString("created_date")
-                );
-                order.setMileage(rs.getInt("mileage"));
-                order.setClosedDate(rs.getString("closed_date") != null ? rs.getString("closed_date") : "");
-                order.setNotes(rs.getString("notes") != null ? rs.getString("notes") : "");
-                // Автомобиль, зафиксированный в наряд-заказе
-                order.setCarModel(rs.getString("o_car_model") != null ? rs.getString("o_car_model") : "");
-                order.setCarNumber(rs.getString("o_car_number") != null ? rs.getString("o_car_number") : "");
-                orderMap.put(rs.getString("order_id"), order);
+                orders.put(rs.getString("order_id"), mapOrder(rs));
             }
+            return true;
         } catch (SQLException e) {
             logger.error("Ошибка загрузки заказов", e);
             logger.error("Технические детали: {}", ExceptionHandler.getTechnicalDetails(e));
-            return new ArrayList<>();
+            return false;
         }
+    }
 
-        String servicesSql = "SELECT order_id, service_name, price, service_id FROM order_services";
+    /**
+     * Собрать заказ и его клиента из текущей строки выборки.
+     * @param rs строка результата с колонками заказа и клиента
+     * @return заказ с данными клиента
+     * @throws SQLException при ошибке чтения результата
+     */
+    private WorkOrder mapOrder(ResultSet rs) throws SQLException {
+        Client client = new Client(
+                rs.getInt("client_id"),
+                valueOrDefault(rs.getString("name"), ""),
+                valueOrDefault(rs.getString("last_name"), ""),
+                valueOrDefault(rs.getString("phone"), ""),
+                valueOrDefault(rs.getString("car_model"), ""),
+                valueOrDefault(rs.getString("car_number"), ""),
+                valueOrDefault(rs.getString("last_repair_date"), "")
+        );
+        client.setMaintenanceStars(rs.getInt("maintenance_stars"));
+        client.setTuningTotal(rs.getDouble("tuning_total"));
+        client.markClean();
+
+        WorkOrder order = new WorkOrder(
+                rs.getString("order_id"),
+                client,
+                rs.getString("status"),
+                rs.getDouble("total"),
+                rs.getString("created_date")
+        );
+        order.setMileage(rs.getInt("mileage"));
+        order.setClosedDate(valueOrDefault(rs.getString("closed_date"), ""));
+        order.setNotes(valueOrDefault(rs.getString("notes"), ""));
+        return order;
+    }
+
+    /**
+     * Дозагрузить услуги в уже собранные заказы.
+     * @param orders карта «ID заказа — заказ»
+     */
+    private void loadOrderServices(Map<String, WorkOrder> orders) {
+        String sql = "SELECT order_id, service_name, price, service_id FROM order_services";
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(servicesSql)) {
+             ResultSet rs = stmt.executeQuery(sql)) {
             // Безопасно: запрос без параметров, Statement используется корректно
             while (rs.next()) {
-                String orderId = rs.getString("order_id");
-                WorkOrder order = orderMap.get(orderId);
+                WorkOrder order = orders.get(rs.getString("order_id"));
                 if (order != null) {
-                    order.addService(rs.getInt("service_id"), rs.getString("service_name"), rs.getDouble("price"));
+                    order.addLoadedService(rs.getInt("service_id"),
+                            rs.getString("service_name"), rs.getDouble("price"));
                 }
             }
         } catch (SQLException e) {
             logger.error("Ошибка загрузки услуг заказа", e);
         }
+    }
 
-        String partsSql = "SELECT order_id, part_name, price, quantity, spare_part_id, unit_type, purchase_price FROM order_parts";
+    /**
+     * Дозагрузить запчасти в уже собранные заказы.
+     * @param orders карта «ID заказа — заказ»
+     */
+    private void loadOrderSpareParts(Map<String, WorkOrder> orders) {
+        String sql = "SELECT order_id, part_name, price, quantity, spare_part_id, unit_type, "
+                + "purchase_price FROM order_parts";
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(partsSql)) {
+             ResultSet rs = stmt.executeQuery(sql)) {
             // Безопасно: запрос без параметров, Statement используется корректно
             while (rs.next()) {
-                String orderId = rs.getString("order_id");
-                WorkOrder order = orderMap.get(orderId);
+                WorkOrder order = orders.get(rs.getString("order_id"));
                 if (order != null) {
                     SparePart part = new SparePart(
                             rs.getString("part_name"),
@@ -613,22 +891,29 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                             rs.getInt("quantity")
                     );
                     part.setId(rs.getInt("spare_part_id"));
-                    part.setUnitType(rs.getString("unit_type") != null ? rs.getString("unit_type") : "шт");
-                    order.addSparePart(part, rs.getInt("quantity"));
+                    part.setUnitType(valueOrDefault(rs.getString("unit_type"), "шт"));
+                    order.addLoadedSparePart(part, rs.getInt("quantity"));
                 }
             }
         } catch (SQLException e) {
             logger.error("Ошибка загрузки запчастей заказа", e);
         }
+    }
 
-        // Сбрасываем флаг dirty — заказ только что загружен из БД, изменений нет
-        for (WorkOrder order : orderMap.values()) {
-            order.setDirty(false);
-        }
-
-        return new ArrayList<>(orderMap.values());
+    /**
+     * Вернуть значение из базы или значение по умолчанию, если оно {@code null}.
+     * @param value значение из результата запроса
+     * @param defaultValue значение по умолчанию
+     * @return значение или значение по умолчанию
+     */
+    private static String valueOrDefault(String value, String defaultValue) {
+        return value != null ? value : defaultValue;
     }
     
+    /**
+     * Удалить заказ.
+     * @param orderId идентификатор заказа
+     */
     @Override
     public void deleteOrder(String orderId) {
         String sql = "DELETE FROM orders WHERE id = ?";
@@ -642,13 +927,17 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
     
+    /**
+     * Обновить заказ, его услуги и запчасти.
+     * @param order заказ с обновлёнными данными
+     */
     @Override
     public void updateOrder(WorkOrder order) {
         String sql = "UPDATE orders SET client_id = ?, status = ?, total = ?, mileage = ?, closed_date = ?, notes = ? WHERE id = ?";
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            int clientId = getClientId(order.getClient());
+            int clientId = findClientId(conn, order.getClient());
             pstmt.setInt(1, clientId);
             pstmt.setString(2, order.getStatus());
             pstmt.setDouble(3, order.getTotal());
@@ -662,8 +951,38 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
     
+    /**
+     * Сохранить запчасти заказа в {@code order_parts}.
+     * Используется внутри транзакций {@code addOrder}/{@code updateOrder}.
+     * @param conn соединение с базой данных
+     * @param orderId идентификатор заказа
+     * @param order заказ с запчастями
+     * @throws SQLException если вставка не удалась
+     */
+    protected void saveOrderParts(Connection conn, String orderId, WorkOrder order) throws SQLException {
+        String sql = "INSERT INTO order_parts (order_id, part_name, price, quantity, spare_part_id, unit_type, purchase_price) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            for (int i = 0; i < order.getSpareParts().size(); i++) {
+                SparePart part = order.getSpareParts().get(i);
+                pstmt.setString(1, orderId);
+                pstmt.setString(2, part.getName());
+                pstmt.setDouble(3, part.getRetailPrice());
+                pstmt.setDouble(4, order.getSparePartQuantities().get(i));
+                pstmt.setInt(5, part.getId());
+                pstmt.setString(6, part.getUnitType() != null ? part.getUnitType() : "шт");
+                pstmt.setDouble(7, part.getPurchasePrice());
+                pstmt.addBatch();
+            }
+            pstmt.executeBatch();
+        }
+    }
+
     // ==================== APPOINTMENTS ====================
     
+    /**
+     * Получить все записи на обслуживание.
+     * @return список записей, отсортированный по дате и времени
+     */
     @Override
     public List<Appointment> getAllAppointments() {
         List<Appointment> appointments = new ArrayList<>();
@@ -710,6 +1029,11 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         return appointments;
     }
     
+    /**
+     * Получить записи на обслуживание на указанную дату.
+     * @param date дата в формате {@code dd/MM/yyyy}
+     * @return список записей, отсортированный по времени
+     */
     @Override
     public List<Appointment> getAppointmentsByDate(String date) {
         List<Appointment> appointments = new ArrayList<>();
@@ -759,13 +1083,17 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     
     // ==================== APPOINTMENT MODIFICATION METHODS ====================
     
+    /**
+     * Обновить запись на обслуживание.
+     * @param appointment запись с обновлёнными данными
+     */
     @Override
     public void updateAppointment(Appointment appointment) {
         String sql = "UPDATE appointments SET client_id = ?, master_name = ?, service_name = ?, service_id = ?, appointment_date = ?, appointment_time = ?, status = ?, order_id = ? WHERE id = ?";
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            int clientId = getClientId(appointment.getClient());
+            int clientId = findClientId(conn, appointment.getClient());
             pstmt.setInt(1, clientId);
             pstmt.setString(2, appointment.getMasterName());
             pstmt.setString(3, appointment.getServiceName());
@@ -781,6 +1109,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
     
+    /**
+     * Удалить запись на обслуживание.
+     * @param id идентификатор записи
+     */
     @Override
     public void deleteAppointment(int id) {
         String sql = "DELETE FROM appointments WHERE id = ?";
@@ -793,6 +1125,11 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Получить запись на обслуживание по идентификатору.
+     * @param id идентификатор записи
+     * @return запись или {@code null}, если не найдена
+     */
     @Override
     public Appointment getAppointmentById(int id) {
         String sql = """
@@ -841,6 +1178,11 @@ public abstract class AbstractDatabase implements DatabaseInterface {
 
     // ==================== SERVICE-SPARE PART RELATIONSHIPS ====================
 
+    /**
+     * Получить связи услуги с запчастями.
+     * @param serviceId идентификатор услуги; {@code -1} — вернуть все связи
+     * @return список связей
+     */
     @Override
     public List<com.autoservice.model.ServiceSparePart> getServiceSparePartsByServiceId(int serviceId) {
         List<com.autoservice.model.ServiceSparePart> relations = new ArrayList<>();
@@ -883,12 +1225,16 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         return relations;
     }
 
+    /**
+     * Добавить связь услуги с запчастью.
+     * @param relation связь для добавления; после вызова получает сгенерированный ID
+     */
     @Override
     public void addServiceSparePart(com.autoservice.model.ServiceSparePart relation) {
         String sql = "INSERT INTO service_spare_parts (service_id, spare_part_id, quantity, unit_type, active) VALUES (?, ?, ?, ?, ?)";
 
         try (Connection conn = getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+             PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             pstmt.setInt(1, relation.getServiceId());
             pstmt.setInt(2, relation.getSparePartId());
             pstmt.setInt(3, relation.getQuantity());
@@ -896,18 +1242,21 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setInt(5, relation.isActive() ? 1 : 0);
             pstmt.executeUpdate();
             
-            // Получаем сгенерированный id через last_insert_rowid() для SQLite
-            try (Statement stmt = conn.createStatement();
-                 ResultSet rs = stmt.executeQuery("SELECT last_insert_rowid()")) {
-                if (rs.next()) {
-                    relation.setId(rs.getInt(1));
-                }
+            // Универсальный способ: getGeneratedKeys работает и в SQLite, и в H2,
+            // last_insert_rowid() вызывается только как SQLite-fallback.
+            int id = getGeneratedKeyId(conn, pstmt);
+            if (id > 0) {
+                relation.setId(id);
             }
         } catch (SQLException e) {
             logger.error("Ошибка добавления связи услуги-запчасти", e);
         }
     }
 
+    /**
+     * Удалить связь услуги с запчастью.
+     * @param relation удаляемая связь
+     */
     @Override
     public void deleteServiceSparePart(com.autoservice.model.ServiceSparePart relation) {
         String sql = "DELETE FROM service_spare_parts WHERE id = ?";
@@ -921,6 +1270,12 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Удалить все связи услуги с запчастями.
+     *
+     * <p>Вызов с {@code serviceId == -1} блокируется для защиты от массового удаления.
+     * @param serviceId идентификатор услуги
+     */
     @Override
     public void deleteServiceSparePartsByServiceId(int serviceId) {
         String sql;
@@ -943,6 +1298,9 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Удалить дубликаты связей услуги с запчастями, оставив по одной связи на пару «услуга — запчасть».
+     */
     @Override
     public void deleteDuplicateServiceSpareParts() {
         // Удаляет дубликаты связей для одной услуги-запчасти, оставляя только одну
@@ -960,6 +1318,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
 
     // ==================== SERVICE-PART RELATIONSHIPS (NEW STRUCTURE) ====================
 
+    /**
+     * Получить все связи услуг с запчастями (новая структура).
+     * @return список связей
+     */
     @Override
     public List<com.autoservice.model.ServicePart> getAllServiceParts() {
         List<com.autoservice.model.ServicePart> parts = new ArrayList<>();
@@ -986,6 +1348,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         return parts;
     }
 
+    /**
+     * Добавить связь услуги с запчастью (новая структура).
+     * @param part связь для добавления; после вызова получает сгенерированный ID
+     */
     @Override
     public void addServicePart(com.autoservice.model.ServicePart part) {
         String sql = "INSERT INTO service_parts (service_id, spare_part_id, quantity, is_required, created_date) VALUES (?, ?, ?, ?, ?)";
@@ -1006,11 +1372,13 @@ public abstract class AbstractDatabase implements DatabaseInterface {
                     part.setId(id);
                 }
             } catch (SQLException e) {
-                // SQLite не поддерживает getGeneratedKeys, используем последний ID
-                try (Statement stmt = conn.createStatement();
-                     ResultSet rs = stmt.executeQuery("SELECT last_insert_rowid()")) {
-                    if (rs.next()) {
-                        part.setId(rs.getInt(1));
+                // Fallback только для SQLite: H2 не знает last_insert_rowid().
+                if (isSqlite(conn)) {
+                    try (Statement stmt = conn.createStatement();
+                         ResultSet rs = stmt.executeQuery("SELECT last_insert_rowid()")) {
+                        if (rs.next()) {
+                            part.setId(rs.getInt(1));
+                        }
                     }
                 }
             }
@@ -1019,6 +1387,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Обновить связь услуги с запчастью (новая структура).
+     * @param part связь с обновлёнными данными
+     */
     @Override
     public void updateServicePart(com.autoservice.model.ServicePart part) {
         String sql = "UPDATE service_parts SET service_id = ?, spare_part_id = ?, quantity = ?, is_required = ? WHERE id = ?";
@@ -1036,6 +1408,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Удалить связь услуги с запчастью (новая структура).
+     * @param part удаляемая связь
+     */
     @Override
     public void deleteServicePart(com.autoservice.model.ServicePart part) {
         String sql = "DELETE FROM service_parts WHERE id = ?";
@@ -1049,6 +1425,12 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Удалить все связи услуги с запчастями (новая структура).
+     *
+     * <p>Вызов с {@code serviceId == -1} блокируется для защиты от массового удаления.
+     * @param serviceId идентификатор услуги
+     */
     @Override
     public void deleteServicePartsByServiceId(int serviceId) {
         String sql;
@@ -1071,6 +1453,12 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Удалить все связи запчасти с услугами (новая структура).
+     *
+     * <p>Вызов с {@code sparePartId == -1} блокируется для защиты от массового удаления.
+     * @param sparePartId идентификатор запчасти
+     */
     @Override
     public void deleteServicePartsBySparePartId(int sparePartId) {
         String sql;
@@ -1095,6 +1483,11 @@ public abstract class AbstractDatabase implements DatabaseInterface {
 
     // ==================== SERVICE-SPARE PARTS LISTS (NEW STRUCTURE) ====================
 
+    /**
+     * Получить списки запчастей услуги.
+     * @param serviceId идентификатор услуги; {@code -1} — вернуть все списки
+     * @return список списков, отсортированный по дате создания (новые первыми)
+     */
     @Override
     public List<com.autoservice.model.ServiceSparePartsList> getServiceSparePartsListsByServiceId(int serviceId) {
         List<com.autoservice.model.ServiceSparePartsList> lists = new ArrayList<>();
@@ -1135,6 +1528,11 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         return lists;
     }
 
+    /**
+     * Получить элементы списка запчастей.
+     * @param listId идентификатор списка
+     * @return список элементов
+     */
     @Override
     public List<com.autoservice.model.ServiceSparePartsListItem> getServiceSparePartsListItems(int listId) {
         List<com.autoservice.model.ServiceSparePartsListItem> items = new ArrayList<>();
@@ -1161,6 +1559,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         return items;
     }
 
+    /**
+     * Добавить список запчастей вместе с его элементами.
+     * @param list список для добавления; после вызова получает сгенерированный ID
+     */
     @Override
     public void addServiceSparePartsList(com.autoservice.model.ServiceSparePartsList list) {
         String sql = "INSERT INTO service_spare_parts_lists (service_id, created_date, active) VALUES (?, ?, ?)";
@@ -1204,6 +1606,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Добавить элемент списка запчастей.
+     * @param item элемент для добавления; после вызова получает сгенерированный ID
+     */
     @Override
     public void addServiceSparePartsListItem(com.autoservice.model.ServiceSparePartsListItem item) {
         String sql = "INSERT INTO service_spare_parts_list_items (list_id, spare_part_id, quantity, unit_type) VALUES (?, ?, ?, ?)";
@@ -1226,6 +1632,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Удалить список запчастей вместе с его элементами.
+     * @param list удаляемый список
+     */
     @Override
     public void deleteServiceSparePartsList(com.autoservice.model.ServiceSparePartsList list) {
         // Сначала удаляем все элементы списка
@@ -1243,6 +1653,12 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Удалить все списки запчастей услуги вместе с их элементами.
+     *
+     * <p>Вызов с {@code serviceId == -1} блокируется для защиты от массового удаления.
+     * @param serviceId идентификатор услуги
+     */
     @Override
     public void deleteServiceSparePartsListsByServiceId(int serviceId) {
         // Блокировка массового удаления для безопасности
@@ -1270,6 +1686,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Удалить все элементы списка запчастей.
+     * @param listId идентификатор списка
+     */
     @Override
     public void deleteServiceSparePartsListItemsByListId(int listId) {
         String sql = "DELETE FROM service_spare_parts_list_items WHERE list_id = ?";
@@ -1285,6 +1705,11 @@ public abstract class AbstractDatabase implements DatabaseInterface {
 
     // ==================== TO PARTS RELATIONSHIPS ====================
 
+    /**
+     * Получить расходники TO для модели автомобиля.
+     * @param carModel модель автомобиля; {@code null} или пустая строка — вернуть все расходники
+     * @return список расходников
+     */
     @Override
     public List<com.autoservice.model.ToPart> getToPartsByCarModel(String carModel) {
         List<com.autoservice.model.ToPart> parts = new ArrayList<>();
@@ -1328,6 +1753,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         return parts;
     }
 
+    /**
+     * Получить все модели автомобилей, для которых заданы расходники TO.
+     * @return список моделей без дубликатов
+     */
     @Override
     public List<String> getAllCarModels() {
         List<String> carModels = new ArrayList<>();
@@ -1349,6 +1778,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         return carModels;
     }
 
+    /**
+     * Добавить расходник TO.
+     * @param part расходник для добавления; после вызова получает сгенерированный ID
+     */
     @Override
     public void addToPart(com.autoservice.model.ToPart part) {
         String sql = "INSERT INTO to_parts (car_model, spare_part_id, quantity, unit_type, note, active) VALUES (?, ?, ?, ?, ?, ?)";
@@ -1363,13 +1796,20 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setInt(6, part.isActive() ? 1 : 0);
             pstmt.executeUpdate();
             
-            // Получаем сгенерированный id (защищённый хелпер с fallback для SQLite)
-            part.setId(getGeneratedKeyId(conn, pstmt));
+            // Получаем сгенерированный id
+            ResultSet rs = pstmt.getGeneratedKeys();
+            if (rs.next()) {
+                part.setId(rs.getInt(1));
+            }
         } catch (SQLException e) {
             logger.error("Ошибка добавления расходника TO", e);
         }
     }
 
+    /**
+     * Обновить расходник TO.
+     * @param part расходник с обновлёнными данными
+     */
     @Override
     public void updateToPart(com.autoservice.model.ToPart part) {
         String sql = "UPDATE to_parts SET spare_part_id = ?, quantity = ?, unit_type = ?, note = ?, active = ? WHERE id = ?";
@@ -1388,6 +1828,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Удалить расходник TO.
+     * @param part удаляемый расходник
+     */
     @Override
     public void deleteToPart(com.autoservice.model.ToPart part) {
         String sql = "DELETE FROM to_parts WHERE id = ?";
@@ -1401,6 +1845,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Удалить расходники TO для модели автомобиля.
+     * @param carModel модель автомобиля; {@code null} или пустая строка — удалить все расходники
+     */
     @Override
     public void deleteToPartsByCarModel(String carModel) {
         String sql;
@@ -1425,6 +1873,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
 
     // ==================== SETTINGS ====================
 
+    /**
+     * Получить все настройки приложения.
+     * @return список настроек
+     */
     @Override
     public List<com.autoservice.model.Setting> getAllSettings() {
         List<com.autoservice.model.Setting> settings = new ArrayList<>();
@@ -1448,6 +1900,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         return settings;
     }
 
+    /**
+     * Добавить настройку.
+     * @param setting настройка для добавления; после вызова получает сгенерированный ID
+     */
     @Override
     public void addSetting(com.autoservice.model.Setting setting) {
         String sql = "INSERT INTO app_settings (setting_key, setting_value, description) VALUES (?, ?, ?)";
@@ -1458,17 +1914,21 @@ public abstract class AbstractDatabase implements DatabaseInterface {
             pstmt.setString(2, setting.getValue());
             pstmt.setString(3, setting.getDescription());
             pstmt.executeUpdate();
-
-            // Получаем сгенерированный id.
-            // getGeneratedKeys() не поддерживается SQLite-драйвером
-            // (SQLFeatureNotSupportedException), поэтому используем
-            // защищённый хелпер с fallback на last_insert_rowid().
-            setting.setId(getGeneratedKeyId(conn, pstmt));
+            
+            // Получаем сгенерированный id
+            ResultSet rs = pstmt.getGeneratedKeys();
+            if (rs.next()) {
+                setting.setId(rs.getInt(1));
+            }
         } catch (SQLException e) {
             logger.error("Ошибка добавления настройки", e);
         }
     }
 
+    /**
+     * Обновить значение настройки.
+     * @param setting настройка с новым значением
+     */
     @Override
     public void updateSetting(com.autoservice.model.Setting setting) {
         String sql = "UPDATE app_settings SET setting_value = ? WHERE id = ?";
@@ -1488,6 +1948,10 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Удалить настройку.
+     * @param setting удаляемая настройка
+     */
     @Override
     public void deleteSetting(com.autoservice.model.Setting setting) {
         String sql = "DELETE FROM app_settings WHERE id = ?";
@@ -1501,6 +1965,11 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
+    /**
+     * Получить настройку по ключу.
+     * @param key ключ настройки
+     * @return настройка или {@code null}, если не найдена
+     */
     @Override
     public com.autoservice.model.Setting getSettingByKey(String key) {
         String sql = "SELECT id, setting_key, setting_value, description FROM app_settings WHERE setting_key = ?";

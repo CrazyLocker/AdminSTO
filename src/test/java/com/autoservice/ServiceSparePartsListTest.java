@@ -52,7 +52,7 @@ public class ServiceSparePartsListTest extends BaseTest {
         Service service = new Service();
         service.setName("Тестовая услуга");
         service.setPrice(1000);
-        Database.addService(service);
+        DatabaseFactory.getDatabase().addService(service);
         assertNotNull(service.getId());
 
         // Создаем список связей
@@ -86,7 +86,7 @@ public class ServiceSparePartsListTest extends BaseTest {
         list.addItem(item3);
 
         // Сохраняем список
-        Database.addServiceSparePartsList(list);
+        DatabaseFactory.getDatabase().addServiceSparePartsList(list);
 
         // Проверяем, что список был сохранен с ID
         assertNotNull(list.getId());
@@ -98,12 +98,12 @@ public class ServiceSparePartsListTest extends BaseTest {
         }
 
         // Проверяем, что данные сохранены в БД
-        List<ServiceSparePartsList> loadedLists = Database.getServiceSparePartsListsByServiceId(service.getId());
+        List<ServiceSparePartsList> loadedLists = DatabaseFactory.getDatabase().getServiceSparePartsListsByServiceId(service.getId());
         assertEquals(1, loadedLists.size());
         assertEquals(service.getId(), loadedLists.get(0).getServiceId());
 
         // Проверяем элементы
-        List<ServiceSparePartsListItem> loadedItems = Database.getServiceSparePartsListItems(list.getId());
+        List<ServiceSparePartsListItem> loadedItems = DatabaseFactory.getDatabase().getServiceSparePartsListItems(list.getId());
         assertEquals(3, loadedItems.size());
 
         // Проверяем содержимое элементов
@@ -121,7 +121,7 @@ public class ServiceSparePartsListTest extends BaseTest {
         Service service = new Service();
         service.setName("Тестовая услуга 2");
         service.setPrice(2000);
-        Database.addService(service);
+        DatabaseFactory.getDatabase().addService(service);
         assertNotNull(service.getId());
 
         // Создаем первый список
@@ -137,7 +137,7 @@ public class ServiceSparePartsListTest extends BaseTest {
         item1.setUnitType("шт");
         list1.addItem(item1);
 
-        Database.addServiceSparePartsList(list1);
+        DatabaseFactory.getDatabase().addServiceSparePartsList(list1);
 
         // Создаем второй список для той же услуги
         ServiceSparePartsList list2 = new ServiceSparePartsList();
@@ -152,10 +152,10 @@ public class ServiceSparePartsListTest extends BaseTest {
         item2.setUnitType("шт");
         list2.addItem(item2);
 
-        Database.addServiceSparePartsList(list2);
+        DatabaseFactory.getDatabase().addServiceSparePartsList(list2);
 
         // Получаем все списки для услуги
-        List<ServiceSparePartsList> lists = Database.getServiceSparePartsListsByServiceId(service.getId());
+        List<ServiceSparePartsList> lists = DatabaseFactory.getDatabase().getServiceSparePartsListsByServiceId(service.getId());
         assertEquals(2, lists.size());
 
         // Проверяем, что списки содержат правильные ID
@@ -169,7 +169,7 @@ public class ServiceSparePartsListTest extends BaseTest {
         Service service = new Service();
         service.setName("Тестовая услуга для удаления");
         service.setPrice(3000);
-        Database.addService(service);
+        DatabaseFactory.getDatabase().addService(service);
         assertNotNull(service.getId());
 
         // Создаем список
@@ -185,21 +185,21 @@ public class ServiceSparePartsListTest extends BaseTest {
         item.setUnitType("шт");
         list.addItem(item);
 
-        Database.addServiceSparePartsList(list);
+        DatabaseFactory.getDatabase().addServiceSparePartsList(list);
 
         // Проверяем, что список существует
-        List<ServiceSparePartsList> lists = Database.getServiceSparePartsListsByServiceId(service.getId());
+        List<ServiceSparePartsList> lists = DatabaseFactory.getDatabase().getServiceSparePartsListsByServiceId(service.getId());
         assertEquals(1, lists.size());
 
         // Удаляем список
-        Database.deleteServiceSparePartsList(list);
+        DatabaseFactory.getDatabase().deleteServiceSparePartsList(list);
 
         // Проверяем, что список удален
-        lists = Database.getServiceSparePartsListsByServiceId(service.getId());
+        lists = DatabaseFactory.getDatabase().getServiceSparePartsListsByServiceId(service.getId());
         assertEquals(0, lists.size());
 
         // Проверяем, что элементы также удалены
-        List<ServiceSparePartsListItem> items = Database.getServiceSparePartsListItems(list.getId());
+        List<ServiceSparePartsListItem> items = DatabaseFactory.getDatabase().getServiceSparePartsListItems(list.getId());
         assertEquals(0, items.size());
     }
 
@@ -209,7 +209,7 @@ public class ServiceSparePartsListTest extends BaseTest {
         Service service = new Service();
         service.setName("Тестовая услуга для массового удаления");
         service.setPrice(4000);
-        Database.addService(service);
+        DatabaseFactory.getDatabase().addService(service);
         assertNotNull(service.getId());
 
         // Создаем два списка
@@ -225,7 +225,7 @@ public class ServiceSparePartsListTest extends BaseTest {
         item1.setUnitType("шт");
         list1.addItem(item1);
 
-        Database.addServiceSparePartsList(list1);
+        DatabaseFactory.getDatabase().addServiceSparePartsList(list1);
 
         ServiceSparePartsList list2 = new ServiceSparePartsList();
         list2.setServiceId(service.getId());
@@ -239,17 +239,17 @@ public class ServiceSparePartsListTest extends BaseTest {
         item2.setUnitType("шт");
         list2.addItem(item2);
 
-        Database.addServiceSparePartsList(list2);
+        DatabaseFactory.getDatabase().addServiceSparePartsList(list2);
 
         // Проверяем, что оба списка существуют
-        List<ServiceSparePartsList> lists = Database.getServiceSparePartsListsByServiceId(service.getId());
+        List<ServiceSparePartsList> lists = DatabaseFactory.getDatabase().getServiceSparePartsListsByServiceId(service.getId());
         assertEquals(2, lists.size());
 
         // Удаляем все списки для услуги
-        Database.deleteServiceSparePartsListsByServiceId(service.getId());
+        DatabaseFactory.getDatabase().deleteServiceSparePartsListsByServiceId(service.getId());
 
         // Проверяем, что списки удалены
-        lists = Database.getServiceSparePartsListsByServiceId(service.getId());
+        lists = DatabaseFactory.getDatabase().getServiceSparePartsListsByServiceId(service.getId());
         assertEquals(0, lists.size());
     }
 
@@ -262,7 +262,7 @@ public class ServiceSparePartsListTest extends BaseTest {
         part.setRetailPrice(100);
         part.setStock(10);
         part.setUnitType("шт");
-        Database.addSparePart(part);
+        DatabaseFactory.getDatabase().addSparePart(part);
         return part;
     }
 }

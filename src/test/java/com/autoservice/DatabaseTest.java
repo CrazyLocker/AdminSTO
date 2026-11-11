@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.*;
 import java.util.List;
 
 /**
- * Тесты для Database (слой доступа к SQLite).
+ * Тесты для слоя доступа к БД (DatabaseFactory).
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Tag(TestTags.INTEGRATION)
@@ -25,9 +25,9 @@ class DatabaseTest extends BaseTest {
         clearDatabase();
 
         Client client = new Client("Иван", "Петров", "+79001234567", "Toyota Camry", "А123ВС163");
-        Database.addClient(client);
+        DatabaseFactory.getDatabase().addClient(client);
 
-        List<Client> clients = Database.getAllClients();
+        List<Client> clients = DatabaseFactory.getDatabase().getAllClients();
         assertThat(clients).hasSize(1);
         assertThat(clients.get(0).getName()).isEqualTo("Иван");
         assertThat(clients.get(0).getLastName()).isEqualTo("Петров");
@@ -38,10 +38,10 @@ class DatabaseTest extends BaseTest {
     void testAddMultipleClients() {
         clearDatabase();
 
-        Database.addClient(new Client("Анна", "Смирнова", "+79002223333", "Kia Rio", "В456СЕ163"));
-        Database.addClient(new Client("Сергей", "Васильев", "+79003334444", "Ford Focus", "Е789КХ163"));
+        DatabaseFactory.getDatabase().addClient(new Client("Анна", "Смирнова", "+79002223333", "Kia Rio", "В456СЕ163"));
+        DatabaseFactory.getDatabase().addClient(new Client("Сергей", "Васильев", "+79003334444", "Ford Focus", "Е789КХ163"));
 
-        List<Client> clients = Database.getAllClients();
+        List<Client> clients = DatabaseFactory.getDatabase().getAllClients();
         assertThat(clients).hasSize(2);
     }
 
@@ -51,10 +51,10 @@ class DatabaseTest extends BaseTest {
         clearDatabase();
 
         Client client = new Client("Дмитрий", "Соколов", "+79005556666", "Haval F7", "М123НО163");
-        Database.addClient(client);
+        DatabaseFactory.getDatabase().addClient(client);
 
-        Client saved = Database.getAllClients().get(0);
-        Client retrieved = Database.getClientById(saved.getId());
+        Client saved = DatabaseFactory.getDatabase().getAllClients().get(0);
+        Client retrieved = DatabaseFactory.getDatabase().getClientById(saved.getId());
 
         assertThat(retrieved).isNotNull();
         assertThat(retrieved.getName()).isEqualTo("Дмитрий");
@@ -66,13 +66,13 @@ class DatabaseTest extends BaseTest {
         clearDatabase();
 
         Client client = new Client("Олег", "Иванов", "+79001112233", "Haval Jolion", "А111ВС163");
-        Database.addClient(client);
+        DatabaseFactory.getDatabase().addClient(client);
 
-        Client saved = Database.getAllClients().get(0);
+        Client saved = DatabaseFactory.getDatabase().getAllClients().get(0);
         saved.setPhone("+79998887766");
-        Database.updateClient(saved);
+        DatabaseFactory.getDatabase().updateClient(saved);
 
-        Client updated = Database.getClientById(saved.getId());
+        Client updated = DatabaseFactory.getDatabase().getClientById(saved.getId());
         assertThat(updated.getPhone()).isEqualTo("+79998887766");
     }
 
@@ -82,12 +82,12 @@ class DatabaseTest extends BaseTest {
         clearDatabase();
 
         Client client = new Client("Мария", "Кузнецова", "+79112223344", "Mercedes E-Class", "К111ОО163");
-        Database.addClient(client);
+        DatabaseFactory.getDatabase().addClient(client);
 
-        assertThat(Database.getAllClients()).hasSize(1);
+        assertThat(DatabaseFactory.getDatabase().getAllClients()).hasSize(1);
 
-        Database.deleteClient(Database.getAllClients().get(0));
-        assertThat(Database.getAllClients()).isEmpty();
+        DatabaseFactory.getDatabase().deleteClient(DatabaseFactory.getDatabase().getAllClients().get(0));
+        assertThat(DatabaseFactory.getDatabase().getAllClients()).isEmpty();
     }
 
     @Test
@@ -96,9 +96,9 @@ class DatabaseTest extends BaseTest {
         clearDatabase();
 
         Service service = new Service("Замена масла", 1500);
-        Database.addService(service);
+        DatabaseFactory.getDatabase().addService(service);
 
-        List<Service> services = Database.getAllServices();
+        List<Service> services = DatabaseFactory.getDatabase().getAllServices();
         assertThat(services).hasSize(1);
         assertThat(services.get(0).getName()).isEqualTo("Замена масла");
         assertThat(services.get(0).getPrice()).isEqualTo(1500);
@@ -109,11 +109,11 @@ class DatabaseTest extends BaseTest {
     void testAddMultipleServices() {
         clearDatabase();
 
-        Database.addService(new Service("Диагностика", 1000));
-        Database.addService(new Service("Замена масла", 1500));
-        Database.addService(new Service("Замена фильтров", 500));
+        DatabaseFactory.getDatabase().addService(new Service("Диагностика", 1000));
+        DatabaseFactory.getDatabase().addService(new Service("Замена масла", 1500));
+        DatabaseFactory.getDatabase().addService(new Service("Замена фильтров", 500));
 
-        List<Service> services = Database.getAllServices();
+        List<Service> services = DatabaseFactory.getDatabase().getAllServices();
         assertThat(services).hasSize(3);
     }
 
@@ -122,11 +122,11 @@ class DatabaseTest extends BaseTest {
     void testDeleteService() {
         clearDatabase();
 
-        Database.addService(new Service("Замена масла", 1500));
-        assertThat(Database.getAllServices()).hasSize(1);
+        DatabaseFactory.getDatabase().addService(new Service("Замена масла", 1500));
+        assertThat(DatabaseFactory.getDatabase().getAllServices()).hasSize(1);
 
-        Database.deleteService(Database.getAllServices().get(0));
-        assertThat(Database.getAllServices()).isEmpty();
+        DatabaseFactory.getDatabase().deleteService(DatabaseFactory.getDatabase().getAllServices().get(0));
+        assertThat(DatabaseFactory.getDatabase().getAllServices()).isEmpty();
     }
 
     @Test
@@ -135,9 +135,9 @@ class DatabaseTest extends BaseTest {
         clearDatabase();
 
         SparePart part = new SparePart("Масло моторное", 800, 1200, 20);
-        Database.addSparePart(part);
+        DatabaseFactory.getDatabase().addSparePart(part);
 
-        List<SparePart> parts = Database.getAllSpareParts();
+        List<SparePart> parts = DatabaseFactory.getDatabase().getAllSpareParts();
         assertThat(parts).hasSize(1);
         assertThat(parts.get(0).getName()).isEqualTo("Масло моторное");
         assertThat(parts.get(0).getRetailPrice()).isEqualTo(1200);
@@ -148,10 +148,10 @@ class DatabaseTest extends BaseTest {
     void testAddMultipleSpareParts() {
         clearDatabase();
 
-        Database.addSparePart(new SparePart("Масло моторное", 800, 1200, 20));
-        Database.addSparePart(new SparePart("Фильтр масляный", 300, 500, 15));
+        DatabaseFactory.getDatabase().addSparePart(new SparePart("Масло моторное", 800, 1200, 20));
+        DatabaseFactory.getDatabase().addSparePart(new SparePart("Фильтр масляный", 300, 500, 15));
 
-        List<SparePart> parts = Database.getAllSpareParts();
+        List<SparePart> parts = DatabaseFactory.getDatabase().getAllSpareParts();
         assertThat(parts).hasSize(2);
     }
 
@@ -161,10 +161,10 @@ class DatabaseTest extends BaseTest {
         clearDatabase();
 
         SparePart part = new SparePart("Масло моторное", 800, 1200, 20);
-        Database.addSparePart(part);
+        DatabaseFactory.getDatabase().addSparePart(part);
 
-        Database.updateSparePartStock(part, 15);
-        List<SparePart> parts = Database.getAllSpareParts();
+        DatabaseFactory.getDatabase().updateSparePartStock(part, 15);
+        List<SparePart> parts = DatabaseFactory.getDatabase().getAllSpareParts();
         assertThat(parts.get(0).getStock()).isEqualTo(15);
     }
 
@@ -174,14 +174,14 @@ class DatabaseTest extends BaseTest {
         clearDatabase();
 
         Client client = new Client("Алексей", "Новиков", "+79009990000", "BMW X5", "О789УУ163");
-        Database.addClient(client);
+        DatabaseFactory.getDatabase().addClient(client);
 
         WorkOrder order = new WorkOrder(client);
         order.addService("Диагностика", 1000);
         order.addService("Замена масла", 1500);
-        Database.addOrder(order);
+        DatabaseFactory.getDatabase().addOrder(order);
 
-        List<WorkOrder> orders = Database.getAllOrders();
+        List<WorkOrder> orders = DatabaseFactory.getDatabase().getAllOrders();
         assertThat(orders).hasSize(1);
         assertThat(orders.get(0).getServices()).hasSize(2);
         assertThat(orders.get(0).getTotal()).isEqualTo(2500);
@@ -193,7 +193,7 @@ class DatabaseTest extends BaseTest {
         clearDatabase();
 
         Client client = new Client("Елена", "Морозова", "+79007778888", "Toyota RAV4", "С456ТЕ163");
-        Database.addClient(client);
+        DatabaseFactory.getDatabase().addClient(client);
 
         SparePart oil = new SparePart("Масло моторное", 800, 1200, 20);
         SparePart filter = new SparePart("Фильтр масляный", 300, 500, 15);
@@ -201,9 +201,9 @@ class DatabaseTest extends BaseTest {
         WorkOrder order = new WorkOrder(client);
         order.addSparePart(oil, 1);
         order.addSparePart(filter, 1);
-        Database.addOrder(order);
+        DatabaseFactory.getDatabase().addOrder(order);
 
-        List<WorkOrder> orders = Database.getAllOrders();
+        List<WorkOrder> orders = DatabaseFactory.getDatabase().getAllOrders();
         assertThat(orders).hasSize(1);
         assertThat(orders.get(0).getSpareParts()).hasSize(2);
     }
@@ -214,17 +214,17 @@ class DatabaseTest extends BaseTest {
         clearDatabase();
 
         Client client = new Client("Петр", "Сидоров", "+79112223333", "Haval F7", "В456СЕ163");
-        Database.addClient(client);
+        DatabaseFactory.getDatabase().addClient(client);
 
         WorkOrder order = new WorkOrder(client);
         order.addService("Диагностика", 1000);
-        Database.addOrder(order);
+        DatabaseFactory.getDatabase().addOrder(order);
 
-        WorkOrder saved = Database.getAllOrders().get(0);
+        WorkOrder saved = DatabaseFactory.getDatabase().getAllOrders().get(0);
         saved.setStatus(WorkOrder.STATUS_IN_PROGRESS);
-        Database.updateOrder(saved);
+        DatabaseFactory.getDatabase().updateOrder(saved);
 
-        WorkOrder updated = Database.getAllOrders().get(0);
+        WorkOrder updated = DatabaseFactory.getDatabase().getAllOrders().get(0);
         assertThat(updated.getStatus()).isEqualTo(WorkOrder.STATUS_IN_PROGRESS);
     }
 
@@ -234,16 +234,16 @@ class DatabaseTest extends BaseTest {
         clearDatabase();
 
         Client client = new Client("Ольга", "Попов", "+79223334455", "Lexus RX", "Н222СС163");
-        Database.addClient(client);
+        DatabaseFactory.getDatabase().addClient(client);
 
         WorkOrder order = new WorkOrder(client);
         order.addService("Диагностика", 1000);
-        Database.addOrder(order);
+        DatabaseFactory.getDatabase().addOrder(order);
 
-        assertThat(Database.getAllOrders()).hasSize(1);
+        assertThat(DatabaseFactory.getDatabase().getAllOrders()).hasSize(1);
 
-        Database.deleteOrder(Database.getAllOrders().get(0).getId());
-        assertThat(Database.getAllOrders()).isEmpty();
+        DatabaseFactory.getDatabase().deleteOrder(DatabaseFactory.getDatabase().getAllOrders().get(0).getId());
+        assertThat(DatabaseFactory.getDatabase().getAllOrders()).isEmpty();
     }
 
     @Test
@@ -252,15 +252,15 @@ class DatabaseTest extends BaseTest {
         clearDatabase();
 
         Client client = new Client("Николай", "Соловьев", "+79556667788", "Mazda CX-5", "Т555НО163");
-        Database.addClient(client);
+        DatabaseFactory.getDatabase().addClient(client);
 
         Appointment appointment = new Appointment(
             client, "Иван", "Замена масла",
             "2024-06-01", "10:00"
         );
-        Database.addAppointment(appointment);
+        DatabaseFactory.getDatabase().addAppointment(appointment);
 
-        List<Appointment> appointments = Database.getAllAppointments();
+        List<Appointment> appointments = DatabaseFactory.getDatabase().getAllAppointments();
         assertThat(appointments).hasSize(1);
         assertThat(appointments.get(0).getMasterName()).isEqualTo("Иван");
     }
@@ -271,12 +271,12 @@ class DatabaseTest extends BaseTest {
         clearDatabase();
 
         Client client = new Client("Татьяна", "Лебедева", "+79990001111", "Haval Big Dog", "Е333РР163");
-        Database.addClient(client);
+        DatabaseFactory.getDatabase().addClient(client);
 
-        Database.addAppointment(new Appointment(client, "Иван", "Замена масла", "2024-05-15", "09:00"));
-        Database.addAppointment(new Appointment(client, "Петр", "Диагностика", "2024-05-15", "11:00"));
+        DatabaseFactory.getDatabase().addAppointment(new Appointment(client, "Иван", "Замена масла", "2024-05-15", "09:00"));
+        DatabaseFactory.getDatabase().addAppointment(new Appointment(client, "Петр", "Диагностика", "2024-05-15", "11:00"));
 
-        List<Appointment> appointments = Database.getAllAppointments();
+        List<Appointment> appointments = DatabaseFactory.getDatabase().getAllAppointments();
         assertThat(appointments).hasSize(2);
     }
 
@@ -286,14 +286,14 @@ class DatabaseTest extends BaseTest {
         clearDatabase();
 
         Client client = new Client("Максим", "Тест19", "+79001112222", "Haval Jolion", "А222СС165");
-        Database.addClient(client);
+        DatabaseFactory.getDatabase().addClient(client);
 
-        Database.addAppointment(new Appointment(client, "Иван", "Замена масла", "2024-05-15", "09:00"));
-        Database.addAppointment(new Appointment(client, "Петр", "Диагностика", "2024-05-15", "11:00"));
-        Database.addAppointment(new Appointment(client, "Сергей", "Замена фильтров", "2024-05-16", "10:00"));
+        DatabaseFactory.getDatabase().addAppointment(new Appointment(client, "Иван", "Замена масла", "2024-05-15", "09:00"));
+        DatabaseFactory.getDatabase().addAppointment(new Appointment(client, "Петр", "Диагностика", "2024-05-15", "11:00"));
+        DatabaseFactory.getDatabase().addAppointment(new Appointment(client, "Сергей", "Замена фильтров", "2024-05-16", "10:00"));
 
-        List<Appointment> day1 = Database.getAppointmentsByDate("2024-05-15");
-        List<Appointment> day2 = Database.getAppointmentsByDate("2024-05-16");
+        List<Appointment> day1 = DatabaseFactory.getDatabase().getAppointmentsByDate("2024-05-15");
+        List<Appointment> day2 = DatabaseFactory.getDatabase().getAppointmentsByDate("2024-05-16");
 
         assertThat(day1).hasSize(2);
         assertThat(day2).hasSize(1);
@@ -305,19 +305,19 @@ class DatabaseTest extends BaseTest {
         clearDatabase();
 
         Client client = new Client("Екатерина", "Лебедева", "+79445556677", "Nissan Qashqai", "С444ММ163");
-        Database.addClient(client);
+        DatabaseFactory.getDatabase().addClient(client);
 
         Appointment appointment = new Appointment(
             client, "Иван", "Замена масла",
             "2024-06-01", "10:00"
         );
-        Database.addAppointment(appointment);
+        DatabaseFactory.getDatabase().addAppointment(appointment);
 
-        Appointment saved = Database.getAllAppointments().get(0);
+        Appointment saved = DatabaseFactory.getDatabase().getAllAppointments().get(0);
         saved.setStatus(Appointment.STATUS_COMPLETED);
-        Database.updateAppointment(saved);
+        DatabaseFactory.getDatabase().updateAppointment(saved);
 
-        Appointment updated = Database.getAllAppointments().get(0);
+        Appointment updated = DatabaseFactory.getDatabase().getAllAppointments().get(0);
         assertThat(updated.getStatus()).isEqualTo(Appointment.STATUS_COMPLETED);
     }
 
@@ -327,18 +327,18 @@ class DatabaseTest extends BaseTest {
         clearDatabase();
 
         Client client = new Client("Анна", "Смирнова", "+79002223333", "Kia Rio", "В456СЕ163");
-        Database.addClient(client);
+        DatabaseFactory.getDatabase().addClient(client);
 
         Appointment appointment = new Appointment(
             client, "Иван", "Замена масла",
             "2024-06-01", "10:00"
         );
-        Database.addAppointment(appointment);
+        DatabaseFactory.getDatabase().addAppointment(appointment);
 
-        assertThat(Database.getAllAppointments()).hasSize(1);
+        assertThat(DatabaseFactory.getDatabase().getAllAppointments()).hasSize(1);
 
-        Database.deleteAppointment(Database.getAllAppointments().get(0).getId());
-        assertThat(Database.getAllAppointments()).isEmpty();
+        DatabaseFactory.getDatabase().deleteAppointment(DatabaseFactory.getDatabase().getAllAppointments().get(0).getId());
+        assertThat(DatabaseFactory.getDatabase().getAllAppointments()).isEmpty();
     }
 
     @Test
@@ -362,9 +362,9 @@ class DatabaseTest extends BaseTest {
         clearDatabase();
 
         Client client = new Client("Виктор", "Тест24", "+79009999999", "Haval Big Dog", "Е666РР164");
-        Database.addClient(client);
+        DatabaseFactory.getDatabase().addClient(client);
 
-        int clientId = Database.getClientId(client);
+        int clientId = DatabaseFactory.getDatabase().getClientId(client);
         assertThat(clientId).isGreaterThan(0);
     }
 
@@ -374,13 +374,13 @@ class DatabaseTest extends BaseTest {
         clearDatabase();
 
         Client client = new Client("Иван", "Тест25", "+79001111111", "Haval Jolion", "А111ВС163");
-        Database.addClient(client);
+        DatabaseFactory.getDatabase().addClient(client);
 
         WorkOrder order = new WorkOrder(client);
         order.addService("Диагностика", 1000);
-        Database.addOrder(order);
+        DatabaseFactory.getDatabase().addOrder(order);
 
-        List<WorkOrder> orders = Database.getAllOrders();
+        List<WorkOrder> orders = DatabaseFactory.getDatabase().getAllOrders();
         assertThat(orders).hasSize(1);
         assertThat(orders.get(0).getId()).startsWith("ZAK-");
     }
@@ -389,7 +389,7 @@ class DatabaseTest extends BaseTest {
     @Order(26)
     void testGetClientByIdNotFound() {
         clearDatabase();
-        Client found = Database.getClientById(99999);
+        Client found = DatabaseFactory.getDatabase().getClientById(99999);
         assertThat(found).isNull();
     }
 
@@ -399,8 +399,8 @@ class DatabaseTest extends BaseTest {
         clearDatabase();
         Client client = new Client("Тест", "Тестов", "+79000000000", "Test", "А000ВС000");
         client.setId(99999);
-        Database.updateClient(client);
-        assertThat(Database.getAllClients()).isEmpty();
+        DatabaseFactory.getDatabase().updateClient(client);
+        assertThat(DatabaseFactory.getDatabase().getAllClients()).isEmpty();
     }
 
     @Test
@@ -409,17 +409,17 @@ class DatabaseTest extends BaseTest {
         clearDatabase();
         Client client = new Client("Тест", "Тестов", "+79000000000", "Test", "А000ВС000");
         client.setId(99999);
-        Database.deleteClient(client);
-        assertThat(Database.getAllClients()).isEmpty();
+        DatabaseFactory.getDatabase().deleteClient(client);
+        assertThat(DatabaseFactory.getDatabase().getAllClients()).isEmpty();
     }
 
     @Test
     @Order(29)
     void testAddServiceDuplicate() {
         clearDatabase();
-        Database.addService(new Service("Услуга", 1000));
-        Database.addService(new Service("Услуга", 2000));
-        List<Service> services = Database.getAllServices();
+        DatabaseFactory.getDatabase().addService(new Service("Услуга", 1000));
+        DatabaseFactory.getDatabase().addService(new Service("Услуга", 2000));
+        List<Service> services = DatabaseFactory.getDatabase().getAllServices();
         assertThat(services).hasSize(1);
         assertThat(services.get(0).getPrice()).isEqualTo(2000);
     }
@@ -429,17 +429,17 @@ class DatabaseTest extends BaseTest {
     void testDeleteServiceNotFound() {
         clearDatabase();
         Service service = new Service("Неизвестная услуга", 1000);
-        Database.deleteService(service);
-        assertThat(Database.getAllServices()).isEmpty();
+        DatabaseFactory.getDatabase().deleteService(service);
+        assertThat(DatabaseFactory.getDatabase().getAllServices()).isEmpty();
     }
 
     @Test
     @Order(31)
     void testAddSparePartDuplicate() {
         clearDatabase();
-        Database.addSparePart(new SparePart("Масло", 800, 1200, 10));
-        Database.addSparePart(new SparePart("Масло", 900, 1300, 20));
-        List<SparePart> parts = Database.getAllSpareParts();
+        DatabaseFactory.getDatabase().addSparePart(new SparePart("Масло", 800, 1200, 10));
+        DatabaseFactory.getDatabase().addSparePart(new SparePart("Масло", 900, 1300, 20));
+        List<SparePart> parts = DatabaseFactory.getDatabase().getAllSpareParts();
         assertThat(parts).hasSize(1);
         assertThat(parts.get(0).getStock()).isEqualTo(20);
     }
@@ -450,7 +450,7 @@ class DatabaseTest extends BaseTest {
         clearDatabase();
         SparePart part = new SparePart("Неизвестная запчасть", 800, 1200, 10);
         part.setId(99999);
-        Database.updateSparePartStock(part, 5);
+        DatabaseFactory.getDatabase().updateSparePartStock(part, 5);
     }
 
     @Test
@@ -459,8 +459,8 @@ class DatabaseTest extends BaseTest {
         clearDatabase();
         SparePart part = new SparePart("Неизвестная запчасть", 800, 1200, 10);
         part.setId(99999);
-        Database.deleteSparePart(part);
-        assertThat(Database.getAllSpareParts()).isEmpty();
+        DatabaseFactory.getDatabase().deleteSparePart(part);
+        assertThat(DatabaseFactory.getDatabase().getAllSpareParts()).isEmpty();
     }
 
     @Test
@@ -470,22 +470,22 @@ class DatabaseTest extends BaseTest {
         Client client = new Client("Тест", "Тестов", "+79000000000", "Test", "А000ВС000");
         WorkOrder order = new WorkOrder(client);
         order.addService("Услуга", 1000);
-        Database.addOrder(order);
-        assertThat(Database.getAllOrders()).isEmpty();
+        DatabaseFactory.getDatabase().addOrder(order);
+        assertThat(DatabaseFactory.getDatabase().getAllOrders()).isEmpty();
     }
 
     @Test
     @Order(35)
     void testGetOrdersEmpty() {
         clearDatabase();
-        assertThat(Database.getAllOrders()).isEmpty();
+        assertThat(DatabaseFactory.getDatabase().getAllOrders()).isEmpty();
     }
 
     @Test
     @Order(36)
     void testGetAppointmentsByDateNotFound() {
         clearDatabase();
-        assertThat(Database.getAppointmentsByDate("2024-12-31")).isEmpty();
+        assertThat(DatabaseFactory.getDatabase().getAppointmentsByDate("2024-12-31")).isEmpty();
     }
 
     @Test
@@ -495,14 +495,14 @@ class DatabaseTest extends BaseTest {
         Client client = new Client("Тест", "Тестов", "+79000000000", "Test", "А000ВС000");
         Appointment app = new Appointment(client, "Иван", "Услуга", "2024-06-01", "10:00");
         app.setId(99999);
-        Database.updateAppointment(app);
+        DatabaseFactory.getDatabase().updateAppointment(app);
     }
 
     @Test
     @Order(38)
     void testDeleteAppointmentNotFound() {
         clearDatabase();
-        Database.deleteAppointment(99999);
-        assertThat(Database.getAllAppointments()).isEmpty();
+        DatabaseFactory.getDatabase().deleteAppointment(99999);
+        assertThat(DatabaseFactory.getDatabase().getAllAppointments()).isEmpty();
     }
 }

@@ -1,6 +1,5 @@
 package com.autoservice;
 
-import com.autoservice.config.SettingsManager;
 import com.autoservice.utils.ExceptionHandler;
 import com.autoservice.utils.LoggerManager;
 import com.autoservice.utils.ThemeManager;
@@ -8,35 +7,28 @@ import com.autoservice.services.ScheduleService;
 import com.autoservice.services.TableStateManager;
 import com.autoservice.services.WindowStateManager;
 import com.autoservice.views.*;
-import com.autoservice.controllers.AppointmentController;
 import com.autoservice.controllers.ServicePanelController;
 import com.autoservice.controllers.SparePartPanelController;
 import com.autoservice.controllers.StockPanelController;
 import com.autoservice.utils.IconHelper;
-import com.autoservice.utils.LoadingIndicator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
-import javafx.scene.control.Label;
-import javafx.scene.layout.VBox;
 import javafx.scene.shape.SVGPath;
 import javafx.stage.Stage;
-
-import java.io.IOException;
 
 public class App extends Application {
 
     private static final Logger logger = LoggerFactory.getLogger(App.class);
-    private static AppointmentController appointmentController;
 
     @Override
     public void start(Stage primaryStage) {
-        SettingsManager.load();
+        // Инициализация логгирования
+        LoggerManager.init();
         logger.info("Запуск приложения Администратор СТО");
 
         // Тема применяется только при запуске: читаем config/theme.txt до
@@ -44,18 +36,15 @@ public class App extends Application {
         ThemeManager.applySavedTheme();
 
         try {
-            Database.init();
+            DatabaseFactory.init();
             logger.info("База данных инициализирована");
 
-            LoadingIndicator.show();
             new Thread(() -> {
                 DataStore.load();
-                Platform.runLater(() -> {
-                    LoadingIndicator.hide();
-                    logger.info("Данные загружены");
-                });
+                Platform.runLater(() -> logger.info("Данные загружены"));
             }).start();
 
+            // Инициализация ScheduleService и проверка авто-бэкапа
             ScheduleService.init();
             ScheduleService.checkAndRunBackupOnStartup();
         } catch (Exception e) {
@@ -81,10 +70,8 @@ public class App extends Application {
         servicesTab.setContent(ServicePanel.create());
         sparePartsTab.setContent(SparePartPanel.create());
         stockTab.setContent(StockPanel.create());
+        appointmentTab.setContent(AppointmentView.create());
         settingsTab.setContent(SettingsView.create());
-
-        // ===== ЗАГРУЗКА AppointmentView через FXML =====
-        appointmentTab.setContent(createAppointmentView());
 
         tabPane.getTabs().addAll(dashTab, clientTab, orderTab, servicesTab, sparePartsTab, stockTab, appointmentTab, settingsTab);
 
@@ -93,18 +80,13 @@ public class App extends Application {
             if (tab == dashTab) {
                 Platform.runLater(() -> DashboardView.refresh());
             } else if (tab == appointmentTab) {
-                Platform.runLater(() -> {
-                    if (appointmentController != null) {
-                        appointmentController.refresh();
-                    }
-                });
+                Platform.runLater(() -> AppointmentView.refresh());
             }
         });
 
         Scene scene = new Scene(tabPane, 1500, 1000);
         ThemeManager.applySceneStyles(scene);
-        // Подключение стилей для календаря
-        scene.getStylesheets().add(getClass().getResource("/css/appointment.css").toExternalForm());
+
         primaryStage.setTitle("Администратор СТО");
         primaryStage.setScene(scene);
         WindowStateManager.getInstance().restoreWindowState("mainWindow", primaryStage);
@@ -122,9 +104,9 @@ public class App extends Application {
                 TableStateManager.saveTableState(SettingsView.getServiceSparePartsTable(), "serviceSparePartsTable");
             }
             TableStateManager.saveTableState(SettingsView.getToPartsTable(), "toPartsTable");
-            ScheduleService.shutdown();
             DataStore.save();
-            Database.close();
+            DatabaseFactory.close();
+            ScheduleService.shutdown();
             logger.info("Приложение закрыто");
             Platform.exit();
             System.exit(0);
@@ -138,30 +120,6 @@ public class App extends Application {
         ServicePanelController.refreshTable();
         SparePartPanelController.refreshTable();
         StockPanelController.refreshTable();
-    }
-
-    /**
-     * Создаёт представление AppointmentView через FXML.
-     */
-    private VBox createAppointmentView() {
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/AppointmentView.fxml"));
-            VBox root = loader.load();
-            appointmentController = loader.getController();
-            logger.info("✅ AppointmentView загружен через FXML");
-            return root;
-        } catch (IOException e) {
-            logger.error("❌ Ошибка загрузки AppointmentView.fxml", e);
-            // Показываем сообщение об ошибке
-            VBox errorBox = new VBox();
-            errorBox.setAlignment(javafx.geometry.Pos.CENTER);
-            Label errorLabel = new Label("❌ Ошибка загрузки календаря");
-            errorLabel.setStyle("-fx-text-fill: #d32f2f; -fx-font-size: 16px; -fx-font-weight: bold;");
-            Label detailLabel = new Label(e.getMessage());
-            detailLabel.setStyle("-fx-text-fill: #666; -fx-font-size: 12px;");
-            errorBox.getChildren().addAll(errorLabel, detailLabel);
-            return errorBox;
-        }
     }
 
     private static Tab createTab(String title, SVGPath icon) {
