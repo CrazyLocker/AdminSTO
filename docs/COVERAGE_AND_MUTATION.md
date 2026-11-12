@@ -20,7 +20,7 @@
 
 | Пакет | Порог (строки) | Факт: Windows | Факт: Linux (CI) |
 |-------|----------------|---------------|------------------|
-| `com.autoservice.services` | 75% | 87,4% | 87,4% (после герметизации) |
+| `com.autoservice.services` | 75% | 87,4% | 87,3% (CI 43149817652) |
 | `com.autoservice.utils` | 29% | 31,2% | 31,2% |
 | `com.autoservice.model` | 55% | 61,4% | 61,2% |
 
@@ -29,6 +29,7 @@
 `ExportService`/`ImportService`/`SettingService`/`ScheduleService`) → 72,2%
 (2026-11-12, порог 60%) → 87,4% (после тестов `BackupService` и герметичного
 `TableStateManagerTest`, порог 75%, требование «покрытие services выше 75%»).
+Прогон CI 43149817652 подтвердил 87,3% на Linux — запас над порогом 12 п.п.
 
 **Почему раньше Linux был ниже.** Разница сидела в `services/TableStateManager`
 (46,8% на Windows против 6,4% на Linux): старый тест писал состояние в реальный
@@ -42,7 +43,7 @@
 |-------|----------|-------|
 | `com.autoservice` (корень) | 60,7% | 2646 |
 | `com.autoservice.model` | 61,4% | 277 |
-| `com.autoservice.services` | 87,4% | 1544 |
+| `com.autoservice.services` | 87,4% / 87,3% | 1544 |
 | `com.autoservice.utils` | 31,2% | 616 |
 | `com.autoservice.controllers` | 18,0% | 316 |
 | `com.autoservice.dialogs` | 13,8% | 1979 |
