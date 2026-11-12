@@ -374,6 +374,45 @@ class ImportServiceTestCases extends BaseTest {
         assertThat(result.toString()).contains("1").contains("0");
     }
 
+    @Test
+    void stockWrittenAsDecimalIsImportedAsInteger() throws IOException {
+        // ExportService пишет наличие как double, поэтому файл содержит "12.0".
+        File file = writeXml("parts-decimal-stock.xml", """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <spareParts>
+                  <part>
+                    <name>Фильтр масляный</name>
+                    <partNumber>DEC-1</partNumber>
+                    <stock>12.0</stock>
+                  </part>
+                </spareParts>
+                """);
+
+        ImportService.importFromFile(file);
+
+        assertThat(findPart("DEC-1").getStock()).isEqualTo(12.0);
+    }
+
+    @Test
+    void exportedStockSurvivesRoundTrip() throws Exception {
+        DataStore.addSparePart(new SparePartBuilder()
+                .withName("Колодки")
+                .withPartNumber("RT-1")
+                .withStock(7.0)
+                .build());
+        DataStore.load();
+        File file = tempDir.resolve("round-trip-stock.xml").toFile();
+        ExportService.exportToFile(DataStore.getSpareParts(), file, "xml");
+
+        // Чистый импорт: удаляем запись, чтобы проверить именно запись значения из файла.
+        DataStore.getSpareParts().clear();
+        DataStore.save();
+
+        ImportService.importFromFile(file);
+
+        assertThat(findPart("RT-1").getStock()).isEqualTo(7.0);
+    }
+
     private File writeXml(String fileName, String content) throws IOException {
         Path file = tempDir.resolve(fileName);
         Files.writeString(file, content, StandardCharsets.UTF_8);

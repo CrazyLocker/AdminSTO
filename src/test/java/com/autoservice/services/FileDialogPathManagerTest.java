@@ -1,6 +1,7 @@
 package com.autoservice.services;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -14,6 +15,9 @@ class FileDialogPathManagerTest {
 
     private final FileDialogPathManager manager = FileDialogPathManager.getInstance();
 
+    // Менеджер хранит состояние в config/file-paths/*.json, поэтому чистим и до, и после
+    // теста: иначе файл, оставшийся от прошлого прогона, ломает ожидание «пусто».
+    @BeforeEach
     @AfterEach
     void cleanUp() {
         manager.resetLastPath(DIALOG_ID);

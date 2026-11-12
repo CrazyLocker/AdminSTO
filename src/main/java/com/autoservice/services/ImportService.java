@@ -234,10 +234,13 @@ public class ImportService {
 
     private static int parseIntSafe(String s) {
         if (s == null || s.trim().isEmpty()) return 0;
+        String value = s.trim();
         try {
-            return Integer.parseInt(s.trim());
+            return Integer.parseInt(value);
         } catch (NumberFormatException e) {
-            return 0;
+            // Экспорт пишет числа как double ("12.0"), поэтому принимаем и дробную запись,
+            // иначе количество обнулялось при импорте собственного же файла.
+            return (int) Math.round(parseDoubleSafe(value));
         }
     }
 
