@@ -22,13 +22,14 @@
 |-------|----------------|---------------|------------------|
 | `com.autoservice.services` | 60% | 72,2% | 67,2% |
 | `com.autoservice.utils` | 29% | 31,2% | 31,2% |
-| `com.autoservice.model` | 55% | 60,6% | 60,2% |
+| `com.autoservice.model` | 55% | 60,6% | 60,3% |
 
 Пороги выставлены на 2–3 п.п. ниже **минимума по платформам** (то есть по CI):
 они ловят деградацию, но не мешают работе. Если покрытие выросло — поднимите
 порог, это дешёвая защита. Для `services` поднято до 60% (2026-11-12) после
 того, как появились тесты `ExportService`, `ImportService`, `SettingService`,
 `ScheduleService` и `FileDialogPathManager`: до них было 46,2% на Windows.
+Прогон CI 43144164101 подтвердил 67,2% на Linux — запас над порогом 7 п.п.
 
 **Почему Linux ниже.** Разница почти целиком в `services/TableStateManager`
 (46,8% на Windows против 6,4% на Linux, −40 п.п. по классу): `TableStateManagerTest`
@@ -41,14 +42,14 @@
 
 | Пакет | Покрытие (Win / Linux) | Строк |
 |-------|----------|-------|
-| `com.autoservice` (корень) | 60,5% | 2646 |
-| `com.autoservice.model` | 60,6% / 60,2% | 277 |
+| `com.autoservice` (корень) | 60,5% / 60,7% | 2646 |
+| `com.autoservice.model` | 60,6% / 60,3% | 277 |
 | `com.autoservice.services` | 72,2% / 67,2% | 1529 |
 | `com.autoservice.utils` | 31,2% | 616 |
 | `com.autoservice.controllers` | 18,0% | 316 |
 | `com.autoservice.dialogs` | 13,8% | 1979 |
 | `com.autoservice.views` | 2,7% | 5207 |
-| **Итого по проекту** | **26,8% инструкций / 28,1% строк** | 12570 строк |
+| **Итого по проекту** | **28,1% строк (Win) / 27,5% (Linux), 26,8% инструкций** | 12570 строк |
 
 Низкие `views`/`dialogs` ожидаемы: их покрывают UI-тесты (`uiTest`), которые не
 участвуют в замере. Если понадобится общая цифра «с UI», считайте два прогона
