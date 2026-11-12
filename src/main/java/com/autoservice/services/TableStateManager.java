@@ -22,6 +22,16 @@ public class TableStateManager {
     private static final Logger logger = LoggerFactory.getLogger(TableStateManager.class);
     
     private static final String STORAGE_DIR = "config/table-state";
+
+    /**
+     * Каталог хранения состояния таблиц.
+     *
+     * <p>Не {@code final}: тесты подменяют его на временный каталог
+     * ({@link #setStorageDirForTest(String)}), чтобы не читать и не писать
+     * файлы рабочего профиля приложения.
+     */
+    private static String storageDir = STORAGE_DIR;
+
     private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     private static final double DEFAULT_COLUMN_WIDTH = 100.0;
     
@@ -88,7 +98,7 @@ public class TableStateManager {
             
             tableState.setSortOrder(sortStates);
             
-            String filePath = STORAGE_DIR + "/" + tableId + ".json";
+            String filePath = storageDir + "/" + tableId + ".json";
             try (Writer writer = new FileWriter(filePath, StandardCharsets.UTF_8)) {
                 gson.toJson(tableState, writer);
             }
@@ -106,7 +116,7 @@ public class TableStateManager {
      */
     @SuppressWarnings("unchecked")
     public static void loadTableState(Object table, String tableId) {
-        String filePath = STORAGE_DIR + "/" + tableId + ".json";
+        String filePath = storageDir + "/" + tableId + ".json";
         File file = new File(filePath);
         
         if (!file.exists()) {
@@ -142,7 +152,7 @@ public class TableStateManager {
      * @param tableId идентификатор таблицы
      */
     public static void resetTableState(String tableId) {
-        String filePath = STORAGE_DIR + "/" + tableId + ".json";
+        String filePath = storageDir + "/" + tableId + ".json";
         File file = new File(filePath);
         
         if (file.exists()) {
@@ -160,7 +170,7 @@ public class TableStateManager {
      * @return {@code true}, если файл состояния существует
      */
     public static boolean hasSavedState(String tableId) {
-        String filePath = STORAGE_DIR + "/" + tableId + ".json";
+        String filePath = storageDir + "/" + tableId + ".json";
         File file = new File(filePath);
         return file.exists();
     }
@@ -336,13 +346,35 @@ public class TableStateManager {
     }
     
     private static void createDirectoryIfNotExists() {
-        File dir = new File(STORAGE_DIR);
+        File dir = new File(storageDir);
         if (!dir.exists()) {
             if (dir.mkdirs()) {
-                logger.debug("Created directory: {}", STORAGE_DIR);
+                logger.debug("Created directory: {}", storageDir);
             } else {
-                logger.error("Failed to create directory: {}", STORAGE_DIR);
+                logger.error("Failed to create directory: {}", storageDir);
             }
         }
+    }
+
+    /**
+     * Подменить каталог хранения состояния таблиц.
+     *
+     * <p>Существует только для тестов: позволяет работать во временном каталоге
+     * ({@code @TempDir}) и не зависеть от файлов профиля разработчика или CI.
+     *
+     * @param dir каталог для JSON-файлов состояния; {@code null} или пустая строка
+     *            восстанавливает каталог по умолчанию
+     */
+    static void setStorageDirForTest(String dir) {
+        storageDir = dir == null || dir.isBlank() ? STORAGE_DIR : dir;
+    }
+
+    /**
+     * Вернуть каталог хранения состояния таблиц к значению по умолчанию.
+     *
+     * <p>Обязательный шаг очистки в тестах, подменявших каталог.
+     */
+    static void resetStorageDir() {
+        storageDir = STORAGE_DIR;
     }
 }
