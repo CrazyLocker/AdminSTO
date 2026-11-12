@@ -6,6 +6,7 @@ plugins {
     id 'com.github.spotbugs' version '5.2.5'
     id 'checkstyle'
     id 'com.github.ben-manes.versions' version '0.51.0'
+    id 'info.solidsoft.pitest' version '1.19.0'
 }
 
 group = 'com.autoservice'
@@ -180,6 +181,58 @@ tasks.named('test') {
 }
 
 // ============================================================
+// ПОКРЫТИЕ КОДА (JaCoCo)
+// ============================================================
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        csv.required = true
+        html.required = true
+    }
+}
+
+// Проверка покрытия: порог держим по слоям с реальной логикой, а не по всему
+// проекту — UI-классы (views/dialogs) покрываются только UI-тестами, которые
+// в задачу test не входят. Пороги выставлены на 2–3 п.п. ниже фактического
+// уровня (2026-11-12: services 72% Windows / 67% Linux, utils 31%, model 59%),
+// чтобы они ловили падение, а не мешали работе. Для services порог поднят до
+// 60% — этого уровня удалось достичь тестами ExportService, ImportService,
+// SettingService, ScheduleService и FileDialogPathManager.
+jacocoTestCoverageVerification {
+    dependsOn test
+    violationRules {
+        rule {
+            element = 'PACKAGE'
+            includes = ['com.autoservice.services']
+            limit {
+                counter = 'LINE'
+                minimum = 0.60
+            }
+        }
+        rule {
+            element = 'PACKAGE'
+            includes = ['com.autoservice.utils']
+            limit {
+                counter = 'LINE'
+                minimum = 0.29
+            }
+        }
+        rule {
+            element = 'PACKAGE'
+            includes = ['com.autoservice.model']
+            limit {
+                counter = 'LINE'
+                minimum = 0.55
+            }
+        }
+    }
+}
+
+// Порог покрытия проверяется вместе с остальными проверками сборки.
+check.dependsOn jacocoTestCoverageVerification
+
+// ============================================================
 // ОТДЕЛЬНАЯ ЗАДАЧА ДЛЯ UI-ТЕСТОВ
 // ============================================================
 // UI-тесты нестабильны в CI/CD (зависят от дисплея, Monocle, Xvfb)
@@ -321,3 +374,59 @@ checkstyle {
 // ============================================================
 // Использование: ./gradlew dependencyUpdates -Drevision=release
 // Отчет будет сгенерирован в build/dependency-reports/dependency-updates.html
+// ============================================================
+// МУТАЦИОННОЕ ТЕСТИРОВАНИЕ (PIT)
+// ============================================================
+// Запуск: ./gradlew pitest
+// Отчёт:  build/reports/pitest/index.html и build/reports/pitest/mutations.xml
+// В check/build не входит: прогон долгий, запускается вручную или отдельной джобой CI.
+pitest {
+    pitestVersion = '1.30.2'
+    junit5PluginVersion = '1.2.3'
+
+    // Что мутируем: бизнес-логика. Интерфейс JavaFX (views/dialogs/App),
+    // геттеры/сеттеры и конфигурация исключены — это решение об уровне шума:
+    // такое поведение проверяют UI-тесты (uiTest), которые в анализ не входят.
+    targetClasses = [
+            'com.autoservice.services.*',
+            'com.autoservice.utils.*',
+            'com.autoservice.Validators',
+            'com.autoservice.DateUtils',
+            'com.autoservice.DataStore',
+            'com.autoservice.Client',
+            'com.autoservice.WorkOrder',
+            'com.autoservice.SparePart',
+            'com.autoservice.Appointment'
+    ]
+    excludedClasses = [
+            'com.autoservice.services.WindowStateManager',
+            'com.autoservice.services.TableStateManager',
+            'com.autoservice.services.ScheduleService',
+            'com.autoservice.utils.ThemeManager',
+            'com.autoservice.utils.ThemePreferences'
+    ]
+    excludedMethods = ['equals', 'hashCode', 'toString', 'get*', 'set*', 'is*']
+
+    targetTests = ['com.autoservice.*']
+    // JavaFX под PIT-миньонами не поднимается: UI-тесты и регрессионный тест
+    // двойного клика (тоже поднимает тулкит) в мутационном прогоне не участвуют.
+    excludedTestClasses = [
+            '*UITest',
+            'com.autoservice.BaseUITest',
+            'com.autoservice.views.ClientDoubleClickRegressionTest'
+    ]
+
+    testSourceSets = [sourceSets.test]
+    mainSourceSets = [sourceSets.main]
+
+    threads = Math.max(1, Runtime.runtime.availableProcessors().intdiv(2))
+    timestampedReports = false
+    outputFormats = ['HTML', 'XML']
+    failWhenNoMutations = true
+    // Базовая линия на 2026-11-11: 1054 мутации, 325 убито, 622 без покрытия.
+    // Гейт держим по test strength (killed / covered = 75%), а не по общему
+    // mutation score (31%): второе падает от любого нового непокрытого класса,
+    // хотя качество тестов не изменилось. Порог — на 5 п.п. ниже факта.
+    mutationThreshold = 0
+    testStrengthThreshold = 70
+}
