@@ -195,8 +195,10 @@ jacocoTestReport {
 // Проверка покрытия: порог держим по слоям с реальной логикой, а не по всему
 // проекту — UI-классы (views/dialogs) покрываются только UI-тестами, которые
 // в задачу test не входят. Пороги выставлены на 2–3 п.п. ниже фактического
-// уровня (2026-11-11: services 46%, utils 31%, model 59%), чтобы они ловили
-// падение, а не мешали работе.
+// уровня (2026-11-12: services 72% Windows / 67% Linux, utils 31%, model 59%),
+// чтобы они ловили падение, а не мешали работе. Для services порог поднят до
+// 60% — этого уровня удалось достичь тестами ExportService, ImportService,
+// SettingService, ScheduleService и FileDialogPathManager.
 jacocoTestCoverageVerification {
     dependsOn test
     violationRules {
@@ -205,7 +207,7 @@ jacocoTestCoverageVerification {
             includes = ['com.autoservice.services']
             limit {
                 counter = 'LINE'
-                minimum = 0.39
+                minimum = 0.60
             }
         }
         rule {
