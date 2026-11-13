@@ -2,7 +2,10 @@ package com.autoservice.controllers;
 
 import com.autoservice.*;
 import com.autoservice.TestTags;
+import com.autoservice.support.JavaFxTestSupport;
 import org.junit.jupiter.api.*;
+
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -10,8 +13,10 @@ import static org.assertj.core.api.Assertions.*;
  * Тесты для OrderController.
  * 
  * <p>Проверяют базовую функциональность управления заказами: создание,
- * редактирование, изменение статуса, удаление. Некоторые тесты отмечены
- * как {@code @Disabled}, так как требуют инициализации JavaFX.</p>
+ * редактирование, изменение статуса, удаление. Тесты {@code testRefreshTable},
+ * {@code testViewOrder} и {@code testChangeStatus} работают с JavaFX-представлениями
+ * и диалогами, поэтому класс поднимает тулкит в headless-режиме и выполняет
+ * действия на FX-потоке.</p>
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Tag(TestTags.CONTROLLER)
@@ -19,6 +24,11 @@ class OrderControllerTest extends BaseTest {
 
     private Client testClient;
     private WorkOrder testOrder;
+
+    @BeforeAll
+    static void initJavaFx() {
+        JavaFxTestSupport.initToolkit();
+    }
 
     @BeforeEach
     void setUp() {
@@ -39,11 +49,19 @@ class OrderControllerTest extends BaseTest {
 
     @Test
     @Order(2)
-    @Disabled("Requires JavaFX initialization - AppointmentView.datePicker is null")
-    void testRefreshTable() {
+    void testRefreshTable() throws InterruptedException {
         OrderController.setTable(null);
-        OrderController.refreshTable();
-        assertThat(true).isTrue();
+        WorkOrder stored = createStoredOrder("Замена масла", 1500);
+
+        // Раньше здесь падало «Toolkit not initialized»: refreshTable() дёргает
+        // OrderView/AppointmentView/DashboardView, а их классы наследуют JavaFX-контролы.
+        JavaFxTestSupport.runOnFxThread(OrderController::refreshTable);
+        JavaFxTestSupport.runOnFxThread(OrderController::refreshTable);
+
+        assertThat(JavaFxTestSupport.fxResponsive(5_000)).as("FX-поток отзывчив").isTrue();
+        DataStore.load();
+        assertThat(DataStore.getOrders()).as("заказ не потерялся при обновлении").hasSize(1);
+        assertThat(DataStore.getOrders().get(0).getId()).isEqualTo(stored.getId());
     }
 
     @Test
@@ -83,21 +101,35 @@ class OrderControllerTest extends BaseTest {
 
     @Test
     @Order(7)
-    @Disabled("Requires JavaFX initialization")
-    void testViewOrder() {
+    void testViewOrder() throws InterruptedException {
         OrderController.setTable(null);
-        OrderController.viewOrder(testOrder);
-        assertThat(testOrder.getId()).isNotNull();
+        WorkOrder stored = createStoredOrder("Замена масла", 1500);
+        String dialogTitle = "Заказ " + stored.getId();
+
+        Thread closer = JavaFxTestSupport.closeStageWhenShown(dialogTitle, 15_000);
+        JavaFxTestSupport.runOnFxThread(() -> OrderController.viewOrder(stored));
+        closer.join(TimeUnit.SECONDS.toMillis(15));
+
+        assertThat(closer.isAlive()).as("окно подробностей заказа было открыто и закрыто").isFalse();
+        assertThat(JavaFxTestSupport.fxResponsive(5_000)).as("FX-поток отзывчив после диалога").isTrue();
+        assertThat(JavaFxTestSupport.findShowingStage(dialogTitle)).as("диалог закрыт").isNull();
     }
 
     @Test
     @Order(8)
-    @Disabled("Requires JavaFX initialization - AppointmentView.datePicker is null")
-    void testChangeStatus() {
+    void testChangeStatus() throws InterruptedException {
         OrderController.setTable(null);
-        OrderController.changeOrderStatus(testOrder, WorkOrder.STATUS_IN_PROGRESS);
-        
-        assertThat(testOrder.getStatus()).isEqualTo(WorkOrder.STATUS_IN_PROGRESS);
+        WorkOrder stored = createStoredOrder("Замена масла", 1500);
+
+        JavaFxTestSupport.runOnFxThread(
+                () -> OrderController.changeOrderStatus(stored, WorkOrder.STATUS_IN_PROGRESS));
+
+        DataStore.load();
+        WorkOrder reloaded = DataStore.getOrders().get(0);
+        assertThat(reloaded.getStatus())
+                .as("статус сохранён в базе").isEqualTo(WorkOrder.STATUS_IN_PROGRESS);
+        assertThat(reloaded.getClosedDate())
+                .as("дата закрытия не ставится для промежуточного статуса").isNullOrEmpty();
     }
 
     @Test
@@ -184,6 +216,25 @@ class OrderControllerTest extends BaseTest {
         
         assertThat(order.getServices()).hasSize(3);
         assertThat(order.getTotal()).isEqualTo(6000);
+    }
+
+    /**
+     * Создать клиента и заказ в базе и вернуть заказ с присвоенным идентификатором.
+     *
+     * @param serviceName название услуги
+     * @param price       цена услуги
+     * @return заказ из базы
+     */
+    private WorkOrder createStoredOrder(String serviceName, double price) {
+        ClientController.addClient(testClient);
+        DataStore.load();
+        Client storedClient = DataStore.getClients().get(0);
+
+        WorkOrder order = new WorkOrder(storedClient);
+        order.addService(serviceName, price);
+        DataStore.addOrder(order);
+        DataStore.load();
+        return DataStore.getOrders().get(0);
     }
 }
 

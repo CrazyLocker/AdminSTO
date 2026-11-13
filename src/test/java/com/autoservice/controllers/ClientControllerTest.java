@@ -2,8 +2,11 @@ package com.autoservice.controllers;
 
 import com.autoservice.*;
 import com.autoservice.TestTags;
+import com.autoservice.support.JavaFxTestSupport;
 import org.junit.jupiter.api.*;
 import org.mockito.Mockito;
+
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -12,14 +15,22 @@ import static org.mockito.Mockito.*;
  * Тесты для ClientController.
  * 
  * <p>Проверяют базовую функциональность управления клиентами: добавление,
- * обновление, валидацию данных. Некоторые тесты отмечены как @Disabled,
- * так как требуют инициализации JavaFX.</p>
+ * обновление, валидацию данных. Тест {@code testEditClient} открывает настоящий
+ * диалог, поэтому класс поднимает JavaFX-тулкит в headless-режиме (Monocle)
+ * и закрывает окно с FX-потока.</p>
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Tag(TestTags.CONTROLLER)
 class ClientControllerTest extends BaseTest {
 
+    private static final String EDIT_CLIENT_DIALOG_TITLE = "Редактирование клиента";
+
     private Client testClient;
+
+    @BeforeAll
+    static void initJavaFx() {
+        JavaFxTestSupport.initToolkit();
+    }
 
     @BeforeEach
     void setUp() {
@@ -75,11 +86,29 @@ class ClientControllerTest extends BaseTest {
 
     @Test
     @Order(5)
-    @Disabled("Requires JavaFX initialization")
-    void testEditClient() {
-        ClientController.setTable(null);
-        ClientController.editClient(testClient);
-        assertThat(true).isTrue();
+    void testEditClient() throws InterruptedException {
+        DataStore.load();
+        ClientController.addClient(testClient);
+        DataStore.load();
+
+        Client stored = DataStore.getClients().get(0);
+        String phoneBefore = stored.getPhone();
+
+        // Пользователь открывает диалог и закрывает его крестиком: данные не меняются,
+        // а FX-поток не должен застрять на CompletableFuture.join().
+        Thread closer = JavaFxTestSupport.closeStageWhenShown(EDIT_CLIENT_DIALOG_TITLE, 15_000);
+        JavaFxTestSupport.runOnFxThread(() -> ClientController.editClient(stored));
+        closer.join(TimeUnit.SECONDS.toMillis(15));
+        assertThat(closer.isAlive()).as("диалог был найден и закрыт").isFalse();
+
+        assertThat(JavaFxTestSupport.fxResponsive(5_000)).as("FX-поток отзывчив после диалога").isTrue();
+        assertThat(JavaFxTestSupport.findShowingStage(EDIT_CLIENT_DIALOG_TITLE))
+                .as("диалог закрыт").isNull();
+
+        DataStore.load();
+        assertThat(DataStore.getClients()).as("клиент не задвоился").hasSize(1);
+        assertThat(DataStore.getClients().get(0).getPhone())
+                .as("отмена в диалоге не меняет телефон").isEqualTo(phoneBefore);
     }
 
     @Test

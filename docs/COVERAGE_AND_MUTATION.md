@@ -37,6 +37,16 @@
 подменяется на `@TempDir` через `TableStateManager.setStorageDirForTest(...)`,
 поэтому цифры платформ совпадают (94% по классу на обеих).
 
+### Тесты, которым нужен JavaFX
+
+Четыре теста, ранее помеченные `@Disabled` (`ClientControllerTest.testEditClient`,
+`OrderControllerTest.testRefreshTable/testViewOrder/testChangeStatus`), включены:
+тулкит поднимается через `com.autoservice.support.JavaFxTestSupport.initToolkit()`
+(headless Monocle + **`Platform.setImplicitExit(false)`** — без него закрытие
+последнего окна останавливает тулкит и следующие тесты впадают в таймаут).
+Диалоги закрываются фоновым «кликером» `closeStageWhenShown(title, timeout)`.
+Итог: 561 тест, 0 пропущенных.
+
 ### Общая картина (строки; Windows / Linux-CI, сессия 2026-11-12)
 
 | Пакет | Покрытие (Win / Linux) | Строк |
@@ -94,40 +104,44 @@
 (`src/main/java/com/autoservice/DoNotMutate.java`) — PIT распознаёт его без
 дополнительных настроек.
 
-### Базовая линия (2026-11-12, после тестов `BackupService` / `TableStateManager`)
+### Базовая линия (2026-11-13, после тестов `DataStore` / `SparePart`)
 
 ```
 Мутаций сгенерировано: 1054
-Убито:                 489 (46% от всех)
-Без покрытия:          386
-Test strength:         73%  (killed / (generated − NO_COVERAGE))
-Покрытие мутируемых классов: 68% строк
-Время прогона:         59 с
+Убито:                 579 (55% от всех)
+Без покрытия:          255
+Test strength:         72%  (killed / (generated − NO_COVERAGE))
+Покрытие мутируемых классов: 78% строк
+Время прогона:         74 с
 ```
 
 История: линия 2026-11-11 — убито 325 (31%), без покрытия 622, test strength 75%,
 покрытие мутируемых классов 48%. Линия после тестов импорта/экспорта/настроек —
-439 (42%), 451, 73%, 62%. Рост общего mutation score 31% → 42% → 46% дали сначала
-`ExportService` (было 0% убитых мутаций) и `ImportService`, затем `BackupService`
-(было 29% убитых → 78%, без покрытия 77 → 13).
+439 (42%), 451, 73%, 62%. Линия после тестов `BackupService` / `TableStateManager` —
+489 (46%), 386, 73%, 68%. Рост общего mutation score 31% → 42% → 46% → 55% дали
+сначала `ExportService` (было 0% убитых мутаций) и `ImportService`, затем
+`BackupService` (было 29% убитых → 78%, без покрытия 77 → 13), затем тесты
+`DataStore` (`DataStorePersistenceTest` — семантика `save()`, `DataStoreRelationsTest` —
+связи услуга-запчасть/списки/автомобили/ТО/настройки: без покрытия 98 → 9,
+score 54% → 60%) и `SparePartTest` (`SparePart`: без покрытия 34 → 0, score 0% → 82%).
 
-Гейт держится по **test strength** (`testStrengthThreshold = 70` при факте 73%), а не по общему mutation score 46%: общий счёт падает от любого нового непокрытого класса, хотя качество тестов не изменилось. Порог — на 3 п.п. ниже факта, чтобы ловить деградацию. `mutationThreshold` выключен (0).
+Гейт держится по **test strength** (`testStrengthThreshold = 70` при факте 72%), а не по общему mutation score 55%: общий счёт падает от любого нового непокрытого класса, хотя качество тестов не изменилось. Порог — на 2 п.п. ниже факта, чтобы ловить деградацию. `mutationThreshold` выключен (0).
 
 ### Где тесты слабее всего (NO_COVERAGE → 0% score)
 
 | Класс | Мутаций | Без покрытия | Score |
 |-------|---------|--------------|-------|
-| `DataStore` | 159 | 98 | 54% |
 | `IconHelper` | 59 | 59 | 0% |
 | `ServicePartHelper` | 43 | 43 | 0% |
-| `SparePart` | 34 | 34 | 0% |
 | `ValidationErrorIndicator` | 31 | 31 | 0% |
-| `ValidationUtils` | 62 | 28 | 100% |
-| `Formatters` | 45 | 28 | 100% |
-| `LoyaltyService` | 121 | 15 | 74% |
-| `BackupService` | 112 | 13 | 78% |
-| `ImportService` | 129 | 9 | 74% |
-| `DateUtils` | 58 | 5 | 79% |
+| `ValidationUtils` | 62 | 28 | 55% |
+| `Formatters` | 45 | 20 | 38% |
+| `DataStore` | 159 | 9 | 60% |
+| `ImportService` | 129 | 9 | 70% |
+| `BackupService` | 112 | 13 | 70% |
+| `LoyaltyService` | 121 | 15 | 64% |
+| `DateUtils` | 58 | 5 | 72% |
+| `SparePart` | 34 | 0 | 82% |
 
 Первый кандидат на доработку — `IconHelper`, `ServicePartHelper`, `SparePart`,
 `ValidationErrorIndicator` (0% при заметном объёме логики), затем `DataStore`

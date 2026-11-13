@@ -1,190 +1,328 @@
 package com.autoservice;
 
-import org.junit.jupiter.api.*;
-import static org.assertj.core.api.Assertions.*;
+import com.autoservice.model.ServiceCategory;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Тесты для класса SparePart
+ * Unit-тесты складских операций {@link SparePart}.
+ *
+ * <p>Проверяют гибридный учёт: физический остаток ({@code stock}), резерв под
+ * заказы ({@code reserved}) и минимальный остаток ({@code minStock}). Тесты
+ * доводят до границ условия {@code qty <= 0}, {@code availableStock < qty} и
+ * {@code stock < qty} — именно там скрывались непокрытые мутации.</p>
  */
-@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Tag(TestTags.UNIT)
 class SparePartTest {
 
-    private SparePart testPart;
+    @Test
+    @DisplayName("Запчасть из полного конструктора: остаток, резерв 0, не требует сохранения")
+    void newPartHasStockAndNoReservation() {
+        SparePart part = new SparePart("Масло", 800, 1200, 10);
 
-    @BeforeEach
-    void setUp() {
-        testPart = new SparePart("Масло моторное", 800, 1200, 20);
-        testPart.setId(1);
+        assertThat(part.getStock()).isEqualTo(10);
+        assertThat(part.getReserved()).isZero();
+        assertThat(part.getAvailableStock()).isEqualTo(10);
+        assertThat(part.getUnitType()).isEqualTo("шт");
+        assertThat(part.isDirty()).as("прочитанная из БД запчасть не требует сохранения").isFalse();
     }
 
     @Test
-    @Order(1)
-    void testConstructor() {
-        SparePart part = new SparePart("Тест", 100, 200, 10);
-        
-        assertThat(part.getName()).isEqualTo("Тест");
-        assertThat(part.getPurchasePrice()).isEqualTo(100);
-        assertThat(part.getRetailPrice()).isEqualTo(200);
+    @DisplayName("Пустой конструктор: id=-1, единица измерения «шт», требует сохранения")
+    void emptyConstructorMarksDirty() {
+        SparePart part = new SparePart();
+
+        assertThat(part.getId()).isEqualTo(-1);
+        assertThat(part.getName()).isEmpty();
+        assertThat(part.getUnitType()).isEqualTo("шт");
+        assertThat(part.isDirty()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Доступный остаток = остаток − резерв")
+    void availableStockSubtractsReservation() {
+        SparePart part = new SparePart("Фильтр", 300, 450, 7);
+        part.reserve(3);
+
+        assertThat(part.getAvailableStock()).isEqualTo(4);
+    }
+
+    @Test
+    @DisplayName("reserve(0) и reserve(<0) считаются успешными и не меняют резерв")
+    void reserveNonPositiveIsNoOp() {
+        SparePart part = new SparePart("Масло", 800, 1200, 10);
+
+        assertThat(part.reserve(0)).isTrue();
+        assertThat(part.reserve(-5)).isTrue();
+        assertThat(part.getReserved()).isZero();
+    }
+
+    @Test
+    @DisplayName("reserve больше доступного остатка отклоняется")
+    void reserveMoreThanAvailableFails() {
+        SparePart part = new SparePart("Масло", 800, 1200, 10);
+        part.reserve(8);
+
+        assertThat(part.reserve(3)).as("доступно только 2").isFalse();
+        assertThat(part.getReserved()).isEqualTo(8);
+    }
+
+    @Test
+    @DisplayName("reserve ровно на доступный остаток разрешён")
+    void reserveExactlyAvailableSucceeds() {
+        SparePart part = new SparePart("Масло", 800, 1200, 10);
+        part.reserve(4);
+
+        assertThat(part.reserve(6)).isTrue();
+        assertThat(part.getAvailableStock()).isZero();
+        assertThat(part.getReserved()).isEqualTo(10);
+    }
+
+    @Test
+    @DisplayName("reserve помечает запчасть изменённой")
+    void reserveMarksDirty() {
+        SparePart part = new SparePart("Масло", 800, 1200, 10);
+        part.markClean();
+
+        part.reserve(2);
+
+        assertThat(part.isDirty()).isTrue();
+    }
+
+    @Test
+    @DisplayName("unreserve(0) и unreserve(<0) ничего не делают")
+    void unreserveNonPositiveIsNoOp() {
+        SparePart part = new SparePart("Масло", 800, 1200, 10);
+        part.reserve(4);
+
+        part.unreserve(0);
+        part.unreserve(-3);
+
+        assertThat(part.getReserved()).isEqualTo(4);
+    }
+
+    @Test
+    @DisplayName("unreserve уменьшает резерв и не уходит в минус")
+    void unreserveNeverGoesBelowZero() {
+        SparePart part = new SparePart("Масло", 800, 1200, 10);
+        part.reserve(3);
+
+        part.unreserve(5);
+
+        assertThat(part.getReserved()).isZero();
+        assertThat(part.getAvailableStock()).isEqualTo(10);
+    }
+
+    @Test
+    @DisplayName("unreserve помечает запчасть изменённой")
+    void unreserveMarksDirty() {
+        SparePart part = new SparePart("Масло", 800, 1200, 10);
+        part.reserve(3);
+        part.markClean();
+
+        part.unreserve(1);
+
+        assertThat(part.isDirty()).isTrue();
+        assertThat(part.getReserved()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("deduct(0) считается успешным и ничего не списывает")
+    void deductNonPositiveIsNoOp() {
+        SparePart part = new SparePart("Масло", 800, 1200, 10);
+
+        assertThat(part.deduct(0)).isTrue();
         assertThat(part.getStock()).isEqualTo(10);
     }
 
     @Test
-    @Order(2)
-    void testGettersAndSetters() {
-        SparePart part = new SparePart();
-        
-        part.setName("Масло");
-        part.setPurchasePrice(800);
-        part.setRetailPrice(1200);
-        part.setStock(20);
-        
-        assertThat(part.getName()).isEqualTo("Масло");
-        assertThat(part.getPurchasePrice()).isEqualTo(800);
-        assertThat(part.getRetailPrice()).isEqualTo(1200);
-        assertThat(part.getStock()).isEqualTo(20);
+    @DisplayName("deduct больше остатка отклоняется")
+    void deductMoreThanStockFails() {
+        SparePart part = new SparePart("Масло", 800, 1200, 5);
+
+        assertThat(part.deduct(6)).isFalse();
+        assertThat(part.getStock()).isEqualTo(5);
     }
 
     @Test
-    @Order(3)
-    void testToString() {
-        SparePart part = new SparePart("Масло", 800, 1200, 20);
-        String result = part.toString();
-        
-        assertThat(result).contains("Масло");
+    @DisplayName("deduct уменьшает остаток и снимает резерв")
+    void deductRemovesStockAndReservation() {
+        SparePart part = new SparePart("Масло", 800, 1200, 5);
+        part.reserve(2);
+
+        assertThat(part.deduct(3)).isTrue();
+
+        assertThat(part.getStock()).isEqualTo(2);
+        assertThat(part.getReserved()).as("резерв снят при списании").isZero();
     }
 
     @Test
-    @Order(4)
-    void testDirtyFlag() {
-        SparePart part = new SparePart();
-        part.setName("Масло");
-        part.setPurchasePrice(800);
-        part.setRetailPrice(1200);
-        part.setStock(20);
-        
-        // Конструктор пустой запчасти устанавливает dirty=true
+    @DisplayName("deduct ровно на весь остаток обнуляет склад")
+    void deductWholeStockSucceeds() {
+        SparePart part = new SparePart("Масло", 800, 1200, 5);
+
+        assertThat(part.deduct(5)).isTrue();
+        assertThat(part.getStock()).isZero();
+    }
+
+    @Test
+    @DisplayName("deductStock: неположительное количество и нехватка остатка — отказ")
+    void deductStockRejectsInvalidQuantities() {
+        SparePart part = new SparePart("Масло", 800, 1200, 5);
+
+        assertThat(part.deductStock(0)).isFalse();
+        assertThat(part.deductStock(-1)).isFalse();
+        assertThat(part.deductStock(6)).isFalse();
+        assertThat(part.getStock()).isEqualTo(5);
+    }
+
+    @Test
+    @DisplayName("deductStock не снимает резерв и помечает dirty")
+    void deductStockReducesStockOnly() {
+        SparePart part = new SparePart("Масло", 800, 1200, 5);
+        part.reserve(2);
+        part.markClean();
+
+        assertThat(part.deductStock(1)).isTrue();
+
+        assertThat(part.getStock()).isEqualTo(4);
+        assertThat(part.getReserved()).as("резерв не трогаем").isEqualTo(2);
         assertThat(part.isDirty()).isTrue();
+    }
+
+    @Test
+    @DisplayName("addStock игнорирует неположительный приход")
+    void addStockIgnoresNonPositive() {
+        SparePart part = new SparePart("Масло", 800, 1200, 5);
+
+        part.addStock(0);
+        part.addStock(-2);
+
+        assertThat(part.getStock()).isEqualTo(5);
+    }
+
+    @Test
+    @DisplayName("addStock увеличивает остаток и помечает dirty")
+    void addStockIncreasesStock() {
+        SparePart part = new SparePart("Масло", 800, 1200, 5);
         part.markClean();
-        assertThat(part.isDirty()).isFalse();
-        
-        part.setStock(15);
+
+        part.addStock(3);
+
+        assertThat(part.getStock()).isEqualTo(8);
         assertThat(part.isDirty()).isTrue();
     }
 
     @Test
-    @Order(5)
-    void testMarkClean() {
-        SparePart part = new SparePart("Масло", 800, 1200, 20);
+    @DisplayName("needsRestock: доступный остаток ниже минимума")
+    void needsRestockTrueWhenAvailableBelowMin() {
+        SparePart part = new SparePart("Масло", 800, 1200, 5);
+        part.setMinStock(10);
+
+        assertThat(part.needsRestock()).isTrue();
+    }
+
+    @Test
+    @DisplayName("needsRestock учитывает резерв, а не весь остаток")
+    void needsRestockUsesAvailableStock() {
+        SparePart part = new SparePart("Масло", 800, 1200, 10);
+        part.setMinStock(5);
+        part.reserve(8);
+
+        assertThat(part.getStock()).as("остаток формально выше минимума").isEqualTo(10);
+        assertThat(part.needsRestock()).isTrue();
+    }
+
+    @Test
+    @DisplayName("needsRestock false, когда доступного остатка хватает")
+    void needsRestockFalseWhenEnoughStock() {
+        SparePart part = new SparePart("Масло", 800, 1200, 10);
+        part.setMinStock(5);
+
+        assertThat(part.needsRestock()).isFalse();
+    }
+
+    @Test
+    @DisplayName("setStock не помечает dirty, если значение не изменилось")
+    void setStockSameValueKeepsDirtyFlag() {
+        SparePart part = new SparePart("Масло", 800, 1200, 10);
         part.markClean();
-        
+
+        part.setStock(10);
+
         assertThat(part.isDirty()).isFalse();
     }
 
     @Test
-    @Order(6)
-    void testZeroStock() {
-        SparePart part = new SparePart("Масло", 800, 1200, 0);
-        
-        assertThat(part.getStock()).isEqualTo(0);
-    }
-
-    @Test
-    @Order(7)
-    void testNegativeStock() {
-        SparePart part = new SparePart("Масло", 800, 1200, -5);
-        
-        assertThat(part.getStock()).isEqualTo(-5);
-    }
-
-    @Test
-    @Order(8)
-    void testHighStock() {
-        SparePart part = new SparePart("Масло", 800, 1200, 1000);
-        
-        assertThat(part.getStock()).isEqualTo(1000);
-    }
-
-    @Test
-    @Order(9)
-    void testZeroPrice() {
-        SparePart part = new SparePart("Масло", 0, 0, 10);
-        
-        assertThat(part.getPurchasePrice()).isEqualTo(0);
-        assertThat(part.getRetailPrice()).isEqualTo(0);
-    }
-
-    @Test
-    @Order(10)
-    void testNegativePrice() {
-        SparePart part = new SparePart("Масло", -100, -200, 10);
-        
-        assertThat(part.getPurchasePrice()).isEqualTo(-100);
-        assertThat(part.getRetailPrice()).isEqualTo(-200);
-    }
-
-    @Test
-    @Order(11)
-    void testPartWithPartNumber() {
-        SparePart part = new SparePart("Масло", 800, 1200, 20);
-        part.setPartNumber("OF-001");
-        
-        assertThat(part.getPartNumber()).isEqualTo("OF-001");
-    }
-
-    @Test
-    @Order(12)
-    void testPartWithManufacturer() {
-        SparePart part = new SparePart("Масло", 800, 1200, 20);
-        part.setManufacturer("Shell");
-        
-        assertThat(part.getManufacturer()).isEqualTo("Shell");
-    }
-
-    @Test
-    @Order(13)
-    void testPartWithCompatibleModels() {
-        SparePart part = new SparePart("Масло", 800, 1200, 20);
-        part.setCompatibleModels("Haval F7, Haval Jolion");
-        
-        assertThat(part.getCompatibleModels()).isEqualTo("Haval F7, Haval Jolion");
-    }
-
-    @Test
-    @Order(14)
-    void testPartWithLocation() {
-        SparePart part = new SparePart("Масло", 800, 1200, 20);
-        part.setLocation("Склад А");
-        
-        assertThat(part.getLocation()).isEqualTo("Склад А");
-    }
-
-    @Test
-    @Order(15)
-    void testPartWithAllFields() {
-        SparePart part = new SparePart(1, 0, "Масло", "OF-001", "Shell", "Haval F7", "Общее примечание", 800, 1200, 20, 5, "шт", "Склад А");
-        
-        assertThat(part.getId()).isEqualTo(1);
-        assertThat(part.getName()).isEqualTo("Масло");
-        assertThat(part.getPartNumber()).isEqualTo("OF-001");
-        assertThat(part.getManufacturer()).isEqualTo("Shell");
-        assertThat(part.getCompatibleModels()).isEqualTo("Haval F7");
-        assertThat(part.getNote()).isEqualTo("Общее примечание");
-        assertThat(part.getPurchasePrice()).isEqualTo(800);
-        assertThat(part.getRetailPrice()).isEqualTo(1200);
-        assertThat(part.getStock()).isEqualTo(20);
-        assertThat(part.getLocation()).isEqualTo("Склад А");
-    }
-
-    @Test
-    @Order(16)
-    void testSetStockToSameValueKeepsCleanState() {
-        SparePart part = new SparePart("Масло", 800, 1200, 20);
+    @DisplayName("setStock с новым значением помечает dirty")
+    void setStockChangedMarksDirty() {
+        SparePart part = new SparePart("Масло", 800, 1200, 10);
         part.markClean();
 
-        part.setStock(20);
+        part.setStock(4);
 
-        assertThat(part.getStock()).isEqualTo(20);
+        assertThat(part.getStock()).isEqualTo(4);
+        assertThat(part.isDirty()).isTrue();
+    }
+
+    @Test
+    @DisplayName("setReserved не помечает dirty при том же значении")
+    void setReservedSameValueKeepsDirtyFlag() {
+        SparePart part = new SparePart("Масло", 800, 1200, 10);
+        part.markClean();
+
+        part.setReserved(0);
+
         assertThat(part.isDirty()).isFalse();
+    }
+
+    @Test
+    @DisplayName("setReserved с новым значением помечает dirty")
+    void setReservedChangedMarksDirty() {
+        SparePart part = new SparePart("Масло", 800, 1200, 10);
+        part.markClean();
+
+        part.setReserved(2.5);
+
+        assertThat(part.getReserved()).isEqualTo(2.5);
+        assertThat(part.isDirty()).isTrue();
+    }
+
+    @Test
+    @DisplayName("setCategory(null) не роняет запчасть и откатывается к REGULAR")
+    void setCategoryNullFallsBackToRegular() {
+        SparePart part = new SparePart("Масло", 800, 1200, 10);
+        part.setCategory(ServiceCategory.TUNING);
+
+        part.setCategory(null);
+
+        assertThat(part.getCategory()).isEqualTo(ServiceCategory.REGULAR);
+    }
+
+    @Test
+    @DisplayName("getStockFormatted печатает остаток с единицей измерения")
+    void getStockFormattedIncludesUnit() {
+        SparePart part = new SparePart("Масло", 800, 1200, 7);
+        part.setUnitType("л");
+
+        assertThat(part.getStockFormatted()).isEqualTo("7 л");
+    }
+
+    @Test
+    @DisplayName("toString показывает наименование, остаток и примечание")
+    void toStringShowsStockAndNote() {
+        SparePart part = new SparePart("Масло", 800, 1200, 7);
+        part.setNote("Shell");
+
+        assertThat(part.toString()).isEqualTo("Масло — 7 шт (Shell)");
+
+        part.setNote("");
+        assertThat(part.toString()).as("пустое примечание не печатается").isEqualTo("Масло — 7 шт");
+
+        part.setNote(null);
+        assertThat(part.toString()).as("null-примечание не печатается").isEqualTo("Масло — 7 шт");
     }
 }
