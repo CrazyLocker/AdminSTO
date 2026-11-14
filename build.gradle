@@ -136,6 +136,7 @@ tasks.named('test') {
     exclude '**/MainAppUITest.class'
     exclude '**/ThemeSettingsUITest.class'
     exclude '**/DashboardThemeUITest.class'
+    exclude '**/DashboardLayoutUITest.class'
     exclude '**/BaseUITest.class'
 
     // Для UI-тестов включаем headless режим
@@ -277,6 +278,7 @@ task uiTest(type: Test) {
     include '**/MainAppUITest.class'
     include '**/ThemeSettingsUITest.class'
     include '**/DashboardThemeUITest.class'
+    include '**/DashboardLayoutUITest.class'
 
     // Каждый UI-тест в отдельной JVM
     forkEvery = 1
