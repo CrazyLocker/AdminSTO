@@ -50,7 +50,8 @@ public class StockOperationDialog {
             String.format("%.0f %s", part.getAvailableStock(), part.getUnitType()),
             String.format("%.0f %s", part.getReserved(), part.getUnitType())
         ));
-        stockLabel.setStyle("-fx-text-fill: #9CA3AF;");
+        stockLabel.setId("stockOperationStockLabel");
+        stockLabel.setStyle("-fx-text-fill: -color-fg-muted;");
 
         // Радиокнопки для выбора типа операции
         ToggleGroup operationGroup = new ToggleGroup();
@@ -73,7 +74,10 @@ public class StockOperationDialog {
         }
 
         VBox radioBox = new VBox(10, incomeRadio, expenseRadio);
-        radioBox.setStyle("-fx-padding: 10; -fx-border-color: #3B82F6; -fx-border-radius: 8; -fx-background-color: #1E2139;");
+        radioBox.setId("stockOperationTypeBox");
+        radioBox.setStyle("-fx-padding: 10; -fx-background-color: -color-bg-subtle; "
+                + "-fx-border-color: -color-border-default; -fx-border-radius: 8; "
+                + "-fx-background-radius: 8;");
 
         // Поле для ввода количества
         TextField amountField = new TextField();
@@ -84,7 +88,7 @@ public class StockOperationDialog {
         // Валидация ввода
         amountField.textProperty().addListener((obs, oldVal, newVal) -> {
             if (!newVal.isEmpty() && !newVal.matches("[0-9]*\\.?[0-9]*")) {
-                amountField.setStyle("-fx-border-color: red;");
+                amountField.setStyle("-fx-border-color: -color-danger-emphasis;");
             } else {
                 amountField.setStyle("");
             }
@@ -110,7 +114,7 @@ public class StockOperationDialog {
         // Валидация ввода минимального остатка
         minStockField.textProperty().addListener((obs, oldVal, newVal) -> {
             if (!newVal.isEmpty() && !newVal.matches("[0-9]*\\.?[0-9]*")) {
-                minStockField.setStyle("-fx-border-color: red;");
+                minStockField.setStyle("-fx-border-color: -color-danger-emphasis;");
             } else {
                 minStockField.setStyle("");
             }
@@ -121,7 +125,7 @@ public class StockOperationDialog {
 
         // Предупреждение о текущем остатке
         Label warningLabel = new Label();
-        warningLabel.setStyle("-fx-text-fill: #FB923C; -fx-font-size: 11px;");
+        warningLabel.setStyle("-fx-text-fill: -color-warning-fg; -fx-font-size: 11px;");
         
         expenseRadio.selectedProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal && part.getStock() > 0) {
@@ -133,10 +137,14 @@ public class StockOperationDialog {
 
         // Кнопки
         Button applyBtn = new Button("Применить");
-        applyBtn.setStyle("-fx-background-color: #3B82F6; -fx-text-fill: white; -fx-padding: 8 20;");
+        applyBtn.setId("stockOperationApplyBtn");
+        applyBtn.setStyle("-fx-background-color: -color-accent-emphasis; "
+                + "-fx-text-fill: -color-fg-emphasis; -fx-padding: 8 20;");
         
         Button cancelBtn = new Button("Отмена");
-        cancelBtn.setStyle("-fx-background-color: #6B7280; -fx-text-fill: white; -fx-padding: 8 20;");
+        cancelBtn.setId("stockOperationCancelBtn");
+        cancelBtn.setStyle("-fx-background-color: -color-neutral-emphasis; "
+                + "-fx-text-fill: -color-fg-emphasis; -fx-padding: 8 20;");
 
         HBox btnBox = new HBox(10, applyBtn, cancelBtn);
         btnBox.setAlignment(Pos.CENTER);

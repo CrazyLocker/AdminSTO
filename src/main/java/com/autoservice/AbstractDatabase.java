@@ -528,17 +528,25 @@ public abstract class AbstractDatabase implements DatabaseInterface {
      * чтобы не запрашивать второе соединение из пула и не блокировать его.
      */
     protected int findClientId(Connection conn, Client client) throws SQLException {
+        if (client == null) {
+            return -1;
+        }
         String normalizedPhone = Formatters.cleanPhone(client.getPhone());
         String normalizedLastName = client.getLastName() != null ? client.getLastName() : "";
-        String sql = "SELECT id FROM clients WHERE name = ? AND last_name = ? AND phone = ?";
+        // Телефон в базе может быть записан с форматированием (например,
+        // "+7 900 111-00-02" после импорта или ручного наполнения БД), а
+        // сравнивать нужно нормализованные значения. Поэтому телефон
+        // сравнивается в Java, а не в SQL; last_name может быть NULL.
+        String sql = "SELECT id, phone FROM clients WHERE name = ? AND COALESCE(last_name, '') = ?";
 
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, client.getName());
             pstmt.setString(2, normalizedLastName);
-            pstmt.setString(3, normalizedPhone);
             try (ResultSet rs = pstmt.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt("id");
+                while (rs.next()) {
+                    if (normalizedPhone.equals(Formatters.cleanPhone(rs.getString("phone")))) {
+                        return rs.getInt("id");
+                    }
                 }
             }
         }
