@@ -237,6 +237,15 @@ public interface DatabaseInterface {
      * @param relation связь для добавления; после вызова получает сгенерированный ID
      */
     void addServiceSparePart(com.autoservice.model.ServiceSparePart relation);
+
+    /**
+     * Обновить существующую связь услуги с запчастью по её идентификатору.
+     *
+     * <p>Используется вместо повторного {@code INSERT}, чтобы повторное добавление
+     * пары «услуга — запчасть» не создавало дубликат в таблице.
+     * @param relation связь с новыми значениями; {@code id} должен быть задан
+     */
+    void updateServiceSparePart(com.autoservice.model.ServiceSparePart relation);
     
     /**
      * Удалить связь услуги с запчастью.
@@ -251,11 +260,6 @@ public interface DatabaseInterface {
      * @param serviceId идентификатор услуги
      */
     void deleteServiceSparePartsByServiceId(int serviceId);
-    
-    /**
-     * Удалить дубликаты связей услуги с запчастями, оставив по одной связи на пару «услуга — запчасть».
-     */
-    void deleteDuplicateServiceSpareParts();
     
     // ==================== SERVICE-PART RELATIONSHIPS (NEW STRUCTURE) ====================
     

@@ -1254,6 +1254,33 @@ public abstract class AbstractDatabase implements DatabaseInterface {
     }
 
     /**
+     * Обновить существующую связь услуги с запчастью по её идентификатору.
+     *
+     * <p>Позволяет не плодить дубликаты при повторном добавлении пары
+     * «услуга — запчасть»: {@code addServiceSparePart} в этом случае
+     * не делает второй {@code INSERT}, а вызывает этот метод.
+     * @param relation связь с новыми значениями; {@code id} должен быть задан
+     */
+    @Override
+    public void updateServiceSparePart(com.autoservice.model.ServiceSparePart relation) {
+        String sql = "UPDATE service_spare_parts SET quantity = ?, unit_type = ?, active = ? WHERE id = ?";
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, relation.getQuantity());
+            pstmt.setString(2, relation.getUnitType());
+            pstmt.setInt(3, relation.isActive() ? 1 : 0);
+            pstmt.setInt(4, relation.getId());
+            int updated = pstmt.executeUpdate();
+            if (updated == 0) {
+                logger.warn("Связь услуги-запчасти не найдена для обновления: id={}", relation.getId());
+            }
+        } catch (SQLException e) {
+            logger.error("Ошибка обновления связи услуги-запчасти", e);
+        }
+    }
+
+    /**
      * Удалить связь услуги с запчастью.
      * @param relation удаляемая связь
      */
@@ -1298,23 +1325,6 @@ public abstract class AbstractDatabase implements DatabaseInterface {
         }
     }
 
-    /**
-     * Удалить дубликаты связей услуги с запчастями, оставив по одной связи на пару «услуга — запчасть».
-     */
-    @Override
-    public void deleteDuplicateServiceSpareParts() {
-        // Удаляет дубликаты связей для одной услуги-запчасти, оставляя только одну
-        String sql = "DELETE FROM service_spare_parts WHERE id NOT IN (" +
-                "SELECT MIN(id) FROM service_spare_parts GROUP BY service_id, spare_part_id)";
-
-        try (Connection conn = getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            int deletedCount = pstmt.executeUpdate();
-            logger.info("Удалено дубликатов связей услуги-запчасти: {}", deletedCount);
-        } catch (SQLException e) {
-            logger.error("Ошибка удаления дубликатов связей услуги-запчасти", e);
-        }
-    }
 
     // ==================== SERVICE-PART RELATIONSHIPS (NEW STRUCTURE) ====================
 

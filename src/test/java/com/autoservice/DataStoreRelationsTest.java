@@ -102,17 +102,45 @@ class DataStoreRelationsTest extends BaseTest {
     }
 
     @Test
-    @DisplayName("deleteDuplicateServiceSpareParts() перезагружает кэш связей")
-    void deleteDuplicateServiceSparePartsReloadsCache() {
+    @DisplayName("Повторный addServiceSparePart() обновляет связь (UPDATE по id), дубликата в БД не появляется")
+    void repeatedAddServiceSparePartUpdatesRowInDatabase() {
         Service service = createService("Замена масла", 1500);
         SparePart part = createSparePart("Масло", 10);
         DataStore.addServiceSparePart(new ServiceSparePart(service.getId(), part.getId(), 2, "шт"));
-        // Повторное добавление той же связи пишет второй ряд в таблицу.
-        DataStore.addServiceSparePart(new ServiceSparePart(service.getId(), part.getId(), 3, "шт"));
+        int relationId = DataStore.getServiceSparePartsByServiceId(-1).get(0).getId();
 
-        DataStore.deleteDuplicateServiceSpareParts();
+        DataStore.addServiceSparePart(new ServiceSparePart(service.getId(), part.getId(), 7, "л"));
 
-        assertThat(DataStore.getServiceSparePartsByServiceId(-1)).hasSize(1);
+        List<ServiceSparePart> cached = DataStore.getServiceSparePartsByServiceId(-1);
+        assertThat(cached).as("в кэше по-прежнему одна связь").hasSize(1);
+        assertThat(cached.get(0).getId()).as("обновлена та же запись").isEqualTo(relationId);
+        assertThat(cached.get(0).getQuantity()).isEqualTo(7);
+
+        DataStore.load();   // перечитываем таблицу из БД
+        List<ServiceSparePart> stored = DataStore.getServiceSparePartsByServiceId(-1);
+        assertThat(stored).as("в базе нет дубликата").hasSize(1);
+        assertThat(stored.get(0).getId()).as("id записи не изменился").isEqualTo(relationId);
+        assertThat(stored.get(0).getQuantity()).isEqualTo(7);
+        assertThat(stored.get(0).getUnitType()).isEqualTo("л");
+    }
+
+    @Test
+    @DisplayName("addServiceSparePart() обновляет связь, которая уже есть в БД, но отсутствует в кэше")
+    void addServiceSparePartUpdatesRelationMissingFromCache() {
+        Service service = createService("Замена масла", 1500);
+        SparePart part = createSparePart("Масло", 10);
+        // Связь вставлена мимо DataStore — кэш о ней не знает.
+        DatabaseFactory.getDatabase().addServiceSparePart(
+                new ServiceSparePart(service.getId(), part.getId(), 3, "шт"));
+        assertThat(DataStore.getServiceSparePartsByServiceId(-1)).isEmpty();
+
+        DataStore.addServiceSparePart(new ServiceSparePart(service.getId(), part.getId(), 9, "л"));
+
+        DataStore.load();
+        List<ServiceSparePart> stored = DataStore.getServiceSparePartsByServiceId(-1);
+        assertThat(stored).as("дубликат не создан").hasSize(1);
+        assertThat(stored.get(0).getQuantity()).isEqualTo(9);
+        assertThat(stored.get(0).getUnitType()).isEqualTo("л");
     }
 
     // ==================== SERVICE PARTS (новая структура) ====================

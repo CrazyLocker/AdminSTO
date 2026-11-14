@@ -624,28 +624,22 @@ public class DataStore {
     /**
      * Добавить или обновить связь услуги с запчастью.
      *
-     * <p>Если связь уже есть в кэше, обновляются её количество, единица измерения и признак активности.
+     * <p>Пара «услуга — запчасть» уникальна: если связь уже существует (в кэше
+     * или в базе), она обновляется через {@code UPDATE} по id, а не дублируется
+     * повторным {@code INSERT}.
      * @param relation связь для добавления
      */
     public static void addServiceSparePart(ServiceSparePart relation) {
-        // Проверка на дубликат: связь с такими же serviceId и sparePartId уже существует?
-        boolean exists = serviceSpareParts.stream()
-                .filter(s -> s.getServiceId() == relation.getServiceId() && s.getSparePartId() == relation.getSparePartId())
-                .findFirst()
-                .orElse(null) != null;
-        
-        if (exists) {
-            logger.warn("Связь услуги-запчасти уже существует: serviceId={}, sparePartId={}", 
-                    relation.getServiceId(), relation.getSparePartId());
-            // Обновляем количество, если связь уже существует
-            ServiceSparePart existing = serviceSpareParts.stream()
-                    .filter(s -> s.getServiceId() == relation.getServiceId() && s.getSparePartId() == relation.getSparePartId())
-                    .findFirst()
-                    .orElse(null);
-            if (existing != null) {
-                existing.setQuantity(relation.getQuantity());
-                existing.setUnitType(relation.getUnitType());
-                existing.setActive(relation.isActive());
+        ServiceSparePart existing = findServiceSparePart(relation.getServiceId(), relation.getSparePartId());
+
+        if (existing != null) {
+            existing.setQuantity(relation.getQuantity());
+            existing.setUnitType(relation.getUnitType());
+            existing.setActive(relation.isActive());
+            if (existing.getId() > 0) {
+                DatabaseFactory.getDatabase().updateServiceSparePart(existing);
+            } else {
+                // Связь нашлась в кэше, но ещё не сохранена — пишем её в базу.
                 DatabaseFactory.getDatabase().addServiceSparePart(existing);
             }
         } else {
@@ -653,6 +647,36 @@ public class DataStore {
             serviceSpareParts.add(relation);
         }
         isDirty = true;
+    }
+
+    /**
+     * Найти связь услуги с запчастью в кэше, а при отсутствии — в базе.
+     *
+     * <p>Если запись нашлась только в базе, она добавляется в кэш, чтобы
+     * последующие правки применялись к тому же объекту.
+     * @param serviceId идентификатор услуги
+     * @param sparePartId идентификатор запчасти
+     * @return существующая связь или {@code null}
+     */
+    private static ServiceSparePart findServiceSparePart(int serviceId, int sparePartId) {
+        ServiceSparePart cached = serviceSpareParts.stream()
+                .filter(s -> s.getServiceId() == serviceId && s.getSparePartId() == sparePartId)
+                .findFirst()
+                .orElse(null);
+        if (cached != null) {
+            return cached;
+        }
+
+        ServiceSparePart stored = DatabaseFactory.getDatabase()
+                .getServiceSparePartsByServiceId(serviceId)
+                .stream()
+                .filter(s -> s.getSparePartId() == sparePartId)
+                .findFirst()
+                .orElse(null);
+        if (stored != null) {
+            serviceSpareParts.add(stored);
+        }
+        return stored;
     }
 
     /**
@@ -673,16 +697,6 @@ public class DataStore {
     public static void deleteServiceSparePartsByServiceId(int serviceId) {
         DatabaseFactory.getDatabase().deleteServiceSparePartsByServiceId(serviceId);
         serviceSpareParts.removeIf(s -> s.getServiceId() == serviceId);
-        isDirty = true;
-    }
-
-    /**
-     * Удалить дубликаты связей услуги с запчастями и перезагрузить кэш связей.
-     */
-    public static void deleteDuplicateServiceSpareParts() {
-        DatabaseFactory.getDatabase().deleteDuplicateServiceSpareParts();
-        // Перезагружаем данные из БД
-        serviceSpareParts = DatabaseFactory.getDatabase().getServiceSparePartsByServiceId(-1);
         isDirty = true;
     }
 
