@@ -338,6 +338,56 @@ build.finalizedBy(copyDependencies)
 build.finalizedBy(fatJar)
 
 // ============================================================
+// ПОРТАТИВНАЯ СБОРКА (JPACKAGE)
+// ============================================================
+// app-image — папка с исполняемым файлом и встроенным JRE. Утилита jpackage
+// входит в JDK 21, поэтому release-workflow собирает AdminSTO-Windows.zip
+// без дополнительных инструментов.
+tasks.register('jpackage', Exec) {
+    group = 'distribution'
+    description = 'Собирает портативную версию приложения (app-image со встроенным JRE)'
+    dependsOn tasks.named('fatJar')
+
+    def isWindows = System.getProperty('os.name').toLowerCase().contains('windows')
+    def jpackageExecutable = file("${System.getProperty('java.home')}/bin/jpackage" + (isWindows ? '.exe' : ''))
+    def inputDir = layout.buildDirectory.dir('jpackage-input')
+    def outputDir = layout.buildDirectory.dir('jpackage')
+    def fatJarName = tasks.named('fatJar').get().archiveFile.get().asFile.name
+
+    doFirst {
+        delete inputDir.get().asFile
+        delete outputDir.get().asFile
+        copy {
+            from tasks.named('fatJar').get().archiveFile
+            into inputDir
+        }
+    }
+
+    commandLine jpackageExecutable,
+        '--type', 'app-image',
+        '--name', 'AdminSTO',
+        '--app-version', project.version.toString(),
+        '--vendor', 'AdminSTO',
+        '--input', inputDir.get().asFile.absolutePath,
+        '--dest', outputDir.get().asFile.absolutePath,
+        '--main-jar', fatJarName,
+        '--main-class', 'com.autoservice.Launcher',
+        // JavaFX и библиотеки приложения лежат в fat JAR (classpath), поэтому
+        // перечисляем только нужные модули JDK: компилятор и jshell в
+        // портативную сборку не попадают.
+        '--add-modules', 'java.base,java.desktop,java.logging,java.sql,java.naming,' +
+            'java.management,java.xml,java.prefs,java.security.jgss,java.sql.rowset,' +
+            'jdk.crypto.ec,jdk.unsupported,jdk.localedata,jdk.charsets,jdk.zipfs',
+        // --include-locales подтягивает jdk.localedata и добавляет русскую
+        // локаль; остальные опции — стандартные для jlink, чтобы уменьшить образ.
+        '--jlink-options', '--strip-native-commands --strip-debug --no-man-pages --no-header-files --include-locales=ru,en'
+
+    doLast {
+        logger.lifecycle("Портативная сборка: ${outputDir.get().asFile.absolutePath}")
+    }
+}
+
+// ============================================================
 // НАСТРОЙКА SPOTBUGS
 // ============================================================
 spotbugs {
