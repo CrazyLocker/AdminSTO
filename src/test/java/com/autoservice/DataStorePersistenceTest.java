@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -134,7 +135,7 @@ class DataStorePersistenceTest extends BaseTest {
     }
 
     @Test
-    @DisplayName("save() сохраняет количество расходника ТО")
+    @DisplayName("save() сохраняет количество расходника ТО (сеттер помечает объект изменённым)")
     void savePersistsDirtyToPart() {
         SparePart part = new SparePart("Масло", 800, 1200, 10);
         DataStore.addSparePart(part);
@@ -145,9 +146,11 @@ class DataStorePersistenceTest extends BaseTest {
         DataStore.load();
 
         ToPart cached = DataStore.getToPartsByCarModel("").get(0);
+        // Регрессия: сеттеры ToPart должны сами помечать объект изменённым,
+        // иначе save() молча пропускает правку.
         cached.setQuantity(6);
-        // ToPart.setQuantity() не помечает объект изменённым — флаг ставим явно.
-        cached.setDirty(true);
+        assertThat(cached.isDirty())
+                .as("setQuantity() помечает расходник изменённым").isTrue();
         DataStore.markDirty();
 
         DataStore.save();
@@ -155,6 +158,30 @@ class DataStorePersistenceTest extends BaseTest {
         assertThat(cached.isDirty()).isFalse();
         DataStore.load();
         assertThat(DataStore.getToPartsByCarModel("").get(0).getQuantity()).isEqualTo(6);
+    }
+
+    @Test
+    @DisplayName("Все сеттеры ToPart помечают объект изменённым")
+    void allToPartSettersMarkDirty() {
+        record Setter(String name, Consumer<ToPart> apply) {
+        }
+        List<Setter> setters = List.of(
+                new Setter("setCarModel", p -> p.setCarModel("Kia Rio")),
+                new Setter("setSparePartId", p -> p.setSparePartId(42)),
+                new Setter("setQuantity", p -> p.setQuantity(7)),
+                new Setter("setUnitType", p -> p.setUnitType("лл")),
+                new Setter("setNote", p -> p.setNote("комментарий")),
+                new Setter("setActive", p -> p.setActive(false)));
+
+        for (Setter setter : setters) {
+            ToPart toPart = new ToPart("Haval Jolion", 1, 2, "л");
+            toPart.setDirty(false);
+
+            setter.apply().accept(toPart);
+
+            assertThat(toPart.isDirty())
+                    .as("%s() помечает объект изменённым", setter.name()).isTrue();
+        }
     }
 
     @Test

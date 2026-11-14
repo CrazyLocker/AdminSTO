@@ -47,6 +47,7 @@ public class ToPart {
 
     public void setCarModel(String carModel) {
         this.carModel = carModel;
+        this.isDirty = true;
     }
 
     public int getSparePartId() {
@@ -55,6 +56,7 @@ public class ToPart {
 
     public void setSparePartId(int sparePartId) {
         this.sparePartId = sparePartId;
+        this.isDirty = true;
     }
 
     public int getQuantity() {
@@ -63,6 +65,7 @@ public class ToPart {
 
     public void setQuantity(int quantity) {
         this.quantity = quantity;
+        this.isDirty = true;
     }
 
     public String getUnitType() {
@@ -71,6 +74,7 @@ public class ToPart {
 
     public void setUnitType(String unitType) {
         this.unitType = unitType;
+        this.isDirty = true;
     }
 
     public String getNote() {
@@ -79,6 +83,7 @@ public class ToPart {
 
     public void setNote(String note) {
         this.note = note;
+        this.isDirty = true;
     }
 
     public boolean isActive() {
@@ -87,6 +92,7 @@ public class ToPart {
 
     public void setActive(boolean active) {
         this.active = active;
+        this.isDirty = true;
     }
 
     private boolean isDirty = false;

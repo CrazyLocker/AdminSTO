@@ -221,6 +221,102 @@ class DataStoreRelationsTest extends BaseTest {
         assertThat(DataStore.getServiceSparePartsListsByServiceId(-1)).isEmpty();
     }
 
+    // ==================== УДАЛЕНИЕ ИЗ КЭША ПО ID (регрессия) ====================
+
+    @Test
+    @DisplayName("removeClient() со «старым» объектом чистит кэш по id")
+    void removeClientWithStaleInstanceRemovesCachedCopy() {
+        createClient("Иван", "+79001234567");
+        Client stale = DataStore.getClients().get(0);
+        DataStore.load();
+
+        DataStore.removeClient(stale);
+
+        assertThat(DataStore.getClients())
+                .as("удаление по id чистит кэш, несмотря на другой экземпляр").isEmpty();
+    }
+
+    @Test
+    @DisplayName("deleteServiceSparePart() со «старым» объектом чистит кэш по id")
+    void deleteServiceSparePartWithStaleInstanceRemovesCachedCopy() {
+        Service service = createService("Замена масла", 1500);
+        SparePart part = createSparePart("Масло", 10);
+        DataStore.addServiceSparePart(new ServiceSparePart(service.getId(), part.getId(), 2, "шт"));
+        ServiceSparePart stale = DataStore.getServiceSparePartsByServiceId(-1).get(0);
+        DataStore.load();
+
+        DataStore.deleteServiceSparePart(stale);
+
+        assertThat(DataStore.getServiceSparePartsByServiceId(-1))
+                .as("связь удалена из кэша по id").isEmpty();
+        DataStore.load();
+        assertThat(DataStore.getServiceSparePartsByServiceId(-1))
+                .as("связь удалена из базы").isEmpty();
+    }
+
+    @Test
+    @DisplayName("deleteServicePart() со «старым» объектом чистит кэш по id")
+    void deleteServicePartWithStaleInstanceRemovesCachedCopy() {
+        Service service = createService("Замена масла", 1500);
+        SparePart part = createSparePart("Масло", 10);
+        DataStore.addServicePart(new ServicePart(service.getId(), part.getId(), 2, true));
+        ServicePart stale = DataStore.getServicePartsByServiceId(service.getId()).get(0);
+        DataStore.load();
+
+        DataStore.deleteServicePart(stale);
+
+        assertThat(DataStore.getServicePartsByServiceId(service.getId()))
+                .as("связь удалена из кэша по id").isEmpty();
+    }
+
+    @Test
+    @DisplayName("deleteServiceSparePartsList() со «старым» объектом чистит кэш по id")
+    void deleteServiceSparePartsListWithStaleInstanceRemovesCachedCopy() {
+        Service service = createService("Замена масла", 1500);
+        ServiceSparePartsList list = new ServiceSparePartsList();
+        list.setServiceId(service.getId());
+        list.setCreatedDate(LocalDate.now().toString());
+        list.setActive(true);
+        DataStore.addServiceSparePartsList(list);
+        ServiceSparePartsList stale = DataStore.getServiceSparePartsListsByServiceId(-1).get(0);
+        DataStore.load();
+
+        DataStore.deleteServiceSparePartsList(stale);
+
+        assertThat(DataStore.getServiceSparePartsListsByServiceId(-1))
+                .as("список удалён из кэша по id").isEmpty();
+    }
+
+    @Test
+    @DisplayName("deleteSetting() со «старым» объектом чистит кэш по id")
+    void deleteSettingWithStaleInstanceRemovesCachedCopy() {
+        DataStore.addSetting(new Setting("interface_language", "ru", "Язык"));
+        Setting stale = DataStore.getAllSettings().get(0);
+        DataStore.load();
+
+        DataStore.deleteSetting(stale);
+
+        assertThat(DataStore.getAllSettings())
+                .as("настройка удалена из кэша по id").isEmpty();
+        DataStore.load();
+        assertThat(DataStore.getAllSettings())
+                .as("настройка удалена из базы").isEmpty();
+    }
+
+    @Test
+    @DisplayName("deleteCar() со «старым» объектом чистит кэш клиента по id")
+    void deleteCarWithStaleInstanceRemovesCachedCopy() throws SQLException {
+        Client client = createClient("Иван", "+79001234567");
+        DataStore.addCar(new Car(client.getId(), "Haval Jolion", "А123ВС163", 15000));
+        Car stale = DataStore.getClientById(client.getId()).getCars().get(0);
+        DataStore.load();
+
+        DataStore.deleteCar(stale);
+
+        assertThat(DataStore.getClientById(client.getId()).getCars())
+                .as("автомобиль удалён из кэша клиента по id").isEmpty();
+    }
+
     // ==================== АВТОМОБИЛИ ====================
 
     @Test
@@ -309,19 +405,22 @@ class DataStoreRelationsTest extends BaseTest {
     }
 
     @Test
-    @DisplayName("deleteToPart() со «старым» объектом не чистит кэш (сравнение по ссылке)")
-    void deleteToPartWithStaleInstanceKeepsCachedCopy() {
+    @DisplayName("deleteToPart() со «старым» объектом чистит кэш по id")
+    void deleteToPartWithStaleInstanceRemovesCachedCopy() {
         SparePart part = createSparePart("Масло", 10);
         DataStore.addToPart(new ToPart("Haval Jolion", part.getId(), 4, "л"));
         ToPart stale = DataStore.getToPartsByCarModel("").get(0);
+        int partId = stale.getId();
 
         stale.setQuantity(5);
         DataStore.updateToPart(stale);   // кэш заменён новыми объектами
-        DataStore.deleteToPart(stale);   // stale уже не в кэше
+        DataStore.deleteToPart(stale);   // stale уже не в кэше, но id тот же
 
         assertThat(DataStore.getToPartsByCarModel(""))
-                .as("в кэше остаётся актуальный объект").hasSize(1);
-        assertThat(DataStore.getToPartsByCarModel("").get(0).getQuantity()).isEqualTo(5);
+                .as("удаление по id очищает кэш, несмотря на устаревший экземпляр").isEmpty();
+        DataStore.load();
+        assertThat(DataStore.getToPartsByCarModel(""))
+                .as("запись удалена и из БД").isEmpty();
     }
 
     // ==================== НАСТРОЙКИ ====================
@@ -384,8 +483,8 @@ class DataStoreRelationsTest extends BaseTest {
     }
 
     @Test
-    @DisplayName("deleteClient() с «устаревшим» инстансом клиента не чистит кэш (сравнение по ссылке)")
-    void deleteClientWithStaleInstanceKeepsCachedCopy() {
+    @DisplayName("deleteClient() с «устаревшим» инстансом клиента чистит кэш по id")
+    void deleteClientWithStaleInstanceRemovesCachedCopy() {
         Client stale = createClient("Иван", "+79001234567");
         DataStore.addOrder(new WorkOrder(stale));
         DataStore.load();
@@ -393,7 +492,7 @@ class DataStoreRelationsTest extends BaseTest {
         DataStore.deleteClient(stale);
 
         assertThat(DataStore.getClients())
-                .as("кэш хранит другой экземпляр — remove() по ссылке не сработал").hasSize(1);
+                .as("удаление по id очищает кэш, несмотря на другой экземпляр").isEmpty();
         assertThat(DataStore.getOrders()).as("заказы удалены по id").isEmpty();
         DataStore.load();
         assertThat(DataStore.getClients()).as("в базе клиент удалён").isEmpty();
