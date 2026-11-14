@@ -76,3 +76,7 @@ docs/closed_orders*.sql
 build-portable.ps1
 create-runbat.ps1
 STO.bat
+
+# ===== PYTHON (tools/seed_test_data.py) =====
+__pycache__/
+*.pyc
