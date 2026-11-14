@@ -47,6 +47,10 @@ public class BackupService {
 
     private static final String TABLE_STATE_DIR = "config" + File.separator + "table-state";
     private static final String WINDOW_STATE_DIR = "config" + File.separator + "window-state";
+
+    /** Префиксы записей zip-архива для файлов состояния UI (внутри архива всегда «/»). */
+    private static final String TABLE_STATE_ENTRY = "config/table-state";
+    private static final String WINDOW_STATE_ENTRY = "config/window-state";
     
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
     
@@ -55,28 +59,27 @@ public class BackupService {
      * @return путь к созданному бэкапу или null при ошибке
      */
     public static String createBackup() {
-        Path backup = createBackup(Paths.get(DATABASE_FILE_NAME), Paths.get(BACKUP_DIR));
+        Path backup = createBackup(Paths.get(DATABASE_FILE_NAME), Paths.get(BACKUP_DIR),
+                Paths.get(TABLE_STATE_DIR), Paths.get(WINDOW_STATE_DIR));
         return backup == null ? null : backup.toString();
     }
 
     /**
      * Создать zip-архив с указанной базой данных и файлами состояния UI.
      *
+     * <p>Все пути передаются явно, поэтому метод пригоден для тестов: архив
+     * можно создать во временном каталоге, не затрагивая рабочий профиль.
+     *
      * @param sourceDb файл базы данных, который нужно заархивировать
      * @param backupDir каталог, в который сохраняется архив
+     * @param tableStateDir каталог состояния таблиц (если нет — пропускается)
+     * @param windowStateDir каталог состояния окон (если нет — пропускается)
      * @return путь к созданному архиву или {@code null} при ошибке
      */
-    private static Path createBackup(Path sourceDb, Path backupDir) {
+    static Path createBackup(Path sourceDb, Path backupDir, Path tableStateDir, Path windowStateDir) {
         try {
-            String timestamp = LocalDateTime.now().format(DATE_FORMATTER);
-            Path backupZip = backupDir.resolve(BACKUP_PREFIX + timestamp + BACKUP_EXTENSION);
-            // Имена бэкапов имеют точность до секунды: не перезаписываем уже
-            // существующий архив (например, бэкап, который сейчас восстанавливают).
-            int suffix = 1;
-            while (Files.exists(backupZip)) {
-                backupZip = backupDir.resolve(BACKUP_PREFIX + timestamp + "_" + suffix + BACKUP_EXTENSION);
-                suffix++;
-            }
+            Path backupZip = nextBackupPath(backupDir, LocalDateTime.now());
+            logger.debug("Имя архива бэкапа: {}", backupZip);
             
             // Создать директорию backups если её нет
             Files.createDirectories(backupDir);
@@ -97,44 +100,9 @@ public class BackupService {
                 byte[] bytes = Files.readAllBytes(sourceDb);
                 zos.write(bytes);
                 zos.closeEntry();
-                
-                // Добавить файлы настроек таблиц
-                Path tableStatePath = Paths.get(TABLE_STATE_DIR);
-                if (Files.exists(tableStatePath)) {
-                    try (Stream<Path> paths = Files.walk(tableStatePath)) {
-                        paths.filter(p -> Files.isRegularFile(p) && p.toString().endsWith(".json"))
-                            .forEach(p -> {
-                                try {
-                                    String entryName = TABLE_STATE_DIR + File.separator + tableStatePath.relativize(p);
-                                    ZipEntry tableEntry = new ZipEntry(entryName.replace(File.separator, "/"));
-                                    zos.putNextEntry(tableEntry);
-                                    zos.write(Files.readAllBytes(p));
-                                    zos.closeEntry();
-                                } catch (IOException e) {
-                                    logger.warn("Не удалось добавить в бэкап: {}", p, e);
-                                }
-                            });
-                    }
-                }
-                
-                // Добавить файлы настроек окон
-                Path windowStatePath = Paths.get(WINDOW_STATE_DIR);
-                if (Files.exists(windowStatePath)) {
-                    try (Stream<Path> paths = Files.walk(windowStatePath)) {
-                        paths.filter(p -> Files.isRegularFile(p) && p.toString().endsWith(".json"))
-                            .forEach(p -> {
-                                try {
-                                    String entryName = WINDOW_STATE_DIR + File.separator + windowStatePath.relativize(p);
-                                    ZipEntry windowEntry = new ZipEntry(entryName.replace(File.separator, "/"));
-                                    zos.putNextEntry(windowEntry);
-                                    zos.write(Files.readAllBytes(p));
-                                    zos.closeEntry();
-                                } catch (IOException e) {
-                                    logger.warn("Не удалось добавить в бэкап: {}", p, e);
-                                }
-                            });
-                    }
-                }
+
+                addStateEntries(zos, tableStateDir, TABLE_STATE_ENTRY);
+                addStateEntries(zos, windowStateDir, WINDOW_STATE_ENTRY);
             }
             
             logger.info("Резервная копия создана: {}", backupZip);
@@ -147,6 +115,57 @@ public class BackupService {
         } catch (IOException e) {
             logger.error("Ошибка создания резервной копии", e);
             return null;
+        }
+    }
+
+    /**
+     * Выбрать свободное имя для нового архива бэкапа.
+     *
+     * <p>Имена имеют точность до секунды, поэтому два бэкапа в одну секунду
+     * получили бы одно имя: к повторяющимся добавляется суффикс {@code _N},
+     * чтобы не перезаписать уже существующий архив.
+     *
+     * @param backupDir каталог бэкапов
+     * @param timestamp момент создания бэкапа
+     * @return путь, свободный от существующих файлов
+     */
+    static Path nextBackupPath(Path backupDir, LocalDateTime timestamp) {
+        String name = BACKUP_PREFIX + timestamp.format(DATE_FORMATTER);
+        Path backupZip = backupDir.resolve(name + BACKUP_EXTENSION);
+        int suffix = 1;
+        while (Files.exists(backupZip)) {
+            backupZip = backupDir.resolve(name + "_" + suffix + BACKUP_EXTENSION);
+            suffix++;
+        }
+        return backupZip;
+    }
+
+    /**
+     * Добавить в архив все {@code *.json} из каталога состояния UI.
+     *
+     * @param zos открытый архив
+     * @param stateDir каталог состояния; может отсутствовать
+     * @param entryPrefix префикс имени записи внутри архива
+     */
+    private static void addStateEntries(ZipOutputStream zos, Path stateDir, String entryPrefix) {
+        if (stateDir == null || !Files.exists(stateDir)) {
+            return;
+        }
+        try (Stream<Path> paths = Files.walk(stateDir)) {
+            paths.filter(p -> Files.isRegularFile(p) && p.toString().endsWith(".json"))
+                .forEach(p -> {
+                    try {
+                        String entryName = entryPrefix + "/" + stateDir.relativize(p).toString().replace(File.separator, "/");
+                        ZipEntry stateEntry = new ZipEntry(entryName);
+                        zos.putNextEntry(stateEntry);
+                        zos.write(Files.readAllBytes(p));
+                        zos.closeEntry();
+                    } catch (IOException e) {
+                        logger.warn("Не удалось добавить в бэкап: {}", p, e);
+                    }
+                });
+        } catch (IOException e) {
+            logger.warn("Не удалось прочитать каталог состояния: {}", stateDir, e);
         }
     }
     
@@ -185,6 +204,59 @@ public class BackupService {
      * @return true если восстановление успешно, false иначе
      */
     static boolean restoreBackup(Path backupZip, Path currentDb, Path backupDir) {
+        return restoreBackup(backupZip, currentDb, backupDir, defaultRestoreContext());
+    }
+
+    /**
+     * Точки интеграции восстановления с рабочим окружением приложения.
+     *
+     * <p>Вынесены в отдельный объект, чтобы тесты могли восстановить БД во
+     * временном каталоге, не закрывая пул соединений рабочей БД и не
+     * перезагружая данные через {@link DatabaseFactory} и {@link DataStore}.
+     */
+    static final class RestoreContext {
+
+        private final Path extractionRoot;
+        private final Runnable databaseCloser;
+        private final Runnable databaseReloader;
+
+        /**
+         * @param extractionRoot каталог, куда распаковываются файлы состояния UI
+         * @param databaseCloser закрытие пула соединений перед заменой файла БД
+         * @param databaseReloader переинициализация БД и перезагрузка данных
+         */
+        RestoreContext(Path extractionRoot, Runnable databaseCloser, Runnable databaseReloader) {
+            this.extractionRoot = extractionRoot;
+            this.databaseCloser = databaseCloser;
+            this.databaseReloader = databaseReloader;
+        }
+    }
+
+    /**
+     * Контекст восстановления для работающего приложения.
+     *
+     * @return каталог процесса как корень распаковки и реальные операции с БД
+     */
+    static RestoreContext defaultRestoreContext() {
+        return new RestoreContext(
+                Paths.get(".").toAbsolutePath().normalize(),
+                DatabaseFactory::close,
+                () -> {
+                    DatabaseFactory.init();
+                    DataStore.load();
+                });
+    }
+
+    /**
+     * Реализация восстановления с явными путями и подменяемым окружением.
+     *
+     * @param backupZip архив с бэкапом
+     * @param currentDb путь к текущей базе данных
+     * @param backupDir каталог для резервной копии, создаваемой перед заменой
+     * @param context операции с БД и корень распаковки файлов состояния
+     * @return true если восстановление успешно, false иначе
+     */
+    static boolean restoreBackup(Path backupZip, Path currentDb, Path backupDir, RestoreContext context) {
         // Шаг 1. Проверка архива до каких-либо изменений БД.
         try {
             validateBackupArchive(backupZip);
@@ -207,7 +279,9 @@ public class BackupService {
         try {
             // Шаг 3. Резервная копия текущей БД для отката.
             if (Files.exists(currentDb)) {
-                rollbackBackup = createBackup(currentDb, backupDir);
+                rollbackBackup = createBackup(currentDb, backupDir,
+                        context.extractionRoot.resolve(TABLE_STATE_ENTRY),
+                        context.extractionRoot.resolve(WINDOW_STATE_ENTRY));
                 if (rollbackBackup == null) {
                     logger.error("Не удалось создать резервную копию текущей БД — восстановление отменено");
                     return false;
@@ -216,23 +290,22 @@ public class BackupService {
 
             // Шаг 4. Закрыть пул соединений и атомарно заменить файл БД.
             replacementStarted = true;
-            DatabaseFactory.close();
+            context.databaseCloser.run();
             moveAtomically(stagedDatabase, currentDb.toAbsolutePath().normalize());
             stagedDatabase = null;
 
             // Шаг 5. Восстановить файлы состояния UI (как и в предыдущей версии).
-            restoreConfigEntries(backupZip);
+            restoreConfigEntries(backupZip, context.extractionRoot);
 
             // Шаг 6. Переинициализировать БД и перезагрузить данные.
-            DatabaseFactory.init();
-            DataStore.load();
+            context.databaseReloader.run();
 
             logger.info("Восстановление из бэкапа успешно завершено: {}", backupZip);
             return true;
         } catch (IOException | RuntimeException e) {
             logger.error("Ошибка восстановления из резервной копии", e);
             if (replacementStarted) {
-                rollbackRestore(currentDb, rollbackBackup);
+                rollbackRestore(currentDb, rollbackBackup, context);
             }
             return false;
         } finally {
@@ -416,10 +489,10 @@ public class BackupService {
      * <p>Файл БД заменяется отдельно и атомарно, поэтому здесь он пропускается.
      *
      * @param backupZip архив с бэкапом
+     * @param extractionRoot каталог, относительно которого распаковываются записи
      * @throws IOException если запись не удалось извлечь
      */
-    private static void restoreConfigEntries(Path backupZip) throws IOException {
-        Path extractionRoot = Paths.get(".").toAbsolutePath().normalize();
+    private static void restoreConfigEntries(Path backupZip, Path extractionRoot) throws IOException {
         try (ZipFile zipFile = new ZipFile(backupZip.toFile())) {
             Enumeration<? extends ZipEntry> entries = zipFile.entries();
             while (entries.hasMoreElements()) {
@@ -470,10 +543,11 @@ public class BackupService {
      *
      * @param currentDb путь к рабочей БД
      * @param rollbackBackup архив с копией БД, созданной перед заменой
+     * @param context операции с БД (в тестах подменяются)
      */
-    private static void rollbackRestore(Path currentDb, Path rollbackBackup) {
+    private static void rollbackRestore(Path currentDb, Path rollbackBackup, RestoreContext context) {
         try {
-            DatabaseFactory.close();
+            context.databaseCloser.run();
         } catch (RuntimeException e) {
             logger.warn("Не удалось закрыть пул соединений перед откатом", e);
         }
@@ -490,8 +564,7 @@ public class BackupService {
         }
 
         try {
-            DatabaseFactory.init();
-            DataStore.load();
+            context.databaseReloader.run();
         } catch (RuntimeException e) {
             restored = false;
             logger.error("Не удалось переинициализировать базу данных после отката", e);
@@ -578,10 +651,19 @@ public class BackupService {
      * @return список путей к бэкапам (новые в конце)
      */
     public static List<String> getAvailableBackups() {
+        return getAvailableBackups(Paths.get(BACKUP_DIR));
+    }
+
+    /**
+     * Получить список резервных копий в указанном каталоге.
+     *
+     * @param backupDir каталог с архивами
+     * @return отсортированные пути к архивам (новые в конце)
+     */
+    static List<String> getAvailableBackups(Path backupDir) {
         List<String> backups = new ArrayList<>();
         
         try {
-            Path backupDir = Paths.get(BACKUP_DIR);
             if (!Files.exists(backupDir)) {
                 return backups;
             }
@@ -613,7 +695,17 @@ public class BackupService {
      * @return количество бэкапов
      */
     public static int getBackupCount() {
-        return getAvailableBackups().size();
+        return getBackupCount(Paths.get(BACKUP_DIR));
+    }
+
+    /**
+     * Получить количество резервных копий в указанном каталоге.
+     *
+     * @param backupDir каталог с архивами
+     * @return количество архивов
+     */
+    static int getBackupCount(Path backupDir) {
+        return getAvailableBackups(backupDir).size();
     }
     
     /**
@@ -621,7 +713,17 @@ public class BackupService {
      * @return дата и время последнего бэкапа или null если нет бэкапов
      */
     public static String getLastBackupTime() {
-        List<String> backups = getAvailableBackups();
+        return getLastBackupTime(Paths.get(BACKUP_DIR));
+    }
+
+    /**
+     * Получить время последнего бэкапа в указанном каталоге.
+     *
+     * @param backupDir каталог с архивами
+     * @return метка времени из имени последнего архива или {@code null}
+     */
+    static String getLastBackupTime(Path backupDir) {
+        List<String> backups = getAvailableBackups(backupDir);
         if (backups.isEmpty()) {
             return null;
         }
@@ -638,7 +740,17 @@ public class BackupService {
      * @return путь к последнему бэкапу или null если нет бэкапов
      */
     public static String getLatestBackupPath() {
-        List<String> backups = getAvailableBackups();
+        return getLatestBackupPath(Paths.get(BACKUP_DIR));
+    }
+
+    /**
+     * Получить путь к последнему бэкапу в указанном каталоге.
+     *
+     * @param backupDir каталог с архивами
+     * @return путь к последнему архиву или {@code null}
+     */
+    static String getLatestBackupPath(Path backupDir) {
+        List<String> backups = getAvailableBackups(backupDir);
         if (backups.isEmpty()) {
             return null;
         }

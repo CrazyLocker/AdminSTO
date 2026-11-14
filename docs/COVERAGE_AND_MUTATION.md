@@ -20,36 +20,45 @@
 
 | Пакет | Порог (строки) | Факт: Windows | Факт: Linux (CI) |
 |-------|----------------|---------------|------------------|
-| `com.autoservice.services` | 60% | 72,2% | 67,2% |
+| `com.autoservice.services` | 75% | 87,4% | 87,7% (CI 43554482517) |
 | `com.autoservice.utils` | 29% | 31,2% | 31,2% |
-| `com.autoservice.model` | 55% | 60,6% | 60,3% |
+| `com.autoservice.model` | 55% | 88,3% | 88,1% |
 
 Пороги выставлены на 2–3 п.п. ниже **минимума по платформам** (то есть по CI):
-они ловят деградацию, но не мешают работе. Если покрытие выросло — поднимите
-порог, это дешёвая защита. Для `services` поднято до 60% (2026-11-12) после
-того, как появились тесты `ExportService`, `ImportService`, `SettingService`,
-`ScheduleService` и `FileDialogPathManager`: до них было 46,2% на Windows.
-Прогон CI 43144164101 подтвердил 67,2% на Linux — запас над порогом 7 п.п.
+они ловят деградацию, но не мешают работе. История роста: 46,2% (до тестов
+`ExportService`/`ImportService`/`SettingService`/`ScheduleService`) → 72,2%
+(2026-11-12, порог 60%) → 87,4% (после тестов `BackupService` и герметичного
+`TableStateManagerTest`, порог 75%, требование «покрытие services выше 75%»).
+Прогон CI 43554482517 подтвердил 87,7% на Linux — запас над порогом 12 п.п.
 
-**Почему Linux ниже.** Разница почти целиком в `services/TableStateManager`
-(46,8% на Windows против 6,4% на Linux, −40 п.п. по классу): `TableStateManagerTest`
-работает с реальными файлами `config/table-state/*.json`. На машине разработчика
-эти файлы уже лежат (приложение их создаёт при запуске), в чистом чекауте CI —
-нет, и тест проходит по «пустым» ветвям. Тест не герметичен: его стоит переписать
-на `@TempDir` (TODO в дорожной карте).
+**Почему раньше Linux был ниже.** Разница сидела в `services/TableStateManager`
+(46,8% на Windows против 6,4% на Linux): старый тест писал состояние в реальный
+каталог `config/table-state`, которого в чистом чекауте CI нет. Теперь каталог
+подменяется на `@TempDir` через `TableStateManager.setStorageDirForTest(...)`,
+поэтому цифры платформ совпадают (94% по классу на обеих).
 
-### Общая картина (строки; Windows / Linux-CI, сессия 2026-11-12)
+### Тесты, которым нужен JavaFX
+
+Четыре теста, ранее помеченные `@Disabled` (`ClientControllerTest.testEditClient`,
+`OrderControllerTest.testRefreshTable/testViewOrder/testChangeStatus`), включены:
+тулкит поднимается через `com.autoservice.support.JavaFxTestSupport.initToolkit()`
+(headless Monocle + **`Platform.setImplicitExit(false)`** — без него закрытие
+последнего окна останавливает тулкит и следующие тесты впадают в таймаут).
+Диалоги закрываются фоновым «кликером» `closeStageWhenShown(title, timeout)`.
+Итог: 568 тестов, 0 пропущенных.
+
+### Общая картина (строки; Windows / Linux-CI, сессия 2026-11-13)
 
 | Пакет | Покрытие (Win / Linux) | Строк |
 |-------|----------|-------|
-| `com.autoservice` (корень) | 60,5% / 60,7% | 2646 |
-| `com.autoservice.model` | 60,6% / 60,3% | 277 |
-| `com.autoservice.services` | 72,2% / 67,2% | 1529 |
-| `com.autoservice.utils` | 31,2% | 616 |
-| `com.autoservice.controllers` | 18,0% | 316 |
-| `com.autoservice.dialogs` | 13,8% | 1979 |
-| `com.autoservice.views` | 2,7% | 5207 |
-| **Итого по проекту** | **28,1% строк (Win) / 27,5% (Linux), 26,8% инструкций** | 12570 строк |
+| `com.autoservice` (корень) | 77,5% / 76,8% | 2659 |
+| `com.autoservice.model` | 88,3% / 88,1% | 283 |
+| `com.autoservice.services` | 87,4% / 87,7% | 1544 |
+| `com.autoservice.utils` | 31,2% / 31,2% | 616 |
+| `com.autoservice.controllers` | 23,7% / 23,7% | 316 |
+| `com.autoservice.dialogs` | 16,2% / 16,2% | 1979 |
+| `com.autoservice.views` | 2,9% / 2,9% | 5207 |
+| **Итого по проекту** | **34,9% / 34,8% строк, 32,4% инструкций, 27,2% ветвей** | 12604 строк |
 
 Низкие `views`/`dialogs` ожидаемы: их покрывают UI-тесты (`uiTest`), которые не
 участвуют в замере. Если понадобится общая цифра «с UI», считайте два прогона
@@ -95,42 +104,48 @@
 (`src/main/java/com/autoservice/DoNotMutate.java`) — PIT распознаёт его без
 дополнительных настроек.
 
-### Базовая линия (2026-11-12)
+### Базовая линия (2026-11-13, после тестов `DataStore` / `SparePart`)
 
 ```
-Мутаций сгенерировано: 1054
-Убито:                 439 (42% от всех)
-Без покрытия:          451
-Test strength:         73%  (killed / (generated − NO_COVERAGE))
-Покрытие мутируемых классов: 62% строк
-Время прогона:         48 с
+Мутаций сгенерировано: 1081
+Убито:                 590 (55% от всех)
+Без покрытия:          255
+Test strength:         71%  (killed / (generated − NO_COVERAGE))
+Покрытие мутируемых классов: 78% строк
+Время прогона:         74 с
 ```
 
-Для сравнения, линия 2026-11-11 (до тестов импорта/экспорта): убито 325 (31%),
-без покрытия 622, test strength 75%, покрытие мутируемых классов 48%. Общий
-mutation score вырос с 31% до 42% — почти весь рост дали тесты `ExportService`
-(было 0% убитых мутаций) и `ImportService`.
+История: линия 2026-11-11 — убито 325 (31%), без покрытия 622, test strength 75%,
+покрытие мутируемых классов 48%. Линия после тестов импорта/экспорта/настроек —
+439 (42%), 451, 73%, 62%. Линия после тестов `BackupService` / `TableStateManager` —
+489 (46%), 386, 73%, 68%. Рост общего mutation score 31% → 42% → 46% → 55% дали
+сначала `ExportService` (было 0% убитых мутаций) и `ImportService`, затем
+`BackupService` (было 29% убитых → 78%, без покрытия 77 → 13), затем тесты
+`DataStore` (`DataStorePersistenceTest` — семантика `save()`, `DataStoreRelationsTest` —
+связи услуга-запчасть/списки/автомобили/ТО/настройки: без покрытия 98 → 9,
+score 54% → 60%) и `SparePartTest` (`SparePart`: без покрытия 34 → 0, score 0% → 82%).
 
-Гейт держится по **test strength** (`testStrengthThreshold = 70` при факте 73%), а не по общему mutation score 42%: общий счёт падает от любого нового непокрытого класса, хотя качество тестов не изменилось. Порог — на 3 п.п. ниже факта, чтобы ловить деградацию. `mutationThreshold` выключен (0).
+Гейт держится по **test strength** (`testStrengthThreshold = 70` при факте 71%), а не по общему mutation score 55%: общий счёт падает от любого нового непокрытого класса, хотя качество тестов не изменилось. Порог — на 1 п.п. ниже факта, чтобы ловить деградацию. `mutationThreshold` выключен (0).
 
 ### Где тесты слабее всего (NO_COVERAGE → 0% score)
 
 | Класс | Мутаций | Без покрытия | Score |
 |-------|---------|--------------|-------|
-| `DataStore` | 159 | 99 | 55% |
-| `BackupService` | 113 | 77 | 81% |
 | `IconHelper` | 59 | 59 | 0% |
 | `ServicePartHelper` | 43 | 43 | 0% |
-| `SparePart` | 34 | 34 | 0% |
 | `ValidationErrorIndicator` | 31 | 31 | 0% |
-| `ValidationUtils` | 62 | 28 | 100% |
-| `Formatters` | 45 | 28 | 100% |
-| `LoyaltyService` | 121 | 15 | 74% |
-| `ImportService` | 128 | 9 | 74% |
-| `DateUtils` | 58 | 5 | 79% |
+| `ValidationUtils` | 62 | 28 | 55% |
+| `Formatters` | 45 | 20 | 38% |
+| `DataStore` | 159 | 9 | 60% |
+| `ImportService` | 129 | 9 | 70% |
+| `BackupService` | 112 | 13 | 70% |
+| `LoyaltyService` | 121 | 15 | 64% |
+| `DateUtils` | 58 | 5 | 72% |
+| `SparePart` | 34 | 0 | 82% |
 
-Первый кандидат на доработку — `SparePart` и `ServicePartHelper` (0% при заметном
-объёме логики), затем `BackupService` и непокрытые ветви `DataStore`.
+Первый кандидат на доработку — `IconHelper`, `ServicePartHelper`, `SparePart`,
+`ValidationErrorIndicator` (0% при заметном объёме логики), затем `DataStore`
+(98 непокрытых мутаций — самый крупный резерв).
 
 ## 3. Почему так
 
@@ -142,3 +157,9 @@ mutation score вырос с 31% до 42% — почти весь рост да�
 * PIT не подключён к `check`: полный прогон на каждый push замедляет обратную
   связь сильнее, чем приносит пользы; ручной запуск в CI + порог 70% закрывают
   потребность.
+* Тесты, которым нужна файловая система, пишут только в `@TempDir` (или в каталог,
+  подставленный через тестовый шов — `TableStateManager.setStorageDirForTest`,
+  `BackupService.createBackup(sourceDb, backupDir, tableStateDir, windowStateDir)`).
+  Иначе результат зависит от файлов, оставшихся на машине разработчика, и CI
+  показывает другие цифры — именно так случилось с `TableStateManager` (6,4% против
+  46,8%).

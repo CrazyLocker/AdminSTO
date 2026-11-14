@@ -168,6 +168,26 @@ public class DataStore {
         isDirty = true;
     }
 
+    /**
+     * Проверить, что запись кэша соответствует удаляемому объекту.
+     *
+     * <p>Сравнение идёт по идентификатору: кэш часто перезагружается из базы
+     * ({@code load()} / {@code update*()}), поэтому вызывающий код может держать
+     * «устаревший» экземпляр с тем же id. Если id ещё нет (объект не сохранён),
+     * сравниваем по ссылке.</p>
+     *
+     * @param cachedId идентификатор записи в кэше
+     * @param targetId идентификатор удаляемого объекта
+     * @param sameReference совпадают ли ссылки
+     * @return {@code true}, если запись нужно удалить из кэша
+     */
+    private static boolean isSameCacheEntry(int cachedId, int targetId, boolean sameReference) {
+        if (cachedId > 0 && targetId > 0) {
+            return cachedId == targetId;
+        }
+        return sameReference;
+    }
+
     // ==================== CLIENTS ====================
 
     /**
@@ -211,6 +231,9 @@ public class DataStore {
      */
     public static void removeClient(Client c) {
         DatabaseFactory.getDatabase().deleteClient(c);
+        if (c != null) {
+            clients.removeIf(cached -> isSameCacheEntry(cached.getId(), c.getId(), cached == c));
+        }
         clients = DatabaseFactory.getDatabase().getAllClients();
         isDirty = true;
     }
@@ -223,20 +246,22 @@ public class DataStore {
         if (client == null) {
             return;
         }
+        int clientId = client.getId();
         List<WorkOrder> ordersToDelete = new ArrayList<>();
         for (WorkOrder order : orders) {
             Client orderClient = order.getClient();
-            if (orderClient != null && orderClient.getId() == client.getId()) {
+            if (orderClient != null && orderClient.getId() == clientId) {
                 ordersToDelete.add(order);
             }
         }
         for (WorkOrder order : ordersToDelete) {
             DatabaseFactory.getDatabase().deleteOrder(order.getId());
-            orders.remove(order);
+            String orderId = order.getId();
+            orders.removeIf(cached -> java.util.Objects.equals(cached.getId(), orderId));
         }
 
         DatabaseFactory.getDatabase().deleteClient(client);
-        clients.remove(client);
+        clients.removeIf(cached -> isSameCacheEntry(cached.getId(), clientId, cached == client));
         isDirty = true;
     }
 
@@ -273,7 +298,8 @@ public class DataStore {
         DatabaseFactory.getDatabase().deleteCar(car);
         Client c = getClientById(car.getClientId());
         if (c != null) {
-            c.getCars().remove(car);
+            int carId = car.getId();
+            c.getCars().removeIf(cached -> isSameCacheEntry(cached.getId(), carId, cached == car));
         }
         isDirty = true;
     }
@@ -635,7 +661,8 @@ public class DataStore {
      */
     public static void deleteServiceSparePart(ServiceSparePart relation) {
         DatabaseFactory.getDatabase().deleteServiceSparePart(relation);
-        serviceSpareParts.remove(relation);
+        int relationId = relation.getId();
+        serviceSpareParts.removeIf(cached -> isSameCacheEntry(cached.getId(), relationId, cached == relation));
         isDirty = true;
     }
 
@@ -707,7 +734,8 @@ public class DataStore {
      */
     public static void deleteServicePart(ServicePart part) {
         DatabaseFactory.getDatabase().deleteServicePart(part);
-        serviceParts.remove(part);
+        int partId = part.getId();
+        serviceParts.removeIf(cached -> isSameCacheEntry(cached.getId(), partId, cached == part));
         isDirty = true;
     }
 
@@ -800,7 +828,8 @@ public class DataStore {
      */
     public static void deleteServiceSparePartsList(ServiceSparePartsList list) {
         DatabaseFactory.getDatabase().deleteServiceSparePartsList(list);
-        serviceSparePartsLists.remove(list);
+        int listId = list.getId();
+        serviceSparePartsLists.removeIf(cached -> isSameCacheEntry(cached.getId(), listId, cached == list));
         isDirty = true;
     }
 
@@ -863,7 +892,8 @@ public class DataStore {
      */
     public static void deleteToPart(ToPart part) {
         DatabaseFactory.getDatabase().deleteToPart(part);
-        toParts.remove(part);
+        int partId = part.getId();
+        toParts.removeIf(cached -> isSameCacheEntry(cached.getId(), partId, cached == part));
         isDirty = true;
     }
 
@@ -930,7 +960,8 @@ public class DataStore {
      */
     public static void deleteSetting(Setting setting) {
         DatabaseFactory.getDatabase().deleteSetting(setting);
-        settings.remove(setting);
+        int settingId = setting.getId();
+        settings.removeIf(cached -> isSameCacheEntry(cached.getId(), settingId, cached == setting));
         isDirty = true;
     }
 
