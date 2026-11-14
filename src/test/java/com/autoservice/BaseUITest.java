@@ -44,7 +44,6 @@ import javafx.stage.Stage;
  */
 public abstract class BaseUITest {
 
-    protected static Stage primaryStage;
     protected static Scene currentScene;
 
     /**
