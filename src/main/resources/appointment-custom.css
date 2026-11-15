@@ -9,8 +9,64 @@
 
 /* ==================== КОНТЕЙНЕР ==================== */
 
+/* Отступ от полосы вкладок сверху и от краёв окна по бокам: без него
+   содержимое календаря прилипало к заголовку вкладки «Запись». */
 .appointment-calendar {
     -fx-background-color: -color-bg-default;
+    -fx-padding: 14 18 14 18;
+}
+
+/* ==================== ВЕРХНЯЯ ПАНЕЛЬ ==================== */
+
+/* Все элементы строки выравниваются по одной вертикальной оси: раньше
+   RadioButton стояли в своей HBox с выравниванием по умолчанию (top-left)
+   и «Неделя / Месяц» визуально уезжали вверх относительно DatePicker. */
+.appointment-top-panel {
+    -fx-alignment: center-left;
+    -fx-spacing: 10;
+}
+
+.appointment-top-panel > .label {
+    -fx-alignment: center-left;
+}
+
+/* Переключатель вида «Неделя / Месяц» — сегментированный контрол, по высоте
+   совпадает с DatePicker и кнопками навигации. */
+.view-box {
+    -fx-alignment: center-left;
+    -fx-spacing: 2;
+    -fx-padding: 2 8 2 4;
+    -fx-background-color: -color-bg-inset;
+    -fx-background-radius: 10;
+    -fx-border-color: -color-border-muted;
+    -fx-border-radius: 10;
+    -fx-border-width: 1;
+}
+
+.view-radio {
+    -fx-font-size: 12.5px;
+    -fx-padding: 5 8 5 2;
+    -fx-background-radius: 8;
+    -fx-text-fill: -color-fg-muted;
+}
+
+.view-radio:selected {
+    -fx-text-fill: -color-fg-default;
+    -fx-font-weight: bold;
+}
+
+.appointment-datepicker {
+    -fx-min-height: 32;
+}
+
+.today-button {
+    -fx-min-height: 32;
+    -fx-padding: 5 14 5 14;
+}
+
+.selected-date-label {
+    -fx-text-fill: -color-fg-muted;
+    -fx-padding: 0 4 0 4;
 }
 
 .schedule-grid {

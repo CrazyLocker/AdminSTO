@@ -1,6 +1,7 @@
 package com.autoservice.services;
 
 import com.autoservice.model.WindowState;
+import javafx.geometry.Rectangle2D;
 
 /**
  * Управление состоянием окон: сохранение и восстановление позиции и размеров.
@@ -87,10 +88,19 @@ public class WindowStateManager extends JsonStateManager<WindowState> {
             return false;
         }
 
-        stage.setX(state.x());
-        stage.setY(state.y());
-        stage.setWidth(state.width());
-        stage.setHeight(state.height());
+        // Сохранённый размер мог быть больше текущего экрана (сменили монитор,
+        // изменили масштаб Windows) — тогда окно выходит за границы, а сцена
+        // остаётся больше окна и контент обрезается справа и снизу.
+        Rectangle2D bounds = javafx.stage.Screen.getPrimary().getVisualBounds();
+        double width = Math.min(state.width(), bounds.getWidth());
+        double height = Math.min(state.height(), bounds.getHeight());
+        double x = Math.max(bounds.getMinX(), Math.min(state.x(), bounds.getMaxX() - width));
+        double y = Math.max(bounds.getMinY(), Math.min(state.y(), bounds.getMaxY() - height));
+
+        stage.setX(x);
+        stage.setY(y);
+        stage.setWidth(width);
+        stage.setHeight(height);
 
         logger.debug("Window state restored: {} -> {}", windowId, state);
         return true;
@@ -113,3 +123,4 @@ public class WindowStateManager extends JsonStateManager<WindowState> {
         return exists(windowId);
     }
 }
+
