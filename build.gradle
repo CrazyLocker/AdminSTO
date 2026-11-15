@@ -140,6 +140,7 @@ tasks.named('test') {
     exclude '**/AppointmentVisibilityUITest.class'
     exclude '**/StockOperationDialogThemeUITest.class'
     exclude '**/AppointmentCalendarUITest.class'
+    exclude '**/TableStripingUITest.class'
     exclude '**/BaseUITest.class'
 
     // Для UI-тестов включаем headless режим
@@ -285,6 +286,7 @@ task uiTest(type: Test) {
     include '**/AppointmentVisibilityUITest.class'
     include '**/StockOperationDialogThemeUITest.class'
     include '**/AppointmentCalendarUITest.class'
+    include '**/TableStripingUITest.class'
 
     // Каждый UI-тест в отдельной JVM
     forkEvery = 1

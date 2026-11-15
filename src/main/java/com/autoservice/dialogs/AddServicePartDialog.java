@@ -30,6 +30,7 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 import com.autoservice.services.WindowStateManager;
+import com.autoservice.utils.ThemeManager;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -166,6 +167,8 @@ public class AddServicePartDialog {
         root.getChildren().addAll(titleLabel, serviceRow, partsLabel, partsTable, btnBox);
 
         Scene scene = new Scene(root);
+        // Общие стили приложения (чередование строк в таблицах и подсветка выбора)
+        ThemeManager.applySceneStyles(scene);
         stage.setScene(scene);
 
         final int[] result = new int[1];
