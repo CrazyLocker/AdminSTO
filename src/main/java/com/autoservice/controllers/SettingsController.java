@@ -297,14 +297,6 @@ public class SettingsController {
         servicePartsTable.setItems(javafx.collections.FXCollections.observableArrayList(parts));
     }
 
-    // ==================== SERVICE-SPARE PART DUPLICATES ====================
-
-    public static void deleteDuplicateServiceSpareParts() {
-        DataStore.deleteDuplicateServiceSpareParts();
-        loadServiceSparePartsRows();
-        loadServiceSpareParts();
-    }
-
     // ==================== SETTINGS ====================
 
     public static void showSettings() {

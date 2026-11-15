@@ -854,22 +854,8 @@ public class SettingsView {
         refreshBtn.getStyleClass().add("save-button");
         refreshBtn.setOnAction(e -> refreshServiceSparePartsRows());
 
-        Button cleanDuplicatesBtn = new Button("Очистить дубликаты");
-        cleanDuplicatesBtn.getStyleClass().add("delete-button");
-        cleanDuplicatesBtn.setOnAction(e -> {
-            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
-                    "Удалить все дубликаты связей услуги-запчасти?\n\nЭто оставит по одной записи для каждой пары услуга-запчасть.",
-                    ButtonType.YES, ButtonType.NO);
-            confirm.setTitle("Подтверждение удаления дубликатов");
-            confirm.showAndWait().ifPresent(response -> {
-                if (response == ButtonType.YES) {
-                    SettingsController.deleteDuplicateServiceSpareParts();
-                    showAlert("Дубликаты удалены", Alert.AlertType.INFORMATION);
-                }
-            });
-        });
 
-        topButtons.getChildren().addAll(addBtn, editBtn, deleteBtn, refreshBtn, cleanDuplicatesBtn);
+        topButtons.getChildren().addAll(addBtn, editBtn, deleteBtn, refreshBtn);
 
         // Таблица связей на всю ширину
         serviceSparePartsTable = new TableView<>();
@@ -1336,24 +1322,8 @@ public class SettingsView {
         deleteBtn.getStyleClass().add("delete-button");
         deleteBtn.setDisable(true);
 
-        Button cleanDuplicatesBtn = new Button("Очистить дубликаты");
-        cleanDuplicatesBtn.getStyleClass().add("delete-button");
-        cleanDuplicatesBtn.setOnAction(e -> {
-            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
-                    "Удалить все дубликаты связей услуги-запчасть?\n\nЭто оставит по одной записи для каждой пары услуга-запчасть.",
-                    ButtonType.YES, ButtonType.NO);
-            confirm.setTitle("Подтверждение удаления дубликатов");
-            confirm.showAndWait().ifPresent(response -> {
-                if (response == ButtonType.YES) {
-                    DataStore.deleteServicePartsByServiceId(-1);
-                    DataStore.getAllServiceParts(); // Перезагрузка
-                    refreshServiceParts();
-                    showAlert("Дубликаты удалены", Alert.AlertType.INFORMATION);
-                }
-            });
-        });
 
-        topButtons.getChildren().addAll(addBtn, editBtn, deleteBtn, cleanDuplicatesBtn);
+        topButtons.getChildren().addAll(addBtn, editBtn, deleteBtn);
 
         // Таблица связей
         servicePartsTable = new TableView<>();

@@ -1,0 +1,352 @@
+/* =====================================================================
+   appointment-custom.css — недельный и месячный календарь вкладки «Записи».
+
+   Как и dashboard-custom.css, файл не задаёт ни одного жёсткого цвета:
+   фон, границы, текст и акценты берутся из активной темы AtlantaFX
+   (primer-light, primer-dark, dracula, nord, cupertino). Поэтому календарь
+   остаётся читаемым и в светлой, и в тёмной теме.
+   ===================================================================== */
+
+/* ==================== КОНТЕЙНЕР ==================== */
+
+.appointment-calendar {
+    -fx-background-color: -color-bg-default;
+}
+
+.schedule-grid {
+    -fx-background-color: -color-bg-default;
+}
+
+.schedule-scrollpane,
+.schedule-scrollpane > .viewport {
+    -fx-background-color: -color-bg-default;
+    -fx-background-insets: 0;
+}
+
+/* ==================== ЛЕГЕНДА СТАТУСОВ ==================== */
+
+.calendar-legend {
+    -fx-padding: 0 4 0 4;
+    -fx-alignment: center-left;
+}
+
+.legend-item {
+    -fx-alignment: center-left;
+    -fx-spacing: 6;
+}
+
+.legend-dot {
+    -fx-min-width: 10;
+    -fx-min-height: 10;
+    -fx-pref-width: 10;
+    -fx-pref-height: 10;
+    -fx-max-width: 10;
+    -fx-max-height: 10;
+    -fx-background-radius: 5;
+}
+
+.legend-dot.status-new {
+    -fx-background-color: -color-accent-emphasis;
+}
+
+.legend-dot.status-in-progress {
+    -fx-background-color: -color-warning-emphasis;
+}
+
+.legend-dot.status-closed {
+    -fx-background-color: -color-success-emphasis;
+}
+
+.legend-dot.status-none {
+    -fx-background-color: -color-neutral-emphasis;
+}
+
+.legend-text {
+    -fx-font-size: 11px;
+    -fx-text-fill: -color-fg-muted;
+}
+
+/* ==================== ЗАГОЛОВКИ ДНЕЙ (НЕДЕЛЯ) ==================== */
+
+.week-day-card {
+    -fx-background-color: -color-bg-subtle;
+    -fx-background-radius: 12;
+    -fx-border-color: -color-border-muted;
+    -fx-border-radius: 12;
+    -fx-border-width: 1;
+    -fx-padding: 8 6 9 6;
+    -fx-alignment: center;
+}
+
+.week-day-card.today {
+    -fx-background-color: -color-accent-subtle;
+    -fx-border-color: -color-accent-emphasis;
+}
+
+.week-day-card.weekend {
+    -fx-background-color: -color-bg-inset;
+}
+
+.week-day-card.today.weekend {
+    -fx-background-color: -color-accent-subtle;
+}
+
+.week-day-name {
+    -fx-font-size: 10px;
+    -fx-text-fill: -color-fg-muted;
+}
+
+.week-day-date {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-fg-default;
+}
+
+.week-day-card.today .week-day-date {
+    -fx-text-fill: -color-accent-fg;
+}
+
+.week-day-month {
+    -fx-font-size: 10px;
+    -fx-text-fill: -color-fg-muted;
+}
+
+/* Счётчик записей в заголовке дня. */
+.week-day-count {
+    -fx-background-color: -color-accent-emphasis;
+    -fx-background-radius: 8;
+    -fx-text-fill: -color-fg-emphasis;
+    -fx-font-size: 9px;
+    -fx-font-weight: bold;
+    -fx-padding: 1 5 1 5;
+}
+
+.week-day-card.weekend .week-day-count {
+    -fx-background-color: -color-neutral-emphasis;
+}
+
+.schedule-header {
+    -fx-font-size: 11px;
+    -fx-text-fill: -color-fg-muted;
+    -fx-padding: 0 0 4 0;
+}
+
+/* ==================== КОЛОНКА ВРЕМЕНИ ==================== */
+
+.time-label-week {
+    -fx-font-size: 11px;
+    -fx-text-fill: -color-fg-default;
+    -fx-alignment: center-right;
+    -fx-padding: 10 4 10 0;
+}
+
+/* ==================== ЯЧЕЙКИ НЕДЕЛИ ==================== */
+
+.week-cell {
+    -fx-background-color: -color-bg-default;
+    -fx-background-radius: 12;
+    -fx-border-color: -color-border-muted;
+    -fx-border-radius: 12;
+    -fx-border-width: 1;
+    -fx-padding: 6;
+    -fx-min-height: 92;
+}
+
+.week-cell:hover {
+    -fx-border-color: -color-accent-muted;
+    -fx-effect: dropshadow(gaussian, -color-shadow-default, 8, 0.0, 0, 2);
+}
+
+/* Свободный слот — пунктирная рамка, чтобы визуально не спорить с записями. */
+.week-cell-free {
+    -fx-background-color: -color-bg-inset;
+    -fx-background-radius: 12;
+    -fx-border-color: -color-border-subtle;
+    -fx-border-radius: 12;
+    -fx-border-width: 1;
+    -fx-border-style: segments(5, 4);
+    -fx-padding: 6;
+    -fx-min-height: 92;
+    -fx-alignment: center;
+}
+
+.week-cell-free:hover {
+    -fx-background-color: -color-bg-subtle;
+    -fx-border-color: -color-accent-muted;
+}
+
+.week-cell-free-label {
+    -fx-font-size: 10px;
+    -fx-text-fill: -color-fg-muted;
+}
+
+/* ==================== КАРТОЧКА ЗАПИСИ ==================== */
+
+.appointment-card {
+    -fx-spacing: 5;
+    -fx-alignment: top-left;
+}
+
+/* Цветная полоса слева — статус заказа. */
+.appointment-stripe {
+    -fx-min-width: 4;
+    -fx-pref-width: 4;
+    -fx-max-width: 4;
+    -fx-background-radius: 2;
+    -fx-min-height: 44;
+}
+
+.appointment-stripe.status-new {
+    -fx-background-color: -color-accent-emphasis;
+}
+
+.appointment-stripe.status-in-progress {
+    -fx-background-color: -color-warning-emphasis;
+}
+
+.appointment-stripe.status-closed {
+    -fx-background-color: -color-success-emphasis;
+}
+
+.appointment-stripe.status-none {
+    -fx-background-color: -color-neutral-emphasis;
+}
+
+.appointment-content {
+    -fx-spacing: 2;
+}
+
+.appointment-client {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-fg-default;
+}
+
+.appointment-car {
+    -fx-font-size: 10.5px;
+    -fx-text-fill: -color-fg-muted;
+}
+
+/* Плашка услуги: «ТО», «Чип-тюнинг» и т. п. */
+.appointment-service-chip {
+    -fx-background-color: -color-bg-subtle;
+    -fx-background-radius: 6;
+    -fx-border-color: -color-border-muted;
+    -fx-border-radius: 6;
+    -fx-border-width: 1;
+    -fx-padding: 1 6 1 6;
+    -fx-font-size: 10px;
+    -fx-text-fill: -color-fg-muted;
+}
+
+.appointment-master {
+    -fx-font-size: 10px;
+    -fx-text-fill: -color-fg-subtle;
+}
+
+/* ==================== МЕСЯЧНЫЙ ВИД ==================== */
+
+.month-day-header {
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-fg-muted;
+    -fx-padding: 2 0 8 0;
+}
+
+.month-cell {
+    -fx-background-color: -color-bg-default;
+    -fx-background-radius: 12;
+    -fx-border-color: -color-border-muted;
+    -fx-border-radius: 12;
+    -fx-border-width: 1;
+    -fx-padding: 7;
+    -fx-spacing: 4;
+    -fx-min-height: 108;
+}
+
+.month-cell:hover {
+    -fx-border-color: -color-accent-muted;
+}
+
+.month-cell.today {
+    -fx-border-color: -color-accent-emphasis;
+    -fx-background-color: -color-accent-subtle;
+}
+
+.month-cell-other-month {
+    -fx-background-color: -color-bg-inset;
+    -fx-border-color: -color-border-subtle;
+}
+
+.month-date-label {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-fg-default;
+}
+
+.month-cell.today .month-date-label {
+    -fx-text-fill: -color-accent-fg;
+}
+
+.month-cell-other-month .month-date-label {
+    -fx-text-fill: -color-fg-subtle;
+}
+
+/* Строка записи в месячной сетке: точка статуса + время + клиент. */
+.month-appointment-row {
+    -fx-background-color: -color-bg-subtle;
+    -fx-background-radius: 6;
+    -fx-padding: 2 5 2 5;
+    -fx-spacing: 5;
+    -fx-alignment: center-left;
+}
+
+.month-appointment-row:hover {
+    -fx-background-color: -color-bg-overlay;
+}
+
+.month-status-dot {
+    -fx-min-width: 6;
+    -fx-min-height: 6;
+    -fx-pref-width: 6;
+    -fx-pref-height: 6;
+    -fx-max-width: 6;
+    -fx-max-height: 6;
+    -fx-background-radius: 3;
+}
+
+.month-status-dot.status-new {
+    -fx-background-color: -color-accent-emphasis;
+}
+
+.month-status-dot.status-in-progress {
+    -fx-background-color: -color-warning-emphasis;
+}
+
+.month-status-dot.status-closed {
+    -fx-background-color: -color-success-emphasis;
+}
+
+.month-status-dot.status-none {
+    -fx-background-color: -color-neutral-emphasis;
+}
+
+.month-appointment-time {
+    -fx-font-size: 9.5px;
+    -fx-text-fill: -color-fg-muted;
+}
+
+.month-appointment-name {
+    -fx-font-size: 10.5px;
+    -fx-text-fill: -color-fg-default;
+}
+
+.month-more-label {
+    -fx-font-size: 9.5px;
+    -fx-text-fill: -color-fg-subtle;
+}
+
+.month-free-label {
+    -fx-font-size: 9.5px;
+    -fx-text-fill: -color-fg-subtle;
+}
