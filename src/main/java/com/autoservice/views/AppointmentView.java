@@ -34,24 +34,26 @@ import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.TransferMode;
 import javafx.scene.input.Dragboard;
 import javafx.scene.control.ToggleGroup;
+import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
-import javafx.scene.shape.SVGPath;
-import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
 import javafx.stage.Modality;
 import javafx.scene.Scene;
+import javafx.util.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 
 public class AppointmentView {
 
@@ -65,8 +67,12 @@ public class AppointmentView {
     private static ToggleGroup viewToggle;
     private static String currentView = "week";
 
-    private static final DateTimeFormatter HEADER_FORMATTER = DateTimeFormatter.ofPattern("d MMMM yyyy 'г.'", new java.util.Locale.Builder().setLanguage("ru").build());
-    private static final DateTimeFormatter WEEK_FORMATTER = DateTimeFormatter.ofPattern("d MMM", new java.util.Locale.Builder().setLanguage("ru").build());
+    private static final Locale RU_LOCALE = new Locale.Builder().setLanguage("ru").build();
+    private static final DateTimeFormatter HEADER_FORMATTER = DateTimeFormatter.ofPattern("d MMMM yyyy 'г.'", RU_LOCALE);
+    private static final DateTimeFormatter WEEK_FORMATTER = DateTimeFormatter.ofPattern("d MMM", RU_LOCALE);
+    private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("LLLL", RU_LOCALE);
+    /** Ширина колонки времени в недельной сетке, в процентах от ширины таблицы. */
+    private static final double TIME_COLUMN_WIDTH_PERCENT = 6.0;
 
     public static VBox create() {
         SERVICES = DataStore.getServices().stream()
@@ -74,7 +80,8 @@ public class AppointmentView {
                 .toArray(String[]::new);
 
         VBox root = new VBox(15);
-        root.getStyleClass().add("main-container");
+        root.getStyleClass().addAll("main-container", "appointment-calendar");
+        applyCalendarStylesheet(root);
 
         // Верхняя панель
         HBox topPanel = new HBox(15);
@@ -88,7 +95,13 @@ public class AppointmentView {
 
         weekView.setToggleGroup(viewToggle);
         monthView.setToggleGroup(viewToggle);
-        weekView.setSelected(true);
+        // Переключатель должен отражать текущий вид: вкладка пересоздаётся при
+        // каждом переключении, а выбор пользователя («Месяц») сохраняется в currentView.
+        if ("month".equals(currentView)) {
+            monthView.setSelected(true);
+        } else {
+            weekView.setSelected(true);
+        }
 
         weekView.getStyleClass().add("view-radio");
         monthView.getStyleClass().add("view-radio");
@@ -160,7 +173,7 @@ public class AppointmentView {
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
 
         VBox.setVgrow(scrollPane, Priority.ALWAYS);
-        root.getChildren().addAll(topPanel, scrollPane);
+        root.getChildren().addAll(topPanel, buildStatusLegend(), scrollPane);
 
         refreshView();
 
@@ -199,15 +212,12 @@ public class AppointmentView {
         timeHeader.getStyleClass().add("schedule-header");
         scheduleGrid.add(timeHeader, 0, 0);
 
+        applyWeekColumnConstraints();
+
         for (int i = 0; i < 7; i++) {
             LocalDate day = startDate.plusDays(i);
-            String dayOfWeek = day.format(DateTimeFormatter.ofPattern("EEEE", new java.util.Locale.Builder().setLanguage("ru").build()));
-            String dayOfMonth = day.format(DateTimeFormatter.ofPattern("d MMMM", new java.util.Locale.Builder().setLanguage("ru").build()));
-            Label dayHeader = new Label(dayOfWeek + "\n" + dayOfMonth);
-            dayHeader.getStyleClass().add("week-day-header");
-            dayHeader.setWrapText(true);
-            dayHeader.setAlignment(Pos.CENTER);
-            scheduleGrid.add(dayHeader, i + 1, 0);
+            int dayCount = DataStore.getAppointmentsByDate(DateUtils.formatDateForDB(day)).size();
+            scheduleGrid.add(buildDayHeader(day, dayCount), i + 1, 0);
         }
 
         for (int i = 0; i < AppConstants.TIME_SLOTS.size(); i++) {
@@ -227,24 +237,7 @@ public class AppointmentView {
                 cell.getStyleClass().add("week-cell");
 
                 if (appointment != null) {
-                    Client client = appointment.getClient();
-                    String fullName = formatClientName(client);
-                    String carInfo = formatClientCar(client);
-
-                    Label nameLabel = new Label(fullName);
-                    nameLabel.setWrapText(true);
-                    nameLabel.getStyleClass().add("week-client-name");
-                    Label carLabel = new Label(carInfo);
-                    carLabel.setWrapText(true);
-                    carLabel.getStyleClass().add("week-car-info");
-                    Label serviceLabel = new Label(appointment.getServiceName());
-                    serviceLabel.setWrapText(true);
-                    serviceLabel.getStyleClass().add("week-service");
-                    cell.getChildren().addAll(nameLabel, carLabel, serviceLabel);
-
-                    // Цветовая индикация по статусу заказа
-                    String statusColor = getOrderStatusColor(appointment);
-                    cell.setStyle("-fx-background-color: " + statusColor + "; -fx-background-radius: 6;");
+                    cell.getChildren().add(buildAppointmentCard(appointment));
 
                     // ====== DRAG AND DROP ДЛЯ СУЩЕСТВУЮЩЕЙ ЗАПИСИ ======
                     cell.setOnDragDetected(e -> {
@@ -261,7 +254,7 @@ public class AppointmentView {
                             e.consume();
                         }
                     });
-                    cell.setStyle(cell.getStyle() + "; -fx-cursor: move;");
+                    cell.setStyle("-fx-cursor: move;");
 
                     cell.setOnMouseClicked(event -> {
                         if (event.getClickCount() == 2) {
@@ -273,7 +266,10 @@ public class AppointmentView {
                     freeLabel.getStyleClass().add("week-cell-free-label");
                     cell.getChildren().add(freeLabel);
                     cell.getStyleClass().add("week-cell-free");
-                    cell.setStyle(cell.getStyle() + "; -fx-cursor: pointer;");
+                    cell.setStyle("-fx-cursor: pointer;");
+                    Tooltip freeTooltip = new Tooltip("Свободно\nДвойной клик — создать запись");
+                    freeTooltip.setShowDelay(Duration.millis(300));
+                    Tooltip.install(cell, freeTooltip);
 
                     final LocalDate finalDay = day;
                     final String finalTime = time;
@@ -345,6 +341,7 @@ public class AppointmentView {
 
         selectedDateLabel.setText(currentDate.format(DateTimeFormatter.ofPattern("MMMM yyyy 'г.'", new java.util.Locale.Builder().setLanguage("ru").build())));
         scheduleGrid.getChildren().clear();
+        applyMonthColumnConstraints();
 
         String[] weekDays = {"Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"};
         for (int i = 0; i < 7; i++) {
@@ -368,6 +365,9 @@ public class AppointmentView {
                 if (!isCurrentMonth) {
                     cell.getStyleClass().add("month-cell-other-month");
                 }
+                if (cellDate.equals(LocalDate.now())) {
+                    cell.getStyleClass().add("today");
+                }
 
                 Label dateLabel = new Label(String.valueOf(cellDate.getDayOfMonth()));
                 dateLabel.getStyleClass().add("month-date-label");
@@ -384,37 +384,16 @@ public class AppointmentView {
                             cell.getChildren().add(moreLabel);
                             break;
                         }
-                        String fullName = formatClientName(a.getClient());
-
-                        Label appLabel = new Label(a.getTime() + " - " + fullName);
-                        appLabel.getStyleClass().add("month-appointment-label");
-                        appLabel.setWrapText(true);
-                        appLabel.setStyle("-fx-cursor: hand;");
-
-                        // Цветной индикатор статуса
-                        String statusColor = getOrderStatusColor(a);
-                        Circle statusDot = new Circle(3);
-                        statusDot.setFill(javafx.scene.paint.Color.web(statusColor));
-
-                        HBox appBox = new HBox(4, statusDot, appLabel);
-                        appBox.setAlignment(Pos.CENTER_LEFT);
-
-                        final Appointment currentAppointment = a;
-                        appLabel.setOnMouseClicked(event -> {
-                            if (event.getClickCount() == 2) {
-                                showAppointmentDialog(currentAppointment, AppointmentDialogMode.INFO_ONLY);
-                            }
-                        });
-
-                        cell.getChildren().add(appBox);
+                        cell.getChildren().add(buildMonthAppointmentRow(a));
                         count++;
                     }
                 } else if (isCurrentMonth) {
                     Label freeLabel = new Label("свободно");
                     freeLabel.getStyleClass().add("month-free-label");
                     cell.getChildren().add(freeLabel);
-                    
+
                     final LocalDate finalCellDate = cellDate;
+                    cell.setStyle("-fx-cursor: pointer;");
                     cell.setOnMouseClicked(event -> {
                         if (event.getClickCount() == 2) {
                             datePicker.setValue(finalCellDate);
@@ -437,25 +416,226 @@ public class AppointmentView {
         return null;
     }
 
-    private static String getOrderStatusColor(Appointment appointment) {
+    /**
+     * Семантический ключ статуса заказа записи. Сами цвета берутся из темы
+     * в appointment-custom.css, поэтому ключ не зависит от палитры.
+     *
+     * @return {@code "closed"}, {@code "in-progress"}, {@code "new"} или {@code "none"}
+     */
+    private static String getOrderStatusKey(Appointment appointment) {
         String orderId = appointment.getOrderId();
         if (orderId == null || orderId.isEmpty()) {
-            return "#95a5a6"; // серый - нет заказа
+            return "none";
         }
-        
         for (WorkOrder order : DataStore.getOrders()) {
             if (order.getId().equals(orderId)) {
                 String status = order.getStatus();
                 if (WorkOrder.STATUS_CLOSED.equals(status)) {
-                    return "#27ae60"; // зелёный - сделано
-                } else if (WorkOrder.STATUS_IN_PROGRESS.equals(status)) {
-                    return "#f39c12"; // оранжевый - в работе
-                } else {
-                    return "#3498db"; // синий - запланировано
+                    return "closed";
                 }
+                if (WorkOrder.STATUS_IN_PROGRESS.equals(status)) {
+                    return "in-progress";
+                }
+                return "new";
             }
         }
-        return "#95a5a6"; // серый - заказ не найден
+        return "none";
+    }
+
+    /** Подключить стили календаря к корню вкладки (файл может отсутствовать в сборке). */
+    private static void applyCalendarStylesheet(VBox root) {
+        java.net.URL cssUrl = AppointmentView.class.getResource("/appointment-custom.css");
+        if (cssUrl != null) {
+            root.getStylesheets().add(cssUrl.toExternalForm());
+        }
+    }
+
+    /** Легенда статусов — чтобы цвета полосы слева читались без догадок. */
+    private static HBox buildStatusLegend() {
+        HBox legend = new HBox(16,
+                buildLegendItem("status-new", "Запланировано"),
+                buildLegendItem("status-in-progress", "В работе"),
+                buildLegendItem("status-closed", "Закрыт"),
+                buildLegendItem("status-none", "Без заказа"));
+        legend.getStyleClass().add("calendar-legend");
+        legend.setAlignment(Pos.CENTER_LEFT);
+        return legend;
+    }
+
+    private static HBox buildLegendItem(String statusClass, String text) {
+        Region dot = new Region();
+        dot.getStyleClass().addAll("legend-dot", statusClass);
+        Label label = new Label(text);
+        label.getStyleClass().add("legend-text");
+        HBox item = new HBox(6, dot, label);
+        item.getStyleClass().add("legend-item");
+        item.setAlignment(Pos.CENTER_LEFT);
+        return item;
+    }
+
+    /** Шапка дня недели: короткое имя дня, крупное число, месяц и счётчик записей. */
+    private static VBox buildDayHeader(LocalDate day, int appointmentCount) {
+        Label weekDay = new Label(day.getDayOfWeek().getDisplayName(TextStyle.SHORT, RU_LOCALE));
+        weekDay.getStyleClass().add("week-day-name");
+
+        Label date = new Label(String.valueOf(day.getDayOfMonth()));
+        date.getStyleClass().add("week-day-date");
+
+        Label month = new Label(day.format(MONTH_FORMATTER));
+        month.getStyleClass().add("week-day-month");
+
+        HBox footer = new HBox(4, month);
+        footer.setAlignment(Pos.CENTER);
+        if (appointmentCount > 0) {
+            Label count = new Label(String.valueOf(appointmentCount));
+            count.getStyleClass().add("week-day-count");
+            footer.getChildren().add(count);
+        }
+
+        VBox card = new VBox(1, weekDay, date, footer);
+        card.getStyleClass().add("week-day-card");
+        card.setAlignment(Pos.CENTER);
+        if (day.getDayOfWeek().getValue() >= 6) {
+            card.getStyleClass().add("weekend");
+        }
+        if (day.equals(LocalDate.now())) {
+            card.getStyleClass().add("today");
+        }
+        return card;
+    }
+
+    /** Карточка записи в недельной сетке: полоса статуса + клиент, машина, услуга, мастер. */
+    private static HBox buildAppointmentCard(Appointment appointment) {
+        Client client = appointment.getClient();
+
+        Region stripe = new Region();
+        stripe.getStyleClass().addAll("appointment-stripe", "status-" + getOrderStatusKey(appointment));
+
+        Label name = new Label(formatClientName(client));
+        name.getStyleClass().add("appointment-client");
+        name.setWrapText(true);
+        name.setMinWidth(0);
+
+        VBox content = new VBox(2, name);
+        content.getStyleClass().add("appointment-content");
+
+        String carInfo = formatClientCar(client);
+        if (!carInfo.isEmpty()) {
+            Label car = new Label(carInfo);
+            car.getStyleClass().add("appointment-car");
+            car.setWrapText(true);
+            content.getChildren().add(car);
+        }
+
+        String serviceName = appointment.getServiceName();
+        if (serviceName != null && !serviceName.isBlank()) {
+            Label chip = new Label(serviceName);
+            chip.getStyleClass().add("appointment-service-chip");
+            chip.setWrapText(true);
+            content.getChildren().add(chip);
+        }
+
+        String masterName = appointment.getMasterName();
+        if (masterName != null && !masterName.isBlank()) {
+            Label master = new Label(masterName);
+            master.getStyleClass().add("appointment-master");
+            master.setWrapText(true);
+            content.getChildren().add(master);
+        }
+
+        HBox card = new HBox(6, stripe, content);
+        card.getStyleClass().add("appointment-card");
+        card.setMinWidth(0);
+        content.setMinWidth(0);
+        HBox.setHgrow(content, Priority.ALWAYS);
+        Tooltip.install(card, buildAppointmentTooltip(appointment));
+        return card;
+    }
+
+    /** Строка записи в месячной сетке: точка статуса, время, клиент. */
+    private static HBox buildMonthAppointmentRow(Appointment appointment) {
+        Region dot = new Region();
+        dot.getStyleClass().addAll("month-status-dot", "status-" + getOrderStatusKey(appointment));
+
+        Label time = new Label(appointment.getTime());
+        time.getStyleClass().add("month-appointment-time");
+
+        Label name = new Label(formatClientName(appointment.getClient()));
+        name.getStyleClass().add("month-appointment-name");
+        name.setWrapText(true);
+        // minWidth = 0 разрешает метке сжиматься: иначе длинное имя растягивает
+        // строку шире ячейки и та заезжает на соседние столбцы.
+        name.setMinWidth(0);
+        name.setMaxWidth(Double.MAX_VALUE);
+
+        HBox row = new HBox(5, dot, time, name);
+        row.getStyleClass().add("month-appointment-row");
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.setMinWidth(0);
+        HBox.setHgrow(name, Priority.ALWAYS);
+        row.setStyle("-fx-cursor: hand;");
+        row.setOnMouseClicked(event -> {
+            if (event.getClickCount() == 2) {
+                showAppointmentDialog(appointment, AppointmentDialogMode.INFO_ONLY);
+            }
+        });
+        Tooltip.install(row, buildAppointmentTooltip(appointment));
+        return row;
+    }
+
+    private static Tooltip buildAppointmentTooltip(Appointment appointment) {
+        Client client = appointment.getClient();
+        String statusText = switch (getOrderStatusKey(appointment)) {
+            case "closed" -> "Закрыт";
+            case "in-progress" -> "В работе";
+            case "new" -> "Запланировано";
+            default -> "Без заказа";
+        };
+
+        StringBuilder text = new StringBuilder();
+        String carText = formatClientCar(client);
+        text.append(formatClientName(client)).append('\n')
+                .append("Телефон: ").append(formatClientPhone(client)).append('\n')
+                .append("Авто: ").append(carText.isEmpty() ? "—" : carText);
+
+        String serviceName = appointment.getServiceName();
+        if (serviceName != null && !serviceName.isBlank()) {
+            text.append('\n').append("Услуга: ").append(serviceName);
+        }
+        String masterName = appointment.getMasterName();
+        if (masterName != null && !masterName.isBlank()) {
+            text.append('\n').append("Мастер: ").append(masterName);
+        }
+        text.append('\n').append("Статус: ").append(statusText);
+
+        Tooltip tooltip = new Tooltip(text.toString());
+        tooltip.setShowDelay(Duration.millis(300));
+        return tooltip;
+    }
+
+    /** Колонка времени занимает 6% ширины, семь дней делят остальные 94% поровну. */
+    private static void applyWeekColumnConstraints() {
+        scheduleGrid.getColumnConstraints().clear();
+        ColumnConstraints timeColumn = new ColumnConstraints();
+        timeColumn.setPercentWidth(TIME_COLUMN_WIDTH_PERCENT);
+        scheduleGrid.getColumnConstraints().add(timeColumn);
+        for (int i = 0; i < 7; i++) {
+            ColumnConstraints dayColumn = new ColumnConstraints();
+            dayColumn.setPercentWidth((100.0 - TIME_COLUMN_WIDTH_PERCENT) / 7);
+            dayColumn.setFillWidth(true);
+            scheduleGrid.getColumnConstraints().add(dayColumn);
+        }
+    }
+
+    /** Месячная сетка: семь равных колонок. */
+    private static void applyMonthColumnConstraints() {
+        scheduleGrid.getColumnConstraints().clear();
+        for (int i = 0; i < 7; i++) {
+            ColumnConstraints dayColumn = new ColumnConstraints();
+            dayColumn.setPercentWidth(100.0 / 7);
+            dayColumn.setFillWidth(true);
+            scheduleGrid.getColumnConstraints().add(dayColumn);
+        }
     }
 
     private static void showAppointmentDialog(Appointment appointment, AppointmentDialogMode mode) {
@@ -1192,8 +1372,17 @@ public class AppointmentView {
         if (client == null) {
             return "—";
         }
-        String model = client.getCarModel() != null ? client.getCarModel() : "";
-        String number = client.getCarNumber() != null ? client.getCarNumber() : "";
+        String model = client.getCarModel() != null ? client.getCarModel().trim() : "";
+        String number = client.getCarNumber() != null ? client.getCarNumber().trim() : "";
+        if (model.isEmpty() && number.isEmpty()) {
+            return "";
+        }
+        if (number.isEmpty()) {
+            return model;
+        }
+        if (model.isEmpty()) {
+            return number;
+        }
         return model + " (" + number + ")";
     }
 
