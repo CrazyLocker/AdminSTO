@@ -26,6 +26,10 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.shape.Circle;
+import javafx.scene.shape.Polygon;
+import javafx.scene.shape.Polyline;
+import javafx.scene.shape.StrokeLineCap;
+import javafx.scene.shape.StrokeLineJoin;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.LinearGradient;
 import javafx.scene.paint.Paint;
@@ -33,6 +37,7 @@ import javafx.scene.paint.Stop;
 import javafx.scene.paint.CycleMethod;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
+import javafx.scene.text.Text;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 
@@ -287,6 +292,7 @@ public class DashboardView extends ScrollPane {
 
         // ====== ЛЕВАЯ КОЛОНКА ======
         VBox leftColumn = new VBox(16);
+        leftColumn.setId("dashboardLeftColumn");
         leftColumn.setAlignment(Pos.TOP_CENTER);
 
         // 1. Круговая диаграмма (Бюджет / Выручка)
@@ -299,7 +305,7 @@ public class DashboardView extends ScrollPane {
 
         // 3. Календарь
         VBox calendarCard = createAppointmentCalendar(LocalDate.now(), data.appointments);
-        calendarCard.setMaxWidth(280);
+        calendarCard.setId("appointmentCalendarCard");
         leftColumn.getChildren().add(calendarCard);
 
         // 4. Загрузка мастеров
@@ -859,8 +865,18 @@ public class DashboardView extends ScrollPane {
 
         int maxCount = topServices.values().stream().max(Integer::compareTo).orElse(1);
 
+        // Колонка названий подстраивается под самую длинную услугу, поэтому
+        // многоточие больше не появляется при свободном месте, а прогресс-бары
+        // у всех строк начинаются с одного левого края.
+        Font serviceFont = Font.font("Segoe UI", FontWeight.NORMAL, 11);
+        double nameColumnWidth = topServices.keySet().stream()
+                .mapToDouble(name -> textWidth(name, serviceFont))
+                .max().orElse(100) + 10;
+
         VBox barsBox = new VBox(6);
+        barsBox.setId("topServicesBars");
         barsBox.setAlignment(Pos.CENTER_LEFT);
+        barsBox.setMaxWidth(Double.MAX_VALUE);
 
         int index = 0;
         Color[] barColors = palette.series();
@@ -868,28 +884,41 @@ public class DashboardView extends ScrollPane {
         for (Map.Entry<String, Integer> entry : topServices.entrySet()) {
             HBox barRow = new HBox(8);
             barRow.setAlignment(Pos.CENTER_LEFT);
+            barRow.setMaxWidth(Double.MAX_VALUE);
 
-            String serviceName = entry.getKey();
-            if (serviceName.length() > 20) {
-                serviceName = serviceName.substring(0, 18) + "...";
-            }
-            Label nameLabel = styledLabel(serviceName, TEXT_CLASS, 11, false);
-            nameLabel.setPrefWidth(100);
+            Label nameLabel = styledLabel(entry.getKey(), TEXT_CLASS, 11, false);
+            nameLabel.setId("topServiceName" + index);
+            nameLabel.setWrapText(false);
+            nameLabel.setMinWidth(80);
+            nameLabel.setPrefWidth(nameColumnWidth);
+            nameLabel.setMaxWidth(nameColumnWidth);
 
             int count = entry.getValue();
-            double barWidth = (count / (double) maxCount) * 120;
+            double fraction = maxCount > 0 ? count / (double) maxCount : 0;
 
+            // Бар занимает всю оставшуюся ширину, а его заливка прижата влево.
             StackPane barContainer = new StackPane();
+            barContainer.setId("topServiceBar" + index);
+            barContainer.setAlignment(Pos.CENTER_LEFT);
+            barContainer.setMinWidth(100);
             barContainer.setPrefWidth(120);
-            barContainer.setPrefHeight(14);
+            barContainer.setMaxWidth(Double.MAX_VALUE);
+            barContainer.setMinHeight(16);
+            barContainer.setPrefHeight(16);
+            barContainer.setMaxHeight(16);
+            HBox.setHgrow(barContainer, Priority.ALWAYS);
 
-            javafx.scene.shape.Rectangle bar = new javafx.scene.shape.Rectangle(barWidth, 14);
+            javafx.scene.shape.Rectangle bar = new javafx.scene.shape.Rectangle(0, 14);
+            bar.widthProperty().bind(barContainer.widthProperty().multiply(fraction));
             bar.setFill(barColors[index % barColors.length]);
             bar.setArcWidth(6);
             bar.setArcHeight(6);
 
             Label countLabel = styledLabel(String.valueOf(count), MUTED_CLASS, 10, false);
-            countLabel.setPrefWidth(25);
+            countLabel.setAlignment(Pos.CENTER_LEFT);
+            countLabel.setMinWidth(24);
+            countLabel.setPrefWidth(24);
+            countLabel.setMaxWidth(24);
 
             barContainer.getChildren().add(bar);
             barRow.getChildren().addAll(nameLabel, barContainer, countLabel);
@@ -906,38 +935,73 @@ public class DashboardView extends ScrollPane {
      */
     private VBox createLowStockWidget(List<SparePart> lowStockParts) {
         VBox card = new VBox(10);
+        card.setId("lowStockCard");
         card.setAlignment(Pos.CENTER);
-        card.setPadding(new Insets(12));
+        card.setPadding(new Insets(14));
         card.getStyleClass().add(CARD_CLASS);
 
-        Label title = styledLabel("⚠️ Низкий остаток запчастей", WARNING_CLASS, 13, true);
-        card.getChildren().add(title);
+        // Иконки рисуются векторными фигурами: эмодзи ⚠️/✅ в некоторых
+        // шрифтах превращаются в «□» (битый Unicode).
+        Label title = styledLabel("Низкий остаток запчастей", WARNING_CLASS, 14, true);
+        title.setId("lowStockTitle");
+        title.setWrapText(false);
+        HBox titleRow = new HBox(8, createWarningIcon(), title);
+        titleRow.setAlignment(Pos.CENTER);
+        card.getChildren().add(titleRow);
 
         if (lowStockParts.isEmpty()) {
-            Label empty = styledLabel("✅ Все запчасти в норме", SUCCESS_CLASS, 12, false);
-            card.getChildren().add(empty);
+            Label empty = styledLabel("Все запчасти в норме", SUCCESS_CLASS, 13, false);
+            empty.setId("lowStockEmpty");
+            HBox emptyRow = new HBox(8, createCheckIcon(), empty);
+            emptyRow.setAlignment(Pos.CENTER);
+            card.getChildren().add(emptyRow);
             return card;
         }
 
-        VBox listBox = new VBox(4);
+        VBox listBox = new VBox(8);
         listBox.setAlignment(Pos.CENTER_LEFT);
+        listBox.setMaxWidth(Double.MAX_VALUE);
 
         for (SparePart part : lowStockParts) {
-            HBox row = new HBox(8);
+            HBox row = new HBox(10);
             row.setAlignment(Pos.CENTER_LEFT);
 
             Color color = part.getStock() < part.getMinStock() * 0.5 ? palette.danger() : palette.warning();
-            Circle indicator = new Circle(4);
+            Circle indicator = new Circle(6);
             indicator.setFill(color);
+            indicator.setMouseTransparent(true);
 
             String text = part.getName() + " (" + String.format("%.0f", part.getStock()) + "/" + String.format("%.0f", part.getMinStock()) + " " + part.getUnitType() + ")";
-            Label label = styledLabel(text, MUTED_CLASS, 11, false);
+            Label label = styledLabel(text, MUTED_CLASS, 12.5, false);
+            label.setMaxWidth(Double.MAX_VALUE);
+            HBox.setHgrow(label, Priority.ALWAYS);
             row.getChildren().addAll(indicator, label);
             listBox.getChildren().add(row);
         }
 
         card.getChildren().add(listBox);
         return card;
+    }
+
+    /** Предупреждающий треугольник вместо эмодзи ⚠️. */
+    private Polygon createWarningIcon() {
+        Polygon triangle = new Polygon(7, 0, 14, 12, 0, 12);
+        triangle.setFill(palette.warning());
+        triangle.setMouseTransparent(true);
+        return triangle;
+    }
+
+    /** Галочка вместо эмодзи ✅, который отображается квадратиком. */
+    private Polyline createCheckIcon() {
+        Polyline check = new Polyline(1, 7, 5, 11, 13, 1);
+        check.setId("lowStockCheckIcon");
+        check.setFill(Color.TRANSPARENT);
+        check.setStroke(palette.success());
+        check.setStrokeWidth(2);
+        check.setStrokeLineCap(StrokeLineCap.ROUND);
+        check.setStrokeLineJoin(StrokeLineJoin.ROUND);
+        check.setMouseTransparent(true);
+        return check;
     }
 
     /**
@@ -1034,12 +1098,12 @@ public class DashboardView extends ScrollPane {
         Canvas canvas = new Canvas(180, 180);
         GraphicsContext gc = canvas.getGraphicsContext2D();
 
-        double cx = 90, cy = 90, radius = 66;
+        double cx = 90, cy = 90, radius = 66, lineWidth = 16;
         double progress = Math.min(spent / total, 1.0);
         double angle = 360 * progress;
 
         gc.setStroke(palette.grid());
-        gc.setLineWidth(16);
+        gc.setLineWidth(lineWidth);
         gc.strokeArc(cx - radius, cy - radius, radius * 2, radius * 2, 90, 360, javafx.scene.shape.ArcType.OPEN);
 
         // Градиент для выручки в цветах текущей темы
@@ -1050,17 +1114,64 @@ public class DashboardView extends ScrollPane {
         gc.setStroke(gradient);
         gc.strokeArc(cx - radius, cy - radius, radius * 2, radius * 2, 90, -angle, javafx.scene.shape.ArcType.OPEN);
 
-        gc.setFill(palette.text());
-        gc.setFont(javafx.scene.text.Font.font("Segoe UI", javafx.scene.text.FontWeight.BOLD, 23));
-        gc.setTextAlign(javafx.scene.text.TextAlignment.CENTER);
-        gc.fillText(String.format("%,.0f ₽", spent), cx, cy - 6);
+        // Сумма и подпись — обычные Label поверх Canvas: их размер можно
+        // измерить и подобрать шрифт под внутренний диаметр кольца, чтобы
+        // семизначная выручка не выходила за границы круга.
+        double innerDiameter = (radius - lineWidth / 2) * 2;
+        double textMaxWidth = innerDiameter - 16;
+        String amountText = String.format("%,.0f ₽", spent);
 
-        gc.setFill(palette.muted());
-        gc.setFont(javafx.scene.text.Font.font("Segoe UI", 12));
-        gc.fillText("Общий доход", cx, cy + 20);
+        Label amount = styledLabel(amountText, ACCENT_CLASS, 23, true);
+        amount.setId("revenueDonutAmount");
+        amount.setWrapText(false);
+        amount.setMaxWidth(textMaxWidth);
+        amount.setAlignment(Pos.CENTER);
+        amount.setFont(Font.font("Segoe UI", FontWeight.BOLD,
+                fitFontSize(amountText, textMaxWidth, 23, 12)));
 
-        card.getChildren().addAll(title, subtitle, canvas);
+        Label caption = styledLabel("Общий доход", MUTED_CLASS, 12, false);
+        caption.setWrapText(false);
+        caption.setMaxWidth(textMaxWidth);
+
+        VBox center = new VBox(2, amount, caption);
+        center.setAlignment(Pos.CENTER);
+        center.setMaxWidth(textMaxWidth);
+        center.setMouseTransparent(true);
+
+        StackPane donut = new StackPane(canvas, center);
+        donut.setMaxSize(180, 180);
+
+        card.getChildren().addAll(title, subtitle, donut);
         return card;
+    }
+
+    /**
+     * Подбирает максимальный размер шрифта, при котором текст помещается в
+     * заданную ширину (но не больше {@code maxSize} и не меньше {@code minSize}).
+     *
+     * @param text    проверяемый текст
+     * @param maxWidth максимальная ширина текста, px
+     * @param maxSize максимальный размер шрифта
+     * @param minSize минимальный размер шрифта
+     * @return подобранный размер шрифта
+     */
+    private static double fitFontSize(String text, double maxWidth,
+                                      double maxSize, double minSize) {
+        Text probe = new Text(text);
+        for (double size = maxSize; size > minSize; size -= 0.5) {
+            probe.setFont(Font.font("Segoe UI", FontWeight.BOLD, size));
+            if (probe.getLayoutBounds().getWidth() <= maxWidth) {
+                return size;
+            }
+        }
+        return minSize;
+    }
+
+    /** Ширина текста заданным шрифтом, px. */
+    private static double textWidth(String text, Font font) {
+        Text probe = new Text(text);
+        probe.setFont(font);
+        return probe.getLayoutBounds().getWidth();
     }
 
     /**
@@ -1425,16 +1536,30 @@ public class DashboardView extends ScrollPane {
         card.getChildren().add(title);
 
         GridPane grid = new GridPane();
-        grid.setHgap(6);
-        grid.setVgap(6);
+        grid.setHgap(4);
+        grid.setVgap(4);
         grid.setAlignment(Pos.CENTER);
+        grid.setMaxWidth(Double.MAX_VALUE);
+
+        // Семь равноправных колонок растягивают сетку на всю ширину карточки:
+        // календарь больше не уже остальных виджетов колонки.
+        for (int i = 0; i < 7; i++) {
+            ColumnConstraints column = new ColumnConstraints();
+            column.setMinWidth(28);
+            column.setPrefWidth(34);
+            column.setMaxWidth(Double.MAX_VALUE);
+            column.setHgrow(Priority.ALWAYS);
+            column.setFillWidth(true);
+            grid.getColumnConstraints().add(column);
+        }
 
         // Шрифт дней недели
         String[] days = {"Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"};
         for (int i = 0; i < 7; i++) {
             Label dayLabel = styledLabel(days[i], MUTED_CLASS, 11, true);
             dayLabel.setAlignment(Pos.CENTER);
-            dayLabel.setPrefSize(34, 24);
+            dayLabel.setPrefHeight(24);
+            dayLabel.setMaxWidth(Double.MAX_VALUE);
             grid.add(dayLabel, i, 0);
         }
 
@@ -1459,6 +1584,7 @@ public class DashboardView extends ScrollPane {
 
             StackPane cell = new StackPane();
             cell.setPrefSize(34, 34);
+            cell.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
             cell.setAlignment(Pos.CENTER);
 
             Label dayNum = styledLabel(String.valueOf(day), hasAppointment ? ACCENT_CLASS : MUTED_CLASS, 12, hasAppointment);

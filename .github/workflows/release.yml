@@ -1,0 +1,66 @@
+name: Release
+
+# Запуск при пуше тега вида v1.0.0: собираем портативную Windows-версию
+# (папка с .exe и встроенным JRE), упаковываем её в ZIP и публикуем релиз.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Portable Windows release
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 21 (Temurin)
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Build with Gradle
+        run: .\gradlew.bat build --console=plain
+
+      # jpackage создаёт app-image: папку AdminSTO с AdminSTO.exe и
+      # встроенным JRE (build\jpackage\AdminSTO).
+      - name: Build portable app image
+        run: .\gradlew.bat jpackage --console=plain
+
+      - name: Package portable build into ZIP
+        shell: pwsh
+        run: |
+          $portable = Join-Path $PWD 'build\jpackage\AdminSTO'
+          $launcher = Join-Path $portable 'AdminSTO.exe'
+          if (-not (Test-Path $launcher)) {
+            throw "Портативная сборка не найдена: $launcher"
+          }
+          Compress-Archive -Path $portable -DestinationPath 'AdminSTO-Windows.zip' -Force
+
+      - name: Upload ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AdminSTO-Windows
+          path: AdminSTO-Windows.zip
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          files: AdminSTO-Windows.zip
+          generate_release_notes: true
+          fail_on_unmatched_files: true
