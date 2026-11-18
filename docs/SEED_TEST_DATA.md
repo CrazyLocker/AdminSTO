@@ -22,23 +22,23 @@
 - приложение AdminSTO должно быть **закрыто** — SQLite не даст писать в
   файл, который держит запущенный процесс;
 - на Windows путь к базе указывается через прямой слэш:
-  `--db T:/AdminSTO/autoservice.db`.
+  `--db path/to/autoservice.db`.
 
 ## Быстрый старт
 
 ```bash
 # 1. Только сгенерировать SQL (база не меняется)
-python tools/seed_test_data.py --db T:/AdminSTO/autoservice.db
+python tools/seed_test_data.py --db path/to/autoservice.db
 
 # 2. Выполнить в базе (перед записью автоматически делается копия)
-python tools/seed_test_data.py --db T:/AdminSTO/autoservice.db --apply
+python tools/seed_test_data.py --db path/to/autoservice.db --apply
 
 # 3. Перезалить поверх уже налитых данных
-python tools/seed_test_data.py --db T:/AdminSTO/autoservice.db --apply --force
+python tools/seed_test_data.py --db path/to/autoservice.db --apply --force
 
 # 4. Записи в календарь (клиенты и услуги уже должны быть в базе)
-python tools/seed_appointments.py --db T:/AdminSTO/autoservice.db --dry-run
-python tools/seed_appointments.py --db T:/AdminSTO/autoservice.db --replace
+python tools/seed_appointments.py --db path/to/autoservice.db --dry-run
+python tools/seed_appointments.py --db path/to/autoservice.db --replace
 ```
 
 Флаги:
@@ -153,7 +153,7 @@ python tools/seed_appointments.py --db T:/AdminSTO/autoservice.db --replace
 Дополнительно можно проверить данные вручную:
 
 ```bash
-sqlite3 T:/AdminSTO/autoservice.db "SELECT id, name, maintenance_stars, tuning_total FROM clients ORDER BY id;"
+sqlite3 path/to/autoservice.db "SELECT id, name, maintenance_stars, tuning_total FROM clients ORDER BY id;"
 ```
 
 ## Ограничения

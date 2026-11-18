@@ -81,10 +81,10 @@ git push origin v1.2.0
 
 ```bash
 # Клиенты, заказы и уровни лояльности
-python tools/seed_test_data.py --db T:/AdminSTO/autoservice.db --apply
+python tools/seed_test_data.py --db path/to/autoservice.db --apply
 
 # Записи календаря (клиенты и услуги уже должны быть в базе)
-python tools/seed_appointments.py --db T:/AdminSTO/autoservice.db --replace
+python tools/seed_appointments.py --db path/to/autoservice.db --replace
 ```
 
 Подробности и флаги — в [описании инструментов](docs/SEED_TEST_DATA.md).
