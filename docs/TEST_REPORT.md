@@ -1,192 +1,150 @@
-# Отчет о тестировании системы автосервиса
+# Отчёт о тестировании системы автосервиса AdminSTO 1.2.0
+
+> **Назначение:** текущие результаты юнит-, интеграционных и UI-тестов,
+> покрытия и мутационного анализа.
+> **Актуализировано:** 18.11.2026
+> **Версия ПО:** 1.2.0
+> **Ревизия:** `d46404b` (`develop`)
 
 ## Общая информация
 
 | Параметр | Значение |
-|----------|----------|
-| **Проект** | autoservice-admin |
-| **Версия** | 1.1.0 |
-| **Дата тестирования** | 20.07.2026 |
-| **Фреймворк** | JUnit 5.10.1 |
-| **Движок тестирования** | Gradle Test Task |
-| **JDK** | 21 |
-| **Тестовых классов** | 24 |
-| **Всего тестов** | 250+
+|---|---|
+| Проект | `autoservice-admin` |
+| Версия | 1.2.0 |
+| JDK | 21 (Temurin) |
+| Gradle Wrapper | 8.5 |
+| JUnit | 5.10.1 |
+| Дата прогона | 18.11.2026, Linux, headless Monocle |
+| Юнит/интеграционные тесты | **571 в 55 классах** |
+| UI-тесты | **51 в 10 классах** |
+| Провалы / ошибки / пропуски | **0 / 0 / 0** |
+| `@Disabled` | **0** |
 
-## Резюме тестирования
+## Как воспроизвести
+
+```bash
+./gradlew clean test            # 571 тест
+./gradlew uiTest                # 51 UI-тест
+./gradlew jacocoTestReport      # build/reports/jacoco/test/html/index.html
+./gradlew jacocoTestCoverageVerification
+./gradlew pitest                # build/reports/pitest/index.html
+./gradlew build                 # всё выше + SpotBugs + Checkstyle
+```
+
+## Резюме
 
 | Метрика | Значение |
-|---------|----------|
-| **Всего тестов** | 250+ |
-| **Успешные** | ~250+ ✅ |
-| **Проваленные** | 0 ❌ |
-| **Ошибки** | 0 ⚠️ |
-| **Пропущенные** | 0 ⏭️ |
-| **Успешность** | **~100%** |
+|---|---|
+| Всего юнит/интеграционных тестов | 571 |
+| Успешные | 571 (100 %) |
+| Проваленные | 0 |
+| Ошибки | 0 |
+| Пропущенные | 0 |
+| UI-тестов | 51 |
+| UI-провалов | 0 |
+| Покрытие строк (проект) | 34,5 % |
+| Покрытие инструкций | 32,2 % |
+| Покрытие ветвей | 27,4 % |
+| JaCoCo-пороги | ✅ `services` 88,1 %, `model` 88,3 %, `utils` 31,2 % |
+| PIT test strength | 72 % при пороге 70 % |
 
-## Результаты по классам тестов
+## Результаты по группам
 
-### Unit-тесты
+### Юнит/интеграционные тесты (571)
 
-| Класс тестов | Кол-во тестов | Статус | Покрытие |
-|--------------|---------------|--------|----------|
-| `ClientTest` | 8 | ✅ PASS | Конструкторы, геттеры, сеттеры, equals, toString |
-| `ServiceTest` | 6 | ✅ PASS | Конструкторы, цены, валидация |
-| `SparePartTest` | 7 | ✅ PASS | Запчасти, цены, остатки |
-| `AppointmentTest` | 6 | ✅ PASS | Записи, статусы, клиент |
-| `WorkOrderTest` | 18 | ✅ PASS | Заказы, услуги, запчасти, статусы |
-| `DateUtilsTest` | 12 | ✅ PASS | Форматирование и парсинг дат |
-| `ValidatorsTest` | 10 | ✅ PASS | Валидация телефона и госномеров |
+| Группа | Тестов | Классы |
+|---|---:|---|
+| Модели и DTO | 106 | `ClientTest`, `ServiceTest`, `SparePartTest`, `WorkOrderTest`, `AppointmentTest`, `AppointmentLegacyClientTest`, `WorkOrderLoyaltyDiscountTest`, `NullSafetyTest`, `ServiceSparePartsRowTest`, `AppConstantsTest` |
+| БД и `DataStore` | 120 | `DatabaseTest`, `DatabaseSchemaTest`, `SQLiteMigrationsTest`, `DataStoreTest`, `DataStoreRelationsTest`, `DataStorePersistenceTest`, `DataStoreNullClientTest`, `ParallelDatabaseTest`, `ServiceSparePartsListTest` |
+| Сервисы | 151 | `BackupService*`, `ImportService*`, `ExportServiceTest`, `SettingServiceTest`, `ScheduleServiceTest`, `StatisticsServiceTest`, `ReportGeneratorTest`, `LoyaltyServiceTest`, `TableStateManagerTest`, `JsonStateManagerTest`, `FileDialogPathManagerTest`, `AutoAddSparePartServiceTest` |
+| Утилиты | 69 | `DateUtilsTest`, `ValidationUtilsTest`, `FormattersTest`, `StockHelperTest`, `ThemeManagerTest`, `ThemePreferencesTest` |
+| Контроллеры | 42 | `ClientControllerTest`, `OrderControllerTest`, `ServicePanelControllerTest`, `SparePartPanelControllerTest`, `StockPanelControllerTest` |
+| Диалоги | 54 | `CreateOrderDialogTest`, `EditOrderDialogTest`, `EditClientDialogTest`, `EntityExportDialogTest`, `ImportSparePartsDialogTest`, `PrintOrderDialogTest` |
+| Интеграционные сценарии | 28 | `IntegrationTest`, `IntegrationWorkOrderTest`, `IntegrationStockTest`, `ParallelWorkOrderTest` |
+| JavaFX-регрессия в `test` | 1 | `ClientDoubleClickRegressionTest` |
 
-**Итого unit-тестов: 67**
+### UI-тесты (51)
 
-### Интеграционные тесты
+| Класс | Тестов |
+|---|---:|
+| `ClientViewUITest` | 8 |
+| `OrderViewUITest` | 19 |
+| `MainAppUITest` | 7 |
+| `ThemeSettingsUITest` | 3 |
+| `DashboardThemeUITest` | 2 |
+| `DashboardLayoutUITest` | 3 |
+| `AppointmentVisibilityUITest` | 1 |
+| `StockOperationDialogThemeUITest` | 1 |
+| `views/AppointmentCalendarUITest` | 4 |
+| `views/TableStripingUITest` | 3 |
 
-| Класс тестов | Кол-во тестов | Статус | Описание |
-|--------------|---------------|--------|----------|
-| `DatabaseTest` | 20 | ✅ PASS | Интеграция с SQLite БД |
-| `DataStoreTest` | 18 | ✅ PASS | Управление данными |
-| `IntegrationTest` | 8 | ✅ PASS | Полные сценарии работы |
+Инвентарь и матрица требований — в [../UI_testplan.md](../UI_testplan.md).
 
-**Итого интеграционных тестов: 46**
+## Покрытие по пакетам
 
-## Детализация по функциональности
+Замер JaCoCo 18.11.2026, Linux; UI-тесты в `test` не входят.
 
-### 1. Модели данных (39 тестов)
+| Пакет | Строк покрыто | Строк всего | Покрытие |
+|---|---:|---:|---:|
+| `com.autoservice` (корень) | 2 069 | 2 668 | 77,5 % |
+| `com.autoservice.model` | 250 | 283 | 88,3 % |
+| `com.autoservice.services` | 1 364 | 1 549 | 88,1 % |
+| `com.autoservice.utils` | 192 | 616 | 31,2 % |
+| `com.autoservice.controllers` | 75 | 312 | 24,0 % |
+| `com.autoservice.dialogs` | 320 | 1 985 | 16,1 % |
+| `com.autoservice.views` | 154 | 5 394 | 2,9 % |
+| **Итого** | **4 424** | **12 807** | **34,5 %** |
 
-#### Client
-- ✅ Конструкторы (2 варианта)
-- ✅ Геттеры и сеттеры
-- ✅ Метод equals()
-- ✅ Метод toString()
+Низкие `views`/`dialogs` — ожидаемый результат: интерфейс проверяется
+UI-тестами, которые не входят в замер. Пороги выставлены по слоям с реальной
+логикой, чтобы общий процент не маскировал деградацию.
 
-#### Service
-- ✅ Конструкторы
-- ✅ Управление ценами
-- ✅ Валидация данных
+## Мутационное тестирование
 
-#### SparePart
-- ✅ Конструкторы
-- ✅ Управление запасами
-- ✅ Расчет стоимости
+```bash
+./gradlew pitest
+# build/reports/pitest/index.html
+```
 
-#### Appointment
-- ✅ Конструкторы
-- ✅ Статусы записей
-- ✅ Привязка к клиенту
+| Метрика | Значение |
+|---|---|
+| Мутаций сгенерировано | 1 084 |
+| Убито | 595 (55 %) |
+| Без покрытия | 253 |
+| Test strength | 72 % |
+| Порог | 70 % |
 
-#### WorkOrder
-- ✅ Конструкторы
-- ✅ Управление услугами
-- ✅ Управление запчастями
-- ✅ Статусы заказов
-- ✅ Расчет итоговой суммы
+Мутируются `services.*`, `utils.*`, `Validators`, `DateUtils`, `DataStore`,
+`Client`, `WorkOrder`, `SparePart`, `Appointment`. UI-классы и тесты JavaFX
+исключены: под миньонами PIT тулкит не поднимается. Подробности и история
+базовой линии — в [COVERAGE_AND_MUTATION.md](COVERAGE_AND_MUTATION.md).
 
-### 2. Утилиты (22 теста)
+## CI
 
-#### DateUtils
-- ✅ Форматирование дат
-- ✅ Парсинг дат
-- ✅ Валидация форматов
+`.github/workflows/ci.yml`:
 
-#### Validators
-- ✅ Валидация телефонов
-- ✅ Валидация госномеров
-- ✅ Нормализация данных
-- ✅ Очистка данных
-
-### 3. Работа с базой данных (20 тестов)
-
-#### Database
-- ✅ Подключение к БД
-- ✅ Создание таблиц
-- ✅ CRUD для клиентов
-- ✅ CRUD для услуг
-- ✅ CRUD для запчастей
-- ✅ CRUD для заказов
-- ✅ CRUD для записей
-- ✅ Удаление заказов
-
-### 4. Управление данными (18 тестов)
-
-#### DataStore
-- ✅ Начальная загрузка
-- ✅ Добавление клиентов
-- ✅ Добавление услуг
-- ✅ Добавление запчастей
-- ✅ Добавление заказов с услугами
-- ✅ Добавление заказов с запчастями
-- ✅ Обновление заказов
-- ✅ Удаление заказов
-- ✅ Фильтрация заказов по клиенту
-- ✅ Статусы заказов
-- ✅ Добавление записей
-- ✅ Обновление записей
-- ✅ Записи по дате
-- ✅ Подсчет активных заказов
-- ✅ Изоляция данных
-
-### 5. Интеграционные сценарии (8 тестов)
-
-#### IntegrationTest
-- ✅ Полный цикл заказа
-- ✅ Несколько клиентов и заказов
-- ✅ Планирование записей
-- ✅ Управление запасами
-- ✅ История клиента
-- ✅ Заказ только с услугами
-- ✅ Заказ только с запчастями
-- ✅ Переходы статусов
-
-## Покрытие кода
-
-| Компонент | Оценочное покрытие |
-|-----------|-------------------|
-| Модели данных | 95% |
-| Валидаторы | 95% |
-| Утилиты | 95% |
-| Работа с БД | 85% |
-| DataStore | 80% |
-| **Общее** | **~88%** |
-
-## Тестовые данные
-
-- База данных: SQLite (in-memory для тестов)
-- Файл БД: `test.db` (удаляется после тестов)
-- Кодировка: UTF-8
-
-## Окружение
-
-- **OS**: Windows
-- **Java**: 17
-- **Maven**: 3.6.0+
-- **JUnit**: 5.10.1
-- **AssertJ**: 3.25.1
-- **SQLite JDBC**: 3.44.1.0
+| Джоба | Что делает | Условие |
+|---|---|---|
+| `build` | `./gradlew build`, отчёты JaCoCo, артефакты тестов и покрытия | push в `main`/`develop`, PR |
+| `ui-test` | Xvfb + `./gradlew uiTest`, артефакты | после успешного `build` |
+| `mutation` | `./gradlew pitest`, артефакт отчёта | только `workflow_dispatch` |
 
 ## Известные ограничения
 
-1. Метод `addAppointment` возвращает ошибку "not implemented by SQLite JDBC driver" - известное ограничение драйвера SQLite, не влияет на функциональность.
-
-2. Кодировка вывода DataStore в логах может отображаться некорректно из-за настройки консоли, но функциональность не нарушена.
+1. UI-тесты не входят в `./gradlew build`: запускаются отдельно и в CI идут
+   после сборки.
+2. Цифры покрытия сняты на Linux/headless; на Windows возможны отличия на
+   десятые доли процента.
+3. PIT не входит в `build`/`check`: прогон долгий, запускается вручную.
+4. Общий процент покрытия (34,5 %) не отражает качество UI-проверок: без
+   UI-тестов `views` покрыты на 2,9 %.
 
 ## Выводы
 
-✅ **Все тесты проходят успешно**
-
-- Покрытие критического функционала: 100%
-- Покрытие бизнес-логики: ~88%
-- Интеграционные сценарии: полностью покрыты
-- Готовность к релизу: **Да**
-
-## Рекомендации
-
-1. Добавить тесты для обработки исключительных ситуаций
-2. Расширить покрытие граничных условий
-3. Добавить тесты для миграции БД
-4. Рассмотреть добавление тестов производительности
-
----
-
-**Отчет сгенерирован автоматически**  
-**Дата генерации: 30.05.2026**
+- Все 571 юнит/интеграционных и 51 UI-тест проходят, пропущенных и
+  отключённых тестов нет.
+- Пороги JaCoCo и PIT выполнены.
+- Сборка `./gradlew build` зелёная, SpotBugs и Checkstyle без ошибок.
+- Версия 1.2.0 готова к релизу после ручной проверки портативной
+  Windows-сборки (см. [RELEASE_READINESS.md](RELEASE_READINESS.md)).
