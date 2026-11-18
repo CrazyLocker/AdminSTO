@@ -147,7 +147,7 @@ UI-тестов (плюс абстрактный `BaseUITest` и хелперы)
    2 012, `DashboardView` — 1 975, `AppointmentView` — 1 395. В них много
    длинных методов; часть логики стоит вынести в сервисы.
 2. **Слабое покрытие UI в `test`.** `views` и `dialogs` проверяются только
-   `uiTest`, поэтому общий процент JaCoCo низкий (35 %). Это осознанное
+   `uiTest`, поэтому общий процент JaCoCo низкий (34,5 %). Это осознанное
    решение, а не регрессия.
 3. **Слой БД в корневом пакете.** `AbstractDatabase`, `SQLiteDatabase`,
    `H2Database`, `DatabaseInterface`, `DatabaseSchema` — около 6 000 строк;
