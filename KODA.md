@@ -60,7 +60,7 @@ UI-тестов (плюс абстрактный `BaseUITest` и хелперы)
 - `BackupService` — ZIP-бэкап БД и состояний UI; проверка архива, атомарная
   замена, откат при ошибке.
 - `ScheduleService` — ежедневный автобэкап по настройкам.
-- `ImportService` / `ExportService` — XML/CSV/JSON; `ImportService` сохраняет
+- `ImportService` / `ExportService` — XML; `ImportService` сохраняет
   `double`-остатки (`12.0`) и ищет клиента по телефону в человеческом формате.
 - `TableStateManager` / `WindowStateManager` — JSON-состояния в `config/`.
 - `ThemeManager` / `ThemePreferences` — выбор темы в `config/theme.txt`,
