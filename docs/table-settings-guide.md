@@ -1,5 +1,10 @@
 # Инструкция: Добавление сохранения настроек таблицы (ширина, порядок, сортировка)
 
+> **Назначение:** как устроено сохранение состояния таблиц и как подключить
+> его к новой таблице.
+> **Актуализировано:** 18.11.2026
+> **Версия ПО:** 1.2.0
+
 ## Архитектура системы
 
 Система состоит из 4 уровней:
@@ -44,6 +49,9 @@ Models: TableState, ColumnState, SortState — структуры данных �
 |------|-----|------------|
 | `columnId` | String | ID колонки, по которой сортируем |
 | `order` | String | `"ASC"` или `"DESC"` |
+
+`ColumnState` и `SortState` — Java record; `ColumnState.index` может быть
+`null` (старый файл или ручная правка JSON) — такие колонки ставятся в конец.
 
 ---
 
@@ -240,13 +248,21 @@ primaryStage.setOnCloseRequest(e -> {
     // Сохраняем состояние КАЖДОЙ таблицы
     TableStateManager.saveTableState(ClientView.getTable(), "clientTable");
     TableStateManager.saveTableState(OrderView.getTable(), "orderTable");
-    // ... другие таблицы ...
-    
+    TableStateManager.saveTableState(ServicePanel.getTable(), "servicesTable");
+    TableStateManager.saveTableState(SparePartPanel.getTable(), "sparePartsTable");
+    TableStateManager.saveTableState(StockPanel.getTable(), "stockTable");
+    TableStateManager.saveTableState(SettingsView.getSettingsTable(), "settingsTable");
+    TableStateManager.saveTableState(SettingsView.getServiceSparePartsTable(), "serviceSparePartsTable");
+    TableStateManager.saveTableState(SettingsView.getToPartsTable(), "toPartsTable");
+
     DataStore.save();
-    Database.close();
+    DatabaseFactory.close();
     // ...
 });
 ```
+
+Дерево «Связи» (`ServicePartsTreeTableView`) состояние колонок не сохраняет:
+это `TreeTableView`, а не таблица из списка выше.
 
 **Важно:** `saveTableState` использует `getWidth()` — фактическую ширину после отрисовки. Поэтому сохранение должно происходить **при закрытии**, когда таблица уже отрисована и пользователь мог изменить колонки.
 

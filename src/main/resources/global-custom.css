@@ -19,6 +19,34 @@
     -fx-font-weight: bold;
 }
 
+/* ------ Чередование строк («зебра») во всех таблицах ------
+   Нечётные строки заливаются полупрозрачным серым поверх обычного фона.
+   Слой заливки, а не жёсткий цвет: правило одинаково читаемо и в светлых,
+   и в тёмных темах (в тёмной теме серый осветляет строку). */
+.table-view .table-row-cell:filled:odd,
+.tree-table-view .tree-table-row-cell:filled:odd {
+    -fx-background-color: -color-cell-border, -color-bg-default, -color-neutral-muted;
+    -fx-background-insets: 0, 0 0 1 0, 0 0 1 0;
+}
+
+/* ------ Выбранная строка — голубая ------
+   Перекрываем и обычное, и «сфокусированное» состояние темы, чтобы
+   подсветка выбора выглядела одинаково при переключении фокуса. */
+.table-view .table-row-cell:filled:selected,
+.table-view:focused .table-row-cell:filled:selected,
+.tree-table-view .tree-table-row-cell:filled:selected,
+.tree-table-view:focused .tree-table-row-cell:filled:selected {
+    -fx-background-color: -color-cell-border, -color-accent-subtle;
+    -fx-background-insets: 0, 0 0 1 0;
+}
+
+/* Ячейки выбранной строки не должны перекрывать её фон своим собственным. */
+.table-view .table-row-cell:filled:selected > .table-cell,
+.tree-table-view .tree-table-row-cell:filled:selected > .tree-table-cell {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+}
+
 /* ==================== ВКЛАДКИ ==================== */
 .tab-pane {
     -fx-tab-min-height: 38;

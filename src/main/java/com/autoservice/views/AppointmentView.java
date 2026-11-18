@@ -117,6 +117,9 @@ public class AppointmentView {
 
         HBox viewBox = new HBox(5, weekView, monthView);
         viewBox.getStyleClass().add("view-box");
+        // HBox по умолчанию выравнивает детей по верху, из-за чего «Неделя /
+        // Месяц» ехали вверх относительно DatePicker и кнопок строки.
+        viewBox.setAlignment(Pos.CENTER_LEFT);
 
         selectedDateLabel = new Label();
         selectedDateLabel.getStyleClass().add("selected-date-label");

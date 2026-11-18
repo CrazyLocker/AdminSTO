@@ -15,6 +15,7 @@ import com.autoservice.utils.StockHelper;
 import com.autoservice.utils.ValidationErrorIndicator;
 import com.autoservice.utils.ValidationUtils;
 import com.autoservice.utils.TooltipHelper;
+import com.autoservice.utils.ThemeManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import javafx.collections.FXCollections;
@@ -147,6 +148,8 @@ public class EditOrderDialog {
         root.setPadding(new Insets(20));
 
         Scene scene = new Scene(root);
+        // Общие стили приложения (чередование строк в таблицах и подсветка выбора)
+        ThemeManager.applySceneStyles(scene);
         stage.setScene(scene);
         return stage;
     }

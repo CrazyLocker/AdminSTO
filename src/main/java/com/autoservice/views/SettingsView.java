@@ -219,7 +219,7 @@ public class SettingsView {
         Label themeDesc = new Label("Выберите цветовую тему для всего приложения. "
                 + "Выбор сохраняется и применяется при следующем запуске.");
         themeDesc.setWrapText(true);
-        themeDesc.setStyle("-fx-text-fill: -fx-mid-text-color;");
+        themeDesc.setStyle("-fx-text-fill: -color-fg-muted;");
 
         HBox themeRow = new HBox(12);
         themeRow.setAlignment(Pos.CENTER_LEFT);
@@ -244,7 +244,7 @@ public class SettingsView {
         Label restartHint = new Label("Для применения темы перезапустите приложение");
         restartHint.setId("themeRestartHint");
         restartHint.setWrapText(true);
-        restartHint.setStyle("-fx-text-fill: -fx-mid-text-color; -fx-font-size: 11px;");
+        restartHint.setStyle("-fx-text-fill: -color-fg-muted; -fx-font-size: 11px;");
 
         themeSection.getChildren().addAll(themeLabel, themeDesc, themeRow, restartHint);
 
@@ -731,7 +731,7 @@ public class SettingsView {
         titleLabel.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #2980b9;");
         VBox section = new VBox(10, titleLabel, grid);
         section.setPadding(new Insets(15));
-        section.setStyle("-fx-background-color: -fx-control-inner-background; -fx-background-radius: 8; "
+        section.setStyle("-fx-background-color: -color-bg-subtle; -fx-background-radius: 8; "
                 + "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);");
         return section;
     }
@@ -2903,7 +2903,7 @@ public class SettingsView {
 
         VBox importSection = new VBox(10, importSectionTitle, importButtons, importInfoLabel);
         importSection.setPadding(new Insets(15));
-        importSection.setStyle("-fx-background-color: -fx-control-inner-background; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);");
+        importSection.setStyle("-fx-background-color: -color-bg-subtle; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);");
 
         // ==================== СЕКЦИЯ: ЭКСПОРТ ====================
         Label exportSectionTitle = new Label("Экспорт данных");
@@ -2951,10 +2951,11 @@ public class SettingsView {
 
         VBox exportSection = new VBox(10, exportSectionTitle, exportButtons, exportInfoLabel);
         exportSection.setPadding(new Insets(15));
-        exportSection.setStyle("-fx-background-color: -fx-control-inner-background; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);");
+        exportSection.setStyle("-fx-background-color: -color-bg-subtle; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);");
 
         panel.getChildren().addAll(titleLabel, importSection, exportSection);
 
         return panel;
     }
 }
+
