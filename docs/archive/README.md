@@ -11,11 +11,10 @@
 | [README_CLEANUP.md](README_CLEANUP.md) | Скрипты очистки дубликатов связей «услуга — запчасть» | август 2026 | Кнопка «Очистить дубликаты» удалена, скриптов в репозитории нет |
 
 Исторические журналы `CHANGES_SUMMARY.md`, `CHANGES_ORDER_LOGIC.md`,
-`STOCK_UPDATES_SUMMARY.md`, `Plan_Sklad.md`, `UItestFuture.md`, `KODA.md`,
-`INSTRUCTIONS.md`, `UI_testplan.md` из постановки задачи в ветке `develop`
-отсутствуют: в репозитории их никогда не было. Актуальные `KODA.md`,
-`INSTRUCTIONS.md` и `UI_testplan.md` созданы заново в корне проекта;
-исторические журналы не восстанавливались, чтобы не выдумывать содержимое.
+`STOCK_UPDATES_SUMMARY.md`, `Plan_Sklad.md`, `UItestFuture.md`, а также
+черновики `KODA.md`, `INSTRUCTIONS.md` и `UI_testplan.md` в репозитории
+отсутствуют: они существовали только в локальной работе и в проект не
+включены, чтобы не дублировать актуальные документы.
 
 Актуальные документы — в корне `docs/`; карта документации — в
 [README.md](../../README.md#-документация).

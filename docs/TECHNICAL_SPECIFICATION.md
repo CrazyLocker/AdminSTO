@@ -490,9 +490,6 @@ AdminSTO/
 | Документ | Описание |
 |---|---|
 | [README.md](../README.md) | Обзор и карта документации |
-| [INSTRUCTIONS.md](../INSTRUCTIONS.md) | Руководство пользователя |
-| [KODA.md](../KODA.md) | Карта кода |
-| [UI_testplan.md](../UI_testplan.md) | План UI-тестов |
 | [TEST_REPORT.md](TEST_REPORT.md) | Отчёт о тестировании |
 | [TRACEABILITY_MATRIX.md](TRACEABILITY_MATRIX.md) | Матрица трассируемости |
 | [COVERAGE_AND_MUTATION.md](COVERAGE_AND_MUTATION.md) | Покрытие и мутации |
