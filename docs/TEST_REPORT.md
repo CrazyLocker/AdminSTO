@@ -79,7 +79,7 @@
 | `views/AppointmentCalendarUITest` | 4 |
 | `views/TableStripingUITest` | 3 |
 
-Инвентарь и матрица требований — в [../UI_testplan.md](../UI_testplan.md).
+Матрица требований — в [TRACEABILITY_MATRIX.md](TRACEABILITY_MATRIX.md).
 
 ## Покрытие по пакетам
 

@@ -46,7 +46,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * ни на вкладке «Запись».</p>
  *
  * <p>Тест сохраняет снимки дашборда и вкладки «Запись» в
- * {@code .github/validation-evidence/bugfix-1}; суффикс каталога задаётся
+ * {@code build/ui-test-evidence/bugfix-1}; суффикс каталога задаётся
  * переменной окружения {@code EVIDENCE_SUFFIX} ({@code after} по умолчанию),
  * чтобы получить настоящий Before на коде до исправления.</p>
  */
@@ -54,7 +54,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @EnabledIfSystemProperty(named = "javafx.headless", matches = "true")
 class AppointmentVisibilityUITest extends BaseUITest {
 
-    private static final Path EVIDENCE_DIR = Path.of(".github", "validation-evidence",
+    private static final Path EVIDENCE_DIR = Path.of("build", "ui-test-evidence",
             "bugfix-1", System.getenv().getOrDefault("EVIDENCE_SUFFIX", "after"));
 
     private static final String CLIENT_NAME = "Анна";

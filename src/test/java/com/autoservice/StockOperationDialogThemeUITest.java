@@ -48,7 +48,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @EnabledIfSystemProperty(named = "javafx.headless", matches = "true")
 class StockOperationDialogThemeUITest extends BaseUITest {
 
-    private static final Path EVIDENCE_DIR = Path.of(".github", "validation-evidence",
+    private static final Path EVIDENCE_DIR = Path.of("build", "ui-test-evidence",
             "bugfix-1", System.getenv().getOrDefault("EVIDENCE_SUFFIX", "after"));
 
     private static final Color OLD_BOX_BACKGROUND = Color.web("#1E2139");

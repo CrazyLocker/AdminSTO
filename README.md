@@ -176,9 +176,6 @@ AdminSTO/
 | Файл | О чём | Статус |
 |---|---|---|
 | [README.md](README.md) | Обзор, быстрый старт, карта документации | Актуален, 18.11.2026 |
-| [INSTRUCTIONS.md](INSTRUCTIONS.md) | Руководство пользователя: экраны, календарь, настройки | Актуален, 18.11.2026 |
-| [KODA.md](KODA.md) | Карта кода: пакеты, ключевые классы, схема БД, CI | Актуален, 18.11.2026 |
-| [UI_testplan.md](UI_testplan.md) | План и инвентарь UI-тестов (51 тест) | Актуален, 18.11.2026 |
 | [docs/TECHNICAL_SPECIFICATION.md](docs/TECHNICAL_SPECIFICATION.md) | Техническая спецификация и требования | Актуален, 18.11.2026 |
 | [docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md) | Готовность к релизу 1.2.0, риски | Актуален, 18.11.2026 |
 | [docs/TEST_REPORT.md](docs/TEST_REPORT.md) | Отчёт о тестировании и метрики | Актуален, 18.11.2026 |

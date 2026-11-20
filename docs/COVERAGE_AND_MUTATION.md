@@ -59,8 +59,8 @@
 недельная сетка, полоса статуса, счётчик дня, месячная сетка) и
 `views/TableStripingUITest` (3 теста: «зебра», тёмная тема, подсветка выбора).
 Темы — `ThemeSettingsUITest`, `DashboardThemeUITest`,
-`StockOperationDialogThemeUITest`. Полный инвентарь — в
-[../UI_testplan.md](../UI_testplan.md).
+`StockOperationDialogThemeUITest`. Полный перечень классов — в
+[TEST_REPORT.md](TEST_REPORT.md).
 
 ### Общая картина (строки; замер Linux, 18.11.2026)
 
